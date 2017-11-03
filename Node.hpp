@@ -445,8 +445,8 @@ struct Return
 	Expr expr;
 
 	Return() = default;
-	
-	Return(const Expr& expr):
+
+	Return(const Expr& expr) :
 		expr(expr)
 	{}
 
@@ -1113,7 +1113,7 @@ public:
 	auto operator()(const DefFunc& defFunc)const -> void
 	{
 		std::cout << indent() << "DefFunc(" << std::endl;
-		
+
 		{
 			const auto child = Printer(m_indent + 1);
 			std::cout << child.indent() << "Arguments(" << std::endl;
@@ -1168,7 +1168,7 @@ public:
 			//boost::apply_visitor(Printer(m_indent + 2), callFunc.actualArguments);
 			std::cout << child.indent() << ")" << std::endl;
 		}
-		
+
 		std::cout << indent() << ")" << std::endl;
 	}
 
@@ -1223,8 +1223,8 @@ public:
 
 			std::cout << child.indent() << ")" << std::endl;
 		}
-		
-		if(if_statement.else_expr)
+
+		if (if_statement.else_expr)
 		{
 			const auto child = Printer(m_indent + 1);
 			std::cout << child.indent() << "Else(" << std::endl;

@@ -1,14 +1,6 @@
-#include <iostream>
-#include <string>
-#include <cmath>
-
 #define BOOST_RESULT_OF_USE_DECLTYPE
 #define BOOST_SPIRIT_USE_PHOENIX_V3
 
-#include <boost/variant/variant.hpp>
-#include <boost/variant/recursive_wrapper.hpp>
-#include <boost/variant/static_visitor.hpp>
-#include <boost/variant/apply_visitor.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 
@@ -34,57 +26,37 @@ auto Call(F func, Args... args)
 	return boost::phoenix::bind(func, args...);
 }
 
-//namespace test_parser {
-//	using namespace boost::spirit;
-//
-//	template<typename Iterator>
-//	struct expr_grammer
-//		: qi::grammar<Iterator, Lines(), ascii::space_type>
-//	{
-//		qi::rule<Iterator, Expr(), ascii::space_type> expr, term, factor, pow_term, pow_term1;
-//		qi::rule<Iterator, Lines(), ascii::space_type> expr_seq;
-//
-//		expr_grammer() : expr_grammer::base_type(expr_seq)
-//		{
-//			auto concat = [](Lines& lines, Expr& expr) {
-//				lines.concat(expr);
-//				return lines;
-//			};
-//
-//			auto makeLines = [](Expr& expr) {
-//				return Lines(expr);
-//			};
-//
-//			expr_seq = expr[_val = Call(makeLines, _1)] >> *(
-//				(',' >> expr[_val = Call(concat, _val, _1)])
-//				| ('\n' >> expr[_val = Call(concat, _val, _1)])
-//				);
-//
-//			expr = term[_val = _1] >> *(
-//				('+' >> term[_val = MakeBinaryExpr<Add>()])
-//				| ('-' >> term[_val = MakeBinaryExpr<Sub>()])
-//				| ('=' >> term[_val = MakeBinaryExpr<Assign>()])
-//				);
-//
-//			term = pow_term[_val = _1]
-//				| (factor[_val = _1] >> *(
-//				    ('*' >> factor[_val = MakeBinaryExpr<Mul>()])
-//				  | ('/' >> factor[_val = MakeBinaryExpr<Div>()])
-//				  ))
-//				;
-//
-//			pow_term = factor[_val = _1] >> -('^' >> pow_term[_val = MakeBinaryExpr<Pow>()]);
-//
-//			factor = double_[_val = _1]
-//				| '(' >> expr[_val = _1] >> ')'
-//				| '+' >> factor[_val = MakeUnaryExpr<Add>()]
-//				| '-' >> factor[_val = MakeUnaryExpr<Sub>()];
-//		}
-//	};
-//}
-
 namespace test_parser {
 	using namespace boost::spirit;
+
+	template<typename Iterator>
+	struct SpaceSkipper : public qi::grammar<Iterator>
+	{
+		qi::rule<Iterator> skip;
+
+		SpaceSkipper() :SpaceSkipper::base_type(skip)
+		{
+			skip = +(lit(' ') ^ lit('\r') ^ lit('\t'));
+		}
+	};
+
+	template<typename Iterator>
+	struct LineSkipper : public qi::grammar<Iterator>
+	{
+		qi::rule<Iterator> skip;
+
+		LineSkipper() :LineSkipper::base_type(skip)
+		{
+			skip = ascii::space;
+		}
+	};
+
+	using IteratorT = std::string::const_iterator;
+	using SpaceSkipperT = SpaceSkipper<IteratorT>;
+	using LineSkipperT = LineSkipper<IteratorT>;
+
+	SpaceSkipperT spaceSkipper;
+	LineSkipperT lineSkipper;
 
 	template<typename Iterator, typename Skipper>
 	struct expr_grammer
@@ -98,8 +70,11 @@ namespace test_parser {
 		qi::rule<Iterator, Identifier(), Skipper> id;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
 		qi::rule<Iterator, Lines(), Skipper> expr_seq;
+		qi::rule<Iterator, Lines(), Skipper> program;
 
-		expr_grammer() : expr_grammer::base_type(expr_seq)
+		qi::rule<Iterator> s;
+
+		expr_grammer() : expr_grammer::base_type(program)
 		{
 			auto concatLines = [](Lines& lines, Expr& expr) { lines.concat(expr); };
 
@@ -117,130 +92,116 @@ namespace test_parser {
 
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
 
+			program = s >> -(expr_seq) >> s;
+
 			expr_seq = general_expr[_val = Call(makeLines, _1)] >> *(
-				(',' >> general_expr[Call(concatLines, _val, _1)])
-				| ('\n' >> general_expr[Call(concatLines, _val, _1)])
+				(s >> ',' >> s >> general_expr[Call(concatLines, _val, _1)])
+				| (+(lit('\n')) >> general_expr[Call(concatLines, _val, _1)])
 				);
 
 			//= ^ -> は右結合
 
-			general_expr = def_func[_val = _1]
-				| call_func[_val = _1]
-				| if_expr[_val = _1]
+			general_expr =
+				if_expr[_val = _1]
 				| return_expr[_val = _1]
 				| logic_expr[_val = _1];
 
-			if_expr = lit("if") >> general_expr[_val = Call(If::Make, _1)]
-				>> lit("then") >> general_expr[Call(If::SetThen, _val, _1)]
-				>> -(lit("else") >> general_expr[Call(If::SetElse, _val, _1)])
+			if_expr = lit("if") >> s >> general_expr[_val = Call(If::Make, _1)]
+				>> s >> lit("then") >> s >> general_expr[Call(If::SetThen, _val, _1)]
+				>> -(s >> lit("else") >> s >> general_expr[Call(If::SetElse, _val, _1)])
 				;
 
-			return_expr = lit("return") >> general_expr[_val = Call(Return::Make, _1)];
+			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
-			def_func = arguments[_val = _1] >> lit("->") >> expr_seq[Call(applyFuncDef, _val, _1)];
+			def_func = arguments[_val = _1] >> lit("->") >> s >> expr_seq[Call(applyFuncDef, _val, _1)];
 
-			call_func = id[_val = Call(makeCallFunc, _1)] >> '(' 
-				>> -(general_expr[Call(addArgument, _val, _1)]) 
-				>> *(',' >> general_expr[Call(addArgument, _val, _1)]) >> ')';
+			call_func = id[_val = Call(makeCallFunc, _1)] >> '('
+				>> -(s >> general_expr[Call(addArgument, _val, _1)])
+				>> *(s >> ',' >> s >> general_expr[Call(addArgument, _val, _1)]) >> s >> ')';
 
-			arguments = -(id[_val = _1] >> *(',' >> arguments[Call(concatArguments, _val, _1)]));
+			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));
 
-			logic_expr = logic_term[_val = _1] >> *('|' >> logic_term[_val = MakeBinaryExpr<Or>()]);
+			logic_expr = logic_term[_val = _1] >> *(s >> '|' >> s >> logic_term[_val = MakeBinaryExpr<Or>()]);
 
-			logic_term = logic_factor[_val = _1] >> *('&' >> logic_factor[_val = MakeBinaryExpr<And>()]);
+			logic_term = logic_factor[_val = _1] >> *(s >> '&' >> s >> logic_factor[_val = MakeBinaryExpr<And>()]);
 
-			logic_factor = ('!' >> compare_expr[_val = MakeUnaryExpr<Not>()])
+			logic_factor = ('!' >> s >> compare_expr[_val = MakeUnaryExpr<Not>()])
 				| compare_expr[_val = _1]
 				;
 
 			compare_expr = arith_expr[_val = _1] >> *(
-				(lit("==") >> arith_expr[_val = MakeBinaryExpr<Equal>()])
-				| (lit("!=") >> arith_expr[_val = MakeBinaryExpr<NotEqual>()])
-				| (lit("<") >> arith_expr[_val = MakeBinaryExpr<LessThan>()])
-				| (lit("<=") >> arith_expr[_val = MakeBinaryExpr<LessEqual>()])
-				| (lit(">") >> arith_expr[_val = MakeBinaryExpr<GreaterThan>()])
-				| (lit(">=") >> arith_expr[_val = MakeBinaryExpr<GreaterEqual>()])
+				(s >> lit("==") >> s >> arith_expr[_val = MakeBinaryExpr<Equal>()])
+				| (s >> lit("!=") >> s >> arith_expr[_val = MakeBinaryExpr<NotEqual>()])
+				| (s >> lit("<") >> s >> arith_expr[_val = MakeBinaryExpr<LessThan>()])
+				| (s >> lit("<=") >> s >> arith_expr[_val = MakeBinaryExpr<LessEqual>()])
+				| (s >> lit(">") >> s >> arith_expr[_val = MakeBinaryExpr<GreaterThan>()])
+				| (s >> lit(">=") >> s >> arith_expr[_val = MakeBinaryExpr<GreaterEqual>()])
 				)
 				;
 
-			arith_expr = (basic_arith_expr[_val = _1] >> -('=' >> arith_expr[_val = MakeBinaryExpr<Assign>()]));
+			arith_expr = (basic_arith_expr[_val = _1] >> -(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr<Assign>()]));
 
 			basic_arith_expr = term[_val = _1] >>
-				*(('+' >> term[_val = MakeBinaryExpr<Add>()]) |
-				('-' >> term[_val = MakeBinaryExpr<Sub>()]))
+				*((s >> '+' >> s >> term[_val = MakeBinaryExpr<Add>()]) |
+				(s >> '-' >> s >> term[_val = MakeBinaryExpr<Sub>()]))
 				;
 
 			term = pow_term[_val = _1]
-				| (factor[_val = _1] >> 
-					*(('*' >> pow_term1[_val = MakeBinaryExpr<Mul>()]) | 
-					('/' >> pow_term1[_val = MakeBinaryExpr<Div>()]))
-				)
+				| (factor[_val = _1] >>
+					*((s >> '*' >> s >> pow_term1[_val = MakeBinaryExpr<Mul>()]) |
+					(s >> '/' >> s >> pow_term1[_val = MakeBinaryExpr<Div>()]))
+					)
 				;
 
 			//最低でも1つは受け取るようにしないと、単一のfactorを受理できてしまうのでMul,Divの方に行ってくれない
-			pow_term = factor[_val = _1] >> '^' >> pow_term1[_val = MakeBinaryExpr<Pow>()];
-			pow_term1 = factor[_val = _1] >> -('^' >> pow_term1[_val = MakeBinaryExpr<Pow>()]);
+			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr<Pow>()];
+			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr<Pow>()]);
 
 			factor = double_[_val = _1]
-				| '(' >> expr_seq[_val = _1] >> ')'
-				| '+' >> factor[_val = MakeUnaryExpr<Add>()]
-				| '-' >> factor[_val = MakeUnaryExpr<Sub>()]
+				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
+				| '+' >> s >> factor[_val = MakeUnaryExpr<Add>()]
+				| '-' >> s >> factor[_val = MakeUnaryExpr<Sub>()]
+				| call_func[_val = _1]
+				| def_func[_val = _1]
 				| id[_val = _1];
+
 
 			//idの途中には空白を含めない
 			id = lexeme[ascii::alpha[_val = _1] >> *(ascii::alnum[Call(addCharacter, _val, _1)])];
+
+			s = -(ascii::space);
 		}
 	};
-
-	template<typename Iterator>
-	struct SpaceSkipper : public qi::grammar<Iterator>
-	{
-		qi::rule<Iterator> skip;
-
-		SpaceSkipper() :SpaceSkipper::base_type(skip)
-		{
-			skip = ascii::blank;
-		}
-	};
-
-	using IteratorT = std::string::const_iterator;
-	using SkipperT = SpaceSkipper<IteratorT>;
 }
 
-#define TEST_MODE
+#define DO_TEST
 
 int main()
 {
-	//std::string buffer;
-	//while (std::getline(std::cin, buffer)) {
-	//	Lines lines;
-	//	test_parser::expr_grammer<decltype(buffer.begin())> p;
-	//	//if (boost::spirit::qi::phrase_parse(buffer.begin(), buffer.end(), p, boost::spirit::ascii::space, expr)) {
-	//	if (boost::spirit::qi::phrase_parse(buffer.begin(), buffer.end(), p, boost::spirit::ascii::space, lines)) {
-	//		printLines(lines);
-	//	}
-	//	else {
-	//		std::cerr << "Parse error!!\n";
-	//	}
-	//}
-
 	const auto parse = [](const std::string& str, Lines& lines)->bool
 	{
 		using namespace test_parser;
 
 		SpaceSkipper<IteratorT> skipper;
-		expr_grammer<IteratorT, SkipperT> grammer;
+		expr_grammer<IteratorT, SpaceSkipperT> grammer;
 
-		if (!boost::spirit::qi::phrase_parse(str.begin(), str.end(), grammer, skipper, lines))
+		std::string::const_iterator it = str.begin();
+		if (!boost::spirit::qi::phrase_parse(it, str.end(), grammer, skipper, lines))
 		{
-			std::cerr << "Parse error!!\n";
+			std::cerr << "error: parse failed\n";
+			return false;
+		}
+
+		if (it != str.end())
+		{
+			std::cerr << "error: ramains input\n" << std::string(it, str.end());
 			return false;
 		}
 
 		return true;
 	};
 
-#ifdef TEST_MODE
+#ifdef DO_TEST
 
 	std::vector<std::string> test_ok({
 		"(1*2 + -3*-(4 + 5/6))",
@@ -252,15 +213,22 @@ int main()
 		"1 + 1, \n 2 + 3",
 		"1 + 1 \n \n \n 2 + 3",
 		"1 + 2 \n , 4*5",
+		"1 + 3 * \n 4 + 5",
 		"(-> 1 + 2)",
 		"(-> 1 + 2 \n 3)",
 		"x, y -> x + y",
+		"fun = (a, b, c -> d, e, f -> g, h, i -> a = processA(b, c), d = processB((a, e), f), g = processC(h, (a, d, i)))",
 		"fun = a, b, c -> d, e, f -> g, h, i -> a = processA(b, c), d = processB((a, e), f), g = processC(h, (a, d, i))",
-R"(
-gcd = m, n ->
+		"gcd1 = (m, n ->\n if m == 0\n then return m\n else self(mod(m, n), m)\n)",
+		"gcd2 = (m, n ->\r\n if m == 0\r\n then return m\r\n else self(mod(m, n), m)\r\n)",
+		"gcd3 = (m, n ->\n\tif m == 0\n\tthen return m\n\telse self(mod(m, n), m)\n)",
+		"gcd4 = (m, n ->\r\n\tif m == 0\r\n\tthen return m\r\n\telse self(mod(m, n), m)\r\n)",
+		R"(
+gcd5 = (m, n ->
 	if m == 0
 	then return m
 	else self(mod(m, n), m)
+)
 )"
 	});
 
@@ -270,7 +238,6 @@ gcd = m, n ->
 		"1 + 2, 3 + 4,",
 		"1 + 2, \n , 3 + 4",
 		"1 + 3 * , 4 + 5",
-		"1 + 3 * \n 4 + 5",
 		"(->)"
 	});
 
@@ -289,9 +256,9 @@ gcd = m, n ->
 
 		Lines expr;
 		const bool succeed = parse(test_ok[i], expr);
-		
+
 		printExpr(expr);
-		
+
 		std::cout << "\n";
 
 		if (succeed)
@@ -322,7 +289,7 @@ gcd = m, n ->
 		std::cout << "parse:\n";
 
 		Lines expr;
-		const bool failed = !parse(test_ok[i], expr);
+		const bool failed = !parse(test_ng[i], expr);
 
 		printExpr(expr);
 
@@ -346,7 +313,7 @@ gcd = m, n ->
 
 	std::cout << "Result:\n";
 	std::cout << "Correct programs: (Wrong / All) = (" << ok_wrongs << " / " << test_ok.size() << ")\n";
-	std::cout << "Wrong   programs: (Wrong / All) = (" << ng_wrongs << " / " << test_ng.size() << ")\n";	
+	std::cout << "Wrong   programs: (Wrong / All) = (" << ng_wrongs << " / " << test_ng.size() << ")\n";
 
 #endif
 

@@ -1,9 +1,11 @@
 #pragma once
+#include <cmath>
 #include <vector>
 #include <memory>
 #include <functional>
 #include <iostream>
 #include <map>
+#include <unordered_map>
 
 #include <boost/variant/variant.hpp>
 #include <boost/mpl/vector/vector30.hpp>
@@ -18,7 +20,7 @@ inline bool SameType(const T1& t1, const T2& t2)
 template<class T1, class T2>
 inline bool IsType(const T2& t2)
 {
-	return std::string(typeid(T1).name()) == std::string(t2.name());
+	return std::string(typeid(T1).name()) == std::string(t2.type().name());
 }
 
 template<class T1, class T2>
@@ -27,24 +29,53 @@ inline T1& As(T2& t2)
 	return boost::get<T1>(t2);
 }
 
-struct And;
-struct Or;
-struct Not;
+//struct And;
+//struct Or;
+//struct Not;
+//
+//struct Equal;
+//struct NotEqual;
+//struct LessThan;
+//struct LessEqual;
+//struct GreaterThan;
+//struct GreaterEqual;
+//
+//struct Add;
+//struct Sub;
+//struct Mul;
+//struct Div;
+//
+//struct Pow;
+//struct Assign;
 
-struct Equal;
-struct NotEqual;
-struct LessThan;
-struct LessEqual;
-struct GreaterThan;
-struct GreaterEqual;
+enum class UnaryOp
+{
+	Not,
 
-struct Add;
-struct Sub;
-struct Mul;
-struct Div;
+	Plus,
+	Minus
+};
 
-struct Pow;
-struct Assign;
+enum class BinaryOp
+{
+	And,
+	Or,
+
+	Equal,
+	NotEqual,
+	LessThan,
+	LessEqual,
+	GreaterThan,
+	GreaterEqual,
+
+	Add,
+	Sub,
+	Mul,
+	Div,
+	
+	Pow,
+	Assign
+};
 
 struct DefFunc;
 
@@ -67,10 +98,13 @@ struct FuncVal;
 
 struct CallFunc;
 
-template <class Op>
-struct UnaryExpr;
+//template <class Op>
+//struct UnaryExpr;
+//
+//template <class Op>
+//struct BinaryExpr;
 
-template <class Op>
+struct UnaryExpr;
 struct BinaryExpr;
 
 struct Statement;
@@ -114,8 +148,44 @@ boost::recursive_wrapper<Return>
 >;
 */
 
+//using types =
+//boost::mpl::vector26<
+//	int,
+//	double,
+//	Identifier,
+//	boost::recursive_wrapper<Statement>,
+//	boost::recursive_wrapper<Lines>,
+//	boost::recursive_wrapper<DefFunc>,
+//	boost::recursive_wrapper<CallFunc>,
+//
+//	boost::recursive_wrapper<UnaryExpr<Not>>,
+//	boost::recursive_wrapper<BinaryExpr<And>>,
+//	boost::recursive_wrapper<BinaryExpr<Or>>,
+//
+//	boost::recursive_wrapper<BinaryExpr<Equal>>,
+//	boost::recursive_wrapper<BinaryExpr<NotEqual>>,
+//	boost::recursive_wrapper<BinaryExpr<LessThan>>,
+//	boost::recursive_wrapper<BinaryExpr<LessEqual>>,
+//	boost::recursive_wrapper<BinaryExpr<GreaterThan>>,
+//	boost::recursive_wrapper<BinaryExpr<GreaterEqual>>,
+//
+//	boost::recursive_wrapper<UnaryExpr<Add>>,
+//	boost::recursive_wrapper<UnaryExpr<Sub>>,
+//
+//	boost::recursive_wrapper<BinaryExpr<Add>>,
+//	boost::recursive_wrapper<BinaryExpr<Sub>>,
+//	boost::recursive_wrapper<BinaryExpr<Mul>>,
+//	boost::recursive_wrapper<BinaryExpr<Div>>,
+//
+//	boost::recursive_wrapper<BinaryExpr<Pow>>,
+//	boost::recursive_wrapper<BinaryExpr<Assign>>,
+//
+//	boost::recursive_wrapper<If>,
+//	boost::recursive_wrapper<Return> >;
+
 using types =
-boost::mpl::vector26<
+boost::mpl::vector12<
+	bool,
 	int,
 	double,
 	Identifier,
@@ -124,47 +194,492 @@ boost::mpl::vector26<
 	boost::recursive_wrapper<DefFunc>,
 	boost::recursive_wrapper<CallFunc>,
 
-	boost::recursive_wrapper<UnaryExpr<Not>>,
-	boost::recursive_wrapper<BinaryExpr<And>>,
-	boost::recursive_wrapper<BinaryExpr<Or>>,
-
-	boost::recursive_wrapper<BinaryExpr<Equal>>,
-	boost::recursive_wrapper<BinaryExpr<NotEqual>>,
-	boost::recursive_wrapper<BinaryExpr<LessThan>>,
-	boost::recursive_wrapper<BinaryExpr<LessEqual>>,
-	boost::recursive_wrapper<BinaryExpr<GreaterThan>>,
-	boost::recursive_wrapper<BinaryExpr<GreaterEqual>>,
-
-	boost::recursive_wrapper<UnaryExpr<Add>>,
-	boost::recursive_wrapper<UnaryExpr<Sub>>,
-
-	boost::recursive_wrapper<BinaryExpr<Add>>,
-	boost::recursive_wrapper<BinaryExpr<Sub>>,
-	boost::recursive_wrapper<BinaryExpr<Mul>>,
-	boost::recursive_wrapper<BinaryExpr<Div>>,
-
-	boost::recursive_wrapper<BinaryExpr<Pow>>,
-	boost::recursive_wrapper<BinaryExpr<Assign>>,
+	boost::recursive_wrapper<UnaryExpr>,
+	boost::recursive_wrapper<BinaryExpr>,
 
 	boost::recursive_wrapper<If>,
-	boost::recursive_wrapper<Return> >;
+	boost::recursive_wrapper<Return>
+>;
 
 using Expr = boost::make_variant_over<types>::type;
-
-
-union ExprHolder
-{
-	Expr* expr;
-};
 
 void printExpr(const Expr& expr);
 
 using Evaluated = boost::variant<
+	bool,
 	int,
 	double,
 	Identifier,
 	boost::recursive_wrapper<FuncVal>
 >;
+
+class Values
+{
+public:
+	
+	unsigned add(const Evaluated& value)
+	{
+		m_values.insert({ nextID(), value });
+
+		return m_ID;
+	}
+
+	size_t size()const
+	{
+		return m_values.size();
+	}
+
+	Evaluated& operator[](unsigned key)
+	{
+		auto it = m_values.find(key);
+		if (it == m_values.end())
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+		}
+		return it->second;
+	}
+
+	const Evaluated& operator[](unsigned key)const
+	{
+		auto it = m_values.find(key);
+		if (it == m_values.end())
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+		}
+		return it->second;
+	}
+
+private:
+
+	unsigned nextID()
+	{
+		return ++m_ID;
+	}
+	
+	std::unordered_map<unsigned, Evaluated> m_values;
+
+	unsigned m_ID = 0;
+
+};
+
+class LocalEnvironment
+{
+public:
+
+	void bind(const std::string& name, unsigned ID)
+	{
+		localVariables[name] = ID;
+	}
+
+	boost::optional<unsigned> find(const std::string& name)const
+	{
+		const auto it = localVariables.find(name);
+		if (it == localVariables.end())
+		{
+			return boost::none;
+		}
+
+		return it->second;
+	}
+
+private:
+
+	using LocalVariables = std::unordered_map<std::string, unsigned>;
+	
+	LocalVariables localVariables;
+
+	//isInnerScope = false の時GCの対象となる
+	bool isInnerScope = true;
+};
+
+class Environment
+{
+public:
+
+	const Evaluated& dereference(const Evaluated& reference)const
+	{
+		//即値はValuesには持っているとは限らない
+		if (!IsType<Identifier>(reference))
+		{
+			return reference;
+		}
+
+		const auto valueIDOpt = findValueID(As<Identifier>(reference).name);
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return reference;
+		}
+
+		return m_values[valueIDOpt.value()];
+	}
+
+	void bindNewValue(const std::string& name, const Evaluated& value)
+	{
+		const unsigned newID = m_values.add(value);
+		bindValue(name, newID);
+	}
+
+	void bindReference(const std::string& nameLhs, const std::string& nameRhs)
+	{
+		const auto valueIDOpt = findValueID(nameRhs);
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return;
+		}
+
+		bindValue(nameLhs, valueIDOpt.value());
+	}
+
+	void push()
+	{
+		m_bindingNames.emplace_back();
+	}
+
+	void pop()
+	{
+		m_bindingNames.pop_back();
+	}
+
+private:
+
+	void bindValue(const std::string& name, unsigned valueID)
+	{
+		for (auto& localEnv : m_bindingNames)
+		{
+			if (localEnv.find(name))
+			{
+				localEnv.bind(name, valueID);
+			}
+		}
+
+		//現在の環境に変数が存在しなければ、
+		//環境リストの末尾（＝最も内側のスコープ）に変数を追加する
+		m_bindingNames.back().bind(name, valueID);
+	}
+
+	//外側のスコープから順番に変数を探して返す
+	boost::optional<unsigned> findValueID(const std::string& name)const
+	{
+		boost::optional<unsigned> valueIDOpt;
+		for (const auto& localEnv : m_bindingNames)
+		{
+			if (valueIDOpt = localEnv.find(name))
+			{
+				break;
+			}
+		}
+
+		return valueIDOpt;
+	}
+
+	void garbageCollect();
+
+	Values m_values;
+
+	//変数はスコープ単位で管理される
+	//スコープを抜けたらそのスコープで管理している変数を環境ごと削除する
+	//したがって環境はネストの浅い順にリストで管理することができる（同じ深さの環境が二つ存在することはない）
+	//リストの最初の要素はグローバル変数とするとする
+	std::vector<LocalEnvironment> m_bindingNames;
+};
+
+//inline Evaluated Dereference(const Evaluated& reference, const Environment& env)
+//{
+//	
+//	if (!IsType<Identifier>(reference))
+//	{
+//		return reference;
+//	}
+//
+//	const auto& name = As<Identifier>(reference).name;
+//	const auto it = env.find(name);
+//	if (it == env.end())
+//	{
+//		std::cerr << "Error(" << __LINE__ << ")\n";
+//		return 0;
+//	}
+//
+//	return Dereference(it->second, env);
+//}
+
+/*
+Unary Operators:
+
+Not,
+
+Plus,
+Minus
+*/
+
+inline Evaluated Not(const Evaluated& lhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+
+	if (IsType<bool>(lhs))
+	{
+		return !As<bool>(lhs);
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated Plus(const Evaluated& lhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+
+	if (IsType<int>(lhs) || IsType<double>(lhs))
+	{
+		return lhs;
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated Minus(const Evaluated& lhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+
+	if (IsType<int>(lhs))
+	{
+		return -As<int>(lhs);
+	}
+	else if (IsType<double>(lhs))
+	{
+		return -As<double>(lhs);
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+/*
+Binary Operators:
+
+And,
+Or,
+
+Equal,
+NotEqual,
+LessThan,
+LessEqual,
+GreaterThan,
+GreaterEqual,
+
+Add,
+Sub,
+Mul,
+Div,
+
+Pow,
+Assign
+*/
+
+inline Evaluated And(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<bool>(lhs) && IsType<bool>(rhs))
+	{
+		return As<bool>(lhs) && As<bool>(rhs);
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated Or(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<bool>(lhs) && IsType<bool>(rhs))
+	{
+		return As<bool>(lhs) || As<bool>(rhs);
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated Equal(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) == As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) == As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) == As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) == As<double>(rhs);
+		}
+	}
+
+	if (IsType<bool>(lhs) && IsType<bool>(rhs))
+	{
+		return As<bool>(lhs) == As<bool>(rhs);
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated NotEqual(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated LessThan(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) < As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) < As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) < As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) < As<double>(rhs);
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated LessEqual(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated GreaterThan(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated GreaterEqual(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated Add(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) + As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) + As<double>(rhs);
+		}	
+	}
+	else if(IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) + As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) + As<double>(rhs);
+		}
+	}
+	
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated Sub(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated Mul(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated Div(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated Pow(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+{
+	return 0;
+}
+
+inline Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+{
+	if (!IsType<Identifier>(lhs))
+	{
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return 0;
+	}
+
+	const auto& nameLhs = As<Identifier>(lhs).name;
+
+	/*
+	代入式は、左辺と右辺の形の組み合わせにより4パターンの挙動が起こり得る。
+
+	式の左辺：現在の環境にすでに存在する識別子か、新たに束縛を行う識別子か
+	式の右辺：左辺値であるか、右辺値であるか
+
+	左辺値の場合は、その参照先を取得し新たに
+	*/
+	const bool isLValue = IsType<Identifier>(rhs);
+	if (isLValue)
+	{
+		const auto& nameRhs = As<Identifier>(rhs).name;
+		
+		env.bindReference(nameLhs, nameRhs);
+	}
+	else
+	{
+		env.bindNewValue(nameLhs, rhs);
+	}
+
+	return lhs;
+}
+
 
 extern std::map<std::string, Evaluated> globalVariables;
 extern std::map<std::string, Evaluated> localVariables;
@@ -186,45 +701,25 @@ inline boost::optional<std::map<std::string, Evaluated>::iterator> findVariable(
 	return boost::none;
 }
 
-template <class Op>
 struct UnaryExpr
 {
 	Expr lhs;
+	UnaryOp op;
 
-	UnaryExpr(const Expr& lhs_) :
-		lhs(lhs_)
+	UnaryExpr(const Expr& lhs, UnaryOp op) :
+		lhs(lhs), op(op)
 	{}
 };
 
-template <class Op>
 struct BinaryExpr
 {
 	Expr lhs;
 	Expr rhs;
+	BinaryOp op;
 
-	BinaryExpr(const Expr& lhs_, const Expr& rhs_) :
-		lhs(lhs_), rhs(rhs_)
+	BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
+		lhs(lhs), rhs(rhs), op(op)
 	{}
-};
-
-struct Statement
-{
-	std::vector<Expr> exprs;
-
-	Statement() = default;
-
-	Statement(const Expr& expr) :
-		exprs({ expr })
-	{}
-
-	Statement(const std::vector<Expr>& exprs_) :
-		exprs(exprs_)
-	{}
-
-	void add(const Expr& expr)
-	{
-		exprs.push_back(expr);
-	}
 };
 
 struct Lines
@@ -297,19 +792,19 @@ struct Arguments
 
 struct FuncVal
 {
-	std::map<std::string, Evaluated> environment;
+	std::shared_ptr<Environment> environment;
 	std::vector<Identifier> argments;
 	Expr expr;
 
 	FuncVal() = default;
 
 	FuncVal(
-		const std::map<std::string, Evaluated>& environment_,
-		const std::vector<Identifier>& argments_,
-		const Expr& expr_) :
-		environment(environment_),
-		argments(argments_),
-		expr(expr_)
+		std::shared_ptr<Environment> environment,
+		const std::vector<Identifier>& argments,
+		const Expr& expr) :
+		environment(environment),
+		argments(argments),
+		expr(expr)
 	{}
 };
 
@@ -458,32 +953,41 @@ struct Return
 
 struct EvalOpt
 {
-	int m_0;
-	double m_1;
+	bool m_bool;
+	int m_int;
+	double m_double;
 
 	int m_which;
 
+	static EvalOpt Bool(bool v)
+	{
+		return{ v,0,0,0 };
+	}
 	static EvalOpt Int(int v)
 	{
-		return{ v,0,0 };
+		return{ 0,v,0,1 };
 	}
 	static EvalOpt Double(double v)
 	{
-		return{ 0,v,1 };
+		return{ 0,0,v,2 };
 	}
 };
 
 inline EvalOpt Ref(const Evaluated& lhs)
 {
-	if (SameType(lhs.type(), typeid(int)))
+	if (IsType<bool>(lhs))
+	{
+		return EvalOpt::Bool(boost::get<bool>(lhs));
+	}
+	else if (IsType<int>(lhs))
 	{
 		return EvalOpt::Int(boost::get<int>(lhs));
 	}
-	else if (SameType(lhs.type(), typeid(double)))
+	else if (IsType<double>(lhs))
 	{
 		return EvalOpt::Double(boost::get<double>(lhs));
 	}
-	else if (SameType(lhs.type(), typeid(Identifier)))
+	else if (IsType<Identifier>(lhs))
 	{
 		const auto name = boost::get<Identifier>(lhs).name;
 		const auto itOpt = findVariable(name);
@@ -503,6 +1007,8 @@ inline EvalOpt Ref(const Evaluated& lhs)
 class Eval : public boost::static_visitor<Evaluated>
 {
 public:
+
+	Eval(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
 
 	Evaluated operator()(int node)const
 	{
@@ -525,19 +1031,27 @@ public:
 		return node;
 	}
 
-	Evaluated operator()(const UnaryExpr<Not>& node)const
+	Evaluated operator()(const UnaryExpr& node)const
 	{
-		std::cout << "Begin UnaryExpr<Not> expression(" << ")" << std::endl;
+		std::cout << "Begin UnaryExpr expression(" << ")" << std::endl;
 
-		//const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
+		const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
 
-		std::cout << "End UnaryExpr<Add> expression(" << ")" << std::endl;
+		switch (node.op)
+		{
+		case UnaryOp::Not:   return Not(lhs, *pEnv);
+		case UnaryOp::Minus: return Minus(lhs, *pEnv);
+		case UnaryOp::Plus:  return Plus(lhs, *pEnv);
+		}
+
+		//std::cout << "End UnaryExpr expression(" << ")" << std::endl;
+		std::cerr << "Error(" << __LINE__ << ")\n";
 
 		//return lhs;
 		return 0;
 	}
 
-	Evaluated operator()(const UnaryExpr<Add>& node)const
+	/*Evaluated operator()(const UnaryExpr<Add>& node)const
 	{
 		std::cout << "Begin UnaryExpr<Add> expression(" << ")" << std::endl;
 
@@ -565,8 +1079,42 @@ public:
 		std::cout << "End UnaryExpr<Sub> expression(" << ")" << std::endl;
 
 		return -ref.m_1;
+	}*/
+
+	Evaluated operator()(const BinaryExpr& node)const
+	{
+		std::cout << "Begin BinaryExpr expression(" << ")" << std::endl;
+
+		const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
+		const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
+
+		switch (node.op)
+		{
+		case BinaryOp::And: return And(lhs, rhs, *pEnv);
+		case BinaryOp::Or:  return Or(lhs, rhs, *pEnv);
+
+		case BinaryOp::Equal:        return Equal(lhs, rhs, *pEnv);
+		case BinaryOp::NotEqual:     return NotEqual(lhs, rhs, *pEnv);
+		case BinaryOp::LessThan:     return LessThan(lhs, rhs, *pEnv);
+		case BinaryOp::LessEqual:    return LessEqual(lhs, rhs, *pEnv);
+		case BinaryOp::GreaterThan:  return GreaterThan(lhs, rhs, *pEnv);
+		case BinaryOp::GreaterEqual: return GreaterEqual(lhs, rhs, *pEnv);
+
+		case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
+		case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
+		case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
+		case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+
+		case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
+		case BinaryOp::Assign: return Assign(lhs, rhs, *pEnv);
+		}
+
+		std::cerr << "Error(" << __LINE__ << ")\n";
+
+		return 0;
 	}
 
+	/*
 	Evaluated operator()(const BinaryExpr<And>& node)const
 	{
 		std::cout << "Begin BinaryExpr<And> expression(" << ")" << std::endl;
@@ -773,30 +1321,34 @@ public:
 
 		return rhs;
 	}
+	*/
 
 	Evaluated operator()(const DefFunc& defFunc)const
 	{
 		std::cout << "Begin DefFunc expression(" << ")" << std::endl;
 
-		//auto val = FuncVal(globalVariables, defFunc.argments, defFunc.expr);
+		//auto val = FuncVal(globalVariables, defFunc.arguments, defFunc.expr);
+		auto val = FuncVal(pEnv, defFunc.arguments, defFunc.expr);
 
 		std::cout << "End DefFunc expression(" << ")" << std::endl;
 
-		//return val;
-		return 0;
+		return val;
 	}
 
 	Evaluated operator()(const CallFunc& callFunc)const
 	{
 		std::cout << "Begin CallFunc expression(" << ")" << std::endl;
 
-		const auto buckUp = localVariables;
+		std::shared_ptr<Environment> buckUp = pEnv;
+		//const auto buckUp = localVariables;
 
 		FuncVal funcVal;
 
-		if (SameType(callFunc.funcRef.type(), typeid(FuncVal)))
+		//if (SameType(callFunc.funcRef.type(), typeid(FuncVal)))
+		if(IsType<FuncVal>(callFunc.funcRef))
 		{
-			funcVal = boost::get<FuncVal>(callFunc.funcRef);
+			//funcVal = boost::get<FuncVal>(callFunc.funcRef);
+			funcVal = As<FuncVal>(callFunc.funcRef);
 		}
 		else if (auto itOpt = findVariable(boost::get<Identifier>(callFunc.funcRef).name))
 		{
@@ -848,29 +1400,13 @@ public:
 
 		return result;
 	}
-
-	Evaluated operator()(const Statement& statement)const
-	{
-		std::cout << "Begin Statement expression(" << ")" << std::endl;
-
-		Evaluated result;
-		int i = 0;
-		for (const auto& expr : statement.exprs)
-		{
-			std::cout << "Evaluate expression(" << i << ")" << std::endl;
-			result = boost::apply_visitor(*this, expr);
-			++i;
-		}
-
-		std::cout << "End Statement expression(" << ")" << std::endl;
-
-		return result;
-	}
-
+	
 	Evaluated operator()(const Lines& statement)const
 	{
 		std::cout << "Begin Statement expression(" << ")" << std::endl;
 
+		pEnv->push();
+
 		Evaluated result;
 		int i = 0;
 		for (const auto& expr : statement.exprs)
@@ -879,6 +1415,8 @@ public:
 			result = boost::apply_visitor(*this, expr);
 			++i;
 		}
+
+		pEnv->pop();
 
 		std::cout << "End Statement expression(" << ")" << std::endl;
 
@@ -898,6 +1436,11 @@ public:
 
 		return 0;
 	}
+
+private:
+
+	//Environment& env;
+	std::shared_ptr<Environment> pEnv;
 };
 
 class Printer : public boost::static_visitor<void>
@@ -941,7 +1484,16 @@ public:
 	std::cout << "IntHolder(" << node.n << ")";
 	}*/
 
-	void operator()(const UnaryExpr<Not>& node)const
+	void operator()(const UnaryExpr& node)const
+	{
+		std::cout << indent() << "Unary(" << std::endl;
+
+		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	/*void operator()(const UnaryExpr<Not>& node)const
 	{
 		std::cout << indent() << "Not(" << std::endl;
 
@@ -966,8 +1518,17 @@ public:
 		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
 
 		std::cout << indent() << ")" << std::endl;
+	}*/
+
+	void operator()(const BinaryExpr& node)const
+	{
+		std::cout << indent() << "Binary(" << std::endl;
+		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+		std::cout << indent() << ")" << std::endl;
 	}
 
+	/*
 	void operator()(const BinaryExpr<And>& node)const
 	{
 		std::cout << indent() << "And(" << std::endl;
@@ -1109,6 +1670,7 @@ public:
 
 		std::cout << indent() << ")" << std::endl;
 	}
+	*/
 
 	auto operator()(const DefFunc& defFunc)const -> void
 	{

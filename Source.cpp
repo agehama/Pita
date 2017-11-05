@@ -6,18 +6,18 @@
 
 #include "Node.hpp"
 
-template<class Op>
-auto MakeUnaryExpr()
+auto MakeUnaryExpr(UnaryOp op)
 {
-	return boost::phoenix::bind([](const auto & e) { return UnaryExpr<Op>(e); }, boost::spirit::_1);
+	return boost::phoenix::bind([](const auto & e, UnaryOp op) {
+		return UnaryExpr(e, op);
+	}, boost::spirit::_1, op);
 }
 
-template<class Op>
-auto MakeBinaryExpr()
+auto MakeBinaryExpr(BinaryOp op)
 {
-	return boost::phoenix::bind([](const auto& lhs, const auto& rhs) {
-		return BinaryExpr<Op>(lhs, rhs);
-	}, boost::spirit::_val, boost::spirit::_1);
+	return boost::phoenix::bind([](const auto& lhs, const auto& rhs, BinaryOp op) {
+		return BinaryExpr(lhs, rhs, op);
+	}, boost::spirit::_val, boost::spirit::_1, op);
 }
 
 template <class F, class... Args>
@@ -26,7 +26,8 @@ auto Call(F func, Args... args)
 	return boost::phoenix::bind(func, args...);
 }
 
-namespace test_parser {
+namespace cgl
+{
 	using namespace boost::spirit;
 
 	template<typename Iterator>
@@ -59,7 +60,7 @@ namespace test_parser {
 	LineSkipperT lineSkipper;
 
 	template<typename Iterator, typename Skipper>
-	struct expr_grammer
+	struct Parser
 		: qi::grammar<Iterator, Lines(), Skipper>
 	{
 		qi::rule<Iterator, If(), Skipper> if_expr;
@@ -74,7 +75,7 @@ namespace test_parser {
 
 		qi::rule<Iterator> s;
 
-		expr_grammer() : expr_grammer::base_type(program)
+		Parser() : Parser::base_type(program)
 		{
 			auto concatLines = [](Lines& lines, Expr& expr) { lines.concat(expr); };
 
@@ -121,46 +122,46 @@ namespace test_parser {
 
 			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));
 
-			logic_expr = logic_term[_val = _1] >> *(s >> '|' >> s >> logic_term[_val = MakeBinaryExpr<Or>()]);
+			logic_expr = logic_term[_val = _1] >> *(s >> '|' >> s >> logic_term[_val = MakeBinaryExpr(BinaryOp::Or)]);
 
-			logic_term = logic_factor[_val = _1] >> *(s >> '&' >> s >> logic_factor[_val = MakeBinaryExpr<And>()]);
+			logic_term = logic_factor[_val = _1] >> *(s >> '&' >> s >> logic_factor[_val = MakeBinaryExpr(BinaryOp::And)]);
 
-			logic_factor = ('!' >> s >> compare_expr[_val = MakeUnaryExpr<Not>()])
+			logic_factor = ('!' >> s >> compare_expr[_val = MakeUnaryExpr(UnaryOp::Not)])
 				| compare_expr[_val = _1]
 				;
 
 			compare_expr = arith_expr[_val = _1] >> *(
-				(s >> lit("==") >> s >> arith_expr[_val = MakeBinaryExpr<Equal>()])
-				| (s >> lit("!=") >> s >> arith_expr[_val = MakeBinaryExpr<NotEqual>()])
-				| (s >> lit("<") >> s >> arith_expr[_val = MakeBinaryExpr<LessThan>()])
-				| (s >> lit("<=") >> s >> arith_expr[_val = MakeBinaryExpr<LessEqual>()])
-				| (s >> lit(">") >> s >> arith_expr[_val = MakeBinaryExpr<GreaterThan>()])
-				| (s >> lit(">=") >> s >> arith_expr[_val = MakeBinaryExpr<GreaterEqual>()])
+				(s >> lit("==") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Equal)])
+				| (s >> lit("!=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::NotEqual)])
+				| (s >> lit("<") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessThan)])
+				| (s >> lit("<=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessEqual)])
+				| (s >> lit(">") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterThan)])
+				| (s >> lit(">=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterEqual)])
 				)
 				;
 
-			arith_expr = (basic_arith_expr[_val = _1] >> -(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr<Assign>()]));
+			arith_expr = (basic_arith_expr[_val = _1] >> -(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)]));
 
 			basic_arith_expr = term[_val = _1] >>
-				*((s >> '+' >> s >> term[_val = MakeBinaryExpr<Add>()]) |
-				(s >> '-' >> s >> term[_val = MakeBinaryExpr<Sub>()]))
+				*((s >> '+' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
+				(s >> '-' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]))
 				;
 
 			term = pow_term[_val = _1]
 				| (factor[_val = _1] >>
-					*((s >> '*' >> s >> pow_term1[_val = MakeBinaryExpr<Mul>()]) |
-					(s >> '/' >> s >> pow_term1[_val = MakeBinaryExpr<Div>()]))
+					*((s >> '*' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Mul)]) |
+					(s >> '/' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Div)]))
 					)
 				;
 
 			//Å’á‚Å‚à1‚Â‚ÍŽó‚¯Žæ‚é‚æ‚¤‚É‚µ‚È‚¢‚ÆA’Pˆê‚Ìfactor‚ðŽó—‚Å‚«‚Ä‚µ‚Ü‚¤‚Ì‚ÅMul,Div‚Ì•û‚És‚Á‚Ä‚­‚ê‚È‚¢
-			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr<Pow>()];
-			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr<Pow>()]);
+			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
+			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
 			factor = double_[_val = _1]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
-				| '+' >> s >> factor[_val = MakeUnaryExpr<Add>()]
-				| '-' >> s >> factor[_val = MakeUnaryExpr<Sub>()]
+				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
+				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
 				| call_func[_val = _1]
 				| def_func[_val = _1]
 				| id[_val = _1];
@@ -180,10 +181,10 @@ int main()
 {
 	const auto parse = [](const std::string& str, Lines& lines)->bool
 	{
-		using namespace test_parser;
+		using namespace cgl;
 
 		SpaceSkipper<IteratorT> skipper;
-		expr_grammer<IteratorT, SpaceSkipperT> grammer;
+		Parser<IteratorT, SpaceSkipperT> grammer;
 
 		std::string::const_iterator it = str.begin();
 		if (!boost::spirit::qi::phrase_parse(it, str.end(), grammer, skipper, lines))

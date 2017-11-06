@@ -330,6 +330,13 @@ gcd5 = (m, n ->
 		}
 
 		printLines(lines);
+
+		if (succeed)
+		{
+			Evaluated result = evalExpr(lines);
+			std::cout << "Result Evaluation:\n";
+			printEvaluated(result);
+		}
 	}
 
 	return 0;

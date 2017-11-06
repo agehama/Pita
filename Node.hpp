@@ -29,6 +29,12 @@ inline T1& As(T2& t2)
 	return boost::get<T1>(t2);
 }
 
+template<class T1, class T2>
+inline const T1& As(const T2& t2)
+{
+	return boost::get<T1>(t2);
+}
+
 //struct And;
 //struct Or;
 //struct Not;
@@ -107,7 +113,6 @@ struct CallFunc;
 struct UnaryExpr;
 struct BinaryExpr;
 
-struct Statement;
 struct Lines;
 
 struct If;
@@ -184,12 +189,11 @@ boost::recursive_wrapper<Return>
 //	boost::recursive_wrapper<Return> >;
 
 using types =
-boost::mpl::vector12<
+boost::mpl::vector11<
 	bool,
 	int,
 	double,
 	Identifier,
-	boost::recursive_wrapper<Statement>,
 	boost::recursive_wrapper<Lines>,
 	boost::recursive_wrapper<DefFunc>,
 	boost::recursive_wrapper<CallFunc>,
@@ -205,17 +209,350 @@ using Expr = boost::make_variant_over<types>::type;
 
 void printExpr(const Expr& expr);
 
+struct Jump;
+
 using Evaluated = boost::variant<
 	bool,
 	int,
 	double,
 	Identifier,
-	boost::recursive_wrapper<FuncVal>
+	boost::recursive_wrapper<FuncVal>,
+	boost::recursive_wrapper<Jump>
 >;
+
+class Environment;
+
+struct UnaryExpr
+{
+	Expr lhs;
+	UnaryOp op;
+
+	UnaryExpr(const Expr& lhs, UnaryOp op) :
+		lhs(lhs), op(op)
+	{}
+};
+
+struct BinaryExpr
+{
+	Expr lhs;
+	Expr rhs;
+	BinaryOp op;
+
+	BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
+		lhs(lhs), rhs(rhs), op(op)
+	{}
+};
+
+struct Lines
+{
+	std::vector<Expr> exprs;
+
+	Lines() = default;
+
+	Lines(const Expr& expr) :
+		exprs({ expr })
+	{}
+
+	Lines(const std::vector<Expr>& exprs_) :
+		exprs(exprs_)
+	{}
+
+	void add(const Expr& expr)
+	{
+		exprs.push_back(expr);
+	}
+
+	void concat(const Lines& lines)
+	{
+		exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
+	}
+
+	Lines& operator+=(const Lines& lines)
+	{
+		exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
+		return *this;
+	}
+
+	size_t size()const
+	{
+		return exprs.size();
+	}
+
+	const Expr& operator[](size_t index)const
+	{
+		return exprs[index];
+	}
+
+	Expr& operator[](size_t index)
+	{
+		return exprs[index];
+	}
+};
+
+struct Arguments
+{
+	std::vector<Identifier> arguments;
+
+	Arguments() = default;
+
+	Arguments(const Identifier& identifier) :
+		arguments({ identifier })
+	{}
+
+	void concat(const Arguments& other)
+	{
+		arguments.insert(arguments.end(), other.arguments.begin(), other.arguments.end());
+	}
+
+	Arguments& operator+=(const Arguments& other)
+	{
+		arguments.insert(arguments.end(), other.arguments.begin(), other.arguments.end());
+		return *this;
+	}
+};
+
+struct FuncVal
+{
+	std::shared_ptr<Environment> environment;
+	std::vector<Identifier> argments;
+	Expr expr;
+
+	FuncVal() = default;
+
+	FuncVal(
+		std::shared_ptr<Environment> environment,
+		const std::vector<Identifier>& argments,
+		const Expr& expr) :
+		environment(environment),
+		argments(argments),
+		expr(expr)
+	{}
+};
+
+struct DefFunc
+{
+	std::vector<Identifier> arguments;
+	Expr expr;
+
+	DefFunc() = default;
+
+	DefFunc(const Expr& expr_) :
+		expr(expr_)
+	{}
+
+	DefFunc(const Arguments& arguments_) :
+		arguments(arguments_.arguments)
+	{}
+
+	DefFunc(
+		const std::vector<Identifier>& arguments_,
+		const Expr& expr_) :
+		arguments(arguments_),
+		expr(expr_)
+	{}
+
+	DefFunc(
+		const Arguments& arguments_,
+		const Expr& expr_) :
+		arguments(arguments_.arguments),
+		expr(expr_)
+	{}
+
+	DefFunc(
+		const Lines& arguments_,
+		const Expr& expr_) :
+		expr(expr_)
+	{
+		for (size_t i = 0; i < arguments_.size(); ++i)
+		{
+			arguments.push_back(boost::get<Identifier>(arguments_[i]));
+		}
+	}
+
+	static bool IsValidArgs(const Lines& arguments_, const Expr& expr_)
+	{
+		for (size_t i = 0; i < arguments_.size(); ++i)
+		{
+			if (!SameType(typeid(Identifier), arguments_[i].type()))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+};
+
+//inline FuncVal GetFuncVal(const Identifier& funcName)
+//{
+//	const auto funcItOpt = findVariable(funcName.name);
+//
+//	if (!funcItOpt)
+//	{
+//		std::cerr << "Error(" << __LINE__ << "): function \"" << funcName.name << "\" was not found." << "\n";
+//	}
+//
+//	const auto funcIt = funcItOpt.get();
+//
+//	if (!SameType(funcIt->second.type(), typeid(FuncVal)))
+//	{
+//		std::cerr << "Error(" << __LINE__ << "): function \"" << funcName.name << "\" is not a function." << "\n";
+//	}
+//
+//	return boost::get<FuncVal>(funcIt->second);
+//}
+
+struct CallFunc
+{
+	boost::variant<FuncVal, Identifier> funcRef;
+	std::vector<Expr> actualArguments;
+
+	CallFunc() = default;
+
+	CallFunc(const Identifier& funcName) :
+		funcRef(funcName)
+	{}
+
+	CallFunc(
+		const FuncVal& funcVal_,
+		const std::vector<Expr>& actualArguments_) :
+		funcRef(funcVal_),
+		actualArguments(actualArguments_)
+	{}
+
+	CallFunc(
+		const Identifier& funcName,
+		const std::vector<Expr>& actualArguments_) :
+		funcRef(funcName),
+		actualArguments(actualArguments_)
+	{}
+};
+
+struct If
+{
+	Expr cond_expr;
+	Expr then_expr;
+	boost::optional<Expr> else_expr;
+
+	If() = default;
+
+	If(const Expr& cond) :
+		cond_expr(cond)
+	{}
+
+	static If Make(const Expr& cond)
+	{
+		return If(cond);
+	}
+
+	static void SetThen(If& if_statement, const Expr& then_expr_)
+	{
+		if_statement.then_expr = then_expr_;
+	}
+
+	static void SetElse(If& if_statement, const Expr& else_expr_)
+	{
+		if_statement.else_expr = else_expr_;
+	}
+};
+
+struct Return
+{
+	Expr expr;
+
+	Return() = default;
+
+	Return(const Expr& expr) :
+		expr(expr)
+	{}
+
+	static Return Make(const Expr& expr_)
+	{
+		return Return(expr_);
+	}
+};
+
+struct Jump
+{
+	enum Op { Return, Break, Continue };
+
+	boost::optional<Evaluated> lhs;
+	Op op;
+
+	Jump() = default;
+
+	Jump(Op op) :op(op) {}
+
+	Jump(Op op, const Evaluated& lhs) :
+		op(op), lhs(lhs)
+	{}
+
+	static Jump MakeReturn(const Evaluated& value)
+	{
+		return Jump(Op::Return, value);
+	}
+
+	static Jump MakeBreak()
+	{
+		return Jump(Op::Break);
+	}
+
+	static Jump MakeContinue()
+	{
+		return Jump(Op::Continue);
+	}
+
+	bool isReturn()const
+	{
+		return op == Op::Return;
+	}
+
+	bool isBreak()const
+	{
+		return op == Op::Break;
+	}
+
+	bool isContinue()const
+	{
+		return op == Op::Continue;
+	}
+};
+
+inline void printEvaluated(const Evaluated& evaluated)
+{
+	if (IsType<bool>(evaluated))
+	{
+		std::cout << "Bool(" << As<bool>(evaluated) << ")";
+	}
+	else if (IsType<int>(evaluated))
+	{
+		std::cout << "Int(" << As<int>(evaluated) << ")";
+	}
+	else if (IsType<double>(evaluated))
+	{
+		std::cout << "Double(" << As<double>(evaluated) << ")";
+	}
+	else if (IsType<Identifier>(evaluated))
+	{
+		std::cout << "Identifier(" << As<Identifier>(evaluated).name << ")";
+	}
+	else if (IsType<FuncVal>(evaluated))
+	{
+		std::cout << "FuncVal(" << ")";
+	}
+	else if (IsType<Jump>(evaluated))
+	{
+		std::cout << "Jump(" << As<Jump>(evaluated).op << ")";
+	}
+
+	std::cout << std::endl;
+}
 
 class Values
 {
 public:
+
+	using ValueList = std::unordered_map<unsigned, Evaluated>;
 	
 	unsigned add(const Evaluated& value)
 	{
@@ -249,6 +586,16 @@ public:
 		return it->second;
 	}
 
+	ValueList::const_iterator begin()const
+	{
+		return m_values.cbegin();
+	}
+
+	ValueList::const_iterator end()const
+	{
+		return m_values.cend();
+	}
+
 private:
 
 	unsigned nextID()
@@ -256,7 +603,7 @@ private:
 		return ++m_ID;
 	}
 	
-	std::unordered_map<unsigned, Evaluated> m_values;
+	ValueList m_values;
 
 	unsigned m_ID = 0;
 
@@ -265,6 +612,8 @@ private:
 class LocalEnvironment
 {
 public:
+
+	using LocalVariables = std::unordered_map<std::string, unsigned>;
 
 	void bind(const std::string& name, unsigned ID)
 	{
@@ -282,10 +631,18 @@ public:
 		return it->second;
 	}
 
+	LocalVariables::const_iterator begin()const
+	{
+		return localVariables.cbegin();
+	}
+
+	LocalVariables::const_iterator end()const
+	{
+		return localVariables.cend();
+	}
+
 private:
 
-	using LocalVariables = std::unordered_map<std::string, unsigned>;
-	
 	LocalVariables localVariables;
 
 	//isInnerScope = false の時GCの対象となる
@@ -296,6 +653,18 @@ class Environment
 {
 public:
 
+	boost::optional<const Evaluated&> find(const std::string& name)const
+	{
+		const auto valueIDOpt = findValueID(name);
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return boost::none;
+		}
+
+		return m_values[valueIDOpt.value()];
+	}
+
 	const Evaluated& dereference(const Evaluated& reference)const
 	{
 		//即値はValuesには持っているとは限らない
@@ -304,7 +673,7 @@ public:
 			return reference;
 		}
 
-		const auto valueIDOpt = findValueID(As<Identifier>(reference).name);
+		const boost::optional<unsigned> valueIDOpt = findValueID(As<const Identifier&>(reference).name);
 		if (!valueIDOpt)
 		{
 			std::cerr << "Error(" << __LINE__ << ")\n";
@@ -340,6 +709,31 @@ public:
 	void pop()
 	{
 		m_bindingNames.pop_back();
+	}
+
+	void printEnvironment()const
+	{
+		std::cout << "Values:\n";
+		for (const auto& keyval : m_values)
+		{
+			const auto& val = keyval.second;
+
+			std::cout << keyval.first << " : ";
+
+			printEvaluated(val);
+		}
+
+		std::cout << "References:\n";
+		for (size_t d = 0; d < m_bindingNames.size(); ++d)
+		{
+			std::cout << "Depth : " << d << "\n";
+			const auto& names = m_bindingNames[d];
+			
+			for (const auto& keyval : names)
+			{
+				std::cout << keyval.first << " : " << keyval.second << "\n";
+			}
+		}
 	}
 
 private:
@@ -545,6 +939,38 @@ inline Evaluated Equal(const Evaluated& lhs_, const Evaluated& rhs_, const Envir
 
 inline Evaluated NotEqual(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) != As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) != As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) != As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) != As<double>(rhs);
+		}
+	}
+
+	if (IsType<bool>(lhs) && IsType<bool>(rhs))
+	{
+		return As<bool>(lhs) != As<bool>(rhs);
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
@@ -582,16 +1008,97 @@ inline Evaluated LessThan(const Evaluated& lhs_, const Evaluated& rhs_, const En
 
 inline Evaluated LessEqual(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) <= As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) <= As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) <= As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) <= As<double>(rhs);
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
 inline Evaluated GreaterThan(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) > As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) > As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) > As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) > As<double>(rhs);
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
 inline Evaluated GreaterEqual(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) >= As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) >= As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) >= As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) >= As<double>(rhs);
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
@@ -627,23 +1134,131 @@ inline Evaluated Add(const Evaluated& lhs_, const Evaluated& rhs_, const Environ
 	return 0;
 }
 
-inline Evaluated Sub(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+inline Evaluated Sub(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) - As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) - As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) - As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) - As<double>(rhs);
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
-inline Evaluated Mul(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+inline Evaluated Mul(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) * As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) * As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) * As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) * As<double>(rhs);
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
-inline Evaluated Div(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+inline Evaluated Div(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<int>(lhs) / As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<int>(lhs) / As<double>(rhs);
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return As<double>(lhs) / As<int>(rhs);
+		}
+		else if (IsType<double>(rhs))
+		{
+			return As<double>(lhs) / As<double>(rhs);
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
-inline Evaluated Pow(const Evaluated& lhs, const Evaluated& rhs, const Environment& env)
+inline Evaluated Pow(const Evaluated& lhs_, const Evaluated& rhs_, const Environment& env)
 {
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return pow(As<int>(lhs), As<int>(rhs));
+		}
+		else if (IsType<double>(rhs))
+		{
+			return pow(As<int>(lhs), As<double>(rhs));
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return pow(As<double>(lhs), As<int>(rhs));
+		}
+		else if (IsType<double>(rhs))
+		{
+			return pow(As<double>(lhs), As<double>(rhs));
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
 	return 0;
 }
 
@@ -681,328 +1296,436 @@ inline Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment&
 }
 
 
-extern std::map<std::string, Evaluated> globalVariables;
-extern std::map<std::string, Evaluated> localVariables;
+//extern std::map<std::string, Evaluated> globalVariables;
+//extern std::map<std::string, Evaluated> localVariables;
+//
+//inline boost::optional<std::map<std::string, Evaluated>::iterator> findVariable(const std::string& variableName)
+//{
+//	std::map<std::string, Evaluated>::iterator itLocal = localVariables.find(variableName);
+//	if (itLocal != localVariables.end())
+//	{
+//		return itLocal;
+//	}
+//
+//	std::map<std::string, Evaluated>::iterator itGlobal = globalVariables.find(variableName);
+//	if (itGlobal != globalVariables.end())
+//	{
+//		return itGlobal;
+//	}
+//
+//	return boost::none;
+//}
 
-inline boost::optional<std::map<std::string, Evaluated>::iterator> findVariable(const std::string& variableName)
+
+//struct EvalOpt
+//{
+//	bool m_bool;
+//	int m_int;
+//	double m_double;
+//
+//	int m_which;
+//
+//	static EvalOpt Bool(bool v)
+//	{
+//		return{ v,0,0,0 };
+//	}
+//	static EvalOpt Int(int v)
+//	{
+//		return{ 0,v,0,1 };
+//	}
+//	static EvalOpt Double(double v)
+//	{
+//		return{ 0,0,v,2 };
+//	}
+//};
+//
+//inline EvalOpt Ref(const Evaluated& lhs)
+//{
+//	if (IsType<bool>(lhs))
+//	{
+//		return EvalOpt::Bool(boost::get<bool>(lhs));
+//	}
+//	else if (IsType<int>(lhs))
+//	{
+//		return EvalOpt::Int(boost::get<int>(lhs));
+//	}
+//	else if (IsType<double>(lhs))
+//	{
+//		return EvalOpt::Double(boost::get<double>(lhs));
+//	}
+//	else if (IsType<Identifier>(lhs))
+//	{
+//		const auto name = boost::get<Identifier>(lhs).name;
+//		const auto itOpt = findVariable(name);
+//		if (!itOpt)
+//		{
+//			std::cerr << "Error(" << __LINE__ << ")\n";
+//			return EvalOpt::Double(0);
+//		}
+//		return Ref(itOpt.get()->second);
+//		//return EvalOpt::Double();
+//	}
+//
+//	std::cerr << "Error(" << __LINE__ << ")\n";
+//	return EvalOpt::Double(0);
+//}
+
+class Printer : public boost::static_visitor<void>
 {
-	std::map<std::string, Evaluated>::iterator itLocal = localVariables.find(variableName);
-	if (itLocal != localVariables.end())
-	{
-		return itLocal;
-	}
+public:
 
-	std::map<std::string, Evaluated>::iterator itGlobal = globalVariables.find(variableName);
-	if (itGlobal != globalVariables.end())
-	{
-		return itGlobal;
-	}
-
-	return boost::none;
-}
-
-struct UnaryExpr
-{
-	Expr lhs;
-	UnaryOp op;
-
-	UnaryExpr(const Expr& lhs, UnaryOp op) :
-		lhs(lhs), op(op)
-	{}
-};
-
-struct BinaryExpr
-{
-	Expr lhs;
-	Expr rhs;
-	BinaryOp op;
-
-	BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
-		lhs(lhs), rhs(rhs), op(op)
-	{}
-};
-
-struct Lines
-{
-	std::vector<Expr> exprs;
-
-	Lines() = default;
-
-	Lines(const Expr& expr) :
-		exprs({ expr })
+	Printer(int indent = 0)
+		:m_indent(indent)
 	{}
 
-	Lines(const std::vector<Expr>& exprs_) :
-		exprs(exprs_)
-	{}
+	int m_indent;
 
-	void add(const Expr& expr)
+	std::string indent()const
 	{
-		exprs.push_back(expr);
-	}
-
-	void concat(const Lines& lines)
-	{
-		exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
-	}
-
-	Lines& operator+=(const Lines& lines)
-	{
-		exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
-		return *this;
-	}
-
-	size_t size()const
-	{
-		return exprs.size();
-	}
-
-	const Expr& operator[](size_t index)const
-	{
-		return exprs[index];
-	}
-
-	Expr& operator[](size_t index)
-	{
-		return exprs[index];
-	}
-};
-
-struct Arguments
-{
-	std::vector<Identifier> arguments;
-
-	Arguments() = default;
-
-	Arguments(const Identifier& identifier) :
-		arguments({ identifier })
-	{}
-
-	void concat(const Arguments& other)
-	{
-		arguments.insert(arguments.end(), other.arguments.begin(), other.arguments.end());
-	}
-
-	Arguments& operator+=(const Arguments& other)
-	{
-		arguments.insert(arguments.end(), other.arguments.begin(), other.arguments.end());
-		return *this;
-	}
-};
-
-struct FuncVal
-{
-	std::shared_ptr<Environment> environment;
-	std::vector<Identifier> argments;
-	Expr expr;
-
-	FuncVal() = default;
-
-	FuncVal(
-		std::shared_ptr<Environment> environment,
-		const std::vector<Identifier>& argments,
-		const Expr& expr) :
-		environment(environment),
-		argments(argments),
-		expr(expr)
-	{}
-};
-
-struct DefFunc
-{
-	std::vector<Identifier> arguments;
-	Expr expr;
-
-	DefFunc() = default;
-
-	DefFunc(const Expr& expr_) :
-		expr(expr_)
-	{}
-
-	DefFunc(const Arguments& arguments_) :
-		arguments(arguments_.arguments)
-	{}
-
-	DefFunc(
-		const std::vector<Identifier>& arguments_,
-		const Expr& expr_) :
-		arguments(arguments_),
-		expr(expr_)
-	{}
-
-	DefFunc(
-		const Arguments& arguments_,
-		const Expr& expr_) :
-		arguments(arguments_.arguments),
-		expr(expr_)
-	{}
-
-	DefFunc(
-		const Lines& arguments_,
-		const Expr& expr_) :
-		expr(expr_)
-	{
-		for (size_t i = 0; i < arguments_.size(); ++i)
+		const int tabSize = 4;
+		std::string str;
+		for (int i = 0; i < m_indent*tabSize; ++i)
 		{
-			arguments.push_back(boost::get<Identifier>(arguments_[i]));
+			str += ' ';
 		}
+		return str;
 	}
 
-	static bool IsValidArgs(const Lines& arguments_, const Expr& expr_)
+	auto operator()(bool node)const -> void
 	{
-		for (size_t i = 0; i < arguments_.size(); ++i)
+		std::cout << indent() << "Bool(" << node << ")" << std::endl;
+	}
+
+	auto operator()(int node)const -> void
+	{
+		std::cout << indent() << "Int(" << node << ")" << std::endl;
+	}
+
+	auto operator()(double node)const -> void
+	{
+		std::cout << indent() << "Double(" << node << ")" << std::endl;
+	}
+
+	auto operator()(const Identifier& node)const -> void
+	{
+		std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
+	}
+
+	/*auto operator()(const IntHolder& node)const -> void
+	{
+	std::cout << "IntHolder(" << node.n << ")";
+	}*/
+
+	void operator()(const UnaryExpr& node)const
+	{
+		std::cout << indent() << "Unary(" << std::endl;
+
+		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	/*void operator()(const UnaryExpr<Not>& node)const
+	{
+	std::cout << indent() << "Not(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const UnaryExpr<Add>& node)const -> void
+	{
+	std::cout << indent() << "Plus(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const UnaryExpr<Sub>& node)const -> void
+	{
+	std::cout << indent() << "Minus(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}*/
+
+	void operator()(const BinaryExpr& node)const
+	{
+		std::cout << indent() << "Binary(" << std::endl;
+		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	/*
+	void operator()(const BinaryExpr<And>& node)const
+	{
+	std::cout << indent() << "And(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const BinaryExpr<Or>& node)const
+	{
+	std::cout << indent() << "Or(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const BinaryExpr<Equal>& node)const
+	{
+	std::cout << indent() << "Equal(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const BinaryExpr<NotEqual>& node)const
+	{
+	std::cout << indent() << "NotEqual(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const BinaryExpr<LessThan>& node)const
+	{
+	std::cout << indent() << "LessThan(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const BinaryExpr<LessEqual>& node)const
+	{
+	std::cout << indent() << "LessEqual(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const BinaryExpr<GreaterThan>& node)const
+	{
+	std::cout << indent() << "GreaterThan(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const BinaryExpr<GreaterEqual>& node)const
+	{
+	std::cout << indent() << "GreaterEqual(" << std::endl;
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const BinaryExpr<Add>& node)const -> void
+	{
+	std::cout << indent() << "Add(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	//std::cout << indent() << ", " << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const BinaryExpr<Sub>& node)const -> void
+	{
+	std::cout << indent() << "Sub(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	//std::cout << indent() << ", " << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const BinaryExpr<Mul>& node)const -> void
+	{
+	std::cout << indent() << "Mul(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	//std::cout << indent() << ", " << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const BinaryExpr<Div>& node)const -> void
+	{
+	std::cout << indent() << "Div(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	//std::cout << indent() << ", " << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const BinaryExpr<Pow>& node)const -> void
+	{
+	std::cout << indent() << "Pow(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	//std::cout << indent() << ", " << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+
+	auto operator()(const BinaryExpr<Assign>& node)const -> void
+	{
+	std::cout << indent() << "Assign(" << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.lhs);
+
+	//std::cout << indent() << ", " << std::endl;
+
+	boost::apply_visitor(Printer(m_indent + 1), node.rhs);
+
+	std::cout << indent() << ")" << std::endl;
+	}
+	*/
+
+	auto operator()(const DefFunc& defFunc)const -> void
+	{
+		std::cout << indent() << "DefFunc(" << std::endl;
+
 		{
-			if (!SameType(typeid(Identifier), arguments_[i].type()))
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Arguments(" << std::endl;
 			{
-				return false;
+				const auto grandChild = Printer(child.m_indent + 1);
+
+				const auto& args = defFunc.arguments;
+				for (size_t i = 0; i < args.size(); ++i)
+				{
+					std::cout << grandChild.indent() << args[i].name << (i + 1 == args.size() ? "\n" : ",\n");
+				}
 			}
+			std::cout << child.indent() << ")" << std::endl;
 		}
 
-		return true;
-	}
-};
+		boost::apply_visitor(Printer(m_indent + 1), defFunc.expr);
 
-inline FuncVal GetFuncVal(const Identifier& funcName)
-{
-	const auto funcItOpt = findVariable(funcName.name);
-
-	if (!funcItOpt)
-	{
-		std::cerr << "Error(" << __LINE__ << "): function \"" << funcName.name << "\" was not found." << "\n";
+		std::cout << indent() << ")" << std::endl;
 	}
 
-	const auto funcIt = funcItOpt.get();
-
-	if (!SameType(funcIt->second.type(), typeid(FuncVal)))
+	auto operator()(const CallFunc& callFunc)const -> void
 	{
-		std::cerr << "Error(" << __LINE__ << "): function \"" << funcName.name << "\" is not a function." << "\n";
-	}
+		std::cout << indent() << "CallFunc(" << std::endl;
 
-	return boost::get<FuncVal>(funcIt->second);
-}
-
-struct CallFunc
-{
-	boost::variant<FuncVal, Identifier> funcRef;
-	std::vector<Expr> actualArguments;
-
-	CallFunc() = default;
-
-	CallFunc(const Identifier& funcName) :
-		funcRef(funcName)
-	{}
-
-	CallFunc(
-		const FuncVal& funcVal_,
-		const std::vector<Expr>& actualArguments_) :
-		funcRef(funcVal_),
-		actualArguments(actualArguments_)
-	{}
-
-	CallFunc(
-		const Identifier& funcName,
-		const std::vector<Expr>& actualArguments_) :
-		funcRef(funcName),
-		actualArguments(actualArguments_)
-	{}
-};
-
-struct If
-{
-	Expr cond_expr;
-	Expr then_expr;
-	boost::optional<Expr> else_expr;
-
-	If() = default;
-
-	If(const Expr& cond) :
-		cond_expr(cond)
-	{}
-
-	static If Make(const Expr& cond)
-	{
-		return If(cond);
-	}
-
-	static void SetThen(If& if_statement, const Expr& then_expr_)
-	{
-		if_statement.then_expr = then_expr_;
-	}
-
-	static void SetElse(If& if_statement, const Expr& else_expr_)
-	{
-		if_statement.else_expr = else_expr_;
-	}
-};
-
-struct Return
-{
-	Expr expr;
-
-	Return() = default;
-
-	Return(const Expr& expr) :
-		expr(expr)
-	{}
-
-	static Return Make(const Expr& expr_)
-	{
-		return Return(expr_);
-	}
-};
-
-struct EvalOpt
-{
-	bool m_bool;
-	int m_int;
-	double m_double;
-
-	int m_which;
-
-	static EvalOpt Bool(bool v)
-	{
-		return{ v,0,0,0 };
-	}
-	static EvalOpt Int(int v)
-	{
-		return{ 0,v,0,1 };
-	}
-	static EvalOpt Double(double v)
-	{
-		return{ 0,0,v,2 };
-	}
-};
-
-inline EvalOpt Ref(const Evaluated& lhs)
-{
-	if (IsType<bool>(lhs))
-	{
-		return EvalOpt::Bool(boost::get<bool>(lhs));
-	}
-	else if (IsType<int>(lhs))
-	{
-		return EvalOpt::Int(boost::get<int>(lhs));
-	}
-	else if (IsType<double>(lhs))
-	{
-		return EvalOpt::Double(boost::get<double>(lhs));
-	}
-	else if (IsType<Identifier>(lhs))
-	{
-		const auto name = boost::get<Identifier>(lhs).name;
-		const auto itOpt = findVariable(name);
-		if (!itOpt)
 		{
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return EvalOpt::Double(0);
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "FuncRef(" << std::endl;
+
+			if (IsType<Identifier>(callFunc.funcRef))
+			{
+				const auto& funcName = As<Identifier>(callFunc.funcRef);
+				boost::apply_visitor(Printer(m_indent + 2), Expr(funcName));
+			}
+			else
+			{
+				std::cout << indent() << "(FuncVal)" << std::endl;
+			}
+
+			std::cout << child.indent() << ")" << std::endl;
 		}
-		return Ref(itOpt.get()->second);
-		//return EvalOpt::Double();
+
+		{
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Arguments(" << std::endl;
+
+			const auto& args = callFunc.actualArguments;
+			for (size_t i = 0; i < args.size(); ++i)
+			{
+				boost::apply_visitor(Printer(m_indent + 2), args[i]);
+			}
+
+			//boost::apply_visitor(Printer(m_indent + 2), callFunc.actualArguments);
+			std::cout << child.indent() << ")" << std::endl;
+		}
+
+		std::cout << indent() << ")" << std::endl;
 	}
 
-	std::cerr << "Error(" << __LINE__ << ")\n";
-	return EvalOpt::Double(0);
-}
+	void operator()(const Lines& statement)const
+	{
+		std::cout << indent() << "Statement begin" << std::endl;
+
+		int i = 0;
+		for (const auto& expr : statement.exprs)
+		{
+			std::cout << indent() << "(" << i << "): " << std::endl;
+			boost::apply_visitor(Printer(m_indent + 1), expr);
+			++i;
+		}
+
+		std::cout << indent() << "Statement end" << std::endl;
+	}
+
+	void operator()(const If& if_statement)const
+	{
+		std::cout << indent() << "If(" << std::endl;
+
+		{
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Cond(" << std::endl;
+
+			boost::apply_visitor(Printer(m_indent + 2), if_statement.cond_expr);
+
+			std::cout << child.indent() << ")" << std::endl;
+		}
+
+		{
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Then(" << std::endl;
+
+			boost::apply_visitor(Printer(m_indent + 2), if_statement.then_expr);
+
+			std::cout << child.indent() << ")" << std::endl;
+		}
+
+		if (if_statement.else_expr)
+		{
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Else(" << std::endl;
+
+			boost::apply_visitor(Printer(m_indent + 2), if_statement.else_expr.value());
+
+			std::cout << child.indent() << ")" << std::endl;
+		}
+
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const Return& return_statement)const
+	{
+		std::cout << indent() << "Return(" << std::endl;
+
+		boost::apply_visitor(Printer(m_indent + 1), return_statement.expr);
+
+		std::cout << indent() << ")" << std::endl;
+	}
+};
+
 
 class Eval : public boost::static_visitor<Evaluated>
 {
@@ -1010,28 +1733,35 @@ public:
 
 	Eval(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
 
-	Evaluated operator()(int node)const
+	Evaluated operator()(bool node)
+	{
+		std::cout << "Begin-End bool expression(" << ")" << std::endl;
+
+		return node;
+	}
+
+	Evaluated operator()(int node)
 	{
 		std::cout << "Begin-End int expression(" << ")" << std::endl;
 
 		return node;
 	}
 
-	Evaluated operator()(double node)const
+	Evaluated operator()(double node)
 	{
 		std::cout << "Begin-End double expression(" << ")" << std::endl;
 
 		return node;
 	}
 
-	Evaluated operator()(const Identifier& node)const
+	Evaluated operator()(const Identifier& node)
 	{
 		std::cout << "Begin-End Identifier expression(" << ")" << std::endl;
 
 		return node;
 	}
 
-	Evaluated operator()(const UnaryExpr& node)const
+	Evaluated operator()(const UnaryExpr& node)
 	{
 		std::cout << "Begin UnaryExpr expression(" << ")" << std::endl;
 
@@ -1081,7 +1811,7 @@ public:
 		return -ref.m_1;
 	}*/
 
-	Evaluated operator()(const BinaryExpr& node)const
+	Evaluated operator()(const BinaryExpr& node)
 	{
 		std::cout << "Begin BinaryExpr expression(" << ")" << std::endl;
 
@@ -1323,22 +2053,24 @@ public:
 	}
 	*/
 
-	Evaluated operator()(const DefFunc& defFunc)const
+	Evaluated operator()(const DefFunc& defFunc)
 	{
 		std::cout << "Begin DefFunc expression(" << ")" << std::endl;
 
 		//auto val = FuncVal(globalVariables, defFunc.arguments, defFunc.expr);
-		auto val = FuncVal(pEnv, defFunc.arguments, defFunc.expr);
+		//auto val = FuncVal(pEnv, defFunc.arguments, defFunc.expr);
+
+		FuncVal val(std::make_shared<Environment>(*pEnv), defFunc.arguments, defFunc.expr);
 
 		std::cout << "End DefFunc expression(" << ")" << std::endl;
 
 		return val;
 	}
 
-	Evaluated operator()(const CallFunc& callFunc)const
+	Evaluated operator()(const CallFunc& callFunc)
 	{
 		std::cout << "Begin CallFunc expression(" << ")" << std::endl;
-
+		
 		std::shared_ptr<Environment> buckUp = pEnv;
 		//const auto buckUp = localVariables;
 
@@ -1350,9 +2082,10 @@ public:
 			//funcVal = boost::get<FuncVal>(callFunc.funcRef);
 			funcVal = As<FuncVal>(callFunc.funcRef);
 		}
-		else if (auto itOpt = findVariable(boost::get<Identifier>(callFunc.funcRef).name))
+		//else if (auto itOpt = findVariable(boost::get<Identifier>(callFunc.funcRef).name))
+		else if (auto funcOpt = pEnv->find(As<Identifier>(callFunc.funcRef).name))
 		{
-			const Evaluated& funcRef = (*itOpt.get()).second;
+			/*const Evaluated& funcRef = (*itOpt.get()).second;
 			if (SameType(funcRef.type(), typeid(FuncVal)))
 			{
 				funcVal = boost::get<FuncVal>(funcRef);
@@ -1360,6 +2093,16 @@ public:
 			else
 			{
 				std::cerr << "Error(" << __LINE__ << "): variable \"" << (*itOpt.get()).first << "\" is not a function.\n";
+				return 0;
+			}*/
+			const Evaluated& funcRef = funcOpt.value();
+			if (IsType<FuncVal>(funcRef))
+			{
+				funcVal = As<FuncVal>(funcRef);
+			}
+			else
+			{
+				std::cerr << "Error(" << __LINE__ << "): variable \"" << As<Identifier>(callFunc.funcRef).name << "\" is not a function.\n";
 				return 0;
 			}
 		}
@@ -1376,32 +2119,79 @@ public:
 		for (size_t i = 0; i < funcVal.argments.size(); ++i)
 		{
 			argmentValues[i] = boost::apply_visitor(*this, callFunc.actualArguments[i]);
+
+			//引数に変数が指定された場合は、
+			//関数の実行される環境にその変数があるかはわからないので、
+			//中身を取り出して値渡しにする
+			argmentValues[i] = pEnv->dereference(argmentValues[i]);
 		}
 
 		/*
 		関数の評価
 		ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える。
 		*/
-		localVariables = funcVal.environment;
+		//localVariables = funcVal.environment;
+		pEnv = funcVal.environment;
 
-		for (size_t i = 0; i < funcVal.argments.size(); ++i)
+		/*for (size_t i = 0; i < funcVal.argments.size(); ++i)
 		{
 			localVariables[funcVal.argments[i].name] = argmentValues[i];
+		}*/
+		
+		//関数の引数用にスコープを一つ追加する
+		pEnv->push();
+		for (size_t i = 0; i < funcVal.argments.size(); ++i)
+		{
+			//現在は値も変数も全て値渡し（コピー）をしているので、単純に bindNewValue を行えばよい
+			//本当は変数の場合は bindReference で参照情報だけ渡すべきなのかもしれない
+			//要考察
+			pEnv->bindNewValue(funcVal.argments[i].name, argmentValues[i]);
+			
+			//localVariables[funcVal.argments[i].name] = argmentValues[i];
 		}
 
+		std::cout << "Function Environment:\n";
+		pEnv->printEnvironment();
+
+		std::cout << "Function Definition:\n";
+		boost::apply_visitor(Printer(), funcVal.expr);
+
 		Evaluated result = boost::apply_visitor(*this, funcVal.expr);
+
+		//関数を抜ける時に、仮引数は全て解放される
+		pEnv->pop();
 
 		/*
 		最後にローカル変数の環境を関数の実行前のものに戻す。
 		*/
-		localVariables = buckUp;
+		pEnv = buckUp;
 
 		std::cout << "End CallFunc expression(" << ")" << std::endl;
+
+		//評価結果がreturn式だった場合はreturnを外して中身を返す
+		//return以外のジャンプ命令は関数では効果を持たないのでそのまま上に返す
+		if (IsType<Jump>(result))
+		{
+			auto& jump = As<Jump>(result);
+			if (jump.isReturn())
+			{
+				if (jump.lhs)
+				{
+					return jump.lhs.value();
+				}
+				else
+				{
+					//return式の中身が入って無ければとりあえずエラー
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return 0;
+				}
+			}
+		}
 
 		return result;
 	}
 	
-	Evaluated operator()(const Lines& statement)const
+	Evaluated operator()(const Lines& statement)
 	{
 		std::cout << "Begin Statement expression(" << ")" << std::endl;
 
@@ -1413,8 +2203,30 @@ public:
 		{
 			std::cout << "Evaluate expression(" << i << ")" << std::endl;
 			result = boost::apply_visitor(*this, expr);
+
+			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
+			const bool isLValue = IsType<Identifier>(result);
+			if (isLValue)
+			{
+				const Evaluated& resultValue = pEnv->dereference(result);
+				const bool isMacro = IsType<Jump>(resultValue);
+				if (isMacro)
+				{
+					result = As<Jump>(resultValue);
+				}
+			}
+			
+			//途中でジャンプ命令を読んだら即座に評価を終了する
+			if (IsType<Jump>(result))
+			{
+				break;
+			}
+
 			++i;
 		}
+
+		//この後すぐ解放されるので dereference しておく
+		result = pEnv->dereference(result);
 
 		pEnv->pop();
 
@@ -1423,18 +2235,42 @@ public:
 		return result;
 	}
 
-	Evaluated operator()(const If& if_statement)const
+	Evaluated operator()(const If& if_statement)
 	{
 		std::cout << "Begin If expression(" << ")" << std::endl;
 
+		const Evaluated cond = boost::apply_visitor(*this, if_statement.cond_expr);
+		if (!IsType<bool>(cond))
+		{
+			//条件は必ずブール値である必要がある
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0;
+		}
+
+		if (As<bool>(cond))
+		{
+			const Evaluated result = boost::apply_visitor(*this, if_statement.then_expr);
+			return result;
+
+		}
+		else if(if_statement.else_expr)
+		{
+			const Evaluated result = boost::apply_visitor(*this, if_statement.else_expr.value());
+			return result;
+		}
+		
+		//else式が無いケースで cond = False であったら一応警告を出す
+		std::cerr << "Warning(" << __LINE__ << ")\n";
 		return 0;
 	}
 
-	Evaluated operator()(const Return& return_statement)const
+	Evaluated operator()(const Return& return_statement)
 	{
 		std::cout << "Begin Return expression(" << ")" << std::endl;
 
-		return 0;
+		const Evaluated lhs = boost::apply_visitor(*this, return_statement.expr);
+		
+		return Jump::MakeReturn(lhs);
 	}
 
 private:
@@ -1442,387 +2278,6 @@ private:
 	//Environment& env;
 	std::shared_ptr<Environment> pEnv;
 };
-
-class Printer : public boost::static_visitor<void>
-{
-public:
-
-	Printer(int indent = 0)
-		:m_indent(indent)
-	{}
-
-	int m_indent;
-
-	std::string indent()const
-	{
-		const int tabSize = 4;
-		std::string str;
-		for (int i = 0; i < m_indent*tabSize; ++i)
-		{
-			str += ' ';
-		}
-		return str;
-	}
-
-	auto operator()(int node)const -> void
-	{
-		std::cout << indent() << "Int(" << node << ")" << std::endl;
-	}
-
-	auto operator()(double node)const -> void
-	{
-		std::cout << indent() << "Double(" << node << ")" << std::endl;
-	}
-
-	auto operator()(const Identifier& node)const -> void
-	{
-		std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
-	}
-
-	/*auto operator()(const IntHolder& node)const -> void
-	{
-	std::cout << "IntHolder(" << node.n << ")";
-	}*/
-
-	void operator()(const UnaryExpr& node)const
-	{
-		std::cout << indent() << "Unary(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	/*void operator()(const UnaryExpr<Not>& node)const
-	{
-		std::cout << indent() << "Not(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const UnaryExpr<Add>& node)const -> void
-	{
-		std::cout << indent() << "Plus(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const UnaryExpr<Sub>& node)const -> void
-	{
-		std::cout << indent() << "Minus(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}*/
-
-	void operator()(const BinaryExpr& node)const
-	{
-		std::cout << indent() << "Binary(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	/*
-	void operator()(const BinaryExpr<And>& node)const
-	{
-		std::cout << indent() << "And(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const BinaryExpr<Or>& node)const
-	{
-		std::cout << indent() << "Or(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const BinaryExpr<Equal>& node)const
-	{
-		std::cout << indent() << "Equal(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const BinaryExpr<NotEqual>& node)const
-	{
-		std::cout << indent() << "NotEqual(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const BinaryExpr<LessThan>& node)const
-	{
-		std::cout << indent() << "LessThan(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const BinaryExpr<LessEqual>& node)const
-	{
-		std::cout << indent() << "LessEqual(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const BinaryExpr<GreaterThan>& node)const
-	{
-		std::cout << indent() << "GreaterThan(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const BinaryExpr<GreaterEqual>& node)const
-	{
-		std::cout << indent() << "GreaterEqual(" << std::endl;
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const BinaryExpr<Add>& node)const -> void
-	{
-		std::cout << indent() << "Add(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		//std::cout << indent() << ", " << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const BinaryExpr<Sub>& node)const -> void
-	{
-		std::cout << indent() << "Sub(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		//std::cout << indent() << ", " << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const BinaryExpr<Mul>& node)const -> void
-	{
-		std::cout << indent() << "Mul(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		//std::cout << indent() << ", " << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const BinaryExpr<Div>& node)const -> void
-	{
-		std::cout << indent() << "Div(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		//std::cout << indent() << ", " << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const BinaryExpr<Pow>& node)const -> void
-	{
-		std::cout << indent() << "Pow(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		//std::cout << indent() << ", " << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const BinaryExpr<Assign>& node)const -> void
-	{
-		std::cout << indent() << "Assign(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.lhs);
-
-		//std::cout << indent() << ", " << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), node.rhs);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-	*/
-
-	auto operator()(const DefFunc& defFunc)const -> void
-	{
-		std::cout << indent() << "DefFunc(" << std::endl;
-
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "Arguments(" << std::endl;
-			{
-				const auto grandChild = Printer(child.m_indent + 1);
-
-				const auto& args = defFunc.arguments;
-				for (size_t i = 0; i < args.size(); ++i)
-				{
-					std::cout << grandChild.indent() << args[i].name << (i + 1 == args.size() ? "\n" : ",\n");
-				}
-			}
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		boost::apply_visitor(Printer(m_indent + 1), defFunc.expr);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	auto operator()(const CallFunc& callFunc)const -> void
-	{
-		std::cout << indent() << "CallFunc(" << std::endl;
-
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "FuncRef(" << std::endl;
-
-			if (IsType<Identifier>(callFunc.funcRef.type()))
-			{
-				const auto& funcName = boost::get<Identifier>(callFunc.funcRef);
-				boost::apply_visitor(Printer(m_indent + 2), Expr(funcName));
-			}
-			else
-			{
-				std::cout << indent() << "(FuncVal)" << std::endl;
-			}
-
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "Arguments(" << std::endl;
-
-			const auto& args = callFunc.actualArguments;
-			for (size_t i = 0; i < args.size(); ++i)
-			{
-				boost::apply_visitor(Printer(m_indent + 2), args[i]);
-			}
-
-			//boost::apply_visitor(Printer(m_indent + 2), callFunc.actualArguments);
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const Statement& statement)const
-	{
-		std::cout << indent() << "Statement begin" << std::endl;
-
-		int i = 0;
-		for (const auto& expr : statement.exprs)
-		{
-			std::cout << indent() << "(" << i << "): " << std::endl;
-			boost::apply_visitor(Printer(m_indent + 1), expr);
-			++i;
-		}
-
-		std::cout << indent() << "Statement end" << std::endl;
-	}
-
-	void operator()(const Lines& statement)const
-	{
-		std::cout << indent() << "Statement begin" << std::endl;
-
-		int i = 0;
-		for (const auto& expr : statement.exprs)
-		{
-			std::cout << indent() << "(" << i << "): " << std::endl;
-			boost::apply_visitor(Printer(m_indent + 1), expr);
-			++i;
-		}
-
-		std::cout << indent() << "Statement end" << std::endl;
-	}
-
-	void operator()(const If& if_statement)const
-	{
-		std::cout << indent() << "If(" << std::endl;
-
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "Cond(" << std::endl;
-
-			boost::apply_visitor(Printer(m_indent + 2), if_statement.cond_expr);
-
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "Then(" << std::endl;
-
-			boost::apply_visitor(Printer(m_indent + 2), if_statement.then_expr);
-
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		if (if_statement.else_expr)
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "Else(" << std::endl;
-
-			boost::apply_visitor(Printer(m_indent + 2), if_statement.else_expr.value());
-
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
-	void operator()(const Return& return_statement)const
-	{
-		std::cout << indent() << "Return(" << std::endl;
-
-		boost::apply_visitor(Printer(m_indent + 1), return_statement.expr);
-
-		std::cout << indent() << ")" << std::endl;
-	}
-};
-
-inline void printStatement(const Statement& statement)
-{
-	std::cout << "Statement begin" << std::endl;
-
-	int i = 0;
-	for (const auto& expr : statement.exprs)
-	{
-		std::cout << "Expr(" << i << "): " << std::endl;
-		boost::apply_visitor(Printer(), expr);
-		++i;
-	}
-
-	std::cout << "Statement end" << std::endl;
-}
 
 inline void printLines(const Lines& statement)
 {
@@ -1846,60 +2301,72 @@ inline void printExpr(const Expr& expr)
 	std::cout << ") " << std::endl;
 }
 
-inline void Concat(Expr& lines1, const Expr& lines2)
+inline Evaluated evalExpr(const Expr& expr)
 {
-	if (!IsType<Lines>(lines1.type()) || !IsType<Lines>(lines2.type()))
-	{
-		std::cerr << "Error";
-		return;
-	}
+	auto env = std::make_shared<Environment>();
 
-	As<Lines>(lines1).concat(As<const Lines>(lines2));
+	Eval evaluator(env);
+
+	const Evaluated result = boost::apply_visitor(evaluator, expr);
+
+	return result;
 }
 
-inline void Append(Expr& lines, const Expr& expr)
-{
-	if (!IsType<Lines>(lines.type()))
-	{
-		std::cerr << "Error";
-		return;
-	}
 
-	As<Lines>(lines).add(expr);
-}
+//inline void Concat(Expr& lines1, const Expr& lines2)
+//{
+//	if (!IsType<Lines>(lines1) || !IsType<Lines>(lines2))
+//	{
+//		std::cerr << "Error";
+//		return;
+//	}
+//
+//	As<Lines>(lines1).concat(As<const Lines>(lines2));
+//}
+//
+//inline void Append(Expr& lines, const Expr& expr)
+//{
+//	if (!IsType<Lines>(lines))
+//	{
+//		std::cerr << "Error";
+//		return;
+//	}
+//
+//	As<Lines>(lines).add(expr);
+//}
 
-inline DefFunc MakeDefFunc(Expr& lines, const Expr& expr)
-{
-	if (!IsType<Lines>(lines.type()))
-	{
-		std::cerr << "Error";
-		return DefFunc();
-	}
-
-	auto& ls = As<Lines>(lines);
-	if (!DefFunc::IsValidArgs(ls, expr))
-	{
-		std::cerr << "Error";
-		return DefFunc();
-	}
-
-	return DefFunc(ls, expr);
-}
-
-inline DefFunc* NewDefFunc(Expr& lines, const Expr& expr)
-{
-	if (!IsType<Lines>(lines.type()))
-	{
-		std::cerr << "Error";
-		return new DefFunc();
-	}
-
-	auto& ls = As<Lines>(lines);
-	if (!DefFunc::IsValidArgs(ls, expr))
-	{
-		std::cerr << "Error";
-		return new DefFunc();
-	}
-
-	return new DefFunc(ls, expr);
-}
+//inline DefFunc MakeDefFunc(Expr& lines, const Expr& expr)
+//{
+//	if (!IsType<Lines>(lines))
+//	{
+//		std::cerr << "Error";
+//		return DefFunc();
+//	}
+//
+//	auto& ls = As<Lines>(lines);
+//	if (!DefFunc::IsValidArgs(ls, expr))
+//	{
+//		std::cerr << "Error";
+//		return DefFunc();
+//	}
+//
+//	return DefFunc(ls, expr);
+//}
+//
+//inline DefFunc* NewDefFunc(Expr& lines, const Expr& expr)
+//{
+//	if (!IsType<Lines>(lines))
+//	{
+//		std::cerr << "Error";
+//		return new DefFunc();
+//	}
+//
+//	auto& ls = As<Lines>(lines);
+//	if (!DefFunc::IsValidArgs(ls, expr))
+//	{
+//		std::cerr << "Error";
+//		return new DefFunc();
+//	}
+//
+//	return new DefFunc(ls, expr);
+//}

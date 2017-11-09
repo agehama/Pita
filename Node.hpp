@@ -7,6 +7,8 @@
 #include <map>
 #include <unordered_map>
 
+#include <boost/fusion/include/vector.hpp>
+
 #include <boost/variant/variant.hpp>
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
@@ -21,6 +23,30 @@ template<class T1, class T2>
 inline bool IsType(const T2& t2)
 {
 	return std::string(typeid(T1).name()) == std::string(t2.type().name());
+}
+
+template<class T1, class T2>
+inline boost::optional<T1&> AsOpt(T2& t2)
+{
+	//return IsType<T1>(t2) ? boost::get<T1>(t2) : boost::none;
+	if (IsType<T1>(t2))
+	{
+		return boost::get<T1>(t2);
+	}
+	return boost::none;
+	//return boost::get<T1>(t2);
+}
+
+template<class T1, class T2>
+inline boost::optional<const T1&> AsOpt(const T2& t2)
+{
+	//return IsType<T1>(t2) ? boost::get<T1>(t2) : boost::none;
+	if (IsType<T1>(t2))
+	{
+		return boost::get<T1>(t2);
+	}
+	return boost::none;
+	//return boost::get<T1>(t2);
 }
 
 template<class T1, class T2>
@@ -95,6 +121,10 @@ struct Identifier
 		name(name_)
 	{}
 
+	Identifier(const boost::fusion::vector2<char, std::vector<char, std::allocator<char>>>& name_)
+	{
+	}
+	//boost::fusion::vector2<char,std::vector<char,std::allocator<char>>>
 	Identifier(char name_) :
 		name({ name_ })
 	{}
@@ -116,7 +146,19 @@ struct BinaryExpr;
 struct Lines;
 
 struct If;
+struct For;
+
 struct Return;
+
+struct Range;
+
+struct ListConstractor;
+struct List;
+
+struct ListAccess;
+
+//struct KeyValue;
+//struct RecordConstractor;
 
 /*
 using Expr = boost::variant<
@@ -189,11 +231,15 @@ boost::recursive_wrapper<Return>
 //	boost::recursive_wrapper<Return> >;
 
 using types =
-boost::mpl::vector11<
+//boost::mpl::vector17<
+boost::mpl::vector15<
 	bool,
 	int,
 	double,
 	Identifier,
+
+	boost::recursive_wrapper<Range>,
+
 	boost::recursive_wrapper<Lines>,
 	boost::recursive_wrapper<DefFunc>,
 	boost::recursive_wrapper<CallFunc>,
@@ -202,7 +248,14 @@ boost::mpl::vector11<
 	boost::recursive_wrapper<BinaryExpr>,
 
 	boost::recursive_wrapper<If>,
-	boost::recursive_wrapper<Return>
+	boost::recursive_wrapper<For>,
+	boost::recursive_wrapper<Return>,
+
+	boost::recursive_wrapper<ListConstractor>,
+	boost::recursive_wrapper<ListAccess>/*,
+
+	boost::recursive_wrapper<KeyValue>,
+	boost::recursive_wrapper<RecordConstractor>	*/
 >;
 
 using Expr = boost::make_variant_over<types>::type;
@@ -211,14 +264,28 @@ void printExpr(const Expr& expr);
 
 struct Jump;
 
+struct ListReference;
+
 using Evaluated = boost::variant<
 	bool,
 	int,
 	double,
 	Identifier,
+	boost::recursive_wrapper<ListReference>,
+	boost::recursive_wrapper<List>,
 	boost::recursive_wrapper<FuncVal>,
 	boost::recursive_wrapper<Jump>
 >;
+
+bool IsLValue(const Evaluated& value)
+{
+	return IsType<Identifier>(value) || IsType<ListReference>(value);
+}
+
+bool IsRValue(const Evaluated& value)
+{
+	return !IsLValue(value);
+}
 
 class Environment;
 
@@ -241,6 +308,32 @@ struct BinaryExpr
 	BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
 		lhs(lhs), rhs(rhs), op(op)
 	{}
+};
+
+struct Range
+{
+	Expr lhs;
+	Expr rhs;
+
+	Range() = default;
+
+	Range(const Expr& lhs) :
+		lhs(lhs)
+	{}
+
+	Range(const Expr& lhs, const Expr& rhs) :
+		lhs(lhs), rhs(rhs)
+	{}
+
+	static Range Make(const Expr& lhs)
+	{
+		return Range(lhs);
+	}
+
+	static void SetRhs(Range& range, const Expr& rhs)
+	{
+		range.rhs = rhs;
+	}
 };
 
 struct Lines
@@ -286,6 +379,21 @@ struct Lines
 	Expr& operator[](size_t index)
 	{
 		return exprs[index];
+	}
+
+	static Lines Make(const Expr& expr)
+	{
+		return Lines(expr);
+	}
+
+	static void Append(Lines& lines, const Expr& expr)
+	{
+		lines.add(expr);
+	}
+
+	static void Concat(Lines& lines1, const Lines& lines2)
+	{
+		lines1.concat(lines2);
 	}
 };
 
@@ -456,6 +564,46 @@ struct If
 	}
 };
 
+//for i in a..b do statement
+struct For
+{
+	Identifier loopCounter;
+	Expr rangeStart;
+	Expr rangeEnd;
+	Expr doExpr;
+
+	For() = default;
+
+	For(const Identifier& loopCounter, const Expr& rangeStart, const Expr& rangeEnd, const Expr& doExpr) :
+		loopCounter(loopCounter),
+		rangeStart(rangeStart),
+		rangeEnd(rangeEnd),
+		doExpr(doExpr)
+	{}
+
+	static For Make(const Identifier& loopCounter)
+	{
+		For obj;
+		obj.loopCounter = loopCounter;
+		return obj;
+	}
+
+	static void SetRangeStart(For& forExpression, const Expr& rangeStart)
+	{
+		forExpression.rangeStart = rangeStart;
+	}
+
+	static void SetRangeEnd(For& forExpression, const Expr& rangeEnd)
+	{
+		forExpression.rangeEnd = rangeEnd;
+	}
+
+	static void SetDo(For& forExpression, const Expr& doExpr)
+	{
+		forExpression.doExpr = doExpr;
+	}
+};
+
 struct Return
 {
 	Expr expr;
@@ -466,11 +614,90 @@ struct Return
 		expr(expr)
 	{}
 
-	static Return Make(const Expr& expr_)
+	static Return Make(const Expr& expr)
 	{
-		return Return(expr_);
+		return Return(expr);
 	}
 };
+
+struct ListConstractor
+{
+	std::vector<Expr> data;
+
+	ListConstractor() = default;
+
+	ListConstractor(const Expr& expr) :
+		data({ expr })
+	{}
+
+	static ListConstractor Make(const Expr& expr)
+	{
+		return ListConstractor(expr);
+	}
+
+	static void Append(ListConstractor& list, const Expr& expr)
+	{
+		list.data.push_back(expr);
+	}
+};
+
+struct List
+{
+	std::vector<Evaluated> data;
+
+	List() = default;
+	
+	void append(const Evaluated& value)
+	{
+		data.push_back(value);
+	}
+
+	std::vector<Evaluated>::iterator get(int index)
+	{
+		return data.begin() + index;
+	}
+};
+
+struct ListAccess
+{
+	boost::variant<ListConstractor, Identifier> listRef;
+
+	Expr index;
+
+	ListAccess() = default;
+
+	ListAccess(const Identifier& identifier):
+		listRef(identifier)
+	{}
+
+	static ListAccess Make(const Identifier& identifier)
+	{
+		return ListAccess(identifier);
+	}
+
+	static void SetIndex(ListAccess& listAccess, const Expr& index)
+	{
+		listAccess.index = index;
+	}
+};
+
+struct ListReference
+{
+	unsigned localValueID;
+	int index;
+
+	ListReference() = default;
+
+	ListReference(unsigned localValueID, int index) :
+		localValueID(localValueID),
+		index(index)
+	{}
+};
+
+//struct RecordConstractor
+//{
+//	KeyValue;
+//};
 
 struct Jump
 {
@@ -522,7 +749,8 @@ inline void printEvaluated(const Evaluated& evaluated)
 {
 	if (IsType<bool>(evaluated))
 	{
-		std::cout << "Bool(" << As<bool>(evaluated) << ")";
+		//std::cout << "Bool(" << As<bool>(evaluated) << ")";
+		std::cout << "Bool(" << (As<bool>(evaluated) ? "true" : "false") << ")";
 	}
 	else if (IsType<int>(evaluated))
 	{
@@ -543,6 +771,27 @@ inline void printEvaluated(const Evaluated& evaluated)
 	else if (IsType<Jump>(evaluated))
 	{
 		std::cout << "Jump(" << As<Jump>(evaluated).op << ")";
+	}
+	else if (IsType<List>(evaluated))
+	{
+		std::cout << "List(";
+		const auto& data = As<List>(evaluated).data;
+		for (size_t i = 0; i < data.size(); ++i)
+		{
+			printEvaluated(data[i]);
+			if (i + 1 != data.size())
+			{
+				std::cout << ", ";
+			}
+		}
+		std::cout << ")";
+	}
+	else if (IsType<ListReference>(evaluated))
+	{
+		std::cout << "ListReference( ";
+		auto ref = As<ListReference>(evaluated);
+		std::cout << "LocalEnv(" << ref.localValueID << ")[" << ref.index << "]";
+		std::cout << " )";
 	}
 
 	std::cout << std::endl;
@@ -668,6 +917,7 @@ public:
 	const Evaluated& dereference(const Evaluated& reference)const
 	{
 		//即値はValuesには持っているとは限らない
+		/*
 		if (!IsType<Identifier>(reference))
 		{
 			return reference;
@@ -681,12 +931,46 @@ public:
 		}
 
 		return m_values[valueIDOpt.value()];
+		*/
+
+		if (auto nameOpt = AsOpt<Identifier>(reference))
+		{
+			const boost::optional<unsigned> valueIDOpt = findValueID(nameOpt.value().name);
+			if (!valueIDOpt)
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+
+			return m_values[valueIDOpt.value()];
+		}
+		else if (auto listRefOpt = AsOpt<ListReference>(reference))
+		{
+			const auto& listVal = m_values[listRefOpt.value().localValueID];
+			if (auto listOpt = AsOpt<List>(listVal))
+			{
+				return listOpt.value().data[listRefOpt.value().index];
+			}
+			else
+			{
+				//指定されたローカルIDの値がList型ではない
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+		}
+
+		return reference;
 	}
+
+	/*const Evaluated& derefID(unsigned valueID)const
+	{
+		return m_values[valueID];
+	}*/
 
 	void bindNewValue(const std::string& name, const Evaluated& value)
 	{
 		const unsigned newID = m_values.add(value);
-		bindValue(name, newID);
+		bindValueID(name, newID);
 	}
 
 	void bindReference(const std::string& nameLhs, const std::string& nameRhs)
@@ -698,7 +982,22 @@ public:
 			return;
 		}
 
-		bindValue(nameLhs, valueIDOpt.value());
+		bindValueID(nameLhs, valueIDOpt.value());
+	}
+
+	void bindValueID(const std::string& name, unsigned valueID)
+	{
+		for (auto& localEnv : m_bindingNames)
+		{
+			if (localEnv.find(name))
+			{
+				localEnv.bind(name, valueID);
+			}
+		}
+
+		//現在の環境に変数が存在しなければ、
+		//環境リストの末尾（＝最も内側のスコープ）に変数を追加する
+		m_bindingNames.back().bind(name, valueID);
 	}
 
 	void push()
@@ -736,37 +1035,43 @@ public:
 		}
 	}
 
-private:
-
-	void bindValue(const std::string& name, unsigned valueID)
-	{
-		for (auto& localEnv : m_bindingNames)
-		{
-			if (localEnv.find(name))
-			{
-				localEnv.bind(name, valueID);
-			}
-		}
-
-		//現在の環境に変数が存在しなければ、
-		//環境リストの末尾（＝最も内側のスコープ）に変数を追加する
-		m_bindingNames.back().bind(name, valueID);
-	}
-
 	//外側のスコープから順番に変数を探して返す
 	boost::optional<unsigned> findValueID(const std::string& name)const
 	{
 		boost::optional<unsigned> valueIDOpt;
-		for (const auto& localEnv : m_bindingNames)
+
+		for (auto it = m_bindingNames.rbegin(); it != m_bindingNames.rend(); ++it)
 		{
-			if (valueIDOpt = localEnv.find(name))
+			if (valueIDOpt = it->find(name))
 			{
 				break;
 			}
 		}
 
+		/*for (const auto& localEnv : m_bindingNames)
+		{
+			if (valueIDOpt = localEnv.find(name))
+			{
+				break;
+			}
+		}*/
+
 		return valueIDOpt;
 	}
+
+	void assignToList(const ListReference& listRef, const Evaluated& newValue)
+	{
+		if (auto listOpt = AsOpt<List>(m_values[listRef.localValueID]))
+		{
+			listOpt.value().data[listRef.index] = newValue;
+			return;
+		}
+
+		//指定されたIDのデータがList型ではない
+		std::cerr << "Error(" << __LINE__ << ")\n";
+	}
+
+private:
 
 	void garbageCollect();
 
@@ -1264,32 +1569,71 @@ inline Evaluated Pow(const Evaluated& lhs_, const Evaluated& rhs_, const Environ
 
 inline Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 {
-	if (!IsType<Identifier>(lhs))
+	/*if (!IsType<Identifier>(lhs))
 	{
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return 0;
+	}*/
+	if (!IsLValue(lhs))
+	{
+		//代入式の左辺が左辺値でない
 		std::cerr << "Error(" << __LINE__ << ")\n";
 		return 0;
 	}
 
-	const auto& nameLhs = As<Identifier>(lhs).name;
-
-	/*
-	代入式は、左辺と右辺の形の組み合わせにより4パターンの挙動が起こり得る。
-
-	式の左辺：現在の環境にすでに存在する識別子か、新たに束縛を行う識別子か
-	式の右辺：左辺値であるか、右辺値であるか
-
-	左辺値の場合は、その参照先を取得し新たに
-	*/
-	const bool isLValue = IsType<Identifier>(rhs);
-	if (isLValue)
+	if (auto nameLhsOpt = AsOpt<Identifier>(lhs))
 	{
-		const auto& nameRhs = As<Identifier>(rhs).name;
+		/*
+		代入式は、左辺と右辺の形の組み合わせにより4パターンの挙動が起こり得る。
+
+		式の左辺：現在の環境にすでに存在する識別子か、新たに束縛を行う識別子か
+		式の右辺：左辺値であるか、右辺値であるか
+
+		左辺値の場合は、その参照先を取得し新たに
+		*/
+
+		const auto& nameLhs = As<Identifier>(lhs).name;
 		
-		env.bindReference(nameLhs, nameRhs);
+		const bool rhsIsIdentifier = IsType<Identifier>(rhs);
+		const bool rhsIsListRef = IsType<ListReference>(rhs);
+		if (rhsIsIdentifier)
+		{
+			const auto& nameRhs = As<Identifier>(rhs).name;
+
+			env.bindReference(nameLhs, nameRhs);
+		}
+		else if (rhsIsListRef)
+		{
+			const auto& valueRhs = env.dereference(rhs);
+			env.bindNewValue(nameLhs, valueRhs);
+		}
+		else
+		{
+			env.bindNewValue(nameLhs, rhs);
+		}
 	}
-	else
+	else if (auto listLhsOpt = AsOpt<ListReference>(lhs))
 	{
-		env.bindNewValue(nameLhs, rhs);
+		const auto& listRefLhs = listLhsOpt.value();
+
+		const bool rhsIsIdentifier = IsType<Identifier>(rhs);
+		const bool rhsIsListRef = IsType<ListReference>(rhs);
+		if (rhsIsIdentifier)
+		{
+			const auto& nameRhs = As<Identifier>(rhs).name;
+			const auto& valueRhs = env.dereference(nameRhs);
+
+			env.assignToList(listRefLhs, valueRhs);
+		}
+		else if (rhsIsListRef)
+		{
+			const auto& valueRhs = env.dereference(rhs);
+			env.assignToList(listRefLhs, valueRhs);
+		}
+		else
+		{
+			env.assignToList(listRefLhs, rhs);
+		}
 	}
 
 	return lhs;
@@ -1666,6 +2010,14 @@ public:
 		std::cout << indent() << ")" << std::endl;
 	}
 
+	void operator()(const Range& range)const
+	{
+		std::cout << indent() << "Range(" << std::endl;
+		boost::apply_visitor(Printer(m_indent + 1), range.lhs);
+		boost::apply_visitor(Printer(m_indent + 1), range.rhs);
+		std::cout << indent() << ")" << std::endl;
+	}
+
 	void operator()(const Lines& statement)const
 	{
 		std::cout << indent() << "Statement begin" << std::endl;
@@ -1716,12 +2068,79 @@ public:
 		std::cout << indent() << ")" << std::endl;
 	}
 
+	void operator()(const For& forExpression)const
+	{
+		std::cout << indent() << "For(" << std::endl;
+
+		/*{
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Cond(" << std::endl;
+
+			boost::apply_visitor(Printer(m_indent + 2), if_statement.cond_expr);
+
+			std::cout << child.indent() << ")" << std::endl;
+		}
+
+		{
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Then(" << std::endl;
+
+			boost::apply_visitor(Printer(m_indent + 2), if_statement.then_expr);
+
+			std::cout << child.indent() << ")" << std::endl;
+		}
+
+		if (if_statement.else_expr)
+		{
+			const auto child = Printer(m_indent + 1);
+			std::cout << child.indent() << "Else(" << std::endl;
+
+			boost::apply_visitor(Printer(m_indent + 2), if_statement.else_expr.value());
+
+			std::cout << child.indent() << ")" << std::endl;
+		}*/
+
+		std::cout << indent() << ")" << std::endl;
+	}
+
 	void operator()(const Return& return_statement)const
 	{
 		std::cout << indent() << "Return(" << std::endl;
 
 		boost::apply_visitor(Printer(m_indent + 1), return_statement.expr);
 
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const ListConstractor& listConstractor)const
+	{
+		std::cout << indent() << "ListConstractor(" << std::endl;
+		
+		int i = 0;
+		for (const auto& expr : listConstractor.data)
+		{
+			std::cout << indent() << "(" << i << "): " << std::endl;
+			boost::apply_visitor(Printer(m_indent + 1), expr);
+			++i;
+		}
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const ListAccess& listAccess)const
+	{
+		std::cout << indent() << "ListConstractor(" << std::endl;
+
+		const auto child = Printer(m_indent + 1);
+		if (IsType<Identifier>(listAccess.listRef))
+		{
+			std::cout << child.indent() << As<Identifier>(listAccess.listRef).name << std::endl;
+		}
+		else
+		{
+			std::cout << child.indent() << "ListVal()" << std::endl;
+		}
+
+		boost::apply_visitor(Printer(m_indent + 1), listAccess.index);
 		std::cout << indent() << ")" << std::endl;
 	}
 };
@@ -2191,6 +2610,11 @@ public:
 		return result;
 	}
 	
+	Evaluated operator()(const Range& range)
+	{
+		return 0;
+	}
+
 	Evaluated operator()(const Lines& statement)
 	{
 		std::cout << "Begin Statement expression(" << ")" << std::endl;
@@ -2205,8 +2629,7 @@ public:
 			result = boost::apply_visitor(*this, expr);
 
 			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
-			const bool isLValue = IsType<Identifier>(result);
-			if (isLValue)
+			if (IsLValue(result))
 			{
 				const Evaluated& resultValue = pEnv->dereference(result);
 				const bool isMacro = IsType<Jump>(resultValue);
@@ -2264,6 +2687,119 @@ public:
 		return 0;
 	}
 
+	Evaluated operator()(const For& forExpression)
+	{
+		std::cout << "Begin For expression(" << ")" << std::endl;
+
+		const Evaluated startVal = pEnv->dereference(boost::apply_visitor(*this, forExpression.rangeStart));
+		const Evaluated endVal = pEnv->dereference(boost::apply_visitor(*this, forExpression.rangeEnd));
+
+		//startVal <= endVal なら 1
+		//startVal > endVal なら -1
+		//を適切な型に変換して返す
+		const auto calcStepValue = [&](const Evaluated& a, const Evaluated& b)->boost::optional<std::pair<Evaluated, bool>>
+		{
+			const bool a_IsInt = IsType<int>(a);
+			const bool a_IsDouble = IsType<double>(a);
+
+			const bool b_IsInt = IsType<int>(b);
+			const bool b_IsDouble = IsType<double>(b);
+
+			if (!((a_IsInt || a_IsDouble) && (b_IsInt || b_IsDouble)))
+			{
+				//エラー：ループのレンジが不正な型（整数か実数に評価できる必要がある）
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return boost::none;
+			}
+
+			const bool result_IsDouble = a_IsDouble || b_IsDouble;
+			const auto lessEq = LessEqual(a, b, *pEnv);
+			if (!IsType<bool>(lessEq))
+			{
+				//エラー：aとbの比較に失敗した
+				//一応確かめているだけでここを通ることはないはず
+				//LessEqualの実装ミス？
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return boost::none;
+			}
+
+			const bool isInOrder = As<bool>(lessEq);
+
+			const int sign = isInOrder ? 1 : -1;
+
+			if (result_IsDouble)
+			{
+				return std::pair<Evaluated, bool>(Mul(1.0, sign, *pEnv), isInOrder);
+			}
+
+			return std::pair<Evaluated, bool>(Mul(1, sign, *pEnv), isInOrder);
+		};
+
+		const auto loopContinues = [&](const Evaluated& loopCount, bool isInOrder)->boost::optional<bool>
+		{
+			//isInOrder == true
+			//loopCountValue <= endVal
+
+			//isInOrder == false
+			//loopCountValue > endVal
+			
+			const Evaluated result = LessEqual(loopCount, endVal, *pEnv);
+			if (!IsType<bool>(result))
+			{
+				//ここを通ることはないはず
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return boost::none;
+			}
+
+			return As<bool>(result) == isInOrder;
+		};
+
+		const auto stepOrder = calcStepValue(startVal, endVal);
+		if (!stepOrder)
+		{
+			//エラー：ループのレンジが不正
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0;
+		}
+
+		const Evaluated step = stepOrder.value().first;
+		const bool isInOrder = stepOrder.value().second;
+
+		Evaluated loopCountValue = startVal;
+
+		Evaluated loopResult;
+
+		pEnv->push();
+
+		while (true)
+		{
+			const auto isLoopContinuesOpt = loopContinues(loopCountValue, isInOrder);
+			if (!isLoopContinuesOpt)
+			{
+				//エラー：ここを通ることはないはず
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return 0;
+			}
+
+			//ループの継続条件を満たさなかったので抜ける
+			if (!isLoopContinuesOpt.value())
+			{
+				break;
+			}
+
+			pEnv->bindNewValue(forExpression.loopCounter.name, loopCountValue);
+
+			loopResult = boost::apply_visitor(*this, forExpression.doExpr);
+
+			//ループカウンタの更新
+			loopCountValue = Add(loopCountValue, step, *pEnv);
+		}
+
+		pEnv->pop();
+		
+		return loopResult;
+	}
+
 	Evaluated operator()(const Return& return_statement)
 	{
 		std::cout << "Begin Return expression(" << ")" << std::endl;
@@ -2271,6 +2807,71 @@ public:
 		const Evaluated lhs = boost::apply_visitor(*this, return_statement.expr);
 		
 		return Jump::MakeReturn(lhs);
+	}
+
+	Evaluated operator()(const ListConstractor& listConstractor)
+	{
+		std::cout << "Begin ListConstractor()" << std::endl;
+
+		List list;
+		for (const auto& expr : listConstractor.data)
+		{
+			const Evaluated value = boost::apply_visitor(*this, expr);
+			list.append(value);
+		}
+
+		return list;
+	}
+
+	//リストの要素アクセスは全て左辺値になる
+	Evaluated operator()(const ListAccess& listAccess)
+	{
+		std::cout << "Begin ListAccess()" << std::endl;
+		
+		const Evaluated indexVal = boost::apply_visitor(*this, listAccess.index);
+		
+		if (!IsType<int>(indexVal))
+		{
+			//エラー：インデックスが整数でない
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0;
+		}
+
+		const int index = As<int>(indexVal);
+
+		/*if (auto listOpt = AsOpt<List>(listAccess.listRef))
+		{
+			return ListReference(listOpt.value().get(index));
+		}
+		else */if (auto identifierOpt = AsOpt<Identifier>(listAccess.listRef))
+		{
+			//if (auto refOpt = pEnv->ref(identifierOpt.value().name))
+			//{
+			//	if (auto listOpt = AsOpt<List>(refOpt.value()))
+			//	{
+			//		return ListReference(listOpt.value().get(index));
+			//	}
+			//	//エラー：定義された識別子がリスト型でない
+			//	std::cerr << "Error(" << __LINE__ << ")\n";
+			//	return 0;
+			//}
+			////エラー：識別子が定義されていない
+			//std::cerr << "Error(" << __LINE__ << ")\n";
+			//return 0;
+
+			if (auto idOpt = pEnv->findValueID(identifierOpt.value().name))
+			{
+				//ID=idOptの値がリスト型であるかをチェックする
+				return ListReference(idOpt.value(), index);
+			}
+			//エラー：識別子が定義されていない
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0;
+		}
+
+		//unknown error
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return 0;
 	}
 
 private:

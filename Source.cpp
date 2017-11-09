@@ -74,9 +74,10 @@ namespace cgl
 	struct Parser
 		: qi::grammar<Iterator, Lines(), Skipper>
 	{
-		//qi::rule<Iterator, RecordConstractor(), Skipper> record_maker;
+		qi::rule<Iterator, KeyExpr(), Skipper> record_keyexpr;
+		qi::rule<Iterator, RecordConstractor(), Skipper> record_maker;
 		qi::rule<Iterator, ListConstractor(), Skipper> list_maker;
-		qi::rule<Iterator, ListAccess(), Skipper> list_access;
+		qi::rule<Iterator, ListAccess(), Skipper> list_access, list_access1;
 		qi::rule<Iterator, For(), Skipper> for_expr;
 		qi::rule<Iterator, If(), Skipper> if_expr;
 		qi::rule<Iterator, Return(), Skipper> return_expr;
@@ -135,7 +136,7 @@ namespace cgl
 				);*/
 
 			expr_seq = statement[_val = _1] >> *(
-				*(lit('\n')) >> statement[Call(Lines::Concat, _val, _1)]
+				+(lit('\n')) >> statement[Call(Lines::Concat, _val, _1)]
 				);
 
 			statement = general_expr[_val = Call(Lines::Make, _1)] >> *(
@@ -143,7 +144,23 @@ namespace cgl
 				| (lit('\n') >> general_expr[Call(Lines::Append, _val, _1)])
 				);
 
-			//record_maker = (char_('{') >> char_('}'));
+			record_maker = (
+				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
+				*(
+				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					)
+				>> char_('}')
+				)
+				| (char_('{') >> s >> char_('}'));
+
+			/*record_maker = (char_('{') >> *(
+				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+				| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+				) >> char_('}'));*/
+
+			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
+			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
 			general_expr =
 				if_expr[_val = _1]
@@ -226,7 +243,13 @@ namespace cgl
 				)
 				| (char_('[') >> s >> char_(']'));
 
-			list_access = id[_val = Call(ListAccess::Make, _1)] >> s >> "[" >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> "]";
+			//list_access = id[_val = Call(ListAccess::Make, _1)] >> s >> "[" >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> "]";
+
+			/*list_access = id[_val = Call(ListAccess::Make, _1)] >> list_access1[Call(ListAccess::SetChild(_val, _1))];
+			list_access1 = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild(_val, _1))]);*/
+
+			list_access = id[_val = Call(ListAccess::Make, _1)] >> char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);
+			list_access1 = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);
 
 			factor = /*double_[_val = _1]
 				|*/ int_[_val = _1]
@@ -240,6 +263,7 @@ namespace cgl
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
+				| record_maker[_val = _1]
 				| id[_val = _1];
 
 			//range = factor[_val = Call(Range::Make, _1)] >> s >> lit("..") >> s >> factor[Call(Range::SetRhs,_val, _1)];

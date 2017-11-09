@@ -157,8 +157,11 @@ struct List;
 
 struct ListAccess;
 
-//struct KeyValue;
-//struct RecordConstractor;
+struct KeyExpr;
+struct RecordConstractor;
+
+struct KeyValue;
+struct Record;
 
 /*
 using Expr = boost::variant<
@@ -231,8 +234,7 @@ boost::recursive_wrapper<Return>
 //	boost::recursive_wrapper<Return> >;
 
 using types =
-//boost::mpl::vector17<
-boost::mpl::vector15<
+boost::mpl::vector17<
 	bool,
 	int,
 	double,
@@ -252,10 +254,10 @@ boost::mpl::vector15<
 	boost::recursive_wrapper<Return>,
 
 	boost::recursive_wrapper<ListConstractor>,
-	boost::recursive_wrapper<ListAccess>/*,
+	boost::recursive_wrapper<ListAccess>,
 
-	boost::recursive_wrapper<KeyValue>,
-	boost::recursive_wrapper<RecordConstractor>	*/
+	boost::recursive_wrapper<KeyExpr>,
+	boost::recursive_wrapper<RecordConstractor>
 >;
 
 using Expr = boost::make_variant_over<types>::type;
@@ -273,6 +275,8 @@ using Evaluated = boost::variant<
 	Identifier,
 	boost::recursive_wrapper<ListReference>,
 	boost::recursive_wrapper<List>,
+	boost::recursive_wrapper<KeyValue>,
+	boost::recursive_wrapper<Record>,
 	boost::recursive_wrapper<FuncVal>,
 	boost::recursive_wrapper<Jump>
 >;
@@ -660,15 +664,24 @@ struct List
 
 struct ListAccess
 {
-	boost::variant<ListConstractor, Identifier> listRef;
+	//一番上の親はlistRefを必ず持つ
+	boost::optional<boost::variant<ListConstractor, Identifier>> listRef;
+
 
 	Expr index;
+
+	//一番下の子供はchildを持たない
+	//boost::optional<ListAccess> child;
+	std::vector<ListAccess> child;
 
 	ListAccess() = default;
 
 	ListAccess(const Identifier& identifier):
 		listRef(identifier)
 	{}
+
+	ListReference fold(std::shared_ptr<Environment> pEnv)const;
+	void foldImpl(ListReference& listReference, std::shared_ptr<Environment> pEnv)const;
 
 	static ListAccess Make(const Identifier& identifier)
 	{
@@ -679,25 +692,107 @@ struct ListAccess
 	{
 		listAccess.index = index;
 	}
+
+	static void SetChild(ListAccess& listAccess, const ListAccess& listAccessChild)
+	{
+		//listAccess.child = listAccessChild;
+		listAccess.child.clear();
+		listAccess.child.push_back(listAccessChild);
+	}
 };
+
+//struct ListReference
+//{
+//	unsigned localValueID;
+//	int index;
+//
+//	ListReference() = default;
+//
+//	ListReference(unsigned localValueID, int index) :
+//		localValueID(localValueID),
+//		index(index)
+//	{}
+//};
 
 struct ListReference
 {
 	unsigned localValueID;
-	int index;
+	std::vector<int> indices;
 
 	ListReference() = default;
 
 	ListReference(unsigned localValueID, int index) :
 		localValueID(localValueID),
-		index(index)
+		indices({ index })
+	{}
+
+	void add(int index)
+	{
+		indices.push_back(index);
+	}
+};
+
+struct KeyExpr
+{
+	Identifier name;
+	Expr expr;
+
+	KeyExpr() = default;
+
+	KeyExpr(const Identifier& name) :
+		name(name)
+	{}
+
+	static KeyExpr Make(const Identifier& name)
+	{
+		return KeyExpr(name);
+	}
+
+	static void SetExpr(KeyExpr& keyval, const Expr& expr)
+	{
+		keyval.expr = expr;
+	}
+};
+
+struct RecordConstractor
+{
+	std::vector<Expr> exprs;
+
+	RecordConstractor() = default;
+
+	static void AppendKeyExpr(RecordConstractor& rec, const KeyExpr& KeyExpr)
+	{
+		rec.exprs.push_back(KeyExpr);
+	}
+
+	static void AppendExpr(RecordConstractor& rec, const Expr& expr)
+	{
+		rec.exprs.push_back(expr);
+	}
+};
+
+struct KeyValue
+{
+	Identifier name;
+	Evaluated value;
+
+	KeyValue() = default;
+
+	KeyValue(const Identifier& name, const Evaluated& value):
+		name(name),
+		value(value)
 	{}
 };
 
-//struct RecordConstractor
-//{
-//	KeyValue;
-//};
+struct Record
+{
+	std::unordered_map<std::string, Evaluated> values;
+
+	void append(const std::string& name, const Evaluated& value)
+	{
+		values[name] = value;
+	}
+};
 
 struct Jump
 {
@@ -790,7 +885,33 @@ inline void printEvaluated(const Evaluated& evaluated)
 	{
 		std::cout << "ListReference( ";
 		auto ref = As<ListReference>(evaluated);
-		std::cout << "LocalEnv(" << ref.localValueID << ")[" << ref.index << "]";
+		//std::cout << "LocalEnv(" << ref.localValueID << ")[" << ref.index << "]";
+
+		std::cout << "LocalEnv(" << ref.localValueID << ")";
+		for (const int index : ref.indices)
+		{
+			std::cout << "[" << index << "]";
+		}
+		
+		std::cout << " )";
+	}
+	else if (IsType<KeyValue>(evaluated))
+	{
+		std::cout << "KeyValue( ";
+		auto ref = As<KeyValue>(evaluated);
+		std::cout << ref.name.name << ":";
+		printEvaluated(ref.value);
+		std::cout << " )";
+	}
+	else if (IsType<Record>(evaluated))
+	{
+		std::cout << "Record( ";
+		auto ref = As<Record>(evaluated);
+		for (const auto& elem : ref.values)
+		{
+			std::cout << elem.first << ":";
+			printEvaluated(elem.second);
+		}
 		std::cout << " )";
 	}
 
@@ -946,16 +1067,39 @@ public:
 		}
 		else if (auto listRefOpt = AsOpt<ListReference>(reference))
 		{
-			const auto& listVal = m_values[listRefOpt.value().localValueID];
-			if (auto listOpt = AsOpt<List>(listVal))
+			const auto& ref = listRefOpt.value();
+			const auto& listVal = m_values[ref.localValueID];
+
+			boost::optional<const Evaluated&> result = listVal;
+			for (const int index : ref.indices)
 			{
-				return listOpt.value().data[listRefOpt.value().index];
+				if (auto listOpt = AsOpt<List>(result.value()))
+				{
+					result = listOpt.value().data[index];
+				}
+				else
+				{
+					//指定されたローカルIDの値がList型ではない
+					//リストの参照に失敗
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return reference;
+				}
 			}
-			else
+
+			//if (auto listOpt = AsOpt<List>(listVal))
+			//{
+			//	return listOpt.value().data[listRefOpt.value().index];
+			//}
+			//else
+			//{
+			//	//指定されたローカルIDの値がList型ではない
+			//	std::cerr << "Error(" << __LINE__ << ")\n";
+			//	return reference;
+			//}
+
+			if (result)
 			{
-				//指定されたローカルIDの値がList型ではない
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return reference;
+				return result.value();
 			}
 		}
 
@@ -966,6 +1110,22 @@ public:
 	{
 		return m_values[valueID];
 	}*/
+
+	//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
+	Evaluated expandList(const Evaluated& reference)
+	{
+		if (auto listOpt = AsOpt<List>(reference))
+		{
+			List expanded;
+			for (const auto& elem : listOpt.value().data)
+			{
+				expanded.append(expandList(elem));
+			}
+			return expanded;
+		}
+		
+		return dereference(reference);
+	}
 
 	void bindNewValue(const std::string& name, const Evaluated& value)
 	{
@@ -1061,6 +1221,49 @@ public:
 
 	void assignToList(const ListReference& listRef, const Evaluated& newValue)
 	{
+		std::cout << "assignToList:";
+
+		boost::optional<List&> listOpt;
+		if (listOpt = AsOpt<List>(m_values[listRef.localValueID]))
+		{
+			for (size_t i = 0; i < listRef.indices.size(); ++i)
+			{
+				const int currentIndex = listRef.indices[i];
+				Evaluated& result = listOpt.value().data[currentIndex];
+
+				std::cout << "index deref:" << currentIndex << "\n";
+
+				if (i + 1 == listRef.indices.size())
+				{
+					std::cout << "before assign:";
+					printEvaluated(result);
+
+					//最後まで読み終わったらここに来る
+					result = newValue;
+
+					std::cout << "after assign:";
+					printEvaluated(result);
+					return;
+				}
+				else if (!IsType<List>(result))
+				{
+					//まだインデックスが残っているのにデータがリストでなければ参照エラー
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return;
+				}
+
+				listOpt = As<List>(result);
+			}
+
+			//定義された識別子がリストでない
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return;
+		}
+
+		//指定されたIDのデータがList型ではない
+		std::cerr << "Error(" << __LINE__ << ")\n";
+
+		/*
 		if (auto listOpt = AsOpt<List>(m_values[listRef.localValueID]))
 		{
 			listOpt.value().data[listRef.index] = newValue;
@@ -1069,6 +1272,8 @@ public:
 
 		//指定されたIDのデータがList型ではない
 		std::cerr << "Error(" << __LINE__ << ")\n";
+
+		*/
 	}
 
 private:
@@ -1607,6 +1812,10 @@ inline Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment&
 			const auto& valueRhs = env.dereference(rhs);
 			env.bindNewValue(nameLhs, valueRhs);
 		}
+		else if (IsType<List>(rhs))
+		{
+			env.bindNewValue(nameLhs, env.expandList(rhs));
+		}
 		else
 		{
 			env.bindNewValue(nameLhs, rhs);
@@ -1629,6 +1838,10 @@ inline Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment&
 		{
 			const auto& valueRhs = env.dereference(rhs);
 			env.assignToList(listRefLhs, valueRhs);
+		}
+		else if (IsType<List>(rhs))
+		{
+			env.assignToList(listRefLhs, env.expandList(rhs));
 		}
 		else
 		{
@@ -2126,7 +2339,7 @@ public:
 		std::cout << indent() << ")" << std::endl;
 	}
 
-	void operator()(const ListAccess& listAccess)const
+	/*void operator()(const ListAccess& listAccess)const
 	{
 		std::cout << indent() << "ListConstractor(" << std::endl;
 
@@ -2141,6 +2354,59 @@ public:
 		}
 
 		boost::apply_visitor(Printer(m_indent + 1), listAccess.index);
+		std::cout << indent() << ")" << std::endl;
+	}*/
+
+	void operator()(const ListAccess& listAccess)const
+	{
+		std::cout << indent() << "ListAccess(" << std::endl;
+
+		if (auto listRefOpt = listAccess.listRef)
+		{
+			const auto listRef = listRefOpt.value();
+			const auto child = Printer(m_indent + 1);
+			if (IsType<Identifier>(listRef))
+			{
+				std::cout << child.indent() << As<Identifier>(listRef).name << std::endl;
+			}
+			else
+			{
+				std::cout << child.indent() << "ListVal()" << std::endl;
+			}
+		}
+		if (!listAccess.child.empty())
+		{
+			const Expr child = listAccess.child.front();
+
+			boost::apply_visitor(Printer(m_indent + 1), child);
+		}
+
+		boost::apply_visitor(Printer(m_indent + 1), listAccess.index);
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const KeyExpr& keyExpr)const
+	{
+		std::cout << indent() << "KeyExpr(" << std::endl;
+
+		const auto child = Printer(m_indent + 1);
+		
+		std::cout << child.indent() << keyExpr.name.name << std::endl;
+		boost::apply_visitor(Printer(m_indent + 1), keyExpr.expr);
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const RecordConstractor& recordConstractor)const
+	{
+		std::cout << indent() << "RecordConstractor(" << std::endl;
+
+		int i = 0;
+		for (const auto& expr : recordConstractor.exprs)
+		{
+			std::cout << indent() << "(" << i << "): " << std::endl;
+			boost::apply_visitor(Printer(m_indent + 1), expr);
+			++i;
+		}
 		std::cout << indent() << ")" << std::endl;
 	}
 };
@@ -2828,6 +3094,7 @@ public:
 	{
 		std::cout << "Begin ListAccess()" << std::endl;
 		
+		/*
 		const Evaluated indexVal = boost::apply_visitor(*this, listAccess.index);
 		
 		if (!IsType<int>(indexVal))
@@ -2839,26 +3106,8 @@ public:
 
 		const int index = As<int>(indexVal);
 
-		/*if (auto listOpt = AsOpt<List>(listAccess.listRef))
+		if (auto identifierOpt = AsOpt<Identifier>(listAccess.listRef))
 		{
-			return ListReference(listOpt.value().get(index));
-		}
-		else */if (auto identifierOpt = AsOpt<Identifier>(listAccess.listRef))
-		{
-			//if (auto refOpt = pEnv->ref(identifierOpt.value().name))
-			//{
-			//	if (auto listOpt = AsOpt<List>(refOpt.value()))
-			//	{
-			//		return ListReference(listOpt.value().get(index));
-			//	}
-			//	//エラー：定義された識別子がリスト型でない
-			//	std::cerr << "Error(" << __LINE__ << ")\n";
-			//	return 0;
-			//}
-			////エラー：識別子が定義されていない
-			//std::cerr << "Error(" << __LINE__ << ")\n";
-			//return 0;
-
 			if (auto idOpt = pEnv->findValueID(identifierOpt.value().name))
 			{
 				//ID=idOptの値がリスト型であるかをチェックする
@@ -2871,7 +3120,71 @@ public:
 
 		//unknown error
 		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0;
+		*/
+
+		return listAccess.fold(pEnv);
+	}
+
+	Evaluated operator()(const KeyExpr& keyExpr)
+	{
+		std::cout << "Begin KeyExpr()" << std::endl;
+		
+		const Evaluated value = boost::apply_visitor(*this, keyExpr.expr);
+
+		return KeyValue(keyExpr.name, value);
+	}
+
+	Evaluated operator()(const RecordConstractor& recordConsractor)
+	{
+		std::cout << "Begin RecordConstractor()" << std::endl;
+
+		pEnv->push();
+
+		std::vector<Identifier> keyList;
+
+		int i = 0;
+		for (const auto& expr : recordConsractor.exprs)
+		{
+			std::cout << "Evaluate expression(" << i << ")" << std::endl;
+			Evaluated value = boost::apply_visitor(*this, expr);
+
+			//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
+			if (auto keyValOpt = AsOpt<KeyValue>(value))
+			{
+				const auto keyVal = keyValOpt.value();
+				keyList.push_back(keyVal.name);
+
+				Assign(keyVal.name, keyVal.value, *pEnv);
+			}
+
+			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
+			if (IsLValue(value))
+			{
+				const Evaluated& resultValue = pEnv->dereference(value);
+				const bool isMacro = IsType<Jump>(resultValue);
+				if (isMacro)
+				{
+					value = As<Jump>(resultValue);
+				}
+			}
+
+			//途中でジャンプ命令を読んだら即座に評価を終了する
+			if (IsType<Jump>(value))
+			{
+				break;
+			}
+
+			++i;
+		}
+
+		Record record;
+		for (const auto& key : keyList)
+		{
+			record.append(key.name, pEnv->dereference(key));
+		}
+
+		pEnv->pop();
+		return record;
 	}
 
 private:
@@ -2913,6 +3226,82 @@ inline Evaluated evalExpr(const Expr& expr)
 	return result;
 }
 
+inline ListReference ListAccess::fold(std::shared_ptr<Environment> pEnv)const
+{
+	Eval evaluator(pEnv);
+
+	const Evaluated indexVal = boost::apply_visitor(evaluator, index);
+	if (!IsType<int>(indexVal))
+	{
+		//エラー：インデックスが整数でない
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return ListReference();
+	}
+
+	ListReference result;
+
+	const int index = As<int>(indexVal);
+
+	if (auto listRefOpt = listRef)
+	{
+		const auto listRefVal = listRefOpt.value();
+
+		if (auto identifierOpt = AsOpt<Identifier>(listRefVal))
+		{
+			if (auto idOpt = pEnv->findValueID(identifierOpt.value().name))
+			{
+				//ID = idOptの値がリスト型であるかをチェックするべき
+				result = ListReference(idOpt.value(), index);
+			}
+			else
+			{
+				//エラー：識別子が定義されていない
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return ListReference();
+			}
+		}
+		else
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return ListReference();
+		}
+	}
+	else
+	{
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return ListReference();
+	}
+
+	if (!child.empty())
+	{
+		child.front().foldImpl(result, pEnv);
+	}
+
+	return result;
+}
+
+inline void ListAccess::foldImpl(ListReference& listReference, std::shared_ptr<Environment> pEnv)const
+{
+	Eval evaluator(pEnv);
+
+	const Evaluated indexVal = boost::apply_visitor(evaluator, index);
+	if (!IsType<int>(indexVal))
+	{
+		//エラー：インデックスが整数でない
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		
+		listReference = ListReference();
+		return;
+	}
+
+	const int index = As<int>(indexVal);
+	listReference.add(index);
+
+	if (!child.empty())
+	{
+		child.front().foldImpl(listReference, pEnv);
+	}
+}
 
 //inline void Concat(Expr& lines1, const Expr& lines2)
 //{

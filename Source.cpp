@@ -16,6 +16,7 @@ auto MakeUnaryExpr(UnaryOp op)
 
 auto MakeBinaryExpr(BinaryOp op)
 {
+	std::cout << "MakeBinaryExpr" << std::endl;
 	return boost::phoenix::bind([](const auto& lhs, const auto& rhs, BinaryOp op) {
 		return BinaryExpr(lhs, rhs, op);
 	}, boost::spirit::_val, boost::spirit::_1, op);
@@ -74,10 +75,13 @@ namespace cgl
 	struct Parser
 		: qi::grammar<Iterator, Lines(), Skipper>
 	{
+		qi::rule<Iterator, FunctionAccess(), Skipper> functionAccess;
+		qi::rule<Iterator, RecordAccess(), Skipper> recordAccess;
+		qi::rule<Iterator, ListAccess(), Skipper> listAccess;
+		qi::rule<Iterator, Accessor(), Skipper> accessor;
 		qi::rule<Iterator, KeyExpr(), Skipper> record_keyexpr;
 		qi::rule<Iterator, RecordConstractor(), Skipper> record_maker;
 		qi::rule<Iterator, ListConstractor(), Skipper> list_maker;
-		qi::rule<Iterator, ListAccess(), Skipper> list_access, list_access1;
 		qi::rule<Iterator, For(), Skipper> for_expr;
 		qi::rule<Iterator, If(), Skipper> if_expr;
 		qi::rule<Iterator, Return(), Skipper> return_expr;
@@ -243,13 +247,22 @@ namespace cgl
 				)
 				| (char_('[') >> s >> char_(']'));
 
-			//list_access = id[_val = Call(ListAccess::Make, _1)] >> s >> "[" >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> "]";
+			/*list_access = id[_val = Call(ListAccess::Make, _1)] >> char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);
+			list_access1 = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);*/
 
-			/*list_access = id[_val = Call(ListAccess::Make, _1)] >> list_access1[Call(ListAccess::SetChild(_val, _1))];
-			list_access1 = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild(_val, _1))]);*/
+			accessor = factor[_val = Call(Accessor::Make, _1)] >> +(
+				functionAccess[Call(Accessor::AppendFunction, _val, _1)]
+				| listAccess[Call(Accessor::AppendList, _val, _1)]
+				| recordAccess[Call(Accessor::AppendRecord, _val, _1)]
+				);
+			
+			functionAccess = char_('(')
+				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
+				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
 
-			list_access = id[_val = Call(ListAccess::Make, _1)] >> char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);
-			list_access1 = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);
+			listAccess = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']');
+
+			recordAccess = char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
 
 			factor = /*double_[_val = _1]
 				|*/ int_[_val = _1]
@@ -258,7 +271,7 @@ namespace cgl
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| list_access[_val = _1]
+				| accessor[_val = _1]
 				| call_func[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
@@ -326,7 +339,7 @@ int main()
 
 #ifdef DO_TEST
 
-	std::vector<std::string> test_ok({
+	/*std::vector<std::string> test_ok({
 		"(1*2 + -3*-(4 + 5/6))",
 		"1/(3+4)^6^7",
 		"1 + 2, 3 + 4",
@@ -359,6 +372,9 @@ func = x ->
     return x
 
 func2 = x, y -> x + y)"
+	});*/
+	std::vector<std::string> test_ok({
+		"1 + 2 \n 3 + 4 \n"
 	});
 
 	std::vector<std::string> test_ng({

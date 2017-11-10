@@ -1378,7 +1378,8 @@ private:
 
 		for (auto it = m_bindingNames.rbegin(); it != m_bindingNames.rend(); ++it)
 		{
-			if (valueIDOpt = it->find(name))
+			valueIDOpt = it->find(name);
+			if (valueIDOpt)
 			{
 				break;
 			}
@@ -2315,7 +2316,8 @@ public:
 			if (IsType<Identifier>(callFunc.funcRef))
 			{
 				const auto& funcName = As<Identifier>(callFunc.funcRef);
-				boost::apply_visitor(Printer(m_indent + 2), Expr(funcName));
+				Expr expr(funcName);
+				boost::apply_visitor(Printer(m_indent + 2), expr);
 			}
 			else
 			{

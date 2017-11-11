@@ -16,8 +16,7 @@ auto MakeUnaryExpr(UnaryOp op)
 
 auto MakeBinaryExpr(BinaryOp op)
 {
-	std::cout << "MakeBinaryExpr" << std::endl;
-	return boost::phoenix::bind([](const auto& lhs, const auto& rhs, BinaryOp op) {
+	return boost::phoenix::bind([&](const auto& lhs, const auto& rhs, BinaryOp op) {
 		return BinaryExpr(lhs, rhs, op);
 	}, boost::spirit::_val, boost::spirit::_1, op);
 }
@@ -99,7 +98,7 @@ namespace cgl
 		//qi::rule<Iterator, Identifier(), Skipper> double_value, double_value2;
 
 
-		qi::rule<Iterator> s;
+		qi::rule<Iterator> s, s1;
 		qi::rule<Iterator> distinct_keyword;
 		qi::rule<Iterator, std::string(), Skipper> unchecked_identifier;
 		
@@ -184,7 +183,8 @@ namespace cgl
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
 			//def_func = arguments[_val = _1] >> lit("->") >> s >> expr_seq[Call(applyFuncDef, _val, _1)];
-			def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
+			//def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
+			def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
 
 			call_func = id[_val = Call(makeCallFunc, _1)] >> '('
 				>> -(s >> general_expr[Call(addArgument, _val, _1)])
@@ -250,7 +250,7 @@ namespace cgl
 			/*list_access = id[_val = Call(ListAccess::Make, _1)] >> char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);
 			list_access1 = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);*/
 
-			accessor = factor[_val = Call(Accessor::Make, _1)] >> +(
+			accessor = id[_val = Call(Accessor::Make, _1)] >> +(
 				functionAccess[Call(Accessor::AppendFunction, _val, _1)]
 				| listAccess[Call(Accessor::AppendList, _val, _1)]
 				| recordAccess[Call(Accessor::AppendRecord, _val, _1)]
@@ -293,7 +293,9 @@ namespace cgl
 			auto const unchecked_identifier = qi::lexeme[(qi::alpha | qi::char_('_')) >> *(qi::alnum | qi::char_('_'))];
 			auto const identifier_def = unchecked_identifier - distinct_keyword;*/
 
-			s = -(ascii::space);
+			s = *(ascii::space);
+			/*s = -(ascii::space) >> -(s1);
+			s1 = ascii::space >> -(s1);*/
 
 			//double_ だと 1. とかもパースできてしまうせいでレンジのパースに支障が出るので別に定義する
 			//double_value = lexeme[qi::char_('1', '9') >> *(ascii::digit) >> lit(".") >> +(ascii::digit)  [_val = Call(makeDouble, _1)]];
@@ -339,7 +341,7 @@ int main()
 
 #ifdef DO_TEST
 
-	/*std::vector<std::string> test_ok({
+	std::vector<std::string> test_ok({
 		"(1*2 + -3*-(4 + 5/6))",
 		"1/(3+4)^6^7",
 		"1 + 2, 3 + 4",
@@ -348,6 +350,8 @@ int main()
 		"1 + 2 \n 3 + 4 \n",
 		"1 + 1, \n 2 + 3",
 		"1 + 1 \n \n \n 2 + 3",
+		"1 + \n \n \n 2",
+		"1 + 2 \n 3 + 4 \n\n\n\n\n",
 		"1 + 2 \n , 4*5",
 		"1 + 3 * \n 4 + 5",
 		"(-> 1 + 2)",
@@ -372,11 +376,8 @@ func = x ->
     return x
 
 func2 = x, y -> x + y)"
-	});*/
-	std::vector<std::string> test_ok({
-		"1 + 2 \n 3 + 4 \n"
 	});
-
+	
 	std::vector<std::string> test_ng({
 		", 3*4",
 		"1 + 1 , , 2 + 3",
@@ -463,7 +464,7 @@ func2 = x, y -> x + y)"
 #endif
 
 	std::string buffer;
-	while (std::cout << ">>", std::getline(std::cin, buffer))
+	while (std::cout << ">> ", std::getline(std::cin, buffer))
 	{
 		Lines lines;
 		const bool succeed = parse(buffer, lines);

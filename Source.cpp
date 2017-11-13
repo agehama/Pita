@@ -57,7 +57,8 @@ namespace cgl
 		keywords_t() {
 			add("for", qi::unused)
 				("in", qi::unused)
-				("while", qi::unused);
+				("sat", qi::unused)
+				("free", qi::unused);
 		}
 	} const keywords;
 
@@ -74,6 +75,9 @@ namespace cgl
 	struct Parser
 		: qi::grammar<Iterator, Lines(), Skipper>
 	{
+		qi::rule<Iterator, DeclSat(), Skipper> constraints;
+		qi::rule<Iterator, DeclFree(), Skipper> freeVals;
+
 		qi::rule<Iterator, FunctionAccess(), Skipper> functionAccess;
 		qi::rule<Iterator, RecordAccess(), Skipper> recordAccess;
 		qi::rule<Iterator, ListAccess(), Skipper> listAccess;
@@ -190,6 +194,11 @@ namespace cgl
 				>> -(s >> general_expr[Call(addArgument, _val, _1)])
 				>> *(s >> ',' >> s >> general_expr[Call(addArgument, _val, _1)]) >> s >> ')';
 
+			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
+			freeVals = lit("free") >> '(' >> s >> (accessor[_val = Call(DeclSat::AddReference, _val, _1)] | id[_val = Call(DeclSat::AddIdentifier, _val, _1)]) >> *(
+				s >> ", " >> s >> (accessor[_val = Call(DeclSat::AddReference, _val, _1)] | id[_val = Call(DeclSat::AddIdentifier, _val, _1)])
+				) >> s >> ')';
+
 			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));
 
 			logic_expr = logic_term[_val = _1] >> *(s >> '|' >> s >> logic_term[_val = MakeBinaryExpr(BinaryOp::Or)]);
@@ -271,6 +280,8 @@ namespace cgl
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
+				| constraints[_val = _1]
+				| freeVals[_val = _1]
 				| accessor[_val = _1]
 				| call_func[_val = _1]
 				| def_func[_val = _1]
@@ -375,7 +386,10 @@ func = x ->
     x + 1
     return x
 
-func2 = x, y -> x + y)"
+func2 = x, y -> x + y)",
+"a = {a: 1, b: [1, {a: 2, b: 4}, 3]}, a.b[1].a = {x: 3, y: 5}, a",
+"x = 10, f = ->x + 1, f()",
+"x = 10, g = (f = ->x + 1, f), g()"
 	});
 	
 	std::vector<std::string> test_ng({

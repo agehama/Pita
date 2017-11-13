@@ -196,78 +196,11 @@ struct Accessor;
 
 struct FunctionCaller;
 
-/*
-using Expr = boost::variant<
-int,
-double,
-Identifier,
-boost::recursive_wrapper<Statement>,
-boost::recursive_wrapper<Lines>,
-boost::recursive_wrapper<DefFunc>,
-boost::recursive_wrapper<CallFunc>,
-
-boost::recursive_wrapper<UnaryExpr<Not>>,
-boost::recursive_wrapper<BinaryExpr<And>>,
-boost::recursive_wrapper<BinaryExpr<Or>>,
-
-boost::recursive_wrapper<BinaryExpr<LessThan>>,
-boost::recursive_wrapper<BinaryExpr<LessEqual>>,
-boost::recursive_wrapper<BinaryExpr<GreaterThan>>,
-boost::recursive_wrapper<BinaryExpr<GreaterEqual>>,
-
-boost::recursive_wrapper<UnaryExpr<Add>>,
-boost::recursive_wrapper<UnaryExpr<Sub>>,
-
-boost::recursive_wrapper<BinaryExpr<Add>>,
-boost::recursive_wrapper<BinaryExpr<Sub>>,
-boost::recursive_wrapper<BinaryExpr<Mul>>,
-boost::recursive_wrapper<BinaryExpr<Div>>,
-
-boost::recursive_wrapper<BinaryExpr<Pow>>,
-boost::recursive_wrapper<BinaryExpr<Assign>>,
-
-boost::recursive_wrapper<If>,
-boost::recursive_wrapper<Return>
->;
-*/
-
-//using types =
-//boost::mpl::vector26<
-//	int,
-//	double,
-//	Identifier,
-//	boost::recursive_wrapper<Statement>,
-//	boost::recursive_wrapper<Lines>,
-//	boost::recursive_wrapper<DefFunc>,
-//	boost::recursive_wrapper<CallFunc>,
-//
-//	boost::recursive_wrapper<UnaryExpr<Not>>,
-//	boost::recursive_wrapper<BinaryExpr<And>>,
-//	boost::recursive_wrapper<BinaryExpr<Or>>,
-//
-//	boost::recursive_wrapper<BinaryExpr<Equal>>,
-//	boost::recursive_wrapper<BinaryExpr<NotEqual>>,
-//	boost::recursive_wrapper<BinaryExpr<LessThan>>,
-//	boost::recursive_wrapper<BinaryExpr<LessEqual>>,
-//	boost::recursive_wrapper<BinaryExpr<GreaterThan>>,
-//	boost::recursive_wrapper<BinaryExpr<GreaterEqual>>,
-//
-//	boost::recursive_wrapper<UnaryExpr<Add>>,
-//	boost::recursive_wrapper<UnaryExpr<Sub>>,
-//
-//	boost::recursive_wrapper<BinaryExpr<Add>>,
-//	boost::recursive_wrapper<BinaryExpr<Sub>>,
-//	boost::recursive_wrapper<BinaryExpr<Mul>>,
-//	boost::recursive_wrapper<BinaryExpr<Div>>,
-//
-//	boost::recursive_wrapper<BinaryExpr<Pow>>,
-//	boost::recursive_wrapper<BinaryExpr<Assign>>,
-//
-//	boost::recursive_wrapper<If>,
-//	boost::recursive_wrapper<Return> >;
+struct DeclSat;
+struct DeclFree;
 
 using types =
-boost::mpl::vector18<
+boost::mpl::vector20<
 	bool,
 	int,
 	double,
@@ -287,17 +220,15 @@ boost::mpl::vector18<
 	boost::recursive_wrapper<Return>,
 
 	boost::recursive_wrapper<ListConstractor>,
-	
+
 	boost::recursive_wrapper<KeyExpr>,
 	boost::recursive_wrapper<RecordConstractor>,
-
-	/*boost::recursive_wrapper<ListAccess>,
-	boost::recursive_wrapper<RecordAccess>,
-	boost::recursive_wrapper<FunctionAccess>,*/
-
+	
 	boost::recursive_wrapper<Accessor>,
+	boost::recursive_wrapper<FunctionCaller>,
 
-	boost::recursive_wrapper<FunctionCaller>
+	boost::recursive_wrapper<DeclSat>,
+	boost::recursive_wrapper<DeclFree>
 	>;
 
 using Expr = boost::make_variant_over<types>::type;
@@ -306,8 +237,6 @@ void printExpr(const Expr& expr);
 
 struct Jump;
 
-//struct ListReference;
-
 struct ObjectReference;
 
 using Evaluated = boost::variant<
@@ -315,18 +244,18 @@ using Evaluated = boost::variant<
 	int,
 	double,
 	Identifier,
-	//boost::recursive_wrapper<ListReference>,
 	boost::recursive_wrapper<ObjectReference>,
 	boost::recursive_wrapper<List>,
 	boost::recursive_wrapper<KeyValue>,
 	boost::recursive_wrapper<Record>,
 	boost::recursive_wrapper<FuncVal>,
-	boost::recursive_wrapper<Jump>
+	boost::recursive_wrapper<Jump>,
+	boost::recursive_wrapper<DeclSat>,
+	boost::recursive_wrapper<DeclFree>
 >;
 
 bool IsLValue(const Evaluated& value)
 {
-	//return IsType<Identifier>(value) || IsType<ListReference>(value);
 	return IsType<Identifier>(value) || IsType<ObjectReference>(value);
 }
 
@@ -539,25 +468,6 @@ struct DefFunc
 	}
 };
 
-//inline FuncVal GetFuncVal(const Identifier& funcName)
-//{
-//	const auto funcItOpt = findVariable(funcName.name);
-//
-//	if (!funcItOpt)
-//	{
-//		std::cerr << "Error(" << __LINE__ << "): function \"" << funcName.name << "\" was not found." << "\n";
-//	}
-//
-//	const auto funcIt = funcItOpt.get();
-//
-//	if (!SameType(funcIt->second.type(), typeid(FuncVal)))
-//	{
-//		std::cerr << "Error(" << __LINE__ << "): function \"" << funcName.name << "\" is not a function." << "\n";
-//	}
-//
-//	return boost::get<FuncVal>(funcIt->second);
-//}
-
 struct CallFunc
 {
 	boost::variant<FuncVal, Identifier> funcRef;
@@ -769,24 +679,6 @@ struct List
 //	}
 //};
 
-//struct ListReference
-//{
-//	unsigned localValueID;
-//	std::vector<int> indices;
-//
-//	ListReference() = default;
-//
-//	ListReference(unsigned localValueID, int index) :
-//		localValueID(localValueID),
-//		indices({ index })
-//	{}
-//
-//	void add(int index)
-//	{
-//		indices.push_back(index);
-//	}
-//};
-
 struct KeyExpr
 {
 	Identifier name;
@@ -842,6 +734,8 @@ struct KeyValue
 struct Record
 {
 	std::unordered_map<std::string, Evaluated> values;
+	Expr constraints;
+	std::vector<DeclFree::Ref> freeVariables;
 
 	void append(const std::string& name, const Evaluated& value)
 	{
@@ -940,9 +834,6 @@ struct ObjectReference
 	{
 		references.push_back(FunctionRef(args));
 	}
-
-
-
 };
 
 struct Accessor
@@ -979,9 +870,43 @@ struct Accessor
 	{
 		obj.accesses.push_back(access);
 	}
-
-
 };
+
+struct DeclSat
+{
+	Expr expr;
+
+	DeclSat() = default;
+
+	DeclSat(const Expr& expr):
+		expr(expr)
+	{}
+
+	static DeclSat Make(const Expr& expr)
+	{
+		return DeclSat(expr);
+	}
+};
+
+struct DeclFree
+{
+	using Ref = boost::variant<Identifier, ObjectReference>;
+
+	std::vector<Ref> refs;
+
+	DeclFree() = default;
+
+	static void AddIdentifier(DeclFree& decl, const Identifier& ref)
+	{
+		decl.refs.push_back(ref);
+	}
+
+	static void AddReference(DeclFree& decl, const ObjectReference& ref)
+	{
+		decl.refs.push_back(ref);
+	}
+};
+
 
 struct Jump
 {
@@ -2212,6 +2137,22 @@ public:
 
 		std::cout << indent() << ")" << std::endl;
 	}
+
+	void operator()(const DeclSat& decl)const
+	{
+		decl;
+		std::cout << indent() << "Accessor(" << std::endl;
+
+		std::cout << indent() << ")" << std::endl;
+	}
+
+	void operator()(const DeclFree& decl)const
+	{
+		decl;
+		std::cout << indent() << "Accessor(" << std::endl;
+
+		std::cout << indent() << ")" << std::endl;
+	}
 };
 
 
@@ -2743,6 +2684,8 @@ public:
 		レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアスとして定義（スコープを抜けたら元に戻る≒遮蔽）
 		*/
 
+		Record record;
+
 		int i = 0;
 		for (const auto& expr : recordConsractor.exprs)
 		{
@@ -2756,6 +2699,22 @@ public:
 				keyList.push_back(keyVal.name);
 
 				Assign(keyVal.name, keyVal.value, *pEnv);
+			}
+			else if (auto declSatOpt = AsOpt<DeclSat>(value))
+			{
+
+				//Expr constraints;
+				//std::vector<DeclFree::Ref> freeVariables;
+
+				record.constraints = declSatOpt.value().expr;
+			}
+			else if (auto declFreeOpt = AsOpt<DeclFree>(value))
+			{
+				const auto& refs = declFreeOpt.value().refs;
+				//record.freeVariables.push_back(declFreeOpt.value().refs);
+				
+				record.freeVariables.insert(record.freeVariables.end(), refs.begin(), refs.end());
+
 			}
 
 			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
@@ -2778,7 +2737,6 @@ public:
 			++i;
 		}
 
-		Record record;
 		for (const auto& key : keyList)
 		{
 			record.append(key.name, pEnv->dereference(key));
@@ -2836,6 +2794,16 @@ public:
 		}
 
 		return result;
+	}
+
+	Evaluated operator()(const DeclSat& decl)
+	{
+		return decl;
+	}
+
+	Evaluated operator()(const DeclFree& decl)
+	{
+		return decl;
 	}
 
 private:

@@ -209,7 +209,7 @@ namespace cgl
 				s >> ", " >> s >> (accessor[Call(DeclFree::AddReference, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)])
 				) >> s >> ')';*/
 			freeVals = lit("free") >> '(' >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)] >> *(
-				s >> ", " >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)]
+				s >> "," >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)]
 				) >> s >> ')';
 
 			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));

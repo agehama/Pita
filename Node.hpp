@@ -1,4 +1,5 @@
 #pragma once
+#pragma warning(disable:4996)
 #include <cmath>
 #include <vector>
 #include <memory>
@@ -12,6 +13,14 @@
 #include <boost/variant/variant.hpp>
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
+
+#include <cmaes.h>
+
+#ifdef _DEBUG
+#pragma comment(lib,"Debug/cmaes.lib")
+#else
+#pragma comment(lib,"Release/cmaes.lib")
+#endif
 
 template<class T1, class T2>
 inline bool SameType(const T1& t1, const T2& t2)
@@ -1676,6 +1685,55 @@ inline Evaluated Max(const Evaluated& lhs_, const Evaluated& rhs_, Environment& 
 	return 0;
 }
 
+inline Evaluated Min(const Evaluated& lhs_, const Evaluated& rhs_, Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return std::min(As<int>(lhs), As<int>(rhs));
+		}
+		else if (IsType<double>(rhs))
+		{
+			return std::min<double>(As<int>(lhs), As<double>(rhs));
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return std::min<double>(As<double>(lhs), As<int>(rhs));
+		}
+		else if (IsType<double>(rhs))
+		{
+			return std::min(As<double>(lhs), As<double>(rhs));
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
+inline Evaluated Abs(const Evaluated& lhs_, Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+
+	if (IsType<int>(lhs))
+	{
+		return std::abs(As<int>(lhs));
+	}
+	else if (IsType<double>(lhs))
+	{
+		return std::abs(As<double>(lhs));
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
 inline Evaluated Add(const Evaluated& lhs_, const Evaluated& rhs_, Environment& env)
 {
 	const Evaluated lhs = env.dereference(lhs_);
@@ -2276,9 +2334,9 @@ public:
 		switch (node.op)
 		{
 		case BinaryOp::And: return Add(lhs, rhs, *pEnv);
-		case BinaryOp::Or:  return Max(lhs, rhs, *pEnv);
+		case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
 
-		case BinaryOp::Equal:        return Sub(lhs, rhs, *pEnv);
+		case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
 		case BinaryOp::NotEqual:     return As<bool>(Equal(lhs, rhs, *pEnv)) ? 1.0 : 0.0;
 		case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);
 		case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);
@@ -2913,6 +2971,7 @@ public:
 			record.append(key.name, pEnv->dereference(key));
 		}
 
+		std::vector<double> resultxs;
 		//auto Environment::Make(*pEnv);
 		if(record.constraint)
 		{
@@ -2953,11 +3012,12 @@ public:
 			a > b  => Minimize(C * Max(b - a - e, 0))
 			*/
 
-			const auto func = [&](const std::vector<double>& xs)->double
+			libcmaes::FitFunc func = [&](const double *x, const int N)->double
 			{
 				pEnv->pushNormal();
 
-				for (size_t i = 0; i < xs.size(); ++i)
+				//for (size_t i = 0; i < xs.size(); ++i)
+				for (int i = 0; i < N; ++i)
 				{
 					if (!IsType<Identifier>(record.freeVariables[i]))
 					{
@@ -2965,11 +3025,10 @@ public:
 						return 0;
 					}
 
-					As<Identifier>(record.freeVariables[i]).name;
+					//const auto val = pEnv->dereference(As<Identifier>(record.freeVariables[i]));
 
-					const auto val = pEnv->dereference(As<Identifier>(record.freeVariables[i]));
-
-					pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, val);
+					//pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, val);
+					pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, x[i]);
 				}
 
 				EvalSat evaluator(pEnv);
@@ -2980,9 +3039,42 @@ public:
 				const double d = As<double>(errorVal);
 				return d;
 			};
+
+			std::vector<double> x0(record.freeVariables.size());
+			//for (int i = 0; i < x0.size(); ++i)
+			//{
+			//	if (!IsType<Identifier>(record.freeVariables[i]))
+			//	{
+			//		std::cerr << "–¢‘Î‰ž" << std::endl;
+			//		return 0;
+			//	}
+
+			//	const auto val = pEnv->dereference(As<Identifier>(record.freeVariables[i]));
+			//	x0[i];
+
+			//	//
+
+			//	//pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, val);
+			//	pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, x[i]);
+			//}
+
+			const double sigma = 0.1;
+
+			const int lambda = 100;
+
+			libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+			libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
+
+			resultxs = cmasols.best_candidate().get_x();
+		}
+
+		for (int i = 0; i < resultxs.size(); ++i)
+		{
+			record.append(As<Identifier>(record.freeVariables[i]).name, resultxs[i]);
 		}
 
 		pEnv->pop();
+
 		return record;
 	}
 

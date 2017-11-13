@@ -154,6 +154,16 @@ struct Identifier
 	Identifier(char name_) :
 		name({ name_ })
 	{}
+
+	bool operator==(const Identifier& other)const
+	{
+		return name == other.name;
+	}
+
+	bool operator!=(const Identifier& other)const
+	{
+		return !(*this == other);
+	}
 };
 
 struct FuncVal;
@@ -252,6 +262,15 @@ using Evaluated = boost::variant<
 	boost::recursive_wrapper<Jump>,
 	boost::recursive_wrapper<DeclSat>,
 	boost::recursive_wrapper<DeclFree>
+>;
+
+using SatExpr = boost::variant<
+	bool,
+	int,
+	double,
+	Identifier,
+	boost::recursive_wrapper<UnaryExpr>,
+	boost::recursive_wrapper<BinaryExpr>
 >;
 
 bool IsLValue(const Evaluated& value)
@@ -731,10 +750,93 @@ struct KeyValue
 	{}
 };
 
+struct DeclSat
+{
+	Expr expr;
+
+	DeclSat() = default;
+
+	DeclSat(const Expr& expr) :
+		expr(expr)
+	{}
+
+	static DeclSat Make(const Expr& expr)
+	{
+		return DeclSat(expr);
+	}
+};
+
+struct ObjectReference
+{
+	struct ListRef
+	{
+		int index;
+
+		ListRef() = default;
+		ListRef(int index) :index(index) {}
+	};
+
+	struct RecordRef
+	{
+		std::string key;
+
+		RecordRef() = default;
+		RecordRef(const std::string& key) :key(key) {}
+	};
+
+	struct FunctionRef
+	{
+		std::vector<Evaluated> args;
+
+		FunctionRef() = default;
+		FunctionRef(const std::vector<Evaluated>& args) :args(args) {}
+	};
+
+	using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
+
+	std::string name;
+
+	std::vector<Ref> references;
+
+	void appendListRef(int index)
+	{
+		references.push_back(ListRef(index));
+	}
+
+	void appendRecordRef(const std::string& key)
+	{
+		references.push_back(RecordRef(key));
+	}
+
+	void appendFunctionRef(const std::vector<Evaluated>& args)
+	{
+		references.push_back(FunctionRef(args));
+	}
+};
+
+struct DeclFree
+{
+	using Ref = boost::variant<Identifier, boost::recursive_wrapper<ObjectReference>>;
+
+	std::vector<Ref> refs;
+
+	DeclFree() = default;
+
+	static void AddIdentifier(DeclFree& decl, const Identifier& ref)
+	{
+		decl.refs.push_back(ref);
+	}
+
+	/*static void AddReference(DeclFree& decl, const ObjectReference& ref)
+	{
+		decl.refs.push_back(ref);
+	}*/
+};
+
 struct Record
 {
 	std::unordered_map<std::string, Evaluated> values;
-	Expr constraints;
+	boost::optional<Expr> constraint;
 	std::vector<DeclFree::Ref> freeVariables;
 
 	void append(const std::string& name, const Evaluated& value)
@@ -788,54 +890,6 @@ struct FunctionAccess
 	}
 };
 
-struct ObjectReference
-{
-	struct ListRef
-	{
-		int index;
-
-		ListRef() = default;
-		ListRef(int index) :index(index) {}
-	};
-
-	struct RecordRef
-	{
-		std::string key;
-
-		RecordRef() = default;
-		RecordRef(const std::string& key) :key(key) {}		
-	};
-
-	struct FunctionRef
-	{
-		std::vector<Evaluated> args;
-
-		FunctionRef() = default;
-		FunctionRef(const std::vector<Evaluated>& args) :args(args) {}
-	};
-
-	using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
-
-	std::string name;
-
-	std::vector<Ref> references;
-
-	void appendListRef(int index)
-	{
-		references.push_back(ListRef(index));
-	}
-
-	void appendRecordRef(const std::string& key)
-	{
-		references.push_back(RecordRef(key));
-	}
-
-	void appendFunctionRef(const std::vector<Evaluated>& args)
-	{
-		references.push_back(FunctionRef(args));
-	}
-};
-
 struct Accessor
 {
 	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
@@ -871,42 +925,6 @@ struct Accessor
 		obj.accesses.push_back(access);
 	}
 };
-
-struct DeclSat
-{
-	Expr expr;
-
-	DeclSat() = default;
-
-	DeclSat(const Expr& expr):
-		expr(expr)
-	{}
-
-	static DeclSat Make(const Expr& expr)
-	{
-		return DeclSat(expr);
-	}
-};
-
-struct DeclFree
-{
-	using Ref = boost::variant<Identifier, ObjectReference>;
-
-	std::vector<Ref> refs;
-
-	DeclFree() = default;
-
-	static void AddIdentifier(DeclFree& decl, const Identifier& ref)
-	{
-		decl.refs.push_back(ref);
-	}
-
-	static void AddReference(DeclFree& decl, const ObjectReference& ref)
-	{
-		decl.refs.push_back(ref);
-	}
-};
-
 
 struct Jump
 {
@@ -1058,6 +1076,16 @@ public:
 	void operator()(const Jump& node)const
 	{
 		std::cout << indent() << "Jump(" << node.op << ")" << std::endl;
+	}
+
+	void operator()(const DeclSat& node)const
+	{
+		std::cout << indent() << "DeclSat(" << ")" << std::endl;
+	}
+
+	void operator()(const DeclFree& node)const
+	{
+		std::cout << indent() << "DeclFree(" << ")" << std::endl;
 	}
 };
 
@@ -1616,6 +1644,38 @@ inline Evaluated GreaterEqual(const Evaluated& lhs_, const Evaluated& rhs_, Envi
 	return 0;
 }
 
+inline Evaluated Max(const Evaluated& lhs_, const Evaluated& rhs_, Environment& env)
+{
+	const Evaluated lhs = env.dereference(lhs_);
+	const Evaluated rhs = env.dereference(rhs_);
+
+	if (IsType<int>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return std::max(As<int>(lhs), As<int>(rhs));
+		}
+		else if (IsType<double>(rhs))
+		{
+			return std::max<double>(As<int>(lhs), As<double>(rhs));
+		}
+	}
+	else if (IsType<double>(lhs))
+	{
+		if (IsType<int>(rhs))
+		{
+			return std::max<double>(As<double>(lhs), As<int>(rhs));
+		}
+		else if (IsType<double>(rhs))
+		{
+			return std::max(As<double>(lhs), As<double>(rhs));
+		}
+	}
+
+	std::cerr << "Error(" << __LINE__ << ")\n";
+	return 0;
+}
+
 inline Evaluated Add(const Evaluated& lhs_, const Evaluated& rhs_, Environment& env)
 {
 	const Evaluated lhs = env.dereference(lhs_);
@@ -2140,19 +2200,123 @@ public:
 
 	void operator()(const DeclSat& decl)const
 	{
-		decl;
-		std::cout << indent() << "Accessor(" << std::endl;
+		std::cout << indent() << "DeclSat(" << std::endl;
 
 		std::cout << indent() << ")" << std::endl;
 	}
 
 	void operator()(const DeclFree& decl)const
 	{
-		decl;
-		std::cout << indent() << "Accessor(" << std::endl;
+		std::cout << indent() << "DeclFree(" << std::endl;
 
 		std::cout << indent() << ")" << std::endl;
 	}
+};
+
+
+class EvalSat : public boost::static_visitor<Evaluated>
+{
+public:
+
+	EvalSat(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
+
+	Evaluated operator()(bool node)
+	{
+		return node;
+	}
+
+	Evaluated operator()(int node)
+	{
+		return node;
+	}
+
+	Evaluated operator()(double node)
+	{
+		return node;
+	}
+
+	Evaluated operator()(const Identifier& node)
+	{
+		return pEnv->dereference(node);
+	}
+
+	Evaluated operator()(const UnaryExpr& node)
+	{
+		const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
+
+		switch (node.op)
+		{
+		case UnaryOp::Not:   return Not(lhs, *pEnv);
+		case UnaryOp::Minus: return Minus(lhs, *pEnv);
+		case UnaryOp::Plus:  return Plus(lhs, *pEnv);
+		}
+
+		std::cerr << "Error(" << __LINE__ << ")\n";
+
+		return 0;
+	}
+
+	Evaluated operator()(const BinaryExpr& node)
+	{
+		const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
+		const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
+
+		/*
+		a == b => Minimize(C * Abs(a - b))
+		a != b => Minimize(C * (a == b ? 1 : 0))
+		a < b  => Minimize(C * Max(a - b, 0))
+		a > b  => Minimize(C * Max(b - a, 0))
+
+		e : error
+		a == b => Minimize(C * Max(Abs(a - b) - e, 0))
+		a != b => Minimize(C * (a == b ? 1 : 0))
+		a < b  => Minimize(C * Max(a - b - e, 0))
+		a > b  => Minimize(C * Max(b - a - e, 0))
+		*/
+		switch (node.op)
+		{
+		case BinaryOp::And: return Add(lhs, rhs, *pEnv);
+		case BinaryOp::Or:  return Max(lhs, rhs, *pEnv);
+
+		case BinaryOp::Equal:        return Sub(lhs, rhs, *pEnv);
+		case BinaryOp::NotEqual:     return As<bool>(Equal(lhs, rhs, *pEnv)) ? 1.0 : 0.0;
+		case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);
+		case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);
+		case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0, *pEnv);
+		case BinaryOp::GreaterEqual: return Max(Sub(rhs, lhs, *pEnv), 0, *pEnv);
+
+		case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
+		case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
+		case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
+		case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+
+		case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
+		//case BinaryOp::Assign: return Assign(lhs, rhs, *pEnv);
+		}
+
+		std::cerr << "Error(" << __LINE__ << ")\n";
+
+		return 0;
+	}
+
+	Evaluated operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const CallFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const Accessor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Evaluated operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+
+private:
+
+	std::shared_ptr<Environment> pEnv;
 };
 
 
@@ -2706,7 +2870,15 @@ public:
 				//Expr constraints;
 				//std::vector<DeclFree::Ref> freeVariables;
 
-				record.constraints = declSatOpt.value().expr;
+				//record.constraint = declSatOpt.value().expr;
+				if (record.constraint)
+				{
+					record.constraint = BinaryExpr(record.constraint.value(), declSatOpt.value().expr, BinaryOp::And);
+				}
+				else
+				{
+					record.constraint = declSatOpt.value().expr;
+				}
 			}
 			else if (auto declFreeOpt = AsOpt<DeclFree>(value))
 			{
@@ -2714,7 +2886,6 @@ public:
 				//record.freeVariables.push_back(declFreeOpt.value().refs);
 				
 				record.freeVariables.insert(record.freeVariables.end(), refs.begin(), refs.end());
-
 			}
 
 			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
@@ -2740,6 +2911,75 @@ public:
 		for (const auto& key : keyList)
 		{
 			record.append(key.name, pEnv->dereference(key));
+		}
+
+		//auto Environment::Make(*pEnv);
+		if(record.constraint)
+		{
+			const Expr& constraint = record.constraint.value();
+
+			/*std::vector<double> xs(record.freeVariables.size());
+			for (size_t i = 0; i < xs.size(); ++i)
+			{
+				if (!IsType<Identifier>(record.freeVariables[i]))
+				{
+					std::cerr << "未対応" << std::endl;
+					return 0;
+				}
+
+				As<Identifier>(record.freeVariables[i]).name;
+
+				const auto val = pEnv->dereference(As<Identifier>(record.freeVariables[i]));
+
+				if (!IsType<int>(val))
+				{
+					std::cerr << "未対応" << std::endl;
+					return 0;
+				}
+
+				xs[i] = As<int>(val);
+			}*/
+
+			/*
+			a == b => Minimize(C * Abs(a - b))
+			a != b => Minimize(C * (a == b ? 1 : 0))
+			a < b  => Minimize(C * Max(a - b, 0))
+			a > b  => Minimize(C * Max(b - a, 0))
+
+			e : error
+			a == b => Minimize(C * Max(Abs(a - b) - e, 0))
+			a != b => Minimize(C * (a == b ? 1 : 0))
+			a < b  => Minimize(C * Max(a - b - e, 0))
+			a > b  => Minimize(C * Max(b - a - e, 0))
+			*/
+
+			const auto func = [&](const std::vector<double>& xs)->double
+			{
+				pEnv->pushNormal();
+
+				for (size_t i = 0; i < xs.size(); ++i)
+				{
+					if (!IsType<Identifier>(record.freeVariables[i]))
+					{
+						std::cerr << "未対応" << std::endl;
+						return 0;
+					}
+
+					As<Identifier>(record.freeVariables[i]).name;
+
+					const auto val = pEnv->dereference(As<Identifier>(record.freeVariables[i]));
+
+					pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, val);
+				}
+
+				EvalSat evaluator(pEnv);
+				Evaluated errorVal = boost::apply_visitor(evaluator, constraint);
+
+				pEnv->pop();
+
+				const double d = As<double>(errorVal);
+				return d;
+			};
 		}
 
 		pEnv->pop();

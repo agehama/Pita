@@ -194,9 +194,22 @@ namespace cgl
 				>> -(s >> general_expr[Call(addArgument, _val, _1)])
 				>> *(s >> ',' >> s >> general_expr[Call(addArgument, _val, _1)]) >> s >> ')';
 
+			/*
+			using SatExpr = boost::variant<
+	bool,
+	int,
+	double,
+	Identifier,
+	boost::recursive_wrapper<UnaryExpr>,
+	boost::recursive_wrapper<BinaryExpr>
+>;*/
+			//constraint‚ÍDNF‚ÌŒ`‚Å—^‚¦‚ç‚ê‚é‚à‚Ì‚Æ‚·‚é
 			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
-			freeVals = lit("free") >> '(' >> s >> (accessor[_val = Call(DeclSat::AddReference, _val, _1)] | id[_val = Call(DeclSat::AddIdentifier, _val, _1)]) >> *(
-				s >> ", " >> s >> (accessor[_val = Call(DeclSat::AddReference, _val, _1)] | id[_val = Call(DeclSat::AddIdentifier, _val, _1)])
+			/*freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddReference, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
+				s >> ", " >> s >> (accessor[Call(DeclFree::AddReference, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)])
+				) >> s >> ')';*/
+			freeVals = lit("free") >> '(' >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)] >> *(
+				s >> ", " >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)]
 				) >> s >> ')';
 
 			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));

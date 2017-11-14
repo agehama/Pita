@@ -157,7 +157,7 @@ namespace cgl
 				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					)
-				>> char_('}')
+				>> s >> char_('}')
 				)
 				| (char_('{') >> s >> char_('}'));
 
@@ -490,11 +490,53 @@ func2 = x, y -> x + y)",
 
 #endif
 
-	std::string buffer;
+	/*std::string buffer;
 	while (std::cout << ">> ", std::getline(std::cin, buffer))
 	{
 		Lines lines;
 		const bool succeed = parse(buffer, lines);
+
+		if (!succeed)
+		{
+			std::cerr << "Parse error!!\n";
+		}
+
+		printLines(lines);
+
+		if (succeed)
+		{
+			Evaluated result = evalExpr(lines);
+			std::cout << "Result Evaluation:\n";
+			printEvaluated(result);
+		}
+	}*/
+
+	while (true)
+	{
+		std::string source;
+
+		std::string buffer;
+		while (std::cout << ">> ", std::getline(std::cin, buffer))
+		{
+			if (buffer == "quit()")
+			{
+				return 0;
+			}
+			else if (buffer == "EOF")
+			{
+				break;
+			}
+
+			source.append(buffer + '\n');
+		}
+
+		std::cout << "input:\n";
+		std::cout << source << "\n\n";
+
+		std::cout << "parse:\n";
+
+		Lines lines;
+		const bool succeed = parse(source, lines);
 
 		if (!succeed)
 		{

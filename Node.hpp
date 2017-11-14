@@ -264,6 +264,8 @@ using Evaluated = boost::variant<
 	boost::recursive_wrapper<DeclFree>
 >;
 
+bool IsEqual(const Evaluated& value1, const Evaluated& value2);
+
 using SatExpr = boost::variant<
 	bool,
 	int,
@@ -431,6 +433,28 @@ struct FuncVal
 		arguments(arguments),
 		expr(expr)
 	{}
+
+	bool operator==(const FuncVal& other)const
+	{
+		if (arguments.size() != other.arguments.size())
+		{
+			return false;
+		}
+
+		for (size_t i = 0; i < arguments.size(); ++i)
+		{
+			if (arguments[i] != other.arguments[i])
+			{
+				return false;
+			}
+		}
+
+		//environment;
+		//expr;
+		std::cerr << "Warning: IsEqual<FuncVal>() don't care about environment and expr" << std::endl;
+
+		return true;
+	}
 };
 
 struct DefFunc
@@ -659,6 +683,24 @@ struct List
 	{
 		return data.begin() + index;
 	}
+
+	bool operator==(const List& other)const
+	{
+		if (data.size() != other.data.size())
+		{
+			return false;
+		}
+
+		for (size_t i = 0; i < data.size(); ++i)
+		{
+			if (!IsEqual(data[i], other.data[i]))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
 };
 
 //struct ListAccess
@@ -748,6 +790,16 @@ struct KeyValue
 		name(name),
 		value(value)
 	{}
+
+	bool operator==(const KeyValue& other)const
+	{
+		if (name != other.name)
+		{
+			return false;
+		}
+
+		return IsEqual(value, other.value);
+	}
 };
 
 struct DeclSat
@@ -764,6 +816,12 @@ struct DeclSat
 	{
 		return DeclSat(expr);
 	}
+
+	bool operator==(const DeclSat& other)const
+	{
+		std::cerr << "Warning: IsEqual<DeclSat>() don't care about expr" << std::endl;
+		return true;
+	}
 };
 
 struct ObjectReference
@@ -774,6 +832,11 @@ struct ObjectReference
 
 		ListRef() = default;
 		ListRef(int index) :index(index) {}
+
+		bool operator==(const ListRef& other)const
+		{
+			return index == other.index;
+		}
 	};
 
 	struct RecordRef
@@ -782,6 +845,11 @@ struct ObjectReference
 
 		RecordRef() = default;
 		RecordRef(const std::string& key) :key(key) {}
+
+		bool operator==(const RecordRef& other)const
+		{
+			return key == other.key;
+		}
 	};
 
 	struct FunctionRef
@@ -790,6 +858,24 @@ struct ObjectReference
 
 		FunctionRef() = default;
 		FunctionRef(const std::vector<Evaluated>& args) :args(args) {}
+
+		bool operator==(const FunctionRef& other)const
+		{
+			if (args.size() != other.args.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < args.size(); ++i)
+			{
+				if (!IsEqual(args[i], other.args[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
 	};
 
 	using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
@@ -812,6 +898,29 @@ struct ObjectReference
 	{
 		references.push_back(FunctionRef(args));
 	}
+
+	bool operator==(const ObjectReference& other)const
+	{
+		if (name != other.name)
+		{
+			return false;
+		}
+
+		if (references.size() != other.references.size())
+		{
+			return false;
+		}
+
+		for (size_t i=0;i<references.size();++i)
+		{
+			if (!(references[i] == other.references[i]))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
 };
 
 struct DeclFree
@@ -831,6 +940,39 @@ struct DeclFree
 	{
 		decl.refs.push_back(ref);
 	}*/
+
+	bool operator==(const DeclFree& other)const
+	{
+		if (refs.size() != other.refs.size())
+		{
+			return false;
+		}
+
+		for (size_t i = 0; i < refs.size(); ++i)
+		{
+			if (!SameType(refs[i].type(), other.refs[i].type()))
+			{
+				return false;
+			}
+
+			if (IsType<Identifier>(refs[i]))
+			{
+				if (As<Identifier>(refs[i]) != As<Identifier>(other.refs[i]))
+				{
+					return false;
+				}
+			}
+			else if (IsType<ObjectReference>(refs[i]))
+			{
+				if (!(As<ObjectReference>(refs[i]) == As<ObjectReference>(other.refs[i])))
+				{
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
 };
 
 struct Record
@@ -839,9 +981,46 @@ struct Record
 	boost::optional<Expr> constraint;
 	std::vector<DeclFree::Ref> freeVariables;
 
-	void append(const std::string& name, const Evaluated& value)
+	Record() = default;
+
+	Record(const std::string& name, const Evaluated& value)
+	{
+		append(name, value);
+	}
+
+	Record& append(const std::string& name, const Evaluated& value)
 	{
 		values[name] = value;
+		return *this;
+	}
+
+	bool operator==(const Record& other)const
+	{
+		if (values.size() != other.values.size())
+		{
+			return false;
+		}
+
+		const auto& vs = other.values;
+
+		for (const auto& keyval : values)
+		{
+			const auto otherIt = vs.find(keyval.first);
+			if (otherIt == vs.end())
+			{
+				return false;
+			}
+
+			if (!IsEqual(keyval.second, otherIt->second))
+			{
+				return false;
+			}
+		}
+
+		std::cerr << "Warning: IsEqual<Record>() don't care about constraint" << std::endl;
+		//constraint;
+		//freeVariables;
+		return true;
 	}
 };
 
@@ -969,6 +1148,28 @@ struct Jump
 	bool isContinue()const
 	{
 		return op == Op::Continue;
+	}
+
+	bool operator==(const Jump& other)const
+	{
+		if (op != other.op)
+		{
+			return false;
+		}
+
+		if (lhs)
+		{
+			if (!other.lhs)
+			{
+				return false;
+			}
+
+			return IsEqual(lhs.value(), other.lhs.value());
+		}
+		else
+		{
+			return !other.lhs;
+		}
 	}
 };
 
@@ -3509,4 +3710,65 @@ inline void ValuePrinter::operator()(const FuncVal& node)const
 	}
 
 	std::cout << indent() << ")" << std::endl;
+}
+
+inline bool IsEqual(const Evaluated& value1, const Evaluated& value2)
+{
+	if (!SameType(value1.type(), value2.type()))
+	{
+		std::cerr << "Values are not same type." << std::endl;
+		return false;
+	}
+
+	if (IsType<bool>(value1))
+	{
+		return As<bool>(value1) == As<bool>(value2);
+	}
+	else if (IsType<int>(value1))
+	{
+		return As<int>(value1) == As<int>(value2);
+	}
+	else if (IsType<double>(value1))
+	{
+		return As<double>(value1) == As<double>(value2);
+	}
+	else if (IsType<Identifier>(value1))
+	{
+		return As<Identifier>(value1) == As<Identifier>(value2);
+	}
+	else if (IsType<ObjectReference>(value1))
+	{
+		return As<ObjectReference>(value1) == As<ObjectReference>(value2);
+	}
+	else if (IsType<List>(value1))
+	{
+		return As<List>(value1) == As<List>(value2);
+	}
+	else if (IsType<KeyValue>(value1))
+	{
+		return As<KeyValue>(value1) == As<KeyValue>(value2);
+	}
+	else if (IsType<Record>(value1))
+	{
+		return As<Record>(value1) == As<Record>(value2);
+	}
+	else if (IsType<FuncVal>(value1))
+	{
+		return As<FuncVal>(value1) == As<FuncVal>(value2);
+	}
+	else if (IsType<Jump>(value1))
+	{
+		return As<Jump>(value1) == As<Jump>(value2);
+	}
+	else if (IsType<DeclSat>(value1))
+	{
+		return As<DeclSat>(value1) == As<DeclSat>(value2);
+	}
+	else if (IsType<DeclFree>(value1))
+	{
+		return As<DeclFree>(value1) == As<DeclFree>(value2);
+	};
+
+	std::cerr << "IsEqual: Type Error" << std::endl;
+	return false;
 }

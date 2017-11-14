@@ -338,6 +338,8 @@ namespace cgl
 
 #define DO_TEST
 
+#define DO_TEST2
+
 int main()
 {
 	const auto parse = [](const std::string& str, Lines& lines)->bool
@@ -490,6 +492,66 @@ func2 = x, y -> x + y)",
 
 #endif
 
+#ifdef DO_TEST2
+
+	int eval_wrongs = 0;
+
+	const auto testEval = [&](const std::string& source, const Evaluated& answer)
+	{
+		std::cout << "----------------------------------------------------------\n";
+		std::cout << "input:\n";
+		std::cout << source << "\n\n";
+
+		std::cout << "parse:\n";
+
+		Lines lines;
+		const bool succeed = parse(source, lines);
+
+		if (succeed)
+		{
+			printLines(lines);
+
+			std::cout << "eval:\n";
+			Evaluated result = evalExpr(lines);
+
+			std::cout << "result:\n";
+			printEvaluated(result);
+
+			const bool isCorrect = IsEqual(result, answer);
+
+			std::cout << "test: ";
+
+			if (isCorrect)
+			{
+				std::cout << "Correct\n";
+			}
+			else
+			{
+				std::cout << "Wrong\n";
+				++eval_wrongs;
+			}
+		}
+		else
+		{
+			std::cerr << "Parse error!!\n";
+			++eval_wrongs;
+		}
+	};
+
+	testEval(
+		R"(
+vec3 = (v -> {
+	x:v, y : v, z : v
+})
+mul = (v1, v2 -> {
+	x:v1.x*v2.x, y : v1.y*v2.y, z : v1.z*v2.z
+})
+mul(vec3(3), vec3(2))
+)", Record("x", 6).append("y", 6).append("z", 6));
+
+	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
+
+#endif
 	/*std::string buffer;
 	while (std::cout << ">> ", std::getline(std::cin, buffer))
 	{

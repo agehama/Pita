@@ -358,6 +358,11 @@ namespace cgl
 			std::cout << indent() << ")" << std::endl;
 		}
 
+		void operator()(const RecordInheritor& record)const
+		{
+			;
+		}
+
 		void operator()(const Accessor& accessor)const
 		{
 			std::cout << indent() << "Accessor(" << std::endl;

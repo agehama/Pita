@@ -302,6 +302,8 @@ namespace cgl
 
 		qi::rule<Iterator, KeyExpr(), Skipper> record_keyexpr;
 		qi::rule<Iterator, RecordConstractor(), Skipper> record_maker;
+		qi::rule<Iterator, RecordInheritor(), Skipper> record_inheritor;
+
 		qi::rule<Iterator, ListConstractor(), Skipper> list_maker;
 		qi::rule<Iterator, For(), Skipper> for_expr;
 		qi::rule<Iterator, If(), Skipper> if_expr;
@@ -377,12 +379,15 @@ namespace cgl
 
 			//constraintはDNFの形で与えられるものとする
 			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
-			/*freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddReference, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
-				s >> ", " >> s >> (accessor[Call(DeclFree::AddReference, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)])
-				) >> s >> ')';*/
-			freeVals = lit("free") >> '(' >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)] >> *(
-				s >> "," >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)]
+
+			//freeValsがレコードへの参照とかを入れるのは少し大変だが、単一の値への参照なら難しくないはず
+			freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
+				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)])
 				) >> s >> ')';
+
+			/*freeVals = lit("free") >> '(' >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)] >> *(
+				s >> "," >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)]
+				) >> s >> ')';*/
 
 			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));
 
@@ -424,6 +429,9 @@ namespace cgl
 			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
 			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
+			//record{} の間には改行は挟めない（record,{}と区別できなくなるので）
+			record_inheritor = id[_val = Call(RecordInheritor::Make, _1)] >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
+
 			record_maker = (
 				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
 				*(
@@ -437,8 +445,16 @@ namespace cgl
 			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
 			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
-			list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
+			/*list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
 				*(s >> char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)]) >> s >> char_(']')
+				)
+				| (char_('[') >> s >> char_(']'));*/
+
+			list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
+				*(
+					(s >> char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					| (+(char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					) >> s >> char_(']')
 				)
 				| (char_('[') >> s >> char_(']'));
 			
@@ -471,6 +487,8 @@ namespace cgl
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
+				| record_inheritor[_val = _1]
+				//| (id >> record_maker)[_val = Call(RecordInheritor::MakeRecord, _1,_2)]
 				| record_maker[_val = _1]
 				| id[_val = _1];
 
@@ -709,61 +727,68 @@ func2 = x, y -> x + y)",
 		}
 	};
 
-testEval(
-R"(
+testEval(R"(
+
 {a: 3}.a
+
 )", 3);
 
-testEval(
-R"(
+testEval(R"(
+
 f = (x -> {a: x+10})
 f(3).a
+
 )", 13);
 
-testEval(
-R"(
+testEval(R"(
+
 vec3 = (v -> {
 	x:v, y : v, z : v
 })
 vec3(3)
+
 )", Record("x", 3).append("y", 3).append("z", 3));
 
-testEval(
-R"(
+testEval(R"(
+
 vec2 = (v -> [
 	v, v
 ])
 a = vec2(3)
 vec2(a)
+
 )", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
 
-testEval(
-R"(
+testEval(R"(
+
 vec2 = (v -> [
 	v, v
 ])
 vec2(vec2(3))
+
 )", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
 
-testEval(
-R"(
+testEval(R"(
+
 vec2 = (v -> {
 	x:v, y : v
 })
 a = vec2(3)
 vec2(a)
+
 )", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
-testEval(
-R"(
+testEval(R"(
+
 vec2 = (v -> {
 	x:v, y : v
 })
 vec2(vec2(3))
+
 )", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
-testEval(
-R"(
+testEval(R"(
+
 vec3 = (v -> {
 	x:v, y : v, z : v
 })
@@ -771,13 +796,29 @@ mul = (v1, v2 -> {
 	x:v1.x*v2.x, y : v1.y*v2.y, z : v1.z*v2.z
 })
 mul(vec3(3), vec3(2))
+
 )", Record("x", 6).append("y", 6).append("z", 6));
 
-testEval(
-R"(
+testEval(R"(
+
 r = {x: 0, y:10, sat(x == y), free(x)}
 r.x
+
 )", 10.0);
+
+testEval(R"(
+
+a = [1, 2]
+b = [a, 3]
+
+)", List().append(List().append(1).append(2)).append(3));
+
+testEval(R"(
+
+a = {a:1, b:2}
+b = {a:a, b:3}
+
+)", Record("a", Record("a", 1).append("b", 2)).append("b", 3));
 
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 

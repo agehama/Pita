@@ -171,6 +171,7 @@ namespace cgl
 
 	struct KeyExpr;
 	struct RecordConstractor;
+	struct RecordInheritor;
 
 	struct KeyValue;
 	struct Record;
@@ -186,7 +187,7 @@ namespace cgl
 	struct DeclFree;
 
 	using types =
-		boost::mpl::vector19<
+		boost::mpl::vector20<
 		bool,
 		int,
 		double,
@@ -208,7 +209,8 @@ namespace cgl
 
 		boost::recursive_wrapper<KeyExpr>,
 		boost::recursive_wrapper<RecordConstractor>,
-
+		boost::recursive_wrapper<RecordInheritor>,
+		
 		boost::recursive_wrapper<Accessor>,
 		boost::recursive_wrapper<FunctionCaller>,
 
@@ -691,6 +693,47 @@ namespace cgl
 		}
 	};
 
+	struct RecordInheritor
+	{
+		Identifier original;
+		//std::vector<Expr> exprs;
+		RecordConstractor adder;
+
+		RecordInheritor() = default;
+
+		RecordInheritor(const Identifier& original):
+			original(original)
+		{}
+
+		static RecordInheritor Make(const Identifier& original)
+		{
+			return RecordInheritor(original);
+		}
+
+		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
+		{
+			rec.adder.exprs.push_back(KeyExpr);
+		}
+
+		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
+		{
+			rec.adder.exprs.push_back(expr);
+		}
+
+		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
+		{
+			auto& exprs = rec.adder.exprs;
+			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
+		}
+
+		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
+		{
+			RecordInheritor obj(original);
+			AppendRecord(obj, rec2);
+			return obj;
+		}
+	};
+
 	struct KeyValue
 	{
 		Identifier name;
@@ -882,6 +925,8 @@ namespace cgl
 
 		std::vector<Ref> refs;
 
+		std::vector<Accessor> accessors;
+
 		DeclFree() = default;
 
 		static void AddIdentifier(DeclFree& decl, const Identifier& ref)
@@ -889,10 +934,15 @@ namespace cgl
 			decl.refs.push_back(ref);
 		}
 
-		/*static void AddReference(DeclFree& decl, const ObjectReference& ref)
+		static void AddReference(DeclFree& decl, const ObjectReference& ref)
 		{
-		decl.refs.push_back(ref);
-		}*/
+			decl.refs.push_back(ref);
+		}
+
+		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
+		{
+			decl.accessors.push_back(accessor);
+		}
 
 		bool operator==(const DeclFree& other)const
 		{

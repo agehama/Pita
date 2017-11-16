@@ -3,6 +3,79 @@
 
 namespace cgl
 {
+	inline Record MargeRecord(const Record& rec1, const Record& rec2)
+	{
+		Record result;
+		
+		{
+			auto& values = result.values;
+
+			values = rec1.values;
+
+			for (const auto& keyval : rec2.values)
+			{
+				values[keyval.first] = keyval.second;
+			}
+		}
+		
+		//TODO:重複した制約などを考慮するべき
+
+		{
+			auto& constraint = result.constraint;
+			
+			if (rec1.constraint && rec2.constraint)
+			{
+				constraint = BinaryExpr(rec1.constraint.value(), rec2.constraint.value(), BinaryOp::And);
+			}
+			else if (rec1.constraint)
+			{
+				constraint = rec1.constraint;
+			}
+			else if (rec2.constraint)
+			{
+				constraint = rec2.constraint;
+			}
+		}
+
+		{
+			auto& freeVals = result.freeVariables;
+			freeVals = rec1.freeVariables;
+			freeVals.insert(freeVals.end(), rec2.freeVariables.begin(), rec2.freeVariables.end());
+		}
+
+		return result;
+	}
+
+	inline void MargeRecordInplace(Record& result, const Record& rec2)
+	{
+		{
+			auto& values = result.values;
+			for (const auto& keyval : rec2.values)
+			{
+				values[keyval.first] = keyval.second;
+			}
+		}
+
+		//TODO:重複した制約などを考慮するべき
+		{
+			auto& constraint = result.constraint;
+
+			if (constraint && rec2.constraint)
+			{
+				constraint = BinaryExpr(constraint.value(), rec2.constraint.value(), BinaryOp::And);
+			}
+			else if (rec2.constraint)
+			{
+				constraint = rec2.constraint;
+			}
+		}
+
+		{
+			auto& freeVals = result.freeVariables;
+			freeVals.insert(freeVals.end(), rec2.freeVariables.begin(), rec2.freeVariables.end());
+		}
+	}
+
 	inline Evaluated Not(const Evaluated& lhs_, Environment& env)
 	{
 		const Evaluated lhs = env.dereference(lhs_);

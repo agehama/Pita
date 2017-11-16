@@ -68,9 +68,9 @@ namespace cgl
 			switch (node.op)
 			{
 			case BinaryOp::And: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Or:  return Max(lhs, rhs, *pEnv);
+			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
 
-			case BinaryOp::Equal:        return Sub(lhs, rhs, *pEnv);
+			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
 			case BinaryOp::NotEqual:     return As<bool>(Equal(lhs, rhs, *pEnv)) ? 1.0 : 0.0;
 			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);
 			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);

@@ -709,61 +709,68 @@ func2 = x, y -> x + y)",
 		}
 	};
 
-testEval(
-R"(
+testEval(R"(
+
 {a: 3}.a
+
 )", 3);
 
-testEval(
-R"(
+testEval(R"(
+
 f = (x -> {a: x+10})
 f(3).a
+
 )", 13);
 
-testEval(
-R"(
+testEval(R"(
+
 vec3 = (v -> {
 	x:v, y : v, z : v
 })
 vec3(3)
+
 )", Record("x", 3).append("y", 3).append("z", 3));
 
-testEval(
-R"(
+testEval(R"(
+
 vec2 = (v -> [
 	v, v
 ])
 a = vec2(3)
 vec2(a)
+
 )", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
 
-testEval(
-	R"(
+testEval(R"(
+
 vec2 = (v -> [
 	v, v
 ])
 vec2(vec2(3))
+
 )", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
 
-testEval(
-R"(
+testEval(R"(
+
 vec2 = (v -> {
 	x:v, y : v
 })
 a = vec2(3)
 vec2(a)
+
 )", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
-testEval(
-R"(
+testEval(R"(
+
 vec2 = (v -> {
 	x:v, y : v
 })
 vec2(vec2(3))
+
 )", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
-testEval(
-R"(
+testEval(R"(
+
 vec3 = (v -> {
 	x:v, y : v, z : v
 })
@@ -771,8 +778,22 @@ mul = (v1, v2 -> {
 	x:v1.x*v2.x, y : v1.y*v2.y, z : v1.z*v2.z
 })
 mul(vec3(3), vec3(2))
+
 )", Record("x", 6).append("y", 6).append("z", 6));
 
+testEval(R"(
+
+a = [1, 2]
+b = [a, 3]
+
+)", List().append(List().append(1).append(2)).append(3));
+
+testEval(R"(
+
+a = {a:1, b:2}
+b = {a:a, b:3}
+
+)", Record("a", Record("a", 1).append("b", 2)).append("b", 3));
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 
 #endif

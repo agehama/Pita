@@ -308,6 +308,55 @@ namespace cgl
 		return 0;
 	}
 
+	inline Evaluated Min(const Evaluated& lhs_, const Evaluated& rhs_, Environment& env)
+	{
+		const Evaluated lhs = env.dereference(lhs_);
+		const Evaluated rhs = env.dereference(rhs_);
+
+		if (IsType<int>(lhs))
+		{
+			if (IsType<int>(rhs))
+			{
+				return std::min(As<int>(lhs), As<int>(rhs));
+			}
+			else if (IsType<double>(rhs))
+			{
+				return std::min<double>(As<int>(lhs), As<double>(rhs));
+			}
+		}
+		else if (IsType<double>(lhs))
+		{
+			if (IsType<int>(rhs))
+			{
+				return std::min<double>(As<double>(lhs), As<int>(rhs));
+			}
+			else if (IsType<double>(rhs))
+			{
+				return std::min(As<double>(lhs), As<double>(rhs));
+			}
+		}
+
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return 0;
+	}
+
+	inline Evaluated Abs(const Evaluated& lhs_, Environment& env)
+	{
+		const Evaluated lhs = env.dereference(lhs_);
+
+		if (IsType<int>(lhs))
+		{
+			return std::abs(As<int>(lhs));
+		}
+		else if (IsType<double>(lhs))
+		{
+			return std::abs(As<double>(lhs));
+		}
+
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return 0;
+	}
+
 	inline Evaluated Add(const Evaluated& lhs_, const Evaluated& rhs_, Environment& env)
 	{
 		const Evaluated lhs = env.dereference(lhs_);

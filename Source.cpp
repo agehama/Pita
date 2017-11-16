@@ -5,6 +5,215 @@
 #include <boost/spirit/include/phoenix.hpp>
 
 #include "Node.hpp"
+#include "Evaluator.hpp"
+#include "Printer.hpp"
+
+
+const Evaluated& Environment::dereference(const Evaluated& reference)
+{
+	if (auto nameOpt = AsOpt<Identifier>(reference))
+	{
+		const boost::optional<unsigned> valueIDOpt = findValueID(nameOpt.value().name);
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return reference;
+		}
+
+		return m_values[valueIDOpt.value()];
+	}
+	else if (auto objRefOpt = AsOpt<ObjectReference>(reference))
+	{
+		const auto& referenceProcess = objRefOpt.value();
+
+		boost::optional<unsigned> valueIDOpt;
+
+		if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
+		{
+			valueIDOpt = findValueID(opt.value().name);
+		}
+		else if (auto opt = AsOpt<Record>(referenceProcess.headValue))
+		{
+			valueIDOpt = makeTemporaryValue(opt.value());
+		}
+		else if (auto opt = AsOpt<List>(referenceProcess.headValue))
+		{
+			valueIDOpt = makeTemporaryValue(opt.value());
+		}
+		else if (auto opt = AsOpt<FuncVal>(referenceProcess.headValue))
+		{
+			valueIDOpt = makeTemporaryValue(opt.value());
+		}
+
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return reference;
+		}
+
+		std::cout << "Reference: " << objRefOpt.value().asString() << "\n";
+
+		boost::optional<const Evaluated&> result = m_values[valueIDOpt.value()];
+
+		for (const auto& ref : referenceProcess.references)
+		{
+			if (auto listRefOpt = AsOpt<ObjectReference::ListRef>(ref))
+			{
+				const int index = listRefOpt.value().index;
+
+				if (auto listOpt = AsOpt<List>(result.value()))
+				{
+					result = listOpt.value().data[index];
+				}
+				else
+				{
+					//リストとしてアクセスするのに失敗
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return reference;
+				}
+			}
+			else if (auto recordRefOpt = AsOpt<ObjectReference::RecordRef>(ref))
+			{
+				const std::string& key = recordRefOpt.value().key;
+
+				if (auto recordOpt = AsOpt<Record>(result.value()))
+				{
+					result = recordOpt.value().values.at(key);
+				}
+				else
+				{
+					//レコードとしてアクセスするのに失敗
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return reference;
+				}
+			}
+			else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
+			{
+				if (auto recordOpt = AsOpt<FuncVal>(result.value()))
+				{
+					Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
+
+					if (auto sharedThis = m_weakThis.lock())
+					{
+						Eval evaluator(sharedThis);
+
+						const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
+						result = m_values[ID];
+						/*std::cout << ">>>>===================================================" << std::endl;
+						std::cout << "Result Function Call:" << std::endl;
+						printEvaluated(m_values[ID]);
+						std::cout << "<<<<===================================================" << std::endl;*/
+					}
+					else
+					{
+						//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return reference;
+					}
+				}
+				else
+				{
+					//関数としてアクセスするのに失敗
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return reference;
+				}
+			}
+		}
+
+		return result.value();
+	}
+
+	return reference;
+}
+
+inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
+{
+	boost::optional<unsigned> valueIDOpt;
+
+	if (auto opt = AsOpt<Identifier>(objectRef.headValue))
+	{
+		valueIDOpt = findValueID(opt.value().name);
+	}
+	else if (auto opt = AsOpt<Record>(objectRef.headValue))
+	{
+		valueIDOpt = makeTemporaryValue(opt.value());
+	}
+	else if (auto opt = AsOpt<List>(objectRef.headValue))
+	{
+		valueIDOpt = makeTemporaryValue(opt.value());
+	}
+	else if (auto opt = AsOpt<FuncVal>(objectRef.headValue))
+	{
+		valueIDOpt = makeTemporaryValue(opt.value());
+	}
+
+	if (!valueIDOpt)
+	{
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return;
+	}
+
+	boost::optional<Evaluated&> result = m_values[valueIDOpt.value()];
+
+	for (const auto& ref : objectRef.references)
+	{
+		if (auto listRefOpt = AsOpt<ObjectReference::ListRef>(ref))
+		{
+			const int index = listRefOpt.value().index;
+
+			if (auto listOpt = AsOpt<List>(result.value()))
+			{
+				result = listOpt.value().data[index];
+			}
+			else//リストとしてアクセスするのに失敗
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return;
+			}
+		}
+		else if (auto recordRefOpt = AsOpt<ObjectReference::RecordRef>(ref))
+		{
+			const std::string& key = recordRefOpt.value().key;
+
+			if (auto recordOpt = AsOpt<Record>(result.value()))
+			{
+				result = recordOpt.value().values.at(key);
+			}
+			else//レコードとしてアクセスするのに失敗
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return;
+			}
+		}
+		else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
+		{
+			if (auto recordOpt = AsOpt<FuncVal>(result.value()))
+			{
+				Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
+
+				if (auto sharedThis = m_weakThis.lock())
+				{
+					Eval evaluator(sharedThis);
+					const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
+					result = m_values[ID];
+				}
+				else//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+				{
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return;
+				}
+			}
+			else//関数としてアクセスするのに失敗
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return;
+			}
+		}
+	}
+
+	result.value() = newValue;
+}
+
 
 auto MakeUnaryExpr(UnaryOp op)
 {

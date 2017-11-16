@@ -296,7 +296,7 @@ namespace cgl
 				| constraints[_val = _1]
 				| freeVals[_val = _1]
 				| accessor[_val = _1]
-				| call_func[_val = _1]
+				//| call_func[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
@@ -538,7 +538,7 @@ func2 = x, y -> x + y)",
 		}
 	};
 
-	testEval(
+	/*testEval(
 		R"(
 vec3 = (v -> {
 	x:v, y : v, z : v
@@ -547,7 +547,18 @@ mul = (v1, v2 -> {
 	x:v1.x*v2.x, y : v1.y*v2.y, z : v1.z*v2.z
 })
 mul(vec3(3), vec3(2))
-)", Record("x", 6).append("y", 6).append("z", 6));
+)", Record("x", 6).append("y", 6).append("z", 6));*/
+	
+testEval(
+R"(
+{a: 3}.a
+)", 3);
+
+testEval(
+R"(
+f = (x -> {a: x+10})
+f(3).a
+)", 13);
 
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 

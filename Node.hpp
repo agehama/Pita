@@ -837,6 +837,11 @@ struct ObjectReference
 		{
 			return index == other.index;
 		}
+
+		std::string asString()const
+		{
+			return std::string("[") + std::to_string(index) + "]";
+		}
 	};
 
 	struct RecordRef
@@ -849,6 +854,11 @@ struct ObjectReference
 		bool operator==(const RecordRef& other)const
 		{
 			return key == other.key;
+		}
+
+		std::string asString()const
+		{
+			return std::string(".") + key;
 		}
 	};
 
@@ -875,6 +885,11 @@ struct ObjectReference
 			}
 
 			return true;
+		}
+
+		std::string asString()const
+		{
+			return std::string("( ") + std::to_string(args.size()) + "args" + " )";
 		}
 	};
 
@@ -920,6 +935,29 @@ struct ObjectReference
 		}
 
 		return true;
+	}
+
+	std::string asString()const
+	{
+		std::string str = name;
+
+		for (const auto& r : references)
+		{
+			if (auto opt = AsOpt<ListRef>(r))
+			{
+				str += opt.value().asString();
+			}
+			else if (auto opt = AsOpt<RecordRef>(r))
+			{
+				str += opt.value().asString();
+			}
+			else if (auto opt = AsOpt<FunctionRef>(r))
+			{
+				str += opt.value().asString();
+			}
+		}
+
+		return name;
 	}
 };
 
@@ -3364,6 +3402,8 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 			std::cerr << "Error(" << __LINE__ << ")\n";
 			return reference;
 		}
+
+		std::cout << "Reference: " << objRefOpt.value().asString() << "\n";
 
 		boost::optional<const Evaluated&> result = m_values[valueIDOpt.value()];
 		

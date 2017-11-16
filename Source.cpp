@@ -27,6 +27,12 @@ auto Call(F func, Args... args)
 	return boost::phoenix::bind(func, args...);
 }
 
+template<class FromT, class ToT>
+auto Cast()
+{
+	return boost::phoenix::bind([&](const FromT& a) {return static_cast<ToT>(a); }, boost::spirit::_1);
+}
+
 namespace cgl
 {
 	using namespace boost::spirit;
@@ -82,6 +88,9 @@ namespace cgl
 		qi::rule<Iterator, RecordAccess(), Skipper> recordAccess;
 		qi::rule<Iterator, ListAccess(), Skipper> listAccess;
 		qi::rule<Iterator, Accessor(), Skipper> accessor;
+
+		qi::rule<Iterator, Access(), Skipper> access;
+
 		qi::rule<Iterator, KeyExpr(), Skipper> record_keyexpr;
 		qi::rule<Iterator, RecordConstractor(), Skipper> record_maker;
 		qi::rule<Iterator, ListConstractor(), Skipper> list_maker;
@@ -89,7 +98,7 @@ namespace cgl
 		qi::rule<Iterator, If(), Skipper> if_expr;
 		qi::rule<Iterator, Return(), Skipper> return_expr;
 		qi::rule<Iterator, DefFunc(), Skipper> def_func;
-		qi::rule<Iterator, CallFunc(), Skipper> call_func;
+		//qi::rule<Iterator, CallFunc(), Skipper> call_func;
 		qi::rule<Iterator, Arguments(), Skipper> arguments;
 		qi::rule<Iterator, Identifier(), Skipper> id;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
@@ -151,24 +160,6 @@ namespace cgl
 				| (lit('\n') >> general_expr[Call(Lines::Append, _val, _1)])
 				);
 
-			record_maker = (
-				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
-				*(
-				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-					| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-					)
-				>> char_('}')
-				)
-				| (char_('{') >> s >> char_('}'));
-
-			/*record_maker = (char_('{') >> *(
-				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-				| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-				) >> char_('}'));*/
-
-			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
-			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
-
 			general_expr =
 				if_expr[_val = _1]
 				| return_expr[_val = _1]
@@ -186,23 +177,13 @@ namespace cgl
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
-			//def_func = arguments[_val = _1] >> lit("->") >> s >> expr_seq[Call(applyFuncDef, _val, _1)];
 			//def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
 			def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
 
-			call_func = id[_val = Call(makeCallFunc, _1)] >> '('
+			/*call_func = id[_val = Call(makeCallFunc, _1)] >> '('
 				>> -(s >> general_expr[Call(addArgument, _val, _1)])
-				>> *(s >> ',' >> s >> general_expr[Call(addArgument, _val, _1)]) >> s >> ')';
+				>> *(s >> ',' >> s >> general_expr[Call(addArgument, _val, _1)]) >> s >> ')';*/
 
-			/*
-			using SatExpr = boost::variant<
-	bool,
-	int,
-	double,
-	Identifier,
-	boost::recursive_wrapper<UnaryExpr>,
-	boost::recursive_wrapper<BinaryExpr>
->;*/
 			//constraintはDNFの形で与えられるものとする
 			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
 			/*freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddReference, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
@@ -252,39 +233,45 @@ namespace cgl
 			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
 			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
-			//factor = double_[_val = _1]
-			/*factor = double_value[_val = Call(makeDouble, _1)]
-				| int_[_val = _1]
-				| lit("true")[_val = true]
-				| lit("false")[_val = false]
-				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
-				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
-				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| call_func[_val = _1]
-				| def_func[_val = _1]
-				| id[_val = _1];*/
+			record_maker = (
+				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
+				*(
+				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					)
+				>> s >> char_('}')
+				)
+				| (char_('{') >> s >> char_('}'));
+
+			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
+			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
 			list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
 				*(s >> char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)]) >> s >> char_(']')
 				)
 				| (char_('[') >> s >> char_(']'));
-
-			/*list_access = id[_val = Call(ListAccess::Make, _1)] >> char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);
-			list_access1 = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']') >> -(list_access1[Call(ListAccess::SetChild, _val, _1)]);*/
-
-			accessor = id[_val = Call(Accessor::Make, _1)] >> +(
+			
+			/*accessor = (id[_val = Call(Accessor::Make, _1)] >> +(
 				functionAccess[Call(Accessor::AppendFunction, _val, _1)]
 				| listAccess[Call(Accessor::AppendList, _val, _1)]
 				| recordAccess[Call(Accessor::AppendRecord, _val, _1)]
-				);
+				))
+				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)]);*/
+			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
+				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
+				| (record_maker[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]));
 			
-			functionAccess = char_('(')
-				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
-				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
+			access = functionAccess[_val = Cast<FunctionAccess, Access>()]
+				| listAccess[_val = Cast<ListAccess, Access>()]
+				| recordAccess[_val = Cast<RecordAccess, Access>()];
+
+			recordAccess = char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
 
 			listAccess = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']');
 
-			recordAccess = char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
+			functionAccess = char_('(')
+				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
+				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
 
 			factor = /*double_[_val = _1]
 				|*/ int_[_val = _1]
@@ -296,7 +283,6 @@ namespace cgl
 				| constraints[_val = _1]
 				| freeVals[_val = _1]
 				| accessor[_val = _1]
-				| call_func[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
@@ -337,6 +323,8 @@ namespace cgl
 }
 
 #define DO_TEST
+
+#define DO_TEST2
 
 int main()
 {
@@ -490,11 +478,166 @@ func2 = x, y -> x + y)",
 
 #endif
 
-	std::string buffer;
+#ifdef DO_TEST2
+
+	int eval_wrongs = 0;
+
+	const auto testEval = [&](const std::string& source, const Evaluated& answer)
+	{
+		std::cout << "----------------------------------------------------------\n";
+		std::cout << "input:\n";
+		std::cout << source << "\n\n";
+
+		std::cout << "parse:\n";
+
+		Lines lines;
+		const bool succeed = parse(source, lines);
+
+		if (succeed)
+		{
+			printLines(lines);
+
+			std::cout << "eval:\n";
+			Evaluated result = evalExpr(lines);
+
+			std::cout << "result:\n";
+			printEvaluated(result);
+
+			const bool isCorrect = IsEqual(result, answer);
+
+			std::cout << "test: ";
+
+			if (isCorrect)
+			{
+				std::cout << "Correct\n";
+			}
+			else
+			{
+				std::cout << "Wrong\n";
+				++eval_wrongs;
+			}
+		}
+		else
+		{
+			std::cerr << "Parse error!!\n";
+			++eval_wrongs;
+		}
+	};
+
+testEval(
+R"(
+{a: 3}.a
+)", 3);
+
+testEval(
+R"(
+f = (x -> {a: x+10})
+f(3).a
+)", 13);
+
+testEval(
+R"(
+vec3 = (v -> {
+	x:v, y : v, z : v
+})
+vec3(3)
+)", Record("x", 3).append("y", 3).append("z", 3));
+
+testEval(
+R"(
+vec2 = (v -> [
+	v, v
+])
+a = vec2(3)
+vec2(a)
+)", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
+
+testEval(
+	R"(
+vec2 = (v -> [
+	v, v
+])
+vec2(vec2(3))
+)", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
+
+testEval(
+R"(
+vec2 = (v -> {
+	x:v, y : v
+})
+a = vec2(3)
+vec2(a)
+)", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
+
+testEval(
+R"(
+vec2 = (v -> {
+	x:v, y : v
+})
+vec2(vec2(3))
+)", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
+
+testEval(
+R"(
+vec3 = (v -> {
+	x:v, y : v, z : v
+})
+mul = (v1, v2 -> {
+	x:v1.x*v2.x, y : v1.y*v2.y, z : v1.z*v2.z
+})
+mul(vec3(3), vec3(2))
+)", Record("x", 6).append("y", 6).append("z", 6));
+
+	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
+
+#endif
+	/*std::string buffer;
 	while (std::cout << ">> ", std::getline(std::cin, buffer))
 	{
 		Lines lines;
 		const bool succeed = parse(buffer, lines);
+
+		if (!succeed)
+		{
+			std::cerr << "Parse error!!\n";
+		}
+
+		printLines(lines);
+
+		if (succeed)
+		{
+			Evaluated result = evalExpr(lines);
+			std::cout << "Result Evaluation:\n";
+			printEvaluated(result);
+		}
+	}*/
+
+	while (true)
+	{
+		std::string source;
+
+		std::string buffer;
+		while (std::cout << ">> ", std::getline(std::cin, buffer))
+		{
+			if (buffer == "quit()")
+			{
+				return 0;
+			}
+			else if (buffer == "EOF")
+			{
+				break;
+			}
+
+			source.append(buffer + '\n');
+		}
+
+		std::cout << "input:\n";
+		std::cout << source << "\n\n";
+
+		std::cout << "parse:\n";
+
+		Lines lines;
+		const bool succeed = parse(source, lines);
 
 		if (!succeed)
 		{

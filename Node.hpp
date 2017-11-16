@@ -9,7 +9,7 @@
 
 #include <boost/fusion/include/vector.hpp>
 
-#include <boost/variant/variant.hpp>
+#include <boost/variant.hpp>
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
 

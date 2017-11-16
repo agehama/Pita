@@ -3,7 +3,6 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
-//#include <boost/spirit/home/x3.hpp>
 
 #include "Node.hpp"
 
@@ -98,18 +97,14 @@ namespace cgl
 		qi::rule<Iterator, If(), Skipper> if_expr;
 		qi::rule<Iterator, Return(), Skipper> return_expr;
 		qi::rule<Iterator, DefFunc(), Skipper> def_func;
-		//qi::rule<Iterator, CallFunc(), Skipper> call_func;
 		qi::rule<Iterator, Arguments(), Skipper> arguments;
 		qi::rule<Iterator, Identifier(), Skipper> id;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
 		qi::rule<Iterator, Lines(), Skipper> expr_seq, statement;
 		qi::rule<Iterator, Lines(), Skipper> program;
 
-		//qi::rule<Iterator, Range(), Skipper> range;
-
 		//qi::rule<Iterator, std::string(), Skipper> double_value;
 		//qi::rule<Iterator, Identifier(), Skipper> double_value, double_value2;
-
 
 		qi::rule<Iterator> s, s1;
 		qi::rule<Iterator> distinct_keyword;
@@ -123,27 +118,17 @@ namespace cgl
 
 			auto makeDefFunc = [](const Arguments& arguments, const Expr& expr) { return DefFunc(arguments, expr); };
 
-			auto makeCallFunc = [](const Identifier& identifier) { return CallFunc(identifier); };
-
 			auto addCharacter = [](Identifier& identifier, char c) { identifier.name.push_back(c); };
 
 			auto concatArguments = [](Arguments& a, const Arguments& b) { a.concat(b); };
 
-			auto addArgument = [](CallFunc& callFunc, const Expr& expr) { callFunc.actualArguments.push_back(expr); };
-
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
-
-			/*auto makeDouble = [](const std::string& str) { return std::stod(str); };
-			auto makeString = [](char c) { return std::string({ c }); };
-			auto appendString = [](std::string& str, char c) { str.push_back(c); };*/
 
 			auto makeDouble = [](const Identifier& str) { return std::stod(str.name); };
 			auto makeString = [](char c) { return Identifier(std::string({ c })); };
 			auto appendString = [](Identifier& str, char c) { str.name.push_back(c); };
 			auto appendString2 = [](Identifier& str, const Identifier& str2) { str.name.append(str2.name); };
 
-			//auto makeBool = [](bool b) { return std::stod(str); };
-			
 			program = s >> -(expr_seq) >> s;
 
 			/*expr_seq = general_expr[_val = Call(makeLines, _1)] >> *(
@@ -179,10 +164,6 @@ namespace cgl
 
 			//def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
 			def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
-
-			/*call_func = id[_val = Call(makeCallFunc, _1)] >> '('
-				>> -(s >> general_expr[Call(addArgument, _val, _1)])
-				>> *(s >> ',' >> s >> general_expr[Call(addArgument, _val, _1)]) >> s >> ')';*/
 
 			//constraint‚ÍDNF‚ÌŒ`‚Å—^‚¦‚ç‚ê‚é‚à‚Ì‚Æ‚·‚é
 			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
@@ -251,12 +232,6 @@ namespace cgl
 				)
 				| (char_('[') >> s >> char_(']'));
 			
-			/*accessor = (id[_val = Call(Accessor::Make, _1)] >> +(
-				functionAccess[Call(Accessor::AppendFunction, _val, _1)]
-				| listAccess[Call(Accessor::AppendList, _val, _1)]
-				| recordAccess[Call(Accessor::AppendRecord, _val, _1)]
-				))
-				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)]);*/
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
 				| (record_maker[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]));
@@ -288,8 +263,6 @@ namespace cgl
 				| list_maker[_val = _1]
 				| record_maker[_val = _1]
 				| id[_val = _1];
-
-			//range = factor[_val = Call(Range::Make, _1)] >> s >> lit("..") >> s >> factor[Call(Range::SetRhs,_val, _1)];
 
 			//id‚Ì“r’†‚É‚Í‹ó”’‚ðŠÜ‚ß‚È‚¢
 			//id = lexeme[ascii::alpha[_val = _1] >> *(ascii::alnum[Call(addCharacter, _val, _1)])];
@@ -591,27 +564,7 @@ mul(vec3(3), vec3(2))
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 
 #endif
-	/*std::string buffer;
-	while (std::cout << ">> ", std::getline(std::cin, buffer))
-	{
-		Lines lines;
-		const bool succeed = parse(buffer, lines);
-
-		if (!succeed)
-		{
-			std::cerr << "Parse error!!\n";
-		}
-
-		printLines(lines);
-
-		if (succeed)
-		{
-			Evaluated result = evalExpr(lines);
-			std::cout << "Result Evaluation:\n";
-			printEvaluated(result);
-		}
-	}*/
-
+	
 	while (true)
 	{
 		std::string source;

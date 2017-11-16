@@ -28,25 +28,21 @@ inline bool IsType(const T2& t2)
 template<class T1, class T2>
 inline boost::optional<T1&> AsOpt(T2& t2)
 {
-	//return IsType<T1>(t2) ? boost::get<T1>(t2) : boost::none;
 	if (IsType<T1>(t2))
 	{
 		return boost::get<T1>(t2);
 	}
 	return boost::none;
-	//return boost::get<T1>(t2);
 }
 
 template<class T1, class T2>
 inline boost::optional<const T1&> AsOpt(const T2& t2)
 {
-	//return IsType<T1>(t2) ? boost::get<T1>(t2) : boost::none;
 	if (IsType<T1>(t2))
 	{
 		return boost::get<T1>(t2);
 	}
 	return boost::none;
-	//return boost::get<T1>(t2);
 }
 
 template<class T1, class T2>
@@ -60,25 +56,6 @@ inline const T1& As(const T2& t2)
 {
 	return boost::get<T1>(t2);
 }
-
-//struct And;
-//struct Or;
-//struct Not;
-//
-//struct Equal;
-//struct NotEqual;
-//struct LessThan;
-//struct LessEqual;
-//struct GreaterThan;
-//struct GreaterEqual;
-//
-//struct Add;
-//struct Sub;
-//struct Mul;
-//struct Div;
-//
-//struct Pow;
-//struct Assign;
 
 enum class UnaryOp
 {
@@ -147,10 +124,6 @@ struct Identifier
 		name(name_)
 	{}
 
-	Identifier(const boost::fusion::vector2<char, std::vector<char, std::allocator<char>>>& name_)
-	{
-	}
-	//boost::fusion::vector2<char,std::vector<char,std::allocator<char>>>
 	Identifier(char name_) :
 		name({ name_ })
 	{}
@@ -167,14 +140,6 @@ struct Identifier
 };
 
 struct FuncVal;
-
-struct CallFunc;
-
-//template <class Op>
-//struct UnaryExpr;
-//
-//template <class Op>
-//struct BinaryExpr;
 
 struct UnaryExpr;
 struct BinaryExpr;
@@ -210,7 +175,7 @@ struct DeclSat;
 struct DeclFree;
 
 using types =
-boost::mpl::vector20<
+boost::mpl::vector19<
 	bool,
 	int,
 	double,
@@ -220,7 +185,6 @@ boost::mpl::vector20<
 
 	boost::recursive_wrapper<Lines>,
 	boost::recursive_wrapper<DefFunc>,
-	boost::recursive_wrapper<CallFunc>,
 
 	boost::recursive_wrapper<UnaryExpr>,
 	boost::recursive_wrapper<BinaryExpr>,
@@ -511,32 +475,6 @@ struct DefFunc
 	}
 };
 
-struct CallFunc
-{
-	boost::variant<FuncVal, Identifier> funcRef;
-	std::vector<Expr> actualArguments;
-
-	CallFunc() = default;
-
-	CallFunc(const Identifier& funcName) :
-		funcRef(funcName)
-	{}
-
-	CallFunc(
-		const FuncVal& funcVal_,
-		const std::vector<Expr>& actualArguments_) :
-		funcRef(funcVal_),
-		actualArguments(actualArguments_)
-	{}
-
-	CallFunc(
-		const Identifier& funcName,
-		const std::vector<Expr>& actualArguments_) :
-		funcRef(funcName),
-		actualArguments(actualArguments_)
-	{}
-};
-
 struct FunctionCaller
 {
 	boost::variant<FuncVal, Identifier> funcRef;
@@ -591,7 +529,6 @@ struct If
 	}
 };
 
-//for i in a..b do statement
 struct For
 {
 	Identifier loopCounter;
@@ -703,43 +640,6 @@ struct List
 		return true;
 	}
 };
-
-//struct ListAccess
-//{
-//	//一番上の親はlistRefを必ず持つ
-//	boost::optional<boost::variant<ListConstractor, Identifier>> listRef;
-//
-//	Expr index;
-//
-//	//一番下の子供はchildを持たない
-//	//boost::optional<ListAccess> child;
-//	std::vector<ListAccess> child;
-//
-//	ListAccess() = default;
-//
-//	ListAccess(const Identifier& identifier):
-//		listRef(identifier)
-//	{}
-//
-//	ListReference fold(std::shared_ptr<Environment> pEnv)const;
-//	void foldImpl(ListReference& listReference, std::shared_ptr<Environment> pEnv)const;
-//
-//	static ListAccess Make(const Identifier& identifier)
-//	{
-//		return ListAccess(identifier);
-//	}
-//
-//	static void SetIndex(ListAccess& listAccess, const Expr& index)
-//	{
-//		listAccess.index = index;
-//	}
-//
-//	static void SetChild(ListAccess& listAccess, const ListAccess& listAccessChild)
-//	{
-//		listAccess.child.clear();
-//		listAccess.child.push_back(listAccessChild);
-//	}
-//};
 
 struct KeyExpr
 {
@@ -897,7 +797,7 @@ struct ObjectReference
 	using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
 
 	using ObjectT = boost::variant<Identifier, boost::recursive_wrapper<Record>, boost::recursive_wrapper<List>, boost::recursive_wrapper<FuncVal>>;
-	//std::string name;
+
 	ObjectT headValue;
 
 	std::vector<Ref> references;
@@ -1288,21 +1188,11 @@ public:
 
 	void operator()(const KeyValue& node)const
 	{
-		//std::cout << indent() << "KeyVal(" << std::endl;
-		
-		/*std::cout << indent() << node.name.name << ":" << std::endl;
-		{
-			const auto child = ValuePrinter(m_indent + 1);
-			boost::apply_visitor(child, node.value);
-		}*/
-
 		const std::string header = node.name.name + ": ";
 		{
 			const auto child = ValuePrinter(m_indent, header);
 			boost::apply_visitor(child, node.value);
 		}
-
-		//std::cout << indent() << ")" << std::endl;
 	}
 
 	void operator()(const Record& node)const
@@ -1534,18 +1424,6 @@ public:
 	void bindValueID(const std::string& name, unsigned valueID)
 	{
 		/*
-		for(auto it = m_bindingNames.rbegin(); it != m_bindingNames.rend(); ++it)
-		{
-			auto& localEnv = *it;
-			if (localEnv.find(name))
-			{
-				localEnv.bind(name, valueID);
-				return;
-			}
-		}
-		*/
-
-		/*
 		レコード
 		レコード内の:式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合は新たに定義
 		レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアス（スコープを抜けたら元に戻る≒遮蔽）
@@ -1573,6 +1451,8 @@ public:
 
 	void printEnvironment()const
 	{
+		std::cout << "Print Environment:\n";
+		
 		std::cout << "Values:\n";
 		for (const auto& keyval : m_values)
 		{
@@ -2275,48 +2155,9 @@ public:
 		std::cout << indent() << ")" << std::endl;
 	}
 
-	auto operator()(const CallFunc& callFunc)const -> void
-	{
-		std::cout << indent() << "CallFunc(" << std::endl;
-
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "FuncRef(" << std::endl;
-
-			if (IsType<Identifier>(callFunc.funcRef))
-			{
-				const auto& funcName = As<Identifier>(callFunc.funcRef);
-				Expr expr(funcName);
-				boost::apply_visitor(Printer(m_indent + 2), expr);
-			}
-			else
-			{
-				std::cout << indent() << "(FuncVal)" << std::endl;
-			}
-
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		{
-			const auto child = Printer(m_indent + 1);
-			std::cout << child.indent() << "Arguments(" << std::endl;
-
-			const auto& args = callFunc.actualArguments;
-			for (size_t i = 0; i < args.size(); ++i)
-			{
-				boost::apply_visitor(Printer(m_indent + 2), args[i]);
-			}
-
-			//boost::apply_visitor(Printer(m_indent + 2), callFunc.actualArguments);
-			std::cout << child.indent() << ")" << std::endl;
-		}
-
-		std::cout << indent() << ")" << std::endl;
-	}
-
 	auto operator()(const FunctionCaller& callFunc)const -> void
 	{
-		std::cout << indent() << "CallFunc(" << std::endl;
+		std::cout << indent() << "FunctionCaller(" << std::endl;
 
 		{
 			const auto child = Printer(m_indent + 1);
@@ -2495,7 +2336,6 @@ public:
 	}
 };
 
-
 class EvalSat : public boost::static_visitor<Evaluated>
 {
 public:
@@ -2584,7 +2424,6 @@ public:
 	Evaluated operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	Evaluated operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	Evaluated operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Evaluated operator()(const CallFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	Evaluated operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	Evaluated operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	Evaluated operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
@@ -2688,152 +2527,19 @@ public:
 		return val;
 	}
 
-	Evaluated operator()(const CallFunc& callFunc)
-	{
-		std::shared_ptr<Environment> buckUp = pEnv;
-		//const auto buckUp = localVariables;
-
-		FuncVal funcVal;
-
-		//if (SameType(callFunc.funcRef.type(), typeid(FuncVal)))
-		if(IsType<FuncVal>(callFunc.funcRef))
-		{
-			//funcVal = boost::get<FuncVal>(callFunc.funcRef);
-			funcVal = As<FuncVal>(callFunc.funcRef);
-		}
-		//else if (auto itOpt = findVariable(boost::get<Identifier>(callFunc.funcRef).name))
-		else if (auto funcOpt = pEnv->find(As<Identifier>(callFunc.funcRef).name))
-		{
-			/*const Evaluated& funcRef = (*itOpt.get()).second;
-			if (SameType(funcRef.type(), typeid(FuncVal)))
-			{
-				funcVal = boost::get<FuncVal>(funcRef);
-			}
-			else
-			{
-				std::cerr << "Error(" << __LINE__ << "): variable \"" << (*itOpt.get()).first << "\" is not a function.\n";
-				return 0;
-			}*/
-			const Evaluated& funcRef = funcOpt.value();
-			if (IsType<FuncVal>(funcRef))
-			{
-				funcVal = As<FuncVal>(funcRef);
-			}
-			else
-			{
-				std::cerr << "Error(" << __LINE__ << "): variable \"" << As<Identifier>(callFunc.funcRef).name << "\" is not a function.\n";
-				return 0;
-			}
-		}
-
-		//const auto& funcVal = callFunc.funcVal;
-		assert(funcVal.arguments.size() == callFunc.actualArguments.size());
-
-		/*
-		引数に与えられた式の評価
-		この時点ではまだ関数の外なので、ローカル変数は変わらない。
-		*/
-		std::vector<Evaluated> argmentValues(funcVal.arguments.size());
-
-		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-		{
-			argmentValues[i] = boost::apply_visitor(*this, callFunc.actualArguments[i]);
-
-			//引数に変数が指定された場合は、
-			//関数の実行される環境にその変数があるかはわからないので、
-			//中身を取り出して値渡しにする
-			argmentValues[i] = pEnv->dereference(argmentValues[i]);
-		}
-
-		/*
-		関数の評価
-		ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える。
-		*/
-		//localVariables = funcVal.environment;
-		pEnv = funcVal.environment;
-
-		/*for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-		{
-			localVariables[funcVal.arguments[i].name] = argmentValues[i];
-		}*/
-		
-		//関数の引数用にスコープを一つ追加する
-		pEnv->pushNormal();
-		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-		{
-			//現在は値も変数も全て値渡し（コピー）をしているので、単純に bindNewValue を行えばよい
-			//本当は変数の場合は bindReference で参照情報だけ渡すべきなのかもしれない
-			//要考察
-			pEnv->bindNewValue(funcVal.arguments[i].name, argmentValues[i]);
-			
-			//localVariables[funcVal.arguments[i].name] = argmentValues[i];
-		}
-
-		std::cout << "Function Environment:\n";
-		pEnv->printEnvironment();
-
-		std::cout << "Function Definition:\n";
-		boost::apply_visitor(Printer(), funcVal.expr);
-
-		Evaluated result = boost::apply_visitor(*this, funcVal.expr);
-
-		//関数を抜ける時に、仮引数は全て解放される
-		pEnv->pop();
-
-		/*
-		最後にローカル変数の環境を関数の実行前のものに戻す。
-		*/
-		pEnv = buckUp;
-
-		//評価結果がreturn式だった場合はreturnを外して中身を返す
-		//return以外のジャンプ命令は関数では効果を持たないのでそのまま上に返す
-		if (IsType<Jump>(result))
-		{
-			auto& jump = As<Jump>(result);
-			if (jump.isReturn())
-			{
-				if (jump.lhs)
-				{
-					return jump.lhs.value();
-				}
-				else
-				{
-					//return式の中身が入って無ければとりあえずエラー
-					std::cerr << "Error(" << __LINE__ << ")\n";
-					return 0;
-				}
-			}
-		}
-
-		return result;
-	}
-
 	Evaluated operator()(const FunctionCaller& callFunc)
 	{
 		std::shared_ptr<Environment> buckUp = pEnv;
-		//const auto buckUp = localVariables;
 
 		FuncVal funcVal;
 
-		//if (SameType(callFunc.funcRef.type(), typeid(FuncVal)))
-		if (IsType<FuncVal>(callFunc.funcRef))
+		//if (IsType<FuncVal>(callFunc.funcRef))
+		if (auto opt = AsOpt<FuncVal>(callFunc.funcRef))
 		{
-			//funcVal = boost::get<FuncVal>(callFunc.funcRef);
-			funcVal = As<FuncVal>(callFunc.funcRef);
+			funcVal = opt.value();
 		}
-		//else if (auto itOpt = findVariable(boost::get<Identifier>(callFunc.funcRef).name))
 		else if (auto funcOpt = pEnv->find(As<Identifier>(callFunc.funcRef).name))
 		{
-			/*const Evaluated& funcRef = (*itOpt.get()).second;
-			if (SameType(funcRef.type(), typeid(FuncVal)))
-			{
-			funcVal = boost::get<FuncVal>(funcRef);
-			}
-			else
-			{
-			std::cerr << "Error(" << __LINE__ << "): variable \"" << (*itOpt.get()).first << "\" is not a function.\n";
-			return 0;
-			}*/
 			const Evaluated& funcRef = funcOpt.value();
 			if (IsType<FuncVal>(funcRef))
 			{
@@ -2846,13 +2552,15 @@ public:
 			}
 		}
 
-		//const auto& funcVal = callFunc.funcVal;
 		assert(funcVal.arguments.size() == callFunc.actualArguments.size());
 		
+		/*
+		まだ参照をスコープ間で共有できるようにしていないため、引数に与えられたオブジェクトは全て展開して渡す。
+		そして、引数の評価時点ではまだ関数の中に入っていないので、スコープを変える前に展開を行う。
+		*/
 		std::vector<Evaluated> expandedArguments(funcVal.arguments.size());
 		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 		{
-			//expandedArguments[i] = pEnv->dereference(callFunc.actualArguments[i]);
 			expandedArguments[i] = pEnv->expandObject(callFunc.actualArguments[i]);
 		}
 
@@ -2860,13 +2568,7 @@ public:
 		関数の評価
 		ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える。
 		*/
-		//localVariables = funcVal.environment;
 		pEnv = funcVal.environment;
-
-		/*for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-		{
-		localVariables[funcVal.arguments[i].name] = argmentValues[i];
-		}*/
 
 		//関数の引数用にスコープを一つ追加する
 		pEnv->pushNormal();
@@ -2878,8 +2580,6 @@ public:
 			//pEnv->bindNewValue(funcVal.arguments[i].name, callFunc.actualArguments[i]);
 			
 			pEnv->bindNewValue(funcVal.arguments[i].name, expandedArguments[i]);
-
-			//localVariables[funcVal.arguments[i].name] = argmentValues[i];
 		}
 
 		std::cout << "Function Environment:\n";
@@ -2888,7 +2588,9 @@ public:
 		std::cout << "Function Definition:\n";
 		boost::apply_visitor(Printer(), funcVal.expr);
 
-		//Evaluated result = boost::apply_visitor(*this, funcVal.expr);
+		/*
+		関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
+		*/
 		Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
 
 		//関数を抜ける時に、仮引数は全て解放される
@@ -3282,18 +2984,6 @@ public:
 	{
 		ObjectReference result;
 		
-		/*
-		Evaluated lval = boost::apply_visitor(*this, accessor.head);
-		
-		if (!IsType<Identifier>(lval))
-		{
-			//エラー：Identifier以外（オブジェクトのリテラル値へのアクセス）には未対応
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return 0;
-		}
-		result.name = As<Identifier>(lval).name;
-		*/
-
 		Evaluated headValue = boost::apply_visitor(*this, accessor.head);
 		if (auto opt = AsOpt<Identifier>(headValue))
 		{
@@ -3394,7 +3084,6 @@ inline void printExpr(const Expr& expr)
 
 inline Evaluated evalExpr(const Expr& expr)
 {
-	//auto env = std::make_shared<Environment>();
 	auto env = Environment::Make();
 
 	Eval evaluator(env);
@@ -3406,23 +3095,6 @@ inline Evaluated evalExpr(const Expr& expr)
 
 const Evaluated& Environment::dereference(const Evaluated& reference)
 {
-	//即値はValuesには持っているとは限らない
-	/*
-	if (!IsType<Identifier>(reference))
-	{
-	return reference;
-	}
-
-	const boost::optional<unsigned> valueIDOpt = findValueID(As<const Identifier&>(reference).name);
-	if (!valueIDOpt)
-	{
-	std::cerr << "Error(" << __LINE__ << ")\n";
-	return reference;
-	}
-
-	return m_values[valueIDOpt.value()];
-	*/
-
 	if (auto nameOpt = AsOpt<Identifier>(reference))
 	{
 		const boost::optional<unsigned> valueIDOpt = findValueID(nameOpt.value().name);
@@ -3434,45 +3106,6 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 
 		return m_values[valueIDOpt.value()];
 	}
-	/*
-	else if (auto listRefOpt = AsOpt<ListReference>(reference))
-	{
-	const auto& ref = listRefOpt.value();
-	const auto& listVal = m_values[ref.localValueID];
-
-	boost::optional<const Evaluated&> result = listVal;
-	for (const int index : ref.indices)
-	{
-	if (auto listOpt = AsOpt<List>(result.value()))
-	{
-	result = listOpt.value().data[index];
-	}
-	else
-	{
-	//指定されたローカルIDの値がList型ではない
-	//リストの参照に失敗
-	std::cerr << "Error(" << __LINE__ << ")\n";
-	return reference;
-	}
-	}
-
-	//if (auto listOpt = AsOpt<List>(listVal))
-	//{
-	//	return listOpt.value().data[listRefOpt.value().index];
-	//}
-	//else
-	//{
-	//	//指定されたローカルIDの値がList型ではない
-	//	std::cerr << "Error(" << __LINE__ << ")\n";
-	//	return reference;
-	//}
-
-	if (result)
-	{
-	return result.value();
-	}
-	}
-	*/
 	else if (auto objRefOpt = AsOpt<ObjectReference>(reference))
 	{
 		const auto& referenceProcess = objRefOpt.value();
@@ -3482,50 +3115,25 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 		if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
 		{
 			valueIDOpt = findValueID(opt.value().name);
-			/*std::cout << ">>>>===================================================" << std::endl;
-			std::cout << "Object Reference m_values[valueIDOpt.value()]:" << std::endl;
-			printEvaluated(m_values[valueIDOpt.value()]);
-			std::cout << ">>>>===================================================" << std::endl;*/
-			if (!valueIDOpt)
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return reference;
-			}
 		}
 		else if (auto opt = AsOpt<Record>(referenceProcess.headValue))
 		{
 			valueIDOpt = makeTemporaryValue(opt.value());
-			if (!valueIDOpt)
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return reference;
-			}
 		}
 		else if (auto opt = AsOpt<List>(referenceProcess.headValue))
 		{
 			valueIDOpt = makeTemporaryValue(opt.value());
-			if (!valueIDOpt)
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return reference;
-			}
 		}
 		else if (auto opt = AsOpt<FuncVal>(referenceProcess.headValue))
 		{
 			valueIDOpt = makeTemporaryValue(opt.value());
-			if (!valueIDOpt)
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return reference;
-			}
 		}
 
-		/*const boost::optional<unsigned> valueIDOpt = findValueID(referenceProcess.name);
 		if (!valueIDOpt)
 		{
 			std::cerr << "Error(" << __LINE__ << ")\n";
 			return reference;
-		}*/
+		}
 
 		std::cout << "Reference: " << objRefOpt.value().asString() << "\n";
 
@@ -3575,10 +3183,10 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 						
 						const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
 						result = m_values[ID];
-						std::cout << ">>>>===================================================" << std::endl;
+						/*std::cout << ">>>>===================================================" << std::endl;
 						std::cout << "Result Function Call:" << std::endl;
 						printEvaluated(m_values[ID]);
-						std::cout << "<<<<===================================================" << std::endl;
+						std::cout << "<<<<===================================================" << std::endl;*/
 					}
 					else
 					{
@@ -3597,29 +3205,6 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 		}
 
 		return result.value();
-		/*
-		const auto& listVal = m_values[ref.localValueID];
-
-		boost::optional<const Evaluated&> result = listVal;
-		for (const int index : ref.indices)
-		{
-		if (auto listOpt = AsOpt<List>(result.value()))
-		{
-		result = listOpt.value().data[index];
-		}
-		else
-		{
-		//指定されたローカルIDの値がList型ではない
-		//リストの参照に失敗
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return reference;
-		}
-		}
-
-		if (result)
-		{
-		return result.value();
-		}*/
 	}
 
 	return reference;
@@ -3627,51 +3212,29 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 
 inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
 {
-	//const boost::optional<unsigned> valueIDOpt = findValueID(objectRef.name);
-	//if (!valueIDOpt)
-	//{
-	//	std::cerr << "Error(" << __LINE__ << ")\n";
-	//	//return reference;
-	//	return;
-	//}
-
 	boost::optional<unsigned> valueIDOpt;
 
 	if (auto opt = AsOpt<Identifier>(objectRef.headValue))
 	{
 		valueIDOpt = findValueID(opt.value().name);
-		if (!valueIDOpt)
-		{
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return;
-		}
 	}
 	else if (auto opt = AsOpt<Record>(objectRef.headValue))
 	{
 		valueIDOpt = makeTemporaryValue(opt.value());
-		if (!valueIDOpt)
-		{
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return;
-		}
 	}
 	else if (auto opt = AsOpt<List>(objectRef.headValue))
 	{
 		valueIDOpt = makeTemporaryValue(opt.value());
-		if (!valueIDOpt)
-		{
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return;
-		}
 	}
 	else if (auto opt = AsOpt<FuncVal>(objectRef.headValue))
 	{
 		valueIDOpt = makeTemporaryValue(opt.value());
-		if (!valueIDOpt)
-		{
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return;
-		}
+	}
+
+	if (!valueIDOpt)
+	{
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return;
 	}
 
 	boost::optional<Evaluated&> result = m_values[valueIDOpt.value()];
@@ -3733,166 +3296,7 @@ inline void Environment::assignToObject(const ObjectReference & objectRef, const
 	}
 
 	result.value() = newValue;
-
-	/*
-	const auto& listVal = m_values[ref.localValueID];
-
-	boost::optional<const Evaluated&> result = listVal;
-	for (const int index : ref.indices)
-	{
-	if (auto listOpt = AsOpt<List>(result.value()))
-	{
-	result = listOpt.value().data[index];
-	}
-	else
-	{
-	//指定されたローカルIDの値がList型ではない
-	//リストの参照に失敗
-	std::cerr << "Error(" << __LINE__ << ")\n";
-	return reference;
-	}
-	}
-
-	if (result)
-	{
-	return result.value();
-	}*/
 }
-
-//inline ListReference ListAccess::fold(std::shared_ptr<Environment> pEnv)const
-//{
-//	Eval evaluator(pEnv);
-//
-//	const Evaluated indexVal = boost::apply_visitor(evaluator, index);
-//	if (!IsType<int>(indexVal))
-//	{
-//		//エラー：インデックスが整数でない
-//		std::cerr << "Error(" << __LINE__ << ")\n";
-//		return ListReference();
-//	}
-//
-//	ListReference result;
-//
-//	const int index = As<int>(indexVal);
-//
-//	if (auto listRefOpt = listRef)
-//	{
-//		const auto listRefVal = listRefOpt.value();
-//
-//		if (auto identifierOpt = AsOpt<Identifier>(listRefVal))
-//		{
-//			if (auto idOpt = pEnv->findValueID(identifierOpt.value().name))
-//			{
-//				//ID = idOptの値がリスト型であるかをチェックするべき
-//				result = ListReference(idOpt.value(), index);
-//			}
-//			else
-//			{
-//				//エラー：識別子が定義されていない
-//				std::cerr << "Error(" << __LINE__ << ")\n";
-//				return ListReference();
-//			}
-//		}
-//		else
-//		{
-//			std::cerr << "Error(" << __LINE__ << ")\n";
-//			return ListReference();
-//		}
-//	}
-//	else
-//	{
-//		std::cerr << "Error(" << __LINE__ << ")\n";
-//		return ListReference();
-//	}
-//
-//	if (!child.empty())
-//	{
-//		child.front().foldImpl(result, pEnv);
-//	}
-//
-//	return result;
-//}
-//
-//inline void ListAccess::foldImpl(ListReference& listReference, std::shared_ptr<Environment> pEnv)const
-//{
-//	Eval evaluator(pEnv);
-//
-//	const Evaluated indexVal = boost::apply_visitor(evaluator, index);
-//	if (!IsType<int>(indexVal))
-//	{
-//		//エラー：インデックスが整数でない
-//		std::cerr << "Error(" << __LINE__ << ")\n";
-//		
-//		listReference = ListReference();
-//		return;
-//	}
-//
-//	const int index = As<int>(indexVal);
-//	listReference.add(index);
-//
-//	if (!child.empty())
-//	{
-//		child.front().foldImpl(listReference, pEnv);
-//	}
-//}
-
-//inline void Concat(Expr& lines1, const Expr& lines2)
-//{
-//	if (!IsType<Lines>(lines1) || !IsType<Lines>(lines2))
-//	{
-//		std::cerr << "Error";
-//		return;
-//	}
-//
-//	As<Lines>(lines1).concat(As<const Lines>(lines2));
-//}
-//
-//inline void Append(Expr& lines, const Expr& expr)
-//{
-//	if (!IsType<Lines>(lines))
-//	{
-//		std::cerr << "Error";
-//		return;
-//	}
-//
-//	As<Lines>(lines).add(expr);
-//}
-
-//inline DefFunc MakeDefFunc(Expr& lines, const Expr& expr)
-//{
-//	if (!IsType<Lines>(lines))
-//	{
-//		std::cerr << "Error";
-//		return DefFunc();
-//	}
-//
-//	auto& ls = As<Lines>(lines);
-//	if (!DefFunc::IsValidArgs(ls, expr))
-//	{
-//		std::cerr << "Error";
-//		return DefFunc();
-//	}
-//
-//	return DefFunc(ls, expr);
-//}
-//
-//inline DefFunc* NewDefFunc(Expr& lines, const Expr& expr)
-//{
-//	if (!IsType<Lines>(lines))
-//	{
-//		std::cerr << "Error";
-//		return new DefFunc();
-//	}
-//
-//	auto& ls = As<Lines>(lines);
-//	if (!DefFunc::IsValidArgs(ls, expr))
-//	{
-//		std::cerr << "Error";
-//		return new DefFunc();
-//	}
-//
-//	return new DefFunc(ls, expr);
-//}
 
 inline void ValuePrinter::operator()(const FuncVal& node)const
 {

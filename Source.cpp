@@ -8,39 +8,142 @@
 #include "Evaluator.hpp"
 #include "Printer.hpp"
 
-
-const Evaluated& Environment::dereference(const Evaluated& reference)
+namespace cgl
 {
-	if (auto nameOpt = AsOpt<Identifier>(reference))
+	const Evaluated& Environment::dereference(const Evaluated& reference)
 	{
-		const boost::optional<unsigned> valueIDOpt = findValueID(nameOpt.value().name);
-		if (!valueIDOpt)
+		if (auto nameOpt = AsOpt<Identifier>(reference))
 		{
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return reference;
+			const boost::optional<unsigned> valueIDOpt = findValueID(nameOpt.value().name);
+			if (!valueIDOpt)
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+
+			return m_values[valueIDOpt.value()];
+		}
+		else if (auto objRefOpt = AsOpt<ObjectReference>(reference))
+		{
+			const auto& referenceProcess = objRefOpt.value();
+
+			boost::optional<unsigned> valueIDOpt;
+
+			if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
+			{
+				valueIDOpt = findValueID(opt.value().name);
+			}
+			else if (auto opt = AsOpt<Record>(referenceProcess.headValue))
+			{
+				valueIDOpt = makeTemporaryValue(opt.value());
+			}
+			else if (auto opt = AsOpt<List>(referenceProcess.headValue))
+			{
+				valueIDOpt = makeTemporaryValue(opt.value());
+			}
+			else if (auto opt = AsOpt<FuncVal>(referenceProcess.headValue))
+			{
+				valueIDOpt = makeTemporaryValue(opt.value());
+			}
+
+			if (!valueIDOpt)
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+
+			std::cout << "Reference: " << objRefOpt.value().asString() << "\n";
+
+			boost::optional<const Evaluated&> result = m_values[valueIDOpt.value()];
+
+			for (const auto& ref : referenceProcess.references)
+			{
+				if (auto listRefOpt = AsOpt<ObjectReference::ListRef>(ref))
+				{
+					const int index = listRefOpt.value().index;
+
+					if (auto listOpt = AsOpt<List>(result.value()))
+					{
+						result = listOpt.value().data[index];
+					}
+					else
+					{
+						//リストとしてアクセスするのに失敗
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return reference;
+					}
+				}
+				else if (auto recordRefOpt = AsOpt<ObjectReference::RecordRef>(ref))
+				{
+					const std::string& key = recordRefOpt.value().key;
+
+					if (auto recordOpt = AsOpt<Record>(result.value()))
+					{
+						result = recordOpt.value().values.at(key);
+					}
+					else
+					{
+						//レコードとしてアクセスするのに失敗
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return reference;
+					}
+				}
+				else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
+				{
+					if (auto recordOpt = AsOpt<FuncVal>(result.value()))
+					{
+						Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
+
+						if (auto sharedThis = m_weakThis.lock())
+						{
+							Eval evaluator(sharedThis);
+
+							const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
+							result = m_values[ID];
+							/*std::cout << ">>>>===================================================" << std::endl;
+							std::cout << "Result Function Call:" << std::endl;
+							printEvaluated(m_values[ID]);
+							std::cout << "<<<<===================================================" << std::endl;*/
+						}
+						else
+						{
+							//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+							std::cerr << "Error(" << __LINE__ << ")\n";
+							return reference;
+						}
+					}
+					else
+					{
+						//関数としてアクセスするのに失敗
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return reference;
+					}
+				}
+			}
+
+			return result.value();
 		}
 
-		return m_values[valueIDOpt.value()];
+		return reference;
 	}
-	else if (auto objRefOpt = AsOpt<ObjectReference>(reference))
-	{
-		const auto& referenceProcess = objRefOpt.value();
 
+	inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
+	{
 		boost::optional<unsigned> valueIDOpt;
 
-		if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
+		if (auto opt = AsOpt<Identifier>(objectRef.headValue))
 		{
 			valueIDOpt = findValueID(opt.value().name);
 		}
-		else if (auto opt = AsOpt<Record>(referenceProcess.headValue))
+		else if (auto opt = AsOpt<Record>(objectRef.headValue))
 		{
 			valueIDOpt = makeTemporaryValue(opt.value());
 		}
-		else if (auto opt = AsOpt<List>(referenceProcess.headValue))
+		else if (auto opt = AsOpt<List>(objectRef.headValue))
 		{
 			valueIDOpt = makeTemporaryValue(opt.value());
 		}
-		else if (auto opt = AsOpt<FuncVal>(referenceProcess.headValue))
+		else if (auto opt = AsOpt<FuncVal>(objectRef.headValue))
 		{
 			valueIDOpt = makeTemporaryValue(opt.value());
 		}
@@ -48,14 +151,12 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 		if (!valueIDOpt)
 		{
 			std::cerr << "Error(" << __LINE__ << ")\n";
-			return reference;
+			return;
 		}
 
-		std::cout << "Reference: " << objRefOpt.value().asString() << "\n";
+		boost::optional<Evaluated&> result = m_values[valueIDOpt.value()];
 
-		boost::optional<const Evaluated&> result = m_values[valueIDOpt.value()];
-
-		for (const auto& ref : referenceProcess.references)
+		for (const auto& ref : objectRef.references)
 		{
 			if (auto listRefOpt = AsOpt<ObjectReference::ListRef>(ref))
 			{
@@ -65,11 +166,10 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 				{
 					result = listOpt.value().data[index];
 				}
-				else
+				else//リストとしてアクセスするのに失敗
 				{
-					//リストとしてアクセスするのに失敗
 					std::cerr << "Error(" << __LINE__ << ")\n";
-					return reference;
+					return;
 				}
 			}
 			else if (auto recordRefOpt = AsOpt<ObjectReference::RecordRef>(ref))
@@ -80,11 +180,10 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 				{
 					result = recordOpt.value().values.at(key);
 				}
-				else
+				else//レコードとしてアクセスするのに失敗
 				{
-					//レコードとしてアクセスするのに失敗
 					std::cerr << "Error(" << __LINE__ << ")\n";
-					return reference;
+					return;
 				}
 			}
 			else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
@@ -96,153 +195,55 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 					if (auto sharedThis = m_weakThis.lock())
 					{
 						Eval evaluator(sharedThis);
-
 						const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
 						result = m_values[ID];
-						/*std::cout << ">>>>===================================================" << std::endl;
-						std::cout << "Result Function Call:" << std::endl;
-						printEvaluated(m_values[ID]);
-						std::cout << "<<<<===================================================" << std::endl;*/
 					}
-					else
+					else//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
 					{
-						//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
 						std::cerr << "Error(" << __LINE__ << ")\n";
-						return reference;
+						return;
 					}
 				}
-				else
-				{
-					//関数としてアクセスするのに失敗
-					std::cerr << "Error(" << __LINE__ << ")\n";
-					return reference;
-				}
-			}
-		}
-
-		return result.value();
-	}
-
-	return reference;
-}
-
-inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
-{
-	boost::optional<unsigned> valueIDOpt;
-
-	if (auto opt = AsOpt<Identifier>(objectRef.headValue))
-	{
-		valueIDOpt = findValueID(opt.value().name);
-	}
-	else if (auto opt = AsOpt<Record>(objectRef.headValue))
-	{
-		valueIDOpt = makeTemporaryValue(opt.value());
-	}
-	else if (auto opt = AsOpt<List>(objectRef.headValue))
-	{
-		valueIDOpt = makeTemporaryValue(opt.value());
-	}
-	else if (auto opt = AsOpt<FuncVal>(objectRef.headValue))
-	{
-		valueIDOpt = makeTemporaryValue(opt.value());
-	}
-
-	if (!valueIDOpt)
-	{
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return;
-	}
-
-	boost::optional<Evaluated&> result = m_values[valueIDOpt.value()];
-
-	for (const auto& ref : objectRef.references)
-	{
-		if (auto listRefOpt = AsOpt<ObjectReference::ListRef>(ref))
-		{
-			const int index = listRefOpt.value().index;
-
-			if (auto listOpt = AsOpt<List>(result.value()))
-			{
-				result = listOpt.value().data[index];
-			}
-			else//リストとしてアクセスするのに失敗
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return;
-			}
-		}
-		else if (auto recordRefOpt = AsOpt<ObjectReference::RecordRef>(ref))
-		{
-			const std::string& key = recordRefOpt.value().key;
-
-			if (auto recordOpt = AsOpt<Record>(result.value()))
-			{
-				result = recordOpt.value().values.at(key);
-			}
-			else//レコードとしてアクセスするのに失敗
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return;
-			}
-		}
-		else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
-		{
-			if (auto recordOpt = AsOpt<FuncVal>(result.value()))
-			{
-				Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
-
-				if (auto sharedThis = m_weakThis.lock())
-				{
-					Eval evaluator(sharedThis);
-					const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
-					result = m_values[ID];
-				}
-				else//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+				else//関数としてアクセスするのに失敗
 				{
 					std::cerr << "Error(" << __LINE__ << ")\n";
 					return;
 				}
 			}
-			else//関数としてアクセスするのに失敗
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return;
-			}
 		}
+
+		result.value() = newValue;
 	}
-
-	result.value() = newValue;
-}
-
-
-auto MakeUnaryExpr(UnaryOp op)
-{
-	return boost::phoenix::bind([](const auto & e, UnaryOp op) {
-		return UnaryExpr(e, op);
-	}, boost::spirit::_1, op);
-}
-
-auto MakeBinaryExpr(BinaryOp op)
-{
-	return boost::phoenix::bind([&](const auto& lhs, const auto& rhs, BinaryOp op) {
-		return BinaryExpr(lhs, rhs, op);
-	}, boost::spirit::_val, boost::spirit::_1, op);
-}
-
-template <class F, class... Args>
-auto Call(F func, Args... args)
-{
-	return boost::phoenix::bind(func, args...);
-}
-
-template<class FromT, class ToT>
-auto Cast()
-{
-	return boost::phoenix::bind([&](const FromT& a) {return static_cast<ToT>(a); }, boost::spirit::_1);
 }
 
 namespace cgl
 {
+	auto MakeUnaryExpr(UnaryOp op)
+	{
+		return boost::phoenix::bind([](const auto & e, UnaryOp op) {
+			return UnaryExpr(e, op);
+		}, boost::spirit::_1, op);
+	}
+
+	auto MakeBinaryExpr(BinaryOp op)
+	{
+		return boost::phoenix::bind([&](const auto& lhs, const auto& rhs, BinaryOp op) {
+			return BinaryExpr(lhs, rhs, op);
+		}, boost::spirit::_val, boost::spirit::_1, op);
+	}
+
+	template <class F, class... Args>
+	auto Call(F func, Args... args)
+	{
+		return boost::phoenix::bind(func, args...);
+	}
+
+	template<class FromT, class ToT>
+	auto Cast()
+	{
+		return boost::phoenix::bind([&](const FromT& a) {return static_cast<ToT>(a); }, boost::spirit::_1);
+	}
+
 	using namespace boost::spirit;
 
 	template<typename Iterator>
@@ -510,6 +511,8 @@ namespace cgl
 
 int main()
 {
+	using namespace cgl;
+
 	const auto parse = [](const std::string& str, Lines& lines)->bool
 	{
 		using namespace cgl;

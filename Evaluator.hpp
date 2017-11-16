@@ -100,6 +100,7 @@ namespace cgl
 		Evaluated operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		Evaluated operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		Evaluated operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Evaluated operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		Evaluated operator()(const Accessor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		Evaluated operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		Evaluated operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
@@ -625,7 +626,7 @@ namespace cgl
 					{
 						if (!IsType<Identifier>(record.freeVariables[i]))
 						{
-							std::cerr << "未対応" << std::endl;
+							std::cerr << "Error(" << __LINE__ << ")\n";
 							return 0;
 						}
 
@@ -648,6 +649,81 @@ namespace cgl
 
 			pEnv->pop();
 			return record;
+		}
+
+		Evaluated operator()(const RecordInheritor& record)
+		{
+			auto originalOpt = pEnv->find(record.original.name);
+			if (!originalOpt)
+			{
+				//エラー：未定義のレコードを参照しようとした
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return 0;
+			}
+			
+			auto recordOpt = AsOpt<Record>(originalOpt.value());
+			if (!recordOpt)
+			{
+				//エラー：識別子の指すオブジェクトがレコード型ではない
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return 0;
+			}
+
+			/*
+			a{}を評価する手順
+			(1) オリジナルのレコードaのクローン(a')を作る
+			(2) a'の各キーと値に対する参照をローカルスコープに追加する
+			(3) 追加するレコードの中身を評価する
+			(4) ローカルスコープの参照値を読みレコードに上書きする //リストアクセスなどの変更処理
+			(5) レコードをマージする //ローカル変数などの変更処理
+			*/
+
+			//(1)
+			Record clone = recordOpt.value();
+
+			//(2)
+			pEnv->pushRecord();
+			for (auto& keyval : clone.values)
+			{
+				pEnv->bindNewValue(keyval.first, keyval.second);
+			}
+
+			//(3)
+			Expr expr = record.adder;
+			Evaluated recordValue = boost::apply_visitor(*this, expr);
+			if (auto opt = AsOpt<Record>(recordValue))
+			{
+				//(4)
+				for (auto& keyval : recordOpt.value().values)
+				{
+					auto valOpt = pEnv->find(keyval.first);
+					if (!valOpt)
+					{
+						//評価して変数が消えることはないはず
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return 0;
+					}
+
+					clone.values[keyval.first] = valOpt.value();
+				}
+
+				//(5)
+				MargeRecordInplace(clone, opt.value());
+
+				//TODO:ここで制約処理を行う
+
+				pEnv->pop();
+
+				return clone;
+
+				//MargeRecord(recordOpt.value(), opt.value());
+			}
+
+			pEnv->pop();
+
+			//ここは通らないはず。{}で囲まれた式を評価した結果がレコードでなかった。
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0;
 		}
 
 		Evaluated operator()(const Accessor& accessor)

@@ -162,6 +162,7 @@ namespace cgl
 
 	struct KeyExpr;
 	struct RecordConstractor;
+	struct RecordInheritor;
 
 	struct KeyValue;
 	struct Record;
@@ -177,7 +178,7 @@ namespace cgl
 	struct DeclFree;
 
 	using types =
-		boost::mpl::vector19<
+		boost::mpl::vector20<
 		bool,
 		int,
 		double,
@@ -199,7 +200,8 @@ namespace cgl
 
 		boost::recursive_wrapper<KeyExpr>,
 		boost::recursive_wrapper<RecordConstractor>,
-
+		boost::recursive_wrapper<RecordInheritor>,
+		
 		boost::recursive_wrapper<Accessor>,
 		boost::recursive_wrapper<FunctionCaller>,
 
@@ -679,6 +681,47 @@ namespace cgl
 		static void AppendExpr(RecordConstractor& rec, const Expr& expr)
 		{
 			rec.exprs.push_back(expr);
+		}
+	};
+
+	struct RecordInheritor
+	{
+		Identifier original;
+		//std::vector<Expr> exprs;
+		RecordConstractor adder;
+
+		RecordInheritor() = default;
+
+		RecordInheritor(const Identifier& original):
+			original(original)
+		{}
+
+		static RecordInheritor Make(const Identifier& original)
+		{
+			return RecordInheritor(original);
+		}
+
+		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
+		{
+			rec.adder.exprs.push_back(KeyExpr);
+		}
+
+		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
+		{
+			rec.adder.exprs.push_back(expr);
+		}
+
+		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
+		{
+			auto& exprs = rec.adder.exprs;
+			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
+		}
+
+		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
+		{
+			RecordInheritor obj(original);
+			AppendRecord(obj, rec2);
+			return obj;
 		}
 	};
 

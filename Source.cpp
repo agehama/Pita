@@ -302,6 +302,8 @@ namespace cgl
 
 		qi::rule<Iterator, KeyExpr(), Skipper> record_keyexpr;
 		qi::rule<Iterator, RecordConstractor(), Skipper> record_maker;
+		qi::rule<Iterator, RecordInheritor(), Skipper> record_inheritor;
+
 		qi::rule<Iterator, ListConstractor(), Skipper> list_maker;
 		qi::rule<Iterator, For(), Skipper> for_expr;
 		qi::rule<Iterator, If(), Skipper> if_expr;
@@ -424,6 +426,9 @@ namespace cgl
 			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
 			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
+			//record{} の間には改行は挟めない（record,{}と区別できなくなるので）
+			record_inheritor = id[_val = Call(RecordInheritor::Make, _1)] >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
+
 			record_maker = (
 				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
 				*(
@@ -437,8 +442,16 @@ namespace cgl
 			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
 			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
-			list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
+			/*list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
 				*(s >> char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)]) >> s >> char_(']')
+				)
+				| (char_('[') >> s >> char_(']'));*/
+
+			list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
+				*(
+					(s >> char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					| (+(char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					) >> s >> char_(']')
 				)
 				| (char_('[') >> s >> char_(']'));
 			
@@ -471,6 +484,8 @@ namespace cgl
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
+				| record_inheritor[_val = _1]
+				//| (id >> record_maker)[_val = Call(RecordInheritor::MakeRecord, _1,_2)]
 				| record_maker[_val = _1]
 				| id[_val = _1];
 

@@ -674,9 +674,10 @@ struct List
 
 	List() = default;
 	
-	void append(const Evaluated& value)
+	List& append(const Evaluated& value)
 	{
 		data.push_back(value);
+		return *this;
 	}
 
 	std::vector<Evaluated>::iterator get(int index)
@@ -895,7 +896,9 @@ struct ObjectReference
 
 	using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
 
-	std::string name;
+	using ObjectT = boost::variant<Identifier, boost::recursive_wrapper<Record>, boost::recursive_wrapper<List>, boost::recursive_wrapper<FuncVal>>;
+	//std::string name;
+	ObjectT headValue;
 
 	std::vector<Ref> references;
 
@@ -916,7 +919,7 @@ struct ObjectReference
 
 	bool operator==(const ObjectReference& other)const
 	{
-		if (name != other.name)
+		if (!(headValue == other.headValue))
 		{
 			return false;
 		}
@@ -939,7 +942,8 @@ struct ObjectReference
 
 	std::string asString()const
 	{
-		std::string str = name;
+		//std::string str = name;
+		std::string str = "objName";
 
 		for (const auto& r : references)
 		{
@@ -957,7 +961,7 @@ struct ObjectReference
 			}
 		}
 
-		return name;
+		return str;
 	}
 };
 
@@ -1107,10 +1111,10 @@ struct FunctionAccess
 	}
 };
 
+using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
+
 struct Accessor
-{
-	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
-	
+{	
 	//先頭のオブジェクト(識別子かもしくは関数・リスト・レコードのリテラル)
 	Expr head;
 
@@ -1138,6 +1142,11 @@ struct Accessor
 	}
 
 	static void AppendFunction(Accessor& obj, const FunctionAccess& access)
+	{
+		obj.accesses.push_back(access);
+	}
+
+	static void Append(Accessor& obj, const Access& access)
 	{
 		obj.accesses.push_back(access);
 	}
@@ -1258,7 +1267,8 @@ public:
 		
 	void operator()(const ObjectReference& node)const
 	{
-		std::cout << indent() << "ObjectReference(" << node.name << ")" << std::endl;
+		//std::cout << indent() << "ObjectReference(" << node.name << ")" << std::endl;
+		std::cout << indent() << "ObjectReference(" << ")" << std::endl;
 	}
 
 	void operator()(const List& node)const
@@ -1477,6 +1487,32 @@ public:
 		return dereference(reference);
 	}
 
+	//ローカル変数を全て展開する
+	//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
+	Evaluated expandObject(const Evaluated& reference)
+	{
+		if (auto opt = AsOpt<Record>(reference))
+		{
+			Record expanded;
+			for (const auto& elem : opt.value().values)
+			{
+				expanded.append(elem.first, expandObject(elem.second));
+			}
+			return expanded;
+		}
+		else if (auto opt = AsOpt<List>(reference))
+		{
+			List expanded;
+			for (const auto& elem : opt.value().data)
+			{
+				expanded.append(expandObject(elem));
+			}
+			return expanded;
+		}
+
+		return dereference(reference);
+	}
+
 	void bindNewValue(const std::string& name, const Evaluated& value)
 	{
 		const unsigned newID = m_values.add(value);
@@ -1579,6 +1615,13 @@ public:
 	Environment() = default;
 
 private:
+
+	//値を作って返す（変数で束縛されないのでGCが走ったら即座に消される）
+	//式の評価途中でGCは走らないようにするべきか？
+	unsigned makeTemporaryValue(const Evaluated& value)
+	{
+		return m_values.add(value);
+	}
 
 	//内側のスコープから順番に変数を探して返す
 	boost::optional<unsigned> findValueID(const std::string& name)const
@@ -2806,6 +2849,13 @@ public:
 		//const auto& funcVal = callFunc.funcVal;
 		assert(funcVal.arguments.size() == callFunc.actualArguments.size());
 		
+		std::vector<Evaluated> expandedArguments(funcVal.arguments.size());
+		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
+		{
+			//expandedArguments[i] = pEnv->dereference(callFunc.actualArguments[i]);
+			expandedArguments[i] = pEnv->expandObject(callFunc.actualArguments[i]);
+		}
+
 		/*
 		関数の評価
 		ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える。
@@ -2825,7 +2875,9 @@ public:
 			//現在は値も変数も全て値渡し（コピー）をしているので、単純に bindNewValue を行えばよい
 			//本当は変数の場合は bindReference で参照情報だけ渡すべきなのかもしれない
 			//要考察
-			pEnv->bindNewValue(funcVal.arguments[i].name, callFunc.actualArguments[i]);
+			//pEnv->bindNewValue(funcVal.arguments[i].name, callFunc.actualArguments[i]);
+			
+			pEnv->bindNewValue(funcVal.arguments[i].name, expandedArguments[i]);
 
 			//localVariables[funcVal.arguments[i].name] = argmentValues[i];
 		}
@@ -2836,7 +2888,8 @@ public:
 		std::cout << "Function Definition:\n";
 		boost::apply_visitor(Printer(), funcVal.expr);
 
-		Evaluated result = boost::apply_visitor(*this, funcVal.expr);
+		//Evaluated result = boost::apply_visitor(*this, funcVal.expr);
+		Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
 
 		//関数を抜ける時に、仮引数は全て解放される
 		pEnv->pop();
@@ -3229,7 +3282,9 @@ public:
 	{
 		ObjectReference result;
 		
+		/*
 		Evaluated lval = boost::apply_visitor(*this, accessor.head);
+		
 		if (!IsType<Identifier>(lval))
 		{
 			//エラー：Identifier以外（オブジェクトのリテラル値へのアクセス）には未対応
@@ -3237,6 +3292,31 @@ public:
 			return 0;
 		}
 		result.name = As<Identifier>(lval).name;
+		*/
+
+		Evaluated headValue = boost::apply_visitor(*this, accessor.head);
+		if (auto opt = AsOpt<Identifier>(headValue))
+		{
+			result.headValue = opt.value();
+		}
+		else if (auto opt = AsOpt<Record>(headValue))
+		{
+			result.headValue = opt.value();
+		}
+		else if (auto opt = AsOpt<List>(headValue))
+		{
+			result.headValue = opt.value();
+		}
+		else if (auto opt = AsOpt<FuncVal>(headValue))
+		{
+			result.headValue = opt.value();
+		}
+		else
+		{
+			//エラー：識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0;
+		}
 
 		for (const auto& access : accessor.accesses)
 		{
@@ -3396,12 +3476,56 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 	else if (auto objRefOpt = AsOpt<ObjectReference>(reference))
 	{
 		const auto& referenceProcess = objRefOpt.value();
-		const boost::optional<unsigned> valueIDOpt = findValueID(referenceProcess.name);
+		
+		boost::optional<unsigned> valueIDOpt;
+		
+		if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
+		{
+			valueIDOpt = findValueID(opt.value().name);
+			/*std::cout << ">>>>===================================================" << std::endl;
+			std::cout << "Object Reference m_values[valueIDOpt.value()]:" << std::endl;
+			printEvaluated(m_values[valueIDOpt.value()]);
+			std::cout << ">>>>===================================================" << std::endl;*/
+			if (!valueIDOpt)
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+		}
+		else if (auto opt = AsOpt<Record>(referenceProcess.headValue))
+		{
+			valueIDOpt = makeTemporaryValue(opt.value());
+			if (!valueIDOpt)
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+		}
+		else if (auto opt = AsOpt<List>(referenceProcess.headValue))
+		{
+			valueIDOpt = makeTemporaryValue(opt.value());
+			if (!valueIDOpt)
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+		}
+		else if (auto opt = AsOpt<FuncVal>(referenceProcess.headValue))
+		{
+			valueIDOpt = makeTemporaryValue(opt.value());
+			if (!valueIDOpt)
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return reference;
+			}
+		}
+
+		/*const boost::optional<unsigned> valueIDOpt = findValueID(referenceProcess.name);
 		if (!valueIDOpt)
 		{
 			std::cerr << "Error(" << __LINE__ << ")\n";
 			return reference;
-		}
+		}*/
 
 		std::cout << "Reference: " << objRefOpt.value().asString() << "\n";
 
@@ -3451,6 +3575,10 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 						
 						const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
 						result = m_values[ID];
+						std::cout << ">>>>===================================================" << std::endl;
+						std::cout << "Result Function Call:" << std::endl;
+						printEvaluated(m_values[ID]);
+						std::cout << "<<<<===================================================" << std::endl;
 					}
 					else
 					{
@@ -3499,12 +3627,51 @@ const Evaluated& Environment::dereference(const Evaluated& reference)
 
 inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
 {
-	const boost::optional<unsigned> valueIDOpt = findValueID(objectRef.name);
-	if (!valueIDOpt)
+	//const boost::optional<unsigned> valueIDOpt = findValueID(objectRef.name);
+	//if (!valueIDOpt)
+	//{
+	//	std::cerr << "Error(" << __LINE__ << ")\n";
+	//	//return reference;
+	//	return;
+	//}
+
+	boost::optional<unsigned> valueIDOpt;
+
+	if (auto opt = AsOpt<Identifier>(objectRef.headValue))
 	{
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		//return reference;
-		return;
+		valueIDOpt = findValueID(opt.value().name);
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return;
+		}
+	}
+	else if (auto opt = AsOpt<Record>(objectRef.headValue))
+	{
+		valueIDOpt = makeTemporaryValue(opt.value());
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return;
+		}
+	}
+	else if (auto opt = AsOpt<List>(objectRef.headValue))
+	{
+		valueIDOpt = makeTemporaryValue(opt.value());
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return;
+		}
+	}
+	else if (auto opt = AsOpt<FuncVal>(objectRef.headValue))
+	{
+		valueIDOpt = makeTemporaryValue(opt.value());
+		if (!valueIDOpt)
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return;
+		}
 	}
 
 	boost::optional<Evaluated&> result = m_values[valueIDOpt.value()];

@@ -226,6 +226,8 @@ namespace cgl
 
 	struct ObjectReference;
 
+	struct OptimizationProblemSat;
+
 	using Evaluated = boost::variant<
 		bool,
 		int,
@@ -237,20 +239,93 @@ namespace cgl
 		boost::recursive_wrapper<Record>,
 		boost::recursive_wrapper<FuncVal>,
 		boost::recursive_wrapper<Jump>,
+		
+		//boost::recursive_wrapper<OptimizationProblemSat>
+		
 		boost::recursive_wrapper<DeclSat>,
 		boost::recursive_wrapper<DeclFree>
 	>;
 
 	bool IsEqual(const Evaluated& value1, const Evaluated& value2);
+	bool IsEqual(const Expr& value1, const Expr& value2);
+
+	struct SatUnaryExpr;
+	struct SatBinaryExpr;
+
+	struct SatReference
+	{
+		int refID;
+
+		SatReference() = default;
+
+		SatReference(int refID)
+			:refID(refID)
+		{}
+	};
 
 	using SatExpr = boost::variant<
-		bool,
-		int,
 		double,
-		Identifier,
-		boost::recursive_wrapper<UnaryExpr>,
-		boost::recursive_wrapper<BinaryExpr>
+		SatReference,
+		boost::recursive_wrapper<SatUnaryExpr>,
+		boost::recursive_wrapper<SatBinaryExpr>
 	>;
+
+	class Environment;
+
+	struct OptimizationProblemSat
+	{
+		boost::optional<SatExpr> expr;
+
+		//制約式に含まれる全ての参照にIDを振る(=参照ID)
+		//参照IDはdouble型の値に紐付けられる
+		//std::unordered_map<int, int> refs;//参照ID -> dataのインデックス
+		std::vector<double> data;//Referenced Values
+
+		//std::vector<ObjectReference> refs;//Referenced Values
+		std::vector<Accessor> refs;//Referenced Values
+
+		//expr = SatBinaryExpr(expr, other.expr, BinaryOp::And);
+
+		void addConstraint(const Expr& logicExpr);
+
+		//bool initializeData(Environment& env);
+		bool initializeData(std::shared_ptr<Environment> pEnv);
+
+		void update(int index, double x)
+		{
+			data[index] = x;
+		}
+
+		double eval();
+	};
+
+	struct SatUnaryExpr
+	{
+		SatExpr lhs;
+		UnaryOp op;
+
+		SatUnaryExpr() = default;
+
+		SatUnaryExpr(const SatExpr& lhs, UnaryOp op) :
+			lhs(lhs), 
+			op(op)
+		{}
+	};
+
+	struct SatBinaryExpr
+	{
+		SatExpr lhs;
+		SatExpr rhs;
+		BinaryOp op;
+
+		SatBinaryExpr() = default;
+
+		SatBinaryExpr(const SatExpr& lhs, const SatExpr& rhs, BinaryOp op) :
+			lhs(lhs),
+			rhs(rhs),
+			op(op)
+		{}
+	};
 
 	bool IsLValue(const Evaluated& value)
 	{
@@ -262,8 +337,6 @@ namespace cgl
 		return !IsLValue(value);
 	}
 
-	class Environment;
-
 	struct UnaryExpr
 	{
 		Expr lhs;
@@ -272,6 +345,16 @@ namespace cgl
 		UnaryExpr(const Expr& lhs, UnaryOp op) :
 			lhs(lhs), op(op)
 		{}
+
+		bool operator==(const UnaryExpr& other)const
+		{
+			if (op != other.op)
+			{
+				return false;
+			}
+
+			return IsEqual(lhs, other.lhs);
+		}
 	};
 
 	struct BinaryExpr
@@ -283,6 +366,16 @@ namespace cgl
 		BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
 			lhs(lhs), rhs(rhs), op(op)
 		{}
+
+		bool operator==(const BinaryExpr& other)const
+		{
+			if (op != other.op)
+			{
+				return false;
+			}
+
+			return IsEqual(lhs, other.lhs) && IsEqual(rhs, other.rhs);
+		}
 	};
 
 	struct Range
@@ -308,6 +401,11 @@ namespace cgl
 		static void SetRhs(Range& range, const Expr& rhs)
 		{
 			range.rhs = rhs;
+		}
+
+		bool operator==(const Range& other)const
+		{
+			return IsEqual(lhs, rhs);
 		}
 	};
 
@@ -369,6 +467,24 @@ namespace cgl
 		static void Concat(Lines& lines1, const Lines& lines2)
 		{
 			lines1.concat(lines2);
+		}
+
+		bool operator==(const Lines& other)const
+		{
+			if (exprs.size() != other.exprs.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < exprs.size(); ++i)
+			{
+				if (!IsEqual(exprs[i], other.exprs[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
 		}
 	};
 
@@ -486,6 +602,24 @@ namespace cgl
 
 			return true;
 		}
+
+		bool operator==(const DefFunc& other)const
+		{
+			if (arguments.size() != other.arguments.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < arguments.size(); ++i)
+			{
+				if (!(arguments[i] == other.arguments[i]))
+				{
+					return false;
+				}
+			}
+
+			return IsEqual(expr, other.expr);
+		}
 	};
 
 	struct FunctionCaller
@@ -512,6 +646,24 @@ namespace cgl
 			funcRef(funcName),
 			actualArguments(actualArguments_)
 		{}
+
+		bool operator==(const FunctionCaller& other)const
+		{
+			if (actualArguments.size() != other.actualArguments.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < actualArguments.size(); ++i)
+			{
+				if (!IsEqual(actualArguments[i], other.actualArguments[i]))
+				{
+					return false;
+				}
+			}
+
+			return funcRef == other.funcRef;
+		}
 	};
 
 	struct If
@@ -539,6 +691,27 @@ namespace cgl
 		static void SetElse(If& if_statement, const Expr& else_expr_)
 		{
 			if_statement.else_expr = else_expr_;
+		}
+
+		bool operator==(const If& other)const
+		{
+			const bool b1 = static_cast<bool>(else_expr);
+			const bool b2 = static_cast<bool>(other.else_expr);
+
+			if (b1 != b2)
+			{
+				return false;
+			}
+
+			if (b1)
+			{
+				return IsEqual(cond_expr, other.cond_expr)
+					&& IsEqual(then_expr, other.then_expr) 
+					&& IsEqual(else_expr.value(), other.else_expr.value());
+			}
+
+			return IsEqual(cond_expr, other.cond_expr)
+				&& IsEqual(then_expr, other.then_expr);
 		}
 	};
 
@@ -579,6 +752,14 @@ namespace cgl
 		{
 			forExpression.doExpr = doExpr;
 		}
+
+		bool operator==(const For& other)const
+		{
+			return loopCounter == other.loopCounter
+				&& IsEqual(rangeStart, other.rangeStart)
+				&& IsEqual(rangeEnd, other.rangeEnd)
+				&& IsEqual(doExpr, other.doExpr);
+		}
 	};
 
 	struct Return
@@ -594,6 +775,11 @@ namespace cgl
 		static Return Make(const Expr& expr)
 		{
 			return Return(expr);
+		}
+
+		bool operator==(const Return& other)const
+		{
+			return IsEqual(expr, other.expr);
 		}
 	};
 
@@ -615,6 +801,24 @@ namespace cgl
 		static void Append(ListConstractor& list, const Expr& expr)
 		{
 			list.data.push_back(expr);
+		}
+
+		bool operator==(const ListConstractor& other)const
+		{
+			if (data.size() != other.data.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < data.size(); ++i)
+			{
+				if (!IsEqual(data[i], other.data[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
 		}
 	};
 
@@ -674,6 +878,12 @@ namespace cgl
 		{
 			keyval.expr = expr;
 		}
+
+		bool operator==(const KeyExpr& other)const
+		{
+			return name == other.name
+				&& IsEqual(expr, other.expr);
+		}
 	};
 
 	struct RecordConstractor
@@ -690,6 +900,24 @@ namespace cgl
 		static void AppendExpr(RecordConstractor& rec, const Expr& expr)
 		{
 			rec.exprs.push_back(expr);
+		}
+
+		bool operator==(const RecordConstractor& other)const
+		{
+			if (exprs.size() != other.exprs.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < exprs.size(); ++i)
+			{
+				if (!IsEqual(exprs[i], other.exprs[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
 		}
 	};
 
@@ -731,6 +959,12 @@ namespace cgl
 			RecordInheritor obj(original);
 			AppendRecord(obj, rec2);
 			return obj;
+		}
+
+		bool operator==(const RecordInheritor& other)const
+		{
+			return original == other.original
+				&& adder == other.adder;
 		}
 	};
 
@@ -856,6 +1090,12 @@ namespace cgl
 
 		std::vector<Ref> references;
 
+		ObjectReference() = default;
+
+		ObjectReference(const ObjectT& headValue)
+			:headValue(headValue)
+		{}
+
 		void appendListRef(int index)
 		{
 			references.push_back(ListRef(index));
@@ -921,15 +1161,16 @@ namespace cgl
 
 	struct DeclFree
 	{
-		using Ref = boost::variant<Identifier, boost::recursive_wrapper<ObjectReference>>;
+		//using Ref = boost::variant<Identifier, boost::recursive_wrapper<ObjectReference>>;
+		//using Ref = ObjectReference;
 
-		std::vector<Ref> refs;
+		//std::vector<Ref> refs;
 
 		std::vector<Accessor> accessors;
 
 		DeclFree() = default;
 
-		static void AddIdentifier(DeclFree& decl, const Identifier& ref)
+		/*static void AddIdentifier(DeclFree& decl, const Identifier& ref)
 		{
 			decl.refs.push_back(ref);
 		}
@@ -942,11 +1183,16 @@ namespace cgl
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
 		{
 			decl.accessors.push_back(accessor);
+		}*/
+
+		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
+		{
+			decl.accessors.push_back(accessor);
 		}
 
 		bool operator==(const DeclFree& other)const
 		{
-			if (refs.size() != other.refs.size())
+			/*if (refs.size() != other.refs.size())
 			{
 				return false;
 			}
@@ -972,7 +1218,10 @@ namespace cgl
 						return false;
 					}
 				}
-			}
+			}*/
+
+			std::cerr << "Warning: IsEqual<DeclFree>() don't care about accessors" << std::endl;
+			//accessors;
 
 			return true;
 		}
@@ -981,8 +1230,9 @@ namespace cgl
 	struct Record
 	{
 		std::unordered_map<std::string, Evaluated> values;
-		boost::optional<Expr> constraint;
-		std::vector<DeclFree::Ref> freeVariables;
+		OptimizationProblemSat problem;
+		//std::vector<DeclFree::Ref> freeVariables;
+		std::vector<Accessor> freeVariables;
 
 		Record() = default;
 
@@ -1037,6 +1287,11 @@ namespace cgl
 		{
 			listAccess.index = index;
 		}
+
+		bool operator==(const ListAccess& other)const
+		{
+			return index == other.index;
+		}
 	};
 
 	struct RecordAccess
@@ -1052,6 +1307,11 @@ namespace cgl
 		static RecordAccess Make(const Identifier& name)
 		{
 			return RecordAccess(name);
+		}
+
+		bool operator==(const RecordAccess& other)const
+		{
+			return name == other.name;
 		}
 	};
 
@@ -1069,6 +1329,24 @@ namespace cgl
 		static void Append(FunctionAccess& obj, const Expr& argument)
 		{
 			obj.append(argument);
+		}
+
+		bool operator==(const FunctionAccess& other)const
+		{
+			if (actualArguments.size() != other.actualArguments.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < actualArguments.size(); ++i)
+			{
+				if (!IsEqual(actualArguments[i], other.actualArguments[i]))
+				{
+					return false;
+				}
+			}
+			
+			return true;
 		}
 	};
 
@@ -1110,6 +1388,24 @@ namespace cgl
 		static void Append(Accessor& obj, const Access& access)
 		{
 			obj.accesses.push_back(access);
+		}
+
+		bool operator==(const Accessor& other)const
+		{
+			if (accesses.size() != other.accesses.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < accesses.size(); ++i)
+			{
+				if (!(accesses[i] == other.accesses[i]))
+				{
+					return false;
+				}
+			}
+
+			return IsEqual(head, other.head);
 		}
 	};
 

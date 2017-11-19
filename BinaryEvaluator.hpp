@@ -21,7 +21,8 @@ namespace cgl
 		//TODO:重複した制約などを考慮するべき
 
 		{
-			auto& constraint = result.constraint;
+			
+			/*auto& constraint = result.constraint;
 			
 			if (rec1.constraint && rec2.constraint)
 			{
@@ -34,7 +35,7 @@ namespace cgl
 			else if (rec2.constraint)
 			{
 				constraint = rec2.constraint;
-			}
+			}*/
 		}
 
 		{
@@ -57,7 +58,7 @@ namespace cgl
 		}
 
 		//TODO:重複した制約などを考慮するべき
-		{
+		/*{
 			auto& constraint = result.constraint;
 
 			if (constraint && rec2.constraint)
@@ -68,7 +69,7 @@ namespace cgl
 			{
 				constraint = rec2.constraint;
 			}
-		}
+		}*/
 
 		{
 			auto& freeVals = result.freeVariables;

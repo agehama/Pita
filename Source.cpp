@@ -214,6 +214,72 @@ namespace cgl
 
 		result.value() = newValue;
 	}
+
+	void OptimizationProblemSat::addConstraint(const Expr& logicExpr)
+	{
+		Expr2SatExpr evaluator(refs.size());
+		SatExpr currentExpr = boost::apply_visitor(evaluator, logicExpr);
+
+		if (expr)
+		{
+			expr = SatBinaryExpr(expr.value(), currentExpr, BinaryOp::And);
+		}
+		else
+		{
+			expr = currentExpr;
+		}
+
+		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
+	}
+
+	bool OptimizationProblemSat::initializeData(std::shared_ptr<Environment> pEnv)
+	{
+		data.resize(refs.size());
+
+		for (size_t i = 0; i < data.size(); ++i)
+		{
+			Eval evaluator(pEnv);
+			const Expr accessor = refs[i];
+			const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
+
+			if (!IsType<ObjectReference>(refVal))
+			{
+				//存在しない参照をsatに指定した
+				std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
+				return false;
+			}
+						
+			const Evaluated val = pEnv->dereference(refVal);
+			if (auto opt = AsOpt<double>(val))
+			{
+				data[i] = opt.value();
+			}
+			else if (auto opt = AsOpt<int>(val))
+			{
+				data[i] = opt.value();
+			}
+			else
+			{
+				//存在しない参照をsatに指定した
+				std::cerr << "Error(" << __LINE__ << "): reference does not exist.\n";
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	double OptimizationProblemSat::eval()
+	{
+		if (!expr)
+		{
+			return 0.0;
+		}
+
+		EvalSatExpr evaluator(data);
+		return boost::apply_visitor(evaluator, expr.value());
+	}
+
 }
 
 namespace cgl
@@ -381,8 +447,15 @@ namespace cgl
 			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
 
 			//freeValsがレコードへの参照とかを入れるのは少し大変だが、単一の値への参照なら難しくないはず
-			freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
+			/*freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
 				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)])
+				) >> s >> ')';*/
+			/*freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, _1)]) >> *(
+				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, _1)])
+				) >> s >> ')';*/
+
+			freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >> *(
+				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
 				) >> s >> ')';
 
 			/*freeVals = lit("free") >> '(' >> s >> id[Call(DeclFree::AddIdentifier, _val, _1)] >> *(
@@ -685,7 +758,7 @@ func2 = x, y -> x + y)",
 
 	int eval_wrongs = 0;
 
-	const auto testEval = [&](const std::string& source, const Evaluated& answer)
+	const auto testEval1 = [&](const std::string& source, std::function<bool(const Evaluated&)> pred)
 	{
 		std::cout << "----------------------------------------------------------\n";
 		std::cout << "input:\n";
@@ -706,7 +779,7 @@ func2 = x, y -> x + y)",
 			std::cout << "result:\n";
 			printEvaluated(result);
 
-			const bool isCorrect = IsEqual(result, answer);
+			const bool isCorrect = pred(result);
 
 			std::cout << "test: ";
 
@@ -725,6 +798,11 @@ func2 = x, y -> x + y)",
 			std::cerr << "Parse error!!\n";
 			++eval_wrongs;
 		}
+	};
+
+	const auto testEval = [&](const std::string& source, const Evaluated& answer)
+	{
+		testEval1(source, [&](const Evaluated& result) {return IsEqual(result, answer); });
 	};
 
 testEval(R"(
@@ -819,6 +897,41 @@ a = {a:1, b:2}
 b = {a:a, b:3}
 
 )", Record("a", Record("a", 1).append("b", 2)).append("b", 3));
+
+testEval1(R"(
+
+shape = {
+	pos: {x:0, y:0}
+	scale: {x:1, y:1}
+}
+
+line = shape{
+	vertex: [
+		{x:0, y:0}
+		{x:1, y:0}
+	]
+}
+
+main = {
+	l1: line{
+		vertex[1].y = 10
+		color: {r:255, g:0, b:0}
+	}
+	l2: line{
+		vertex[0] = {x: 2, y:3}
+		color: {r:0, g:255, b:0}
+	}
+
+	sat(l1.vertex[1].x == l2.vertex[0].x & l1.vertex[1].y == l2.vertex[0].y)
+	free(l1.vertex[1].x, l1.vertex[1].y)
+}
+
+)", [](const Evaluated& result) {
+	const auto l1vertex1 = As<List>(As<Record>(As<Record>(result).values.at("l1")).values.at("vertex"));
+	const auto answer = List().append(Record("x", 0).append("y", 0)).append(Record("x", 2).append("y", 3));
+	printEvaluated(answer);
+	return IsEqual(l1vertex1, answer);
+});
 
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 

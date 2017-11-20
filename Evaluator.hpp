@@ -776,13 +776,73 @@ namespace cgl
 				}
 
 				const auto& problemRefs = problem.refs;
-				const auto& freeVariableRefs = record.freeVariables;
+				const auto& freeVariables = record.freeVariables;
+
+				const auto addElementRec = [&](const auto rec, const ObjectReference& refVal)
+				{
+					const Evaluated value = pEnv->dereference(refVal.value());
+				
+					if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
+					{
+						record.freeVariableRefs.push_back(refVal.value());
+					}
+					else if (IsType<List>(value))
+					{
+						const auto& list = As<List>(value).data;
+						for (size_t i = 0; i < list.size(); ++i)
+						{
+							ObjectReference newRef = refVal;
+							newRef.appendListRef(i);
+							rec(rec, newRef);
+						}
+					}
+					else if (IsType<Record>(value))
+					{
+						for (const auto& elem : As<Record>(value).values)
+						{
+							ObjectReference newRef = refVal;
+							newRef.appendRecordRef(elem.first);
+							rec(rec, newRef);
+						}
+					}
+					else
+					{
+						std::cerr << "未対応";
+						return 0;
+						//TODO:最終的にintやdouble 以外のデータへの参照は持つことにするか？
+					}
+				};
+
+				const auto addElement = [&](const ObjectReference& refVal)
+				{
+					addElementRec(addElementRec, refVal);
+				};
+
+				{
+					//全てのアクセッサを展開し、各
+					record.freeVariableRefs.clear();
+					for (const auto& accessor : record.freeVariables)
+					{
+						//単一の値 or List or Record
+						if (auto refVal = pEnv->evalReference(accessor))
+						{
+							const Evaluated value = pEnv->dereference(refVal.value());
+							addElement(value);
+						}
+						else
+						{
+							std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
+						}
+					}
+
+
+				}
 
 				//DeclFreeに出現する参照について、そのインデックス -> Problemのデータのインデックスを取得するマップ
 				std::unordered_map<int, int> variable2Data;
-				for (int freeIndex = 0; freeIndex < freeVariableRefs.size(); ++freeIndex)
+				for (int freeIndex = 0; freeIndex < freeVariables.size(); ++freeIndex)
 				{
-					const auto& ref1 = freeVariableRefs[freeIndex];
+					const auto& ref1 = freeVariables[freeIndex];
 
 					bool found = false;
 					for (int dataIndex = 0; dataIndex < problemRefs.size(); ++dataIndex)

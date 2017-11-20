@@ -1233,6 +1233,7 @@ namespace cgl
 		OptimizationProblemSat problem;
 		//std::vector<DeclFree::Ref> freeVariables;
 		std::vector<Accessor> freeVariables;
+		std::vector<ObjectReference> freeVariableRefs;
 
 		Record() = default;
 

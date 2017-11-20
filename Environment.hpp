@@ -129,6 +129,8 @@ namespace cgl
 		}
 
 		const Evaluated& dereference(const Evaluated& reference);
+		//const Evaluated& dereference(const Accessor& access);
+		boost::optional<const Evaluated&> evalReference(const Accessor& access);
 
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
 		Evaluated expandList(const Evaluated& reference)

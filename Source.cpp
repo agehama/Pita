@@ -7,6 +7,7 @@
 #include "Node.hpp"
 #include "Evaluator.hpp"
 #include "Printer.hpp"
+#include "Environment.hpp"
 
 namespace cgl
 {
@@ -125,6 +126,53 @@ namespace cgl
 		}
 
 		return reference;
+	}
+
+	//const Evaluated& Environment::dereference(const Accessor & access)
+	//{
+	//	if (auto sharedThis = m_weakThis.lock())
+	//	{
+	//		Eval evaluator(sharedThis);
+
+	//		const Expr accessor = access;
+	//		const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
+
+	//		if (!IsType<ObjectReference>(refVal))
+	//		{
+	//			//存在しない参照をsatに指定した
+	//			std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
+	//			return 0;
+	//		}
+
+	//		return dereference(refVal);
+	//	}
+
+	//	std::cerr << "Error(" << __LINE__ << "): shared this does not exist.\n";
+
+	//	return 0;
+	//}
+	boost::optional<const Evaluated&> Environment::evalReference(const Accessor & access)
+	{
+		if (auto sharedThis = m_weakThis.lock())
+		{
+			Eval evaluator(sharedThis);
+
+			const Expr accessor = access;
+			const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
+
+			if (!IsType<ObjectReference>(refVal))
+			{
+				//存在しない参照をsatに指定した
+				std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
+				return none;
+			}
+
+			return refVal;
+		}
+
+		std::cerr << "Error(" << __LINE__ << "): shared this does not exist.\n";
+
+		return none;
 	}
 
 	inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)

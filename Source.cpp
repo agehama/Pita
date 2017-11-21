@@ -11,6 +11,87 @@
 
 namespace cgl
 {
+	//要考察：satにも複数の値を省略して指定できるようにするためには、ここ(Identifier/Accessor)で複数の値を扱えるようにする必要がある
+	SatExpr Expr2SatExpr::operator()(const Identifier& node)
+	{
+		ObjectReference currentRefVal(node);
+
+		for (size_t i = 0; i < freeVariables.size(); ++i)
+		{
+			//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
+			//また、freeVariables側にもその変数を使用することを知らせる
+			if (freeVariables[i] == currentRefVal)
+			{
+				usedInSat[i] = 1;
+
+				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+				refs.push_back(ObjectReference(node));
+				return satRef;
+			}
+		}
+
+		//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
+		const Evaluated evaluated = pEnv->dereference(currentRefVal);
+
+		if (IsType<double>(evaluated))
+		{
+			return As<double>(evaluated);
+		}
+		else if (IsType<int>(evaluated))
+		{
+			return static_cast<double>(As<int>(evaluated));
+		}
+
+		//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return 0.0;
+	}
+
+	SatExpr Expr2SatExpr::operator()(const Accessor& node)
+	{
+		Expr expr = node;
+		Eval evaluator(pEnv);
+		const Evaluated refVal = boost::apply_visitor(evaluator, expr);
+
+		if (!IsType<ObjectReference>(refVal))
+		{
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0.0;
+		}
+
+		const ObjectReference& currentRefVal = As<ObjectReference>(refVal);
+
+		for (size_t i = 0; i < freeVariables.size(); ++i)
+		{
+			//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
+			//また、freeVariables側にもその変数を使用することを知らせる
+			if (freeVariables[i] == currentRefVal)
+			{
+				usedInSat[i] = 1;
+
+				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+				refs.push_back(currentRefVal);
+				return satRef;
+			}
+		}
+
+		//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
+		const Evaluated evaluated = pEnv->dereference(currentRefVal);
+
+		if(IsType<double>(evaluated))
+		{
+			return As<double>(evaluated);
+		}
+		else if (IsType<int>(evaluated))
+		{
+			return static_cast<double>(As<int>(evaluated));
+		}
+
+		//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return 0.0;
+	}
+
 	const Evaluated& Environment::dereference(const Evaluated& reference)
 	{
 		if (auto nameOpt = AsOpt<Identifier>(reference))
@@ -101,10 +182,6 @@ namespace cgl
 
 							const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
 							result = m_values[ID];
-							/*std::cout << ">>>>===================================================" << std::endl;
-							std::cout << "Result Function Call:" << std::endl;
-							printEvaluated(m_values[ID]);
-							std::cout << "<<<<===================================================" << std::endl;*/
 						}
 						else
 						{
@@ -128,29 +205,6 @@ namespace cgl
 		return reference;
 	}
 
-	//const Evaluated& Environment::dereference(const Accessor & access)
-	//{
-	//	if (auto sharedThis = m_weakThis.lock())
-	//	{
-	//		Eval evaluator(sharedThis);
-
-	//		const Expr accessor = access;
-	//		const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
-
-	//		if (!IsType<ObjectReference>(refVal))
-	//		{
-	//			//存在しない参照をsatに指定した
-	//			std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
-	//			return 0;
-	//		}
-
-	//		return dereference(refVal);
-	//	}
-
-	//	std::cerr << "Error(" << __LINE__ << "): shared this does not exist.\n";
-
-	//	return 0;
-	//}
 	boost::optional<ObjectReference> Environment::evalReference(const Accessor & access)
 	{
 		if (auto sharedThis = m_weakThis.lock())
@@ -164,7 +218,7 @@ namespace cgl
 			{
 				//存在しない参照をsatに指定した
 				std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
-				return none;
+				return boost::none;
 			}
 
 			return As<ObjectReference>(refVal);
@@ -172,7 +226,61 @@ namespace cgl
 
 		std::cerr << "Error(" << __LINE__ << "): shared this does not exist.\n";
 
-		return none;
+		return boost::none;
+	}
+
+	Expr Environment::expandFunction(const Expr & expr)
+	{
+		return expr;
+	}
+
+	std::vector<ObjectReference> Environment::expandReferences(const ObjectReference & reference, std::vector<ObjectReference>& output)
+	{
+		if (auto sharedThis = m_weakThis.lock())
+		{
+			const auto addElementRec = [&](auto rec, const ObjectReference& refVal)->void
+			{
+				const Evaluated value = sharedThis->dereference(refVal);
+
+				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
+				{
+					output.push_back(refVal);
+				}
+				else if (IsType<List>(value))
+				{
+					const auto& list = As<List>(value).data;
+					for (size_t i = 0; i < list.size(); ++i)
+					{
+						ObjectReference newRef = refVal;
+						newRef.appendListRef(i);
+						rec(rec, newRef);
+					}
+				}
+				else if (IsType<Record>(value))
+				{
+					for (const auto& elem : As<Record>(value).values)
+					{
+						ObjectReference newRef = refVal;
+						newRef.appendRecordRef(elem.first);
+						rec(rec, newRef);
+					}
+				}
+				else
+				{
+					std::cerr << "未対応";
+					//TODO:最終的にintやdouble 以外のデータへの参照は持つことにするか？
+				}
+			};
+
+			const auto addElement = [&](const ObjectReference& refVal)
+			{
+				addElementRec(addElementRec, refVal);
+			};
+
+			addElement(reference);
+		}
+
+		return output;
 	}
 
 	inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
@@ -265,45 +373,56 @@ namespace cgl
 
 	void OptimizationProblemSat::addConstraint(const Expr& logicExpr)
 	{
-		Expr2SatExpr evaluator(refs.size());
-		SatExpr currentExpr = boost::apply_visitor(evaluator, logicExpr);
-
-		if (expr)
+		if (candidateExpr)
 		{
-			expr = SatBinaryExpr(expr.value(), currentExpr, BinaryOp::And);
+			candidateExpr = BinaryExpr(candidateExpr.value(), logicExpr, BinaryOp::And);
 		}
 		else
 		{
-			expr = currentExpr;
+			candidateExpr = logicExpr;
+		}
+	}
+
+	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<ObjectReference>& freeVariables)
+	{
+		if (!candidateExpr)
+		{
+			expr = boost::none;
+			return;
 		}
 
+		Expr2SatExpr evaluator(0, pEnv, freeVariables);
+		expr = boost::apply_visitor(evaluator, candidateExpr.value());
+
 		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
+
+		//satに出てこないfreeVariablesの削除
+		for (int i = static_cast<int>(freeVariables.size()) - 1; 0 <= i; --i)
+		{
+			if (evaluator.usedInSat[i] == 0)
+			{
+				freeVariables.erase(freeVariables.begin() + i);
+			}
+		}
 	}
 
 	bool OptimizationProblemSat::initializeData(std::shared_ptr<Environment> pEnv)
 	{
+		//std::cout << "Begin OptimizationProblemSat::initializeData" << std::endl;
+
 		data.resize(refs.size());
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			Eval evaluator(pEnv);
-			const Expr accessor = refs[i];
-			const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
-
-			if (!IsType<ObjectReference>(refVal))
-			{
-				//存在しない参照をsatに指定した
-				std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
-				return false;
-			}
-						
-			const Evaluated val = pEnv->dereference(refVal);
+			const Evaluated val = pEnv->dereference(refs[i]);
 			if (auto opt = AsOpt<double>(val))
 			{
+				std::cout << "    " << i << " : " << opt.value() << std::endl;
 				data[i] = opt.value();
 			}
 			else if (auto opt = AsOpt<int>(val))
 			{
+				std::cout << "    " << i << " : " << opt.value() << std::endl;
 				data[i] = opt.value();
 			}
 			else
@@ -314,6 +433,7 @@ namespace cgl
 			}
 		}
 
+		//std::cout << "End OptimizationProblemSat::initializeData" << std::endl;
 		return true;
 	}
 
@@ -327,7 +447,6 @@ namespace cgl
 		EvalSatExpr evaluator(data);
 		return boost::apply_visitor(evaluator, expr.value());
 	}
-
 }
 
 namespace cgl
@@ -971,7 +1090,7 @@ main = {
 	}
 
 	sat(l1.vertex[1].x == l2.vertex[0].x & l1.vertex[1].y == l2.vertex[0].y)
-	free(l1.vertex[1].x, l1.vertex[1].y)
+	free(l1.vertex[1])
 }
 
 )", [](const Evaluated& result) {

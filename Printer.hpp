@@ -51,7 +51,7 @@ namespace cgl
 		void operator()(const ObjectReference& node)const
 		{
 			//std::cout << indent() << "ObjectReference(" << node.name << ")" << std::endl;
-			std::cout << indent() << "ObjectReference(" << ")" << std::endl;
+			std::cout << indent() << "ObjectReference(" << node.asString() << ")" << std::endl;
 		}
 
 		void operator()(const List& node)const

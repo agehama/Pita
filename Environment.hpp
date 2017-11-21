@@ -133,6 +133,17 @@ namespace cgl
 		//boost::optional<const Evaluated&> evalReference(const Accessor& access);
 		boost::optional<ObjectReference> evalReference(const Accessor& access);
 
+		Expr expandFunction(const Expr& expr);
+
+		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
+		std::vector<ObjectReference> expandReferences(const ObjectReference& reference, std::vector<ObjectReference>& output);
+		std::vector<ObjectReference> expandReferences(const ObjectReference& reference)
+		{
+			std::vector<ObjectReference> result;
+			expandReferences(reference, result);
+			return result;
+		}
+
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
 		Evaluated expandList(const Evaluated& reference)
 		{

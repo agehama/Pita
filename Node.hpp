@@ -274,6 +274,8 @@ namespace cgl
 
 	struct OptimizationProblemSat
 	{
+		boost::optional<Expr> candidateExpr;
+
 		boost::optional<SatExpr> expr;
 
 		//制約式に含まれる全ての参照にIDを振る(=参照ID)
@@ -281,12 +283,13 @@ namespace cgl
 		//std::unordered_map<int, int> refs;//参照ID -> dataのインデックス
 		std::vector<double> data;//Referenced Values
 
-		//std::vector<ObjectReference> refs;//Referenced Values
-		std::vector<Accessor> refs;//Referenced Values
+		std::vector<ObjectReference> refs;//Referenced Values
+		//std::vector<Accessor> refs;//Referenced Values
 
 		//expr = SatBinaryExpr(expr, other.expr, BinaryOp::And);
 
 		void addConstraint(const Expr& logicExpr);
+		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<ObjectReference>& freeVariables);
 
 		//bool initializeData(Environment& env);
 		bool initializeData(std::shared_ptr<Environment> pEnv);
@@ -1390,6 +1393,8 @@ namespace cgl
 		{
 			obj.accesses.push_back(access);
 		}
+
+		std::pair<FunctionCaller, std::vector<Access>> getFirstFunction(std::shared_ptr<Environment> pEnv);
 
 		bool hasFunctionCall()const
 		{

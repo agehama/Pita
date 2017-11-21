@@ -112,6 +112,7 @@ namespace cgl
 		std::shared_ptr<Environment> pEnv;
 	};
 
+	/*
 	class Expr2SatExpr : public boost::static_visitor<SatExpr>
 	{
 	public:
@@ -141,9 +142,6 @@ namespace cgl
 
 		SatExpr operator()(const Identifier& node)
 		{
-			/*SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-			refs.push_back(ObjectReference(node));
-			return satRef;*/
 			SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
 			refs.push_back(Accessor(node));
 			return satRef;
@@ -212,6 +210,113 @@ namespace cgl
 			refs.push_back(node);
 			return satRef;
 		}
+
+		SatExpr operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	};
+	*/
+
+	class Expr2SatExpr : public boost::static_visitor<SatExpr>
+	{
+	public:
+
+		int refID_Offset;
+
+		//AccessorからObjectReferenceに変換するのに必要
+		std::shared_ptr<Environment> pEnv;
+
+		//freeに指定された変数全て
+		std::vector<ObjectReference> freeVariables;
+		
+		//freeに指定された変数が実際にsatに現れたかどうか
+		std::vector<char> usedInSat;
+
+		//std::vector<Accessor> refs;
+		std::vector<ObjectReference> refs;
+
+		Expr2SatExpr(int refID_Offset, std::shared_ptr<Environment> pEnv, const std::vector<ObjectReference>& freeVariables) :
+			refID_Offset(refID_Offset),
+			pEnv(pEnv),
+			freeVariables(freeVariables),
+			usedInSat(freeVariables.size(), 0)
+		{}
+
+		SatExpr operator()(bool node)
+		{
+			std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0.0;
+		}
+
+		SatExpr operator()(int node)
+		{
+			return static_cast<double>(node);
+		}
+
+		SatExpr operator()(double node)
+		{
+			return node;
+		}
+
+		SatExpr operator()(const Identifier& node);
+
+		SatExpr operator()(const UnaryExpr& node)
+		{
+			const SatExpr lhs = boost::apply_visitor(*this, node.lhs);
+
+			switch (node.op)
+			{
+			case UnaryOp::Not:   return SatUnaryExpr(lhs, UnaryOp::Not);
+			case UnaryOp::Minus: return SatUnaryExpr(lhs, UnaryOp::Minus);
+			case UnaryOp::Plus:  return lhs;
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+
+			return 0.0;
+		}
+
+		SatExpr operator()(const BinaryExpr& node)
+		{
+			const SatExpr lhs = boost::apply_visitor(*this, node.lhs);
+			const SatExpr rhs = boost::apply_visitor(*this, node.rhs);
+
+			switch (node.op)
+			{
+			case BinaryOp::And: return SatBinaryExpr(lhs, rhs, BinaryOp::And);
+			case BinaryOp::Or:  return SatBinaryExpr(lhs, rhs, BinaryOp::Or);
+
+			case BinaryOp::Equal:        return SatBinaryExpr(lhs, rhs, BinaryOp::Equal);
+			case BinaryOp::NotEqual:     return SatBinaryExpr(lhs, rhs, BinaryOp::NotEqual);
+			case BinaryOp::LessThan:     return SatBinaryExpr(lhs, rhs, BinaryOp::LessThan);
+			case BinaryOp::LessEqual:    return SatBinaryExpr(lhs, rhs, BinaryOp::LessEqual);
+			case BinaryOp::GreaterThan:  return SatBinaryExpr(lhs, rhs, BinaryOp::GreaterThan);
+			case BinaryOp::GreaterEqual: return SatBinaryExpr(lhs, rhs, BinaryOp::GreaterEqual);
+
+			case BinaryOp::Add: return SatBinaryExpr(lhs, rhs, BinaryOp::Add);
+			case BinaryOp::Sub: return SatBinaryExpr(lhs, rhs, BinaryOp::Sub);
+			case BinaryOp::Mul: return SatBinaryExpr(lhs, rhs, BinaryOp::Mul);
+			case BinaryOp::Div: return SatBinaryExpr(lhs, rhs, BinaryOp::Div);
+
+			case BinaryOp::Pow: return SatBinaryExpr(lhs, rhs, BinaryOp::Pow);
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+
+			return 0;
+		}
+
+		SatExpr operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+
+		SatExpr operator()(const Accessor& node);
 
 		SatExpr operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		SatExpr operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
@@ -718,8 +823,9 @@ namespace cgl
 					{
 						record.constraint = declSatOpt.value().expr;
 					}*/
-					
+
 					record.problem.addConstraint(declSatOpt.value().expr);
+					//record.problem.candidateExprs.push_back(declSatOpt.value().expr);
 				}
 				else if (auto declFreeOpt = AsOpt<DeclFree>(value))
 				{
@@ -769,60 +875,15 @@ namespace cgl
 			}*/
 
 			std::vector<double> resultxs;
-			if (record.problem.expr)
+			if (record.problem.candidateExpr)
 			{
 				auto& problem = record.problem;
-				const SatExpr& constraint = problem.expr.value();
-
-				if (!problem.initializeData(pEnv))
-				{
-					return 0;
-				}
 
 				const auto& problemRefs = problem.refs;
 				const auto& freeVariables = record.freeVariables;
 
-				const auto addElementRec = [&](const auto rec, const ObjectReference& refVal)
 				{
-					const Evaluated value = pEnv->dereference(refVal.value());
-				
-					if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
-					{
-						record.freeVariableRefs.push_back(refVal.value());
-					}
-					else if (IsType<List>(value))
-					{
-						const auto& list = As<List>(value).data;
-						for (size_t i = 0; i < list.size(); ++i)
-						{
-							ObjectReference newRef = refVal;
-							newRef.appendListRef(i);
-							rec(rec, newRef);
-						}
-					}
-					else if (IsType<Record>(value))
-					{
-						for (const auto& elem : As<Record>(value).values)
-						{
-							ObjectReference newRef = refVal;
-							newRef.appendRecordRef(elem.first);
-							rec(rec, newRef);
-						}
-					}
-					else
-					{
-						std::cerr << "未対応";
-						return 0;
-						//TODO:最終的にintやdouble 以外のデータへの参照は持つことにするか？
-					}
-				};
-
-				const auto addElement = [&](const ObjectReference& refVal)
-				{
-					addElementRec(addElementRec, refVal);
-				};
-
-				{
+					//record.freeVariablesをもとにrecord.freeVariableRefsを構築
 					//全てのアクセッサを展開し、各変数の参照リストを作成する
 					record.freeVariableRefs.clear();
 					for (const auto& accessor : record.freeVariables)
@@ -830,7 +891,7 @@ namespace cgl
 						//単一の値 or List or Record
 						if (auto refVal = pEnv->evalReference(accessor))
 						{
-							addElement(refVal.value());
+							pEnv->expandReferences(refVal.value(), record.freeVariableRefs);
 						}
 						else
 						{
@@ -838,20 +899,33 @@ namespace cgl
 						}
 					}
 
-					//一度sat式の中身を展開し、即座に
+					//一度sat式の中身を展開し、
 					//Accessorを展開するvisitor（Expr -> Expr）を作り、実行する
 					//その後Sat2Exprに掛ける
-					//Expr2SatExprでは単項演算子・二項演算子の評価の際、中身をみて定数で合ったら畳み込む処理を行う
+					//Expr2SatExprでは単項演算子・二項演算子の評価の際、中身をみて定数であったら畳み込む処理を行う
 
+					//satの関数呼び出しを全て式に展開する
+					problem.candidateExpr = pEnv->expandFunction(problem.candidateExpr.value());
 
+					//展開された式をSatExprに変換する
+					//＋satの式に含まれる変数の内、freeVariableRefsに入っていないものは即時に評価して畳み込む
+					//freeVariableRefsに入っているものは最適化対象の変数としてdataに追加していく
+					//＋freeVariableRefsの変数についてはsat式に出現したかどうかを記録し削除する
+					problem.constructConstraint(pEnv, record.freeVariableRefs);
 
+					//設定されたdataが参照している値を見て初期値を設定する
+					if (!problem.initializeData(pEnv))
+					{
+						return 0;
+					}
 				}
 
+				//std::cout << "Begin Record MakeMap" << std::endl;
 				//DeclFreeに出現する参照について、そのインデックス -> Problemのデータのインデックスを取得するマップ
 				std::unordered_map<int, int> variable2Data;
-				for (int freeIndex = 0; freeIndex < freeVariables.size(); ++freeIndex)
+				for (int freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
 				{
-					const auto& ref1 = freeVariables[freeIndex];
+					const auto& ref1 = record.freeVariableRefs[freeIndex];
 
 					bool found = false;
 					for (int dataIndex = 0; dataIndex < problemRefs.size(); ++dataIndex)
@@ -860,6 +934,8 @@ namespace cgl
 
 						if (ref1 == ref2)
 						{
+							//std::cout << "    " << freeIndex << " -> " << dataIndex << std::endl;
+
 							found = true;
 							variable2Data[freeIndex] = dataIndex;
 							break;
@@ -877,18 +953,20 @@ namespace cgl
 						return 0;
 					}
 				}
+				//std::cout << "End Record MakeMap" << std::endl;
 
 				libcmaes::FitFunc func = [&](const double *x, const int N)->double
 				{
 					for (int i = 0; i < N; ++i)
 					{
+						//std::cout << "    x[" << i << "] -> " << x[i] << std::endl;
 						problem.update(variable2Data[i], x[i]);
 					}
 
 					return problem.eval();
 				};
 
-				std::vector<double> x0(record.freeVariables.size());
+				std::vector<double> x0(record.freeVariableRefs.size());
 				for (int i = 0; i < x0.size(); ++i)
 				{
 					x0[i] = problem.data[variable2Data[i]];
@@ -902,110 +980,12 @@ namespace cgl
 				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 
 				resultxs = cmasols.best_candidate().get_x();
-
 			}
-
-			/*
-			if (record.constraint)
-			{
-				const Expr& constraint = record.constraint.value();
-
-				libcmaes::FitFunc func = [&](const double *x, const int N)->double
-				{
-					pEnv->pushNormal();
-
-					//for (size_t i = 0; i < xs.size(); ++i)
-					for (int i = 0; i < N; ++i)
-					{
-						//if (!IsType<Identifier>(record.freeVariables[i]))
-						//{
-						//	std::cerr << "Error(" << __LINE__ << ")\n";
-						//	return 0;
-						//}
-
-						if (auto opt = AsOpt<Identifier>(record.freeVariables[i]))
-						{
-							pEnv->bindNewValue(opt.value().name, x[i]);
-						}
-						else if (auto opt = AsOpt<ObjectReference>(record.freeVariables[i]))
-						{
-							pEnv->assignToObject(opt.value(), x[i]);
-						}
-
-						//const auto val = pEnv->dereference(As<Identifier>(record.freeVariables[i]));
-
-						//pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, x[i]);
-					}
-
-					EvalSat evaluator(pEnv);
-					Evaluated errorVal = boost::apply_visitor(evaluator, constraint);
-
-					pEnv->pop();
-
-					const double d = As<double>(errorVal);
-					return d;
-				};
-
-				std::vector<double> x0(record.freeVariables.size());
-				//for (int i = 0; i < x0.size(); ++i)
-				//{
-				//	if (!IsType<Identifier>(record.freeVariables[i]))
-				//	{
-				//		std::cerr << "未対応" << std::endl;
-				//		return 0;
-				//	}
-
-				//	const auto val = pEnv->dereference(As<Identifier>(record.freeVariables[i]));
-				//	x0[i];
-
-				//	//
-
-				//	//pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, val);
-				//	pEnv->bindNewValue(As<Identifier>(record.freeVariables[i]).name, x[i]);
-				//}
-
-				const double sigma = 0.1;
-
-				const int lambda = 100;
-
-				libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
-				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
-
-				resultxs = cmasols.best_candidate().get_x();
-			}
-			*/
 
 			for (int i = 0; i < resultxs.size(); ++i)
 			{
-				/*
-				if (auto opt = AsOpt<Identifier>(record.freeVariables[i]))
-				{
-					//record.append(opt.value().name, resultxs[i]);
-					pEnv->bindNewValue(opt.value().name, resultxs[i]);
-				}
-				else if (auto opt = AsOpt<ObjectReference>(record.freeVariables[i]))
-				{
-					pEnv->assignToObject(opt.value(), resultxs[i]);
-				}
-				*/
-
-				//if (auto opt = AsOpt<ObjectReference>(record.freeVariables[i]))
-				{
-					//pEnv->assignToObject(opt.value(), resultxs[i]);
-
-					Expr accessor = record.freeVariables[i];
-					const Evaluated refVal = boost::apply_visitor(*this, accessor);
-					if (!IsType<ObjectReference>(refVal))
-					{
-						//存在しない参照をsatに指定した
-						std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
-						return 0;
-					}
-
-					pEnv->assignToObject(As<ObjectReference>(refVal), resultxs[i]);
-				}
-
-				//record.append(As<Identifier>(record.freeVariables[i]).name, resultxs[i]);
+				ObjectReference ref = record.freeVariableRefs[i];
+				pEnv->assignToObject(ref, resultxs[i]);
 			}
 
 			for (const auto& key : keyList)

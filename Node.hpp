@@ -1391,6 +1391,19 @@ namespace cgl
 			obj.accesses.push_back(access);
 		}
 
+		bool hasFunctionCall()const
+		{
+			for (const auto& a : accesses)
+			{
+				if (IsType<FunctionAccess>(a))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		bool operator==(const Accessor& other)const
 		{
 			if (accesses.size() != other.accesses.size())

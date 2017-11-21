@@ -151,7 +151,7 @@ namespace cgl
 
 	//	return 0;
 	//}
-	boost::optional<const Evaluated&> Environment::evalReference(const Accessor & access)
+	boost::optional<ObjectReference> Environment::evalReference(const Accessor & access)
 	{
 		if (auto sharedThis = m_weakThis.lock())
 		{
@@ -167,7 +167,7 @@ namespace cgl
 				return none;
 			}
 
-			return refVal;
+			return As<ObjectReference>(refVal);
 		}
 
 		std::cerr << "Error(" << __LINE__ << "): shared this does not exist.\n";

@@ -218,6 +218,12 @@ namespace cgl
 		SatExpr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	};
 
+	class ExprFuncExpander : public boost::static_visitor<Expr>
+	{
+	public:
+
+	};
+
 	class EvalSatExpr : public boost::static_visitor<double>
 	{
 	public:
@@ -284,8 +290,6 @@ namespace cgl
 			return 0.0;
 		}
 	};
-
-
 
 	class Eval : public boost::static_visitor<Evaluated>
 	{
@@ -819,21 +823,26 @@ namespace cgl
 				};
 
 				{
-					//全てのアクセッサを展開し、各
+					//全てのアクセッサを展開し、各変数の参照リストを作成する
 					record.freeVariableRefs.clear();
 					for (const auto& accessor : record.freeVariables)
 					{
 						//単一の値 or List or Record
 						if (auto refVal = pEnv->evalReference(accessor))
 						{
-							const Evaluated value = pEnv->dereference(refVal.value());
-							addElement(value);
+							addElement(refVal.value());
 						}
 						else
 						{
 							std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
 						}
 					}
+
+					//一度sat式の中身を展開し、即座に
+					//Accessorを展開するvisitor（Expr -> Expr）を作り、実行する
+					//その後Sat2Exprに掛ける
+					//Expr2SatExprでは単項演算子・二項演算子の評価の際、中身をみて定数で合ったら畳み込む処理を行う
+
 
 
 				}

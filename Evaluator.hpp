@@ -327,6 +327,82 @@ namespace cgl
 	{
 	public:
 
+		std::shared_ptr<Environment> pEnv;
+
+		ExprFuncExpander(std::shared_ptr<Environment> pEnv) :
+			pEnv(pEnv)
+		{}
+
+		Expr operator()(bool node) { return node; }
+
+		Expr operator()(int node) { return node; }
+
+		Expr operator()(double node) { return node; }
+
+		Expr operator()(const Identifier& node) { return node; }
+
+		Expr operator()(const UnaryExpr& node)
+		{
+			const Expr lhs = boost::apply_visitor(*this, node.lhs);
+
+			switch (node.op)
+			{
+			case UnaryOp::Not:   return UnaryExpr(lhs, UnaryOp::Not);
+			case UnaryOp::Minus: return UnaryExpr(lhs, UnaryOp::Minus);
+			case UnaryOp::Plus:  return lhs;
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+
+			return 0.0;
+		}
+
+		Expr operator()(const BinaryExpr& node)
+		{
+			const Expr lhs = boost::apply_visitor(*this, node.lhs);
+			const Expr rhs = boost::apply_visitor(*this, node.rhs);
+
+			switch (node.op)
+			{
+			case BinaryOp::And: return BinaryExpr(lhs, rhs, BinaryOp::And);
+			case BinaryOp::Or:  return BinaryExpr(lhs, rhs, BinaryOp::Or);
+
+			case BinaryOp::Equal:        return BinaryExpr(lhs, rhs, BinaryOp::Equal);
+			case BinaryOp::NotEqual:     return BinaryExpr(lhs, rhs, BinaryOp::NotEqual);
+			case BinaryOp::LessThan:     return BinaryExpr(lhs, rhs, BinaryOp::LessThan);
+			case BinaryOp::LessEqual:    return BinaryExpr(lhs, rhs, BinaryOp::LessEqual);
+			case BinaryOp::GreaterThan:  return BinaryExpr(lhs, rhs, BinaryOp::GreaterThan);
+			case BinaryOp::GreaterEqual: return BinaryExpr(lhs, rhs, BinaryOp::GreaterEqual);
+
+			case BinaryOp::Add: return BinaryExpr(lhs, rhs, BinaryOp::Add);
+			case BinaryOp::Sub: return BinaryExpr(lhs, rhs, BinaryOp::Sub);
+			case BinaryOp::Mul: return BinaryExpr(lhs, rhs, BinaryOp::Mul);
+			case BinaryOp::Div: return BinaryExpr(lhs, rhs, BinaryOp::Div);
+
+			case BinaryOp::Pow: return BinaryExpr(lhs, rhs, BinaryOp::Pow);
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+
+			return 0;
+		}
+
+		Expr operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+
+		Expr operator()(const Accessor& node);
+
+		Expr operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	};
 
 	class EvalSatExpr : public boost::static_visitor<double>

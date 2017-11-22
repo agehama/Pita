@@ -263,11 +263,14 @@ namespace cgl
 		{}
 	};
 
+	struct SatFunctionReference;
+
 	using SatExpr = boost::variant<
 		double,
 		SatReference,
 		boost::recursive_wrapper<SatUnaryExpr>,
-		boost::recursive_wrapper<SatBinaryExpr>
+		boost::recursive_wrapper<SatBinaryExpr>,
+		boost::recursive_wrapper<SatFunctionReference>
 	>;
 
 	class Environment;
@@ -1140,6 +1143,157 @@ namespace cgl
 		std::string asString()const
 		{
 			//std::string str = name;
+			std::string str = "objName";
+
+			for (const auto& r : references)
+			{
+				if (auto opt = AsOpt<ListRef>(r))
+				{
+					str += opt.value().asString();
+				}
+				else if (auto opt = AsOpt<RecordRef>(r))
+				{
+					str += opt.value().asString();
+				}
+				else if (auto opt = AsOpt<FunctionRef>(r))
+				{
+					str += opt.value().asString();
+				}
+			}
+
+			return str;
+		}
+	};
+
+	struct SatFunctionReference
+	{
+		struct ListRef
+		{
+			int index;
+
+			ListRef() = default;
+			ListRef(int index) :index(index) {}
+
+			bool operator==(const ListRef& other)const
+			{
+				return index == other.index;
+			}
+
+			std::string asString()const
+			{
+				return std::string("[") + std::to_string(index) + "]";
+			}
+		};
+
+		struct RecordRef
+		{
+			std::string key;
+
+			RecordRef() = default;
+			RecordRef(const std::string& key) :key(key) {}
+
+			bool operator==(const RecordRef& other)const
+			{
+				return key == other.key;
+			}
+
+			std::string asString()const
+			{
+				return std::string(".") + key;
+			}
+		};
+
+		struct FunctionRef
+		{
+			std::vector<Evaluated> args;
+
+			FunctionRef() = default;
+			FunctionRef(const std::vector<Evaluated>& args) :args(args) {}
+
+			bool operator==(const FunctionRef& other)const
+			{
+				if (args.size() != other.args.size())
+				{
+					return false;
+				}
+
+				for (size_t i = 0; i < args.size(); ++i)
+				{
+					if (!IsEqual(args[i], other.args[i]))
+					{
+						return false;
+					}
+				}
+
+				return true;
+			}
+
+			std::string asString()const
+			{
+				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
+			}
+		};
+
+		using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
+
+		using ObjectT = boost::variant<boost::recursive_wrapper<FuncVal>>;
+
+		ObjectT headValue;
+
+		std::vector<Ref> references;
+
+		SatFunctionReference() = default;
+
+		SatFunctionReference(const ObjectT& headValue)
+			:headValue(headValue)
+		{}
+
+		void appendListRef(int index)
+		{
+			references.push_back(ListRef(index));
+		}
+
+		void appendRecordRef(const std::string& key)
+		{
+			references.push_back(RecordRef(key));
+		}
+
+		void appendFunctionRef(const std::vector<Evaluated>& args)
+		{
+			references.push_back(FunctionRef(args));
+		}
+
+		void appendReferences(アクセッサのイテレータ)
+		{
+			ここにアクセッサのイテレータを受け取ってaccessesにつなぐ
+
+		}
+
+		bool operator==(const SatFunctionReference& other)const
+		{
+			if (!(headValue == other.headValue))
+			{
+				return false;
+			}
+
+			if (references.size() != other.references.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i<references.size(); ++i)
+			{
+				if (!(references[i] == other.references[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		std::string asString()const
+		{
 			std::string str = "objName";
 
 			for (const auto& r : references)

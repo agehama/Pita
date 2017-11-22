@@ -49,47 +49,231 @@ namespace cgl
 
 	SatExpr Expr2SatExpr::operator()(const Accessor& node)
 	{
-		Expr expr = node;
-		Eval evaluator(pEnv);
-		const Evaluated refVal = boost::apply_visitor(evaluator, expr);
-
-		if (!IsType<ObjectReference>(refVal))
+		if (node.hasFunctionCall())
 		{
+			//Eval::operator()(const Accessor& accessor)をほぼコピペしたもの
+			//関数の引数がfreeVariablesに出てくるものであった場合のみ特別に考慮する
+
+			Eval evaluator(pEnv);
+			
+			ObjectReference result;
+
+			Evaluated headValue = boost::apply_visitor(evaluator, node.head);
+			if (auto opt = AsOpt<Identifier>(headValue))
+			{
+				result.headValue = opt.value();
+			}
+			else if (auto opt = AsOpt<Record>(headValue))
+			{
+				result.headValue = opt.value();
+			}
+			else if (auto opt = AsOpt<List>(headValue))
+			{
+				result.headValue = opt.value();
+			}
+			else if (auto opt = AsOpt<FuncVal>(headValue))
+			{
+				result.headValue = opt.value();
+			}
+			else
+			{
+				//エラー：識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return 0;
+			}
+
+			//for (const auto& access : node.accesses)
+			for (size_t i = 0; i < node.accesses.size(); ++i)
+			{
+				const auto& access = node.accesses[i];
+
+				if (auto listOpt = AsOpt<ListAccess>(access))
+				{
+					Evaluated value = boost::apply_visitor(evaluator, listOpt.value().index);
+
+					if (auto indexOpt = AsOpt<int>(value))
+					{
+						result.appendListRef(indexOpt.value());
+					}
+					else
+					{
+						//エラー：list[index] の index が int 型でない
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return 0;
+					}
+				}
+				else if (auto recordOpt = AsOpt<RecordAccess>(access))
+				{
+					result.appendRecordRef(recordOpt.value().name.name);
+				}
+				else
+				{
+					auto funcAccess = As<FunctionAccess>(access);
+
+					std::vector<Evaluated> args;
+					for (const auto& expr : funcAccess.actualArguments)
+					{
+						const Evaluated currentArg = boost::apply_visitor(evaluator, expr);
+
+						//関数の引数が参照型である場合は、freeVariablesに登録された参照かどうかを調べる
+						//登録されている場合は、ここでは評価できないのでSatExprにFunctionCallerを登録する
+						//また、a.b(x).cのようなアクセスについて、
+						//アクセッサの中で一度でも関数を呼び出していたら、それ以降のアクセスによる参照がfreeVariablesと被ることはあり得ない。
+						//したがって、SatExprにも関数をヘッドとするObjectReferenceは存在し得る。
+						if (IsType<ObjectReference>(currentArg))
+						{
+							const ObjectReference& currentRefVal = As<ObjectReference>(currentArg);
+
+							for (size_t i = 0; i < freeVariables.size(); ++i)
+							{
+								//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
+								//また、freeVariables側にもその変数を使用することを知らせる
+								if (freeVariables[i] == currentRefVal)
+								{
+									usedInSat[i] = 1;
+
+									const Evaluated functionVal = pEnv->dereference(result);
+									if (!IsType<FuncVal>(functionVal))
+									{
+										std::cerr << "Error(" << __LINE__ << ")\n";
+										return 0;
+									}
+									else
+									{
+										SatFunctionReference satFuncRef(As<FuncVal>(functionVal));
+										satFuncRef;
+										satFuncRefにaccessesの残りをつなげて関数とその先のアクセッサとする。
+									}
+
+									SatFunctionReference;;
+									result;
+
+									SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+									refs.push_back(currentRefVal);
+									return satRef;
+								}
+							}
+						}
+						else
+						{
+							args.push_back(currentArg);
+						}
+					}
+					result.appendFunctionRef(std::move(args));
+				}
+			}
+		}
+		else
+		{
+			Expr expr = node;
+			Eval evaluator(pEnv);
+			const Evaluated refVal = boost::apply_visitor(evaluator, expr);
+
+			if (!IsType<ObjectReference>(refVal))
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return 0.0;
+			}
+
+			const ObjectReference& currentRefVal = As<ObjectReference>(refVal);
+
+			for (size_t i = 0; i < freeVariables.size(); ++i)
+			{
+				//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
+				//また、freeVariables側にもその変数を使用することを知らせる
+				if (freeVariables[i] == currentRefVal)
+				{
+					usedInSat[i] = 1;
+
+					SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+					refs.push_back(currentRefVal);
+					return satRef;
+				}
+			}
+
+			//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
+			const Evaluated evaluated = pEnv->dereference(currentRefVal);
+
+			if (IsType<double>(evaluated))
+			{
+				return As<double>(evaluated);
+			}
+			else if (IsType<int>(evaluated))
+			{
+				return static_cast<double>(As<int>(evaluated));
+			}
+
+			//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
 			std::cerr << "Error(" << __LINE__ << ")\n";
 			return 0.0;
 		}
+	}
 
-		const ObjectReference& currentRefVal = As<ObjectReference>(refVal);
+	Expr ExprFuncExpander::operator()(const Accessor& accessor)
+	{
+		return 0;
+		//ObjectReference result;
 
-		for (size_t i = 0; i < freeVariables.size(); ++i)
-		{
-			//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
-			//また、freeVariables側にもその変数を使用することを知らせる
-			if (freeVariables[i] == currentRefVal)
-			{
-				usedInSat[i] = 1;
+		//Eval evaluator(pEnv);
+		//Evaluated headValue = boost::apply_visitor(evaluator, accessor.head);
+		//if (auto opt = AsOpt<Identifier>(headValue))
+		//{
+		//	result.headValue = opt.value();
+		//}
+		//else if (auto opt = AsOpt<Record>(headValue))
+		//{
+		//	result.headValue = opt.value();
+		//}
+		//else if (auto opt = AsOpt<List>(headValue))
+		//{
+		//	result.headValue = opt.value();
+		//}
+		//else if (auto opt = AsOpt<FuncVal>(headValue))
+		//{
+		//	result.headValue = opt.value();
+		//}
+		//else
+		//{
+		//	//エラー：識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応
+		//	std::cerr << "Error(" << __LINE__ << ")\n";
+		//	return 0;
+		//}
 
-				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-				refs.push_back(currentRefVal);
-				return satRef;
-			}
-		}
+		//for (const auto& access : accessor.accesses)
+		//{
+		//	if (auto listOpt = AsOpt<ListAccess>(access))
+		//	{
+		//		Evaluated value = boost::apply_visitor(evaluator, listOpt.value().index);
 
-		//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
-		const Evaluated evaluated = pEnv->dereference(currentRefVal);
+		//		if (auto indexOpt = AsOpt<int>(value))
+		//		{
+		//			result.appendListRef(indexOpt.value());
+		//		}
+		//		else
+		//		{
+		//			//エラー：list[index] の index が int 型でない
+		//			std::cerr << "Error(" << __LINE__ << ")\n";
+		//			return 0;
+		//		}
+		//	}
+		//	else if (auto recordOpt = AsOpt<RecordAccess>(access))
+		//	{
+		//		result.appendRecordRef(recordOpt.value().name.name);
+		//	}
+		//	else
+		//	{
+		//		auto funcAccess = As<FunctionAccess>(access);
 
-		if(IsType<double>(evaluated))
-		{
-			return As<double>(evaluated);
-		}
-		else if (IsType<int>(evaluated))
-		{
-			return static_cast<double>(As<int>(evaluated));
-		}
+		//		std::vector<Evaluated> args;
+		//		for (const auto& expr : funcAccess.actualArguments)
+		//		{
+		//			args.push_back(boost::apply_visitor(evaluator, expr));
+		//		}
+		//		result.appendFunctionRef(std::move(args));
+		//	}
+		//}
 
-		//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0.0;
+		//return result;
 	}
 
 	const Evaluated& Environment::dereference(const Evaluated& reference)
@@ -227,6 +411,21 @@ namespace cgl
 		std::cerr << "Error(" << __LINE__ << "): shared this does not exist.\n";
 
 		return boost::none;
+	}
+
+	std::pair<FunctionCaller, std::vector<Access>> Accessor::getFirstFunction(std::shared_ptr<Environment> pEnv)
+	{
+		for (const auto& a : accesses)
+		{
+			if (IsType<FunctionAccess>(a))
+			{
+				As<FunctionAccess>(a);
+				;
+				//return true;
+			}
+		}
+
+		//return false;
 	}
 
 	Expr Environment::expandFunction(const Expr & expr)

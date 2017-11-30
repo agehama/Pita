@@ -117,6 +117,70 @@ namespace cgl
 		boost::apply_visitor(printer, evaluated);
 	}
 
+	class PrintSatExpr : public boost::static_visitor<void>
+	{
+	public:
+
+		const std::vector<double>& data;
+
+		PrintSatExpr(const std::vector<double>& data) :
+			data(data)
+		{}
+
+		void operator()(double node)const
+		{
+			std::cout << node;
+		}
+
+		void operator()(const SatReference& node)const
+		{
+			std::cout << "$" << node.refID;
+		}
+
+		void operator()(const SatUnaryExpr& node)const
+		{
+			switch (node.op)
+			{
+				//case UnaryOp::Not:   return lhs;
+			case UnaryOp::Minus: std::cout << "-( "; break;
+			case UnaryOp::Plus:  std::cout << "+( "; break;
+			}
+
+			boost::apply_visitor(*this, node.lhs);
+			std::cout << " )";
+		}
+
+		void operator()(const SatBinaryExpr& node)const
+		{
+			std::cout << "( ";
+			boost::apply_visitor(*this, node.lhs);
+
+			switch (node.op)
+			{
+			case BinaryOp::And: std::cout << " & "; break;
+
+			case BinaryOp::Or:  std::cout << " | "; break;
+
+			case BinaryOp::Equal:        std::cout << " == "; break;
+			case BinaryOp::NotEqual:     std::cout << " != "; break;
+			case BinaryOp::LessThan:     std::cout << " < "; break;
+			case BinaryOp::LessEqual:    std::cout << " <= "; break;
+			case BinaryOp::GreaterThan:  std::cout << " > "; break;
+			case BinaryOp::GreaterEqual: std::cout << " >= "; break;
+
+			case BinaryOp::Add: std::cout << " + "; break;
+			case BinaryOp::Sub: std::cout << " - "; break;
+			case BinaryOp::Mul: std::cout << " * "; break;
+			case BinaryOp::Div: std::cout << " / "; break;
+
+			case BinaryOp::Pow: std::cout << " ^ "; break;
+			}
+
+			boost::apply_visitor(*this, node.rhs);
+			std::cout << " )";
+		}
+	};
+
 	class Printer : public boost::static_visitor<void>
 	{
 	public:

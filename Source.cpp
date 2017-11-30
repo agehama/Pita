@@ -22,11 +22,21 @@ namespace cgl
 			//また、freeVariables側にもその変数を使用することを知らせる
 			if (freeVariables[i] == currentRefVal)
 			{
-				usedInSat[i] = 1;
+				if (usedInSat[i] == 1)
+				{
+					return satRefs[i];
+				}
+				else
+				{
+					usedInSat[i] = 1;
 
-				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-				refs.push_back(ObjectReference(node));
-				return satRef;
+					SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+					satRefs[i] = satRef;
+
+					refs.push_back(currentRefVal);
+					std::cout << "NewRef(" << satRef.refID << ")\n";
+					return satRef;
+				}
 			}
 		}
 
@@ -67,11 +77,21 @@ namespace cgl
 			//また、freeVariables側にもその変数を使用することを知らせる
 			if (freeVariables[i] == currentRefVal)
 			{
-				usedInSat[i] = 1;
+				if (usedInSat[i] == 1)
+				{
+					return satRefs[i];
+				}
+				else
+				{
+					usedInSat[i] = 1;
+					
+					SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+					satRefs[i] = satRef;
 
-				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-				refs.push_back(currentRefVal);
-				return satRef;
+					refs.push_back(currentRefVal);
+					std::cout << "NewRef(" << satRef.refID << ")\n";
+					return satRef;
+				}
 			}
 		}
 
@@ -393,8 +413,14 @@ namespace cgl
 
 		Expr2SatExpr evaluator(0, pEnv, freeVariables);
 		expr = boost::apply_visitor(evaluator, candidateExpr.value());
-
 		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
+		
+		{
+			std::cout << "Print1:\n";
+			PrintSatExpr printer(data);
+			boost::apply_visitor(printer, expr.value());
+			std::cout << "\n";
+		}
 
 		//satに出てこないfreeVariablesの削除
 		for (int i = static_cast<int>(freeVariables.size()) - 1; 0 <= i; --i)
@@ -446,6 +472,17 @@ namespace cgl
 
 		EvalSatExpr evaluator(data);
 		return boost::apply_visitor(evaluator, expr.value());
+	}
+
+	void OptimizationProblemSat::debugPrint()
+	{
+		if (!expr)
+		{
+			return;
+		}
+
+		PrintSatExpr evaluator(data);
+		boost::apply_visitor(evaluator, expr.value());
 	}
 }
 
@@ -715,7 +752,7 @@ namespace cgl
 				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
 
 			factor = /*double_[_val = _1]
-				|*/ int_[_val = _1]
+				| */int_[_val = _1]
 				| lit("true")[_val = true]
 				| lit("false")[_val = false]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'

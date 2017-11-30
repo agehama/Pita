@@ -232,6 +232,9 @@ namespace cgl
 		//freeに指定された変数が実際にsatに現れたかどうか
 		std::vector<char> usedInSat;
 
+		//FreeVariables Index -> SatReference
+		std::map<int, SatReference> satRefs;
+
 		//std::vector<Accessor> refs;
 		std::vector<ObjectReference> refs;
 
@@ -306,7 +309,19 @@ namespace cgl
 		}
 
 		SatExpr operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		
+		SatExpr operator()(const Lines& node)
+		{
+			if (node.exprs.size() != 1)
+			{
+				std::cerr << "Error(" << __LINE__ << "): invalid expression\n";
+				return 0;
+			}
+
+			const SatExpr lhs = boost::apply_visitor(*this, node.exprs.front());
+			return lhs;
+		}
+
 		SatExpr operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		SatExpr operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		SatExpr operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
@@ -918,6 +933,10 @@ namespace cgl
 					{
 						return 0;
 					}
+
+					std::cout << "Record FreeVariablesSize: " << record.freeVariableRefs.size() << std::endl;
+					std::cout << "Record SatExpr: " << std::endl;
+					//problem.debugPrint();
 				}
 
 				//std::cout << "Begin Record MakeMap" << std::endl;
@@ -1113,9 +1132,20 @@ namespace cgl
 					}
 					else
 					{
-						//エラー：list[index] の index が int 型でない
-						std::cerr << "Error(" << __LINE__ << ")\n";
-						return 0;
+						Evaluated indexValue = pEnv->dereference(value);
+						if (auto indexOpt = AsOpt<int>(indexValue))
+						{
+							result.appendListRef(indexOpt.value());
+						}
+						else
+						{
+							//エラー：list[index] の index が int 型でない
+							std::cerr << "Error(" << __LINE__ << "): List index(" << std::endl;
+							printEvaluated(indexValue);
+							std::cerr << ") is not an Int value.\n" << std::endl;
+
+							return 0;
+						}
 					}
 				}
 				else if (auto recordOpt = AsOpt<RecordAccess>(access))

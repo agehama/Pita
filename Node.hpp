@@ -288,6 +288,8 @@ namespace cgl
 
 		//expr = SatBinaryExpr(expr, other.expr, BinaryOp::And);
 
+		void debugPrint();
+
 		void addConstraint(const Expr& logicExpr);
 		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<ObjectReference>& freeVariables);
 

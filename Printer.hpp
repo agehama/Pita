@@ -179,6 +179,10 @@ namespace cgl
 			boost::apply_visitor(*this, node.rhs);
 			std::cout << " )";
 		}
+
+		void operator()(const SatFunctionReference& node)const
+		{
+		}
 	};
 
 	class Printer : public boost::static_visitor<void>

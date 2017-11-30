@@ -236,6 +236,7 @@ namespace cgl
 		std::map<int, SatReference> satRefs;
 
 		//std::vector<Accessor> refs;
+		//TODO:vector->mapÇ…èëÇ´ä∑Ç¶ÇÈ
 		std::vector<ObjectReference> refs;
 
 		Expr2SatExpr(int refID_Offset, std::shared_ptr<Environment> pEnv, const std::vector<ObjectReference>& freeVariables) :
@@ -244,6 +245,53 @@ namespace cgl
 			freeVariables(freeVariables),
 			usedInSat(freeVariables.size(), 0)
 		{}
+
+		boost::optional<size_t> freeVariableIndex(const ObjectReference& reference)
+		{
+			for (size_t i = 0; i < freeVariables.size(); ++i)
+			{
+				if (freeVariables[i] == reference)
+				{
+					return i;
+				}
+			}
+
+			return boost::none;
+		}
+
+		boost::optional<SatReference> getSatRef(const ObjectReference& reference)
+		{
+			for (size_t i = 0; i < refs.size(); ++i)
+			{
+				if (refs[i] == reference)
+				{
+					return SatReference(refID_Offset + i);
+					//return refs[i];
+				}
+			}
+
+			return boost::none;
+		}
+
+		boost::optional<SatReference> addSatRef(const ObjectReference& reference)
+		{
+			if (auto indexOpt = freeVariableIndex(reference))
+			{
+				//à»ëOÇ…èoåªÇµÇƒìoò^çœÇ›ÇÃfreeïœêîÇÕÇªÇÃÇ‹Ç‹ï‘Ç∑
+				if (auto satRefOpt = getSatRef(reference))
+				{
+					return satRefOpt;
+				}
+
+				//èâÇﬂÇƒèoåªÇµÇΩfreeïœêîÇÕìoò^ÇµÇƒÇ©ÇÁï‘Ç∑
+				usedInSat[indexOpt.value()] = 1;
+				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+				refs.push_back(reference);
+				return satRef;
+			}
+
+			return boost::none;
+		}
 
 		SatExpr operator()(bool node)
 		{
@@ -342,6 +390,82 @@ namespace cgl
 	{
 	public:
 
+		std::shared_ptr<Environment> pEnv;
+
+		ExprFuncExpander(std::shared_ptr<Environment> pEnv) :
+			pEnv(pEnv)
+		{}
+
+		Expr operator()(bool node) { return node; }
+
+		Expr operator()(int node) { return node; }
+
+		Expr operator()(double node) { return node; }
+
+		Expr operator()(const Identifier& node) { return node; }
+
+		Expr operator()(const UnaryExpr& node)
+		{
+			const Expr lhs = boost::apply_visitor(*this, node.lhs);
+
+			switch (node.op)
+			{
+			case UnaryOp::Not:   return UnaryExpr(lhs, UnaryOp::Not);
+			case UnaryOp::Minus: return UnaryExpr(lhs, UnaryOp::Minus);
+			case UnaryOp::Plus:  return lhs;
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+
+			return 0.0;
+		}
+
+		Expr operator()(const BinaryExpr& node)
+		{
+			const Expr lhs = boost::apply_visitor(*this, node.lhs);
+			const Expr rhs = boost::apply_visitor(*this, node.rhs);
+
+			switch (node.op)
+			{
+			case BinaryOp::And: return BinaryExpr(lhs, rhs, BinaryOp::And);
+			case BinaryOp::Or:  return BinaryExpr(lhs, rhs, BinaryOp::Or);
+
+			case BinaryOp::Equal:        return BinaryExpr(lhs, rhs, BinaryOp::Equal);
+			case BinaryOp::NotEqual:     return BinaryExpr(lhs, rhs, BinaryOp::NotEqual);
+			case BinaryOp::LessThan:     return BinaryExpr(lhs, rhs, BinaryOp::LessThan);
+			case BinaryOp::LessEqual:    return BinaryExpr(lhs, rhs, BinaryOp::LessEqual);
+			case BinaryOp::GreaterThan:  return BinaryExpr(lhs, rhs, BinaryOp::GreaterThan);
+			case BinaryOp::GreaterEqual: return BinaryExpr(lhs, rhs, BinaryOp::GreaterEqual);
+
+			case BinaryOp::Add: return BinaryExpr(lhs, rhs, BinaryOp::Add);
+			case BinaryOp::Sub: return BinaryExpr(lhs, rhs, BinaryOp::Sub);
+			case BinaryOp::Mul: return BinaryExpr(lhs, rhs, BinaryOp::Mul);
+			case BinaryOp::Div: return BinaryExpr(lhs, rhs, BinaryOp::Div);
+
+			case BinaryOp::Pow: return BinaryExpr(lhs, rhs, BinaryOp::Pow);
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+
+			return 0;
+		}
+
+		Expr operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+
+		Expr operator()(const Accessor& node);
+
+		Expr operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		Expr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	};
 
 	class EvalSatExpr : public boost::static_visitor<double>
@@ -408,6 +532,42 @@ namespace cgl
 			std::cerr << "Error(" << __LINE__ << ")\n";
 
 			return 0.0;
+		}
+
+		double operator()(const SatFunctionReference& node)const
+		{
+			std::map<std::string, std::function<double(double)>> unaryFunctions;
+			//unaryFunctions["sin"] = std::sin;
+			//unaryFunctions["cos"] = std::cos;
+			unaryFunctions["sin"] = [](double x) {return sin(x); };
+			unaryFunctions["cos"] = [](double x) {return cos(x); };
+
+			const auto currentFunction = unaryFunctions[node.funcName];
+			const auto funcAccess = As<SatFunctionReference::FunctionRef>(node.references.front());
+			const auto frontVal = funcAccess.args.front();
+			if (IsType<SatReference>(frontVal))
+			{
+				SatExpr expr = As<SatReference>(frontVal);
+				const double lhs = boost::apply_visitor(*this, expr);
+				return currentFunction(lhs);
+			}
+			else
+			{
+				const auto evaluated = As<Evaluated>(frontVal);
+				if (IsType<double>(evaluated))
+				{
+					return currentFunction(As<double>(evaluated));
+				}
+				else if (IsType<int>(evaluated))
+				{
+					return currentFunction(As<int>(evaluated));
+				}
+				else
+				{
+					std::cerr << "Error(" << __LINE__ << "):Function argument is invalid\n";
+					return 0;
+				}
+			}
 		}
 	};
 

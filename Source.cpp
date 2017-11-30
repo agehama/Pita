@@ -16,6 +16,11 @@ namespace cgl
 	{
 		ObjectReference currentRefVal(node);
 
+		if (auto satRefOpt = addSatRef(currentRefVal))
+		{
+			return satRefOpt.value();
+		}
+		/*
 		for (size_t i = 0; i < freeVariables.size(); ++i)
 		{
 			//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
@@ -29,6 +34,7 @@ namespace cgl
 				return satRef;
 			}
 		}
+		*/
 
 		//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
 		const Evaluated evaluated = pEnv->dereference(currentRefVal);
@@ -45,6 +51,83 @@ namespace cgl
 		//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
 		std::cerr << "Error(" << __LINE__ << ")\n";
 		return 0.0;
+	}
+
+	inline boost::optional<SatFunctionReference> MakeSatFunctionReference(
+		//const FuncVal& head, 
+		const std::string& head,
+		const Accessor& node, 
+		size_t accessorIndex, 
+		Expr2SatExpr& converter,
+		Eval& evaluator,
+		std::shared_ptr<Environment> pEnv)
+	{
+		SatFunctionReference ref(head);
+
+		for (size_t i = accessorIndex; i < node.accesses.size(); ++i)
+		{
+			const auto& access = node.accesses[i];
+
+			if (auto listOpt = AsOpt<ListAccess>(access))
+			{
+				Evaluated value = boost::apply_visitor(evaluator, listOpt.value().index);
+
+				if (auto indexOpt = AsOpt<int>(value))
+				{
+					ref.appendListRef(indexOpt.value());
+				}
+				else
+				{
+					//エラー：list[index] の index が int 型でない
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return boost::none;
+				}
+				/*
+				現在は以下のような制約の書き方は許していない。
+				実用性はあるか？
+				sat(v[x] == 0)
+				free(x)
+				*/
+			}
+			else if (auto recordOpt = AsOpt<RecordAccess>(access))
+			{
+				ref.appendRecordRef(recordOpt.value().name.name);
+			}
+			else
+			{
+				auto funcAccess = As<FunctionAccess>(access);
+
+				SatFunctionReference::FunctionRef functionRef;
+
+				std::vector<Evaluated> args;
+				for (const auto& expr : funcAccess.actualArguments)
+				{
+					const Evaluated currentArg = boost::apply_visitor(evaluator, expr);
+
+					if (IsType<ObjectReference>(currentArg))
+					{
+						const ObjectReference& currentRefVal = As<ObjectReference>(currentArg);
+
+						if (auto refOpt = converter.addSatRef(currentRefVal))
+						{
+							functionRef.appendRef(refOpt.value());
+						}
+						else
+						{
+							functionRef.appendValue(pEnv->dereference(currentRefVal));
+						}
+					}
+					else
+					{
+						functionRef.appendValue(currentArg);
+					}
+				}
+
+				ref.appendFunctionRef(functionRef);
+			}
+		}
+
+		return ref;
 	}
 
 	SatExpr Expr2SatExpr::operator()(const Accessor& node)
@@ -108,6 +191,21 @@ namespace cgl
 				}
 				else
 				{
+					/*if (!IsType<FuncVal>(result))
+					{
+						std::cerr << "Error(" << __LINE__ << "):FunctionAccess is not a function\n";
+						return 0;
+					}
+
+					const FuncVal& funcVal = As<FuncVal>(result);*/
+					if (!IsType<Identifier>(result.headValue))
+					{
+						std::cerr << "Error(" << __LINE__ << "):FunctionAccess must be a built-in function\n";
+						return 0;
+					}
+
+					const Identifier& identifier = As<Identifier>(result.headValue);
+
 					auto funcAccess = As<FunctionAccess>(access);
 
 					std::vector<Evaluated> args;
@@ -120,38 +218,23 @@ namespace cgl
 						//また、a.b(x).cのようなアクセスについて、
 						//アクセッサの中で一度でも関数を呼び出していたら、それ以降のアクセスによる参照がfreeVariablesと被ることはあり得ない。
 						//したがって、SatExprにも関数をヘッドとするObjectReferenceは存在し得る。
+
+						//argumentがidentifierのケースを考慮できていない
+						//identifierを含む式の場合もやはり全て中身を見て検出しなければならない
 						if (IsType<ObjectReference>(currentArg))
 						{
 							const ObjectReference& currentRefVal = As<ObjectReference>(currentArg);
 
-							for (size_t i = 0; i < freeVariables.size(); ++i)
+							if (auto freeIndexOpt = freeVariableIndex(currentRefVal))
 							{
-								//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
-								//また、freeVariables側にもその変数を使用することを知らせる
-								if (freeVariables[i] == currentRefVal)
+								//satFuncRefにaccessesの残りをつなげて関数とその先のアクセッサとする。
+								if (auto satFuncOpt = MakeSatFunctionReference(identifier.name, node, i, *this, evaluator, pEnv))
 								{
-									usedInSat[i] = 1;
-
-									const Evaluated functionVal = pEnv->dereference(result);
-									if (!IsType<FuncVal>(functionVal))
-									{
-										std::cerr << "Error(" << __LINE__ << ")\n";
-										return 0;
-									}
-									else
-									{
-										SatFunctionReference satFuncRef(As<FuncVal>(functionVal));
-										satFuncRef;
-										satFuncRefにaccessesの残りをつなげて関数とその先のアクセッサとする。
-									}
-
-									SatFunctionReference;;
-									result;
-
-									SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-									refs.push_back(currentRefVal);
-									return satRef;
+									return satFuncOpt.value();
 								}
+
+								std::cerr << "Error(" << __LINE__ << "):Invalid FunctionAccess\n";
+								return 0;
 							}
 						}
 						else
@@ -413,20 +496,20 @@ namespace cgl
 		return boost::none;
 	}
 
-	std::pair<FunctionCaller, std::vector<Access>> Accessor::getFirstFunction(std::shared_ptr<Environment> pEnv)
-	{
-		for (const auto& a : accesses)
-		{
-			if (IsType<FunctionAccess>(a))
-			{
-				As<FunctionAccess>(a);
-				;
-				//return true;
-			}
-		}
+	//std::pair<FunctionCaller, std::vector<Access>> Accessor::getFirstFunction(std::shared_ptr<Environment> pEnv)
+	//{
+	//	for (const auto& a : accesses)
+	//	{
+	//		if (IsType<FunctionAccess>(a))
+	//		{
+	//			As<FunctionAccess>(a);
+	//			;
+	//			//return true;
+	//		}
+	//	}
 
-		//return false;
-	}
+	//	//return false;
+	//}
 
 	Expr Environment::expandFunction(const Expr & expr)
 	{
@@ -914,7 +997,7 @@ namespace cgl
 				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
 
 			factor = /*double_[_val = _1]
-				|*/ int_[_val = _1]
+				| */int_[_val = _1]
 				| lit("true")[_val = true]
 				| lit("false")[_val = false]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'

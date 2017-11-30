@@ -1205,10 +1205,10 @@ namespace cgl
 
 		struct FunctionRef
 		{
-			std::vector<Evaluated> args;
+			std::vector<boost::variant<SatReference, Evaluated>> args;
 
 			FunctionRef() = default;
-			FunctionRef(const std::vector<Evaluated>& args) :args(args) {}
+			FunctionRef(const std::vector<boost::variant<SatReference, Evaluated>>& args) :args(args) {}
 
 			bool operator==(const FunctionRef& other)const
 			{
@@ -1219,10 +1219,10 @@ namespace cgl
 
 				for (size_t i = 0; i < args.size(); ++i)
 				{
-					if (!IsEqual(args[i], other.args[i]))
+					/*if (!IsEqual(args[i], other.args[i]))
 					{
 						return false;
-					}
+					}*/
 				}
 
 				return true;
@@ -1232,20 +1232,34 @@ namespace cgl
 			{
 				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
 			}
+
+			void appendRef(const SatReference& ref)
+			{
+				args.push_back(ref);
+			}
+
+			void appendValue(const Evaluated& value)
+			{
+				args.push_back(value);
+			}
 		};
 
 		using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
 
-		using ObjectT = boost::variant<boost::recursive_wrapper<FuncVal>>;
+		//using ObjectT = boost::variant<boost::recursive_wrapper<FuncVal>>;
 
-		ObjectT headValue;
+		//ObjectT headValue;
+		std::string funcName;
 
 		std::vector<Ref> references;
 
 		SatFunctionReference() = default;
 
-		SatFunctionReference(const ObjectT& headValue)
+		/*SatFunctionReference(const ObjectT& headValue)
 			:headValue(headValue)
+		{}*/
+		SatFunctionReference(const std::string& name)
+			:funcName(name)
 		{}
 
 		void appendListRef(int index)
@@ -1258,20 +1272,17 @@ namespace cgl
 			references.push_back(RecordRef(key));
 		}
 
-		void appendFunctionRef(const std::vector<Evaluated>& args)
+		//void appendFunctionRef(const std::vector<Evaluated>& args)
+		void appendFunctionRef(const FunctionRef& ref)
 		{
-			references.push_back(FunctionRef(args));
-		}
-
-		void appendReferences(アクセッサのイテレータ)
-		{
-			ここにアクセッサのイテレータを受け取ってaccessesにつなぐ
-
+			//references.push_back(FunctionRef(args));
+			references.push_back(ref);
 		}
 
 		bool operator==(const SatFunctionReference& other)const
 		{
-			if (!(headValue == other.headValue))
+			//if (!(headValue == other.headValue))
+			if (!(funcName == other.funcName))
 			{
 				return false;
 			}
@@ -1548,7 +1559,7 @@ namespace cgl
 			obj.accesses.push_back(access);
 		}
 
-		std::pair<FunctionCaller, std::vector<Access>> getFirstFunction(std::shared_ptr<Environment> pEnv);
+		//std::pair<FunctionCaller, std::vector<Access>> getFirstFunction(std::shared_ptr<Environment> pEnv);
 
 		bool hasFunctionCall()const
 		{

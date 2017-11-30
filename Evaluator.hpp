@@ -233,6 +233,7 @@ namespace cgl
 		std::vector<char> usedInSat;
 
 		//std::vector<Accessor> refs;
+		//TODO:vector->map‚É‘‚«Š·‚¦‚é
 		std::vector<ObjectReference> refs;
 
 		Expr2SatExpr(int refID_Offset, std::shared_ptr<Environment> pEnv, const std::vector<ObjectReference>& freeVariables) :
@@ -241,6 +242,53 @@ namespace cgl
 			freeVariables(freeVariables),
 			usedInSat(freeVariables.size(), 0)
 		{}
+
+		boost::optional<size_t> freeVariableIndex(const ObjectReference& reference)
+		{
+			for (size_t i = 0; i < freeVariables.size(); ++i)
+			{
+				if (freeVariables[i] == reference)
+				{
+					return i;
+				}
+			}
+
+			return boost::none;
+		}
+
+		boost::optional<SatReference> getSatRef(const ObjectReference& reference)
+		{
+			for (size_t i = 0; i < refs.size(); ++i)
+			{
+				if (refs[i] == reference)
+				{
+					return SatReference(refID_Offset + i);
+					//return refs[i];
+				}
+			}
+
+			return boost::none;
+		}
+
+		boost::optional<SatReference> addSatRef(const ObjectReference& reference)
+		{
+			if (auto indexOpt = freeVariableIndex(reference))
+			{
+				//ˆÈ‘O‚ÉoŒ»‚µ‚Ä“o˜^Ï‚İ‚Ìfree•Ï”‚Í‚»‚Ì‚Ü‚Ü•Ô‚·
+				if (auto satRefOpt = getSatRef(reference))
+				{
+					return satRefOpt;
+				}
+
+				//‰‚ß‚ÄoŒ»‚µ‚½free•Ï”‚Í“o˜^‚µ‚Ä‚©‚ç•Ô‚·
+				usedInSat[indexOpt.value()] = 1;
+				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+				refs.push_back(reference);
+				return satRef;
+			}
+
+			return boost::none;
+		}
 
 		SatExpr operator()(bool node)
 		{
@@ -469,6 +517,42 @@ namespace cgl
 			std::cerr << "Error(" << __LINE__ << ")\n";
 
 			return 0.0;
+		}
+
+		double operator()(const SatFunctionReference& node)const
+		{
+			std::map<std::string, std::function<double(double)>> unaryFunctions;
+			//unaryFunctions["sin"] = std::sin;
+			//unaryFunctions["cos"] = std::cos;
+			unaryFunctions["sin"] = [](double x) {return sin(x); };
+			unaryFunctions["cos"] = [](double x) {return cos(x); };
+
+			const auto currentFunction = unaryFunctions[node.funcName];
+			const auto funcAccess = As<SatFunctionReference::FunctionRef>(node.references.front());
+			const auto frontVal = funcAccess.args.front();
+			if (IsType<SatReference>(frontVal))
+			{
+				SatExpr expr = As<SatReference>(frontVal);
+				const double lhs = boost::apply_visitor(*this, expr);
+				return currentFunction(lhs);
+			}
+			else
+			{
+				const auto evaluated = As<Evaluated>(frontVal);
+				if (IsType<double>(evaluated))
+				{
+					return currentFunction(As<double>(evaluated));
+				}
+				else if (IsType<int>(evaluated))
+				{
+					return currentFunction(As<int>(evaluated));
+				}
+				else
+				{
+					std::cerr << "Error(" << __LINE__ << "):Function argument is invalid\n";
+					return 0;
+				}
+			}
 		}
 	};
 

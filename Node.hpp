@@ -1207,10 +1207,11 @@ namespace cgl
 
 		struct FunctionRef
 		{
-			std::vector<boost::variant<SatReference, Evaluated>> args;
+			//std::vector<boost::variant<SatReference, Evaluated>> args;
+			std::vector<SatExpr> args;
 
 			FunctionRef() = default;
-			FunctionRef(const std::vector<boost::variant<SatReference, Evaluated>>& args) :args(args) {}
+			FunctionRef(const std::vector<SatExpr>& args) :args(args) {}
 
 			bool operator==(const FunctionRef& other)const
 			{
@@ -1235,12 +1236,19 @@ namespace cgl
 				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
 			}
 
+			/*
 			void appendRef(const SatReference& ref)
 			{
 				args.push_back(ref);
 			}
 
 			void appendValue(const Evaluated& value)
+			{
+				args.push_back(value);
+			}
+			*/
+			
+			void appendExpr(const SatExpr& value)
 			{
 				args.push_back(value);
 			}

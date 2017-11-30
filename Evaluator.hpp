@@ -468,6 +468,62 @@ namespace cgl
 		Expr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	};
 
+	class HasFreeVariables : public boost::static_visitor<bool>
+	{
+	public:
+
+		HasFreeVariables(std::shared_ptr<Environment> pEnv, const std::vector<ObjectReference>& freeVariables) :
+			pEnv(pEnv),
+			freeVariables(freeVariables)
+		{}
+
+		//AccessorからObjectReferenceに変換するのに必要
+		std::shared_ptr<Environment> pEnv;
+
+		//freeに指定された変数全て
+		std::vector<ObjectReference> freeVariables;
+
+		bool operator()(bool node) { return false; }
+
+		bool operator()(int node) { return false; }
+
+		bool operator()(double node) { return false; }
+
+		bool operator()(const Identifier& node);
+		bool operator()(const Accessor& node);
+
+		bool operator()(const UnaryExpr& node)
+		{
+			return boost::apply_visitor(*this, node.lhs);
+		}
+
+		bool operator()(const BinaryExpr& node)
+		{
+			const bool lhs = boost::apply_visitor(*this, node.lhs);
+			if (lhs)
+			{
+				return true;
+			}
+
+			const bool rhs = boost::apply_visitor(*this, node.rhs);
+			return rhs;
+		}
+
+		bool operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+	};
+
 	class EvalSatExpr : public boost::static_visitor<double>
 	{
 	public:
@@ -544,6 +600,11 @@ namespace cgl
 
 			const auto currentFunction = unaryFunctions[node.funcName];
 			const auto funcAccess = As<SatFunctionReference::FunctionRef>(node.references.front());
+
+			const double firstArgument = boost::apply_visitor(*this, funcAccess.args.front());
+			return currentFunction(firstArgument);
+
+			/*
 			const auto frontVal = funcAccess.args.front();
 			if (IsType<SatReference>(frontVal))
 			{
@@ -568,6 +629,7 @@ namespace cgl
 					return 0;
 				}
 			}
+			*/
 		}
 	};
 

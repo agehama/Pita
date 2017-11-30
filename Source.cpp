@@ -63,6 +63,45 @@ namespace cgl
 		return 0.0;
 	}
 
+	inline bool HasFreeVariables::operator()(const Identifier& node)
+	{
+		ObjectReference ref(node.name);
+		for (const auto& freeVal : freeVariables)
+		{
+			if (ref == freeVal)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+	
+	inline bool HasFreeVariables::operator()(const Accessor& node)
+	{
+		//AccessorとObjectReferenceを比較するにはとりあえず評価すれば行えるがこのEvalは正しいか？
+		Expr expr = node;
+		Eval evaluator(pEnv);
+		const Evaluated evaluated = boost::apply_visitor(evaluator, expr);
+
+		//ここはObjectReferenceのみ考慮すればよい？
+		if (auto refOpt = AsOpt<ObjectReference>(evaluated))
+		{
+			for (const auto& freeVal : freeVariables)
+			{
+				if (refOpt.value() == freeVal)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+		
+		std::cerr << "Error(" << __LINE__ << "): invalid expression\n";
+		return false;
+	}
+
 	inline boost::optional<SatFunctionReference> MakeSatFunctionReference(
 		//const FuncVal& head, 
 		const std::string& head,
@@ -112,7 +151,12 @@ namespace cgl
 				std::vector<Evaluated> args;
 				for (const auto& expr : funcAccess.actualArguments)
 				{
-					const Evaluated currentArg = boost::apply_visitor(evaluator, expr);
+					const SatExpr currentArg = boost::apply_visitor(converter, expr);
+					functionRef.appendExpr(currentArg);
+
+					//全てSatExprと扱うことにした
+
+					/*const Evaluated currentArg = boost::apply_visitor(evaluator, expr);
 
 					if (IsType<ObjectReference>(currentArg))
 					{
@@ -130,7 +174,7 @@ namespace cgl
 					else
 					{
 						functionRef.appendValue(currentArg);
-					}
+					}*/
 				}
 
 				ref.appendFunctionRef(functionRef);
@@ -218,19 +262,20 @@ namespace cgl
 
 					auto funcAccess = As<FunctionAccess>(access);
 
+					bool hasFreeVariables = false;
+
 					std::vector<Evaluated> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
-						const Evaluated currentArg = boost::apply_visitor(evaluator, expr);
-
 						//関数の引数が参照型である場合は、freeVariablesに登録された参照かどうかを調べる
 						//登録されている場合は、ここでは評価できないのでSatExprにFunctionCallerを登録する
 						//また、a.b(x).cのようなアクセスについて、
 						//アクセッサの中で一度でも関数を呼び出していたら、それ以降のアクセスによる参照がfreeVariablesと被ることはあり得ない。
 						//したがって、SatExprにも関数をヘッドとするObjectReferenceは存在し得る。
 
-						//argumentがidentifierのケースを考慮できていない
-						//identifierを含む式の場合もやはり全て中身を見て検出しなければならない
+						/*
+						const Evaluated currentArg = boost::apply_visitor(evaluator, expr);
+
 						if (IsType<ObjectReference>(currentArg))
 						{
 							const ObjectReference& currentRefVal = As<ObjectReference>(currentArg);
@@ -251,8 +296,34 @@ namespace cgl
 						{
 							args.push_back(currentArg);
 						}
+						*/
+
+						//↑の書き方だとargumentがidentifierのケースを考慮できていない
+						//identifierを含む式の場合もやはり全て中身を見て検出しなければならない
+
+						HasFreeVariables freeValSearcher(pEnv, freeVariables);
+						if (boost::apply_visitor(freeValSearcher, expr))
+						{
+							hasFreeVariables = true;
+							break;
+						}
 					}
-					result.appendFunctionRef(std::move(args));
+
+					if (hasFreeVariables)
+					{
+						//satFuncRefにaccessesの残りをつなげて関数とその先のアクセッサとする。
+						if (auto satFuncOpt = MakeSatFunctionReference(identifier.name, node, i, *this, evaluator, pEnv))
+						{
+							return satFuncOpt.value();
+						}
+
+						std::cerr << "Error(" << __LINE__ << "):Invalid FunctionAccess\n";
+						return 0;
+					}
+					else
+					{
+						result.appendFunctionRef(std::move(args));
+					}
 				}
 			}
 

@@ -590,6 +590,11 @@ namespace cgl
 			return 0.0;
 		}
 
+		/*double operator()(const SatLines& node)const
+		{
+			node.exprs;
+		}*/
+
 		double operator()(const SatFunctionReference& node)const
 		{
 			std::map<std::string, std::function<double(double)>> unaryFunctions;

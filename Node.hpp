@@ -239,9 +239,6 @@ namespace cgl
 		boost::recursive_wrapper<Record>,
 		boost::recursive_wrapper<FuncVal>,
 		boost::recursive_wrapper<Jump>,
-		
-		//boost::recursive_wrapper<OptimizationProblemSat>
-		
 		boost::recursive_wrapper<DeclSat>,
 		boost::recursive_wrapper<DeclFree>
 	>;
@@ -251,6 +248,7 @@ namespace cgl
 
 	struct SatUnaryExpr;
 	struct SatBinaryExpr;
+	struct SatLines;
 
 	struct SatReference
 	{
@@ -270,6 +268,7 @@ namespace cgl
 		SatReference,
 		boost::recursive_wrapper<SatUnaryExpr>,
 		boost::recursive_wrapper<SatBinaryExpr>,
+		//boost::recursive_wrapper<SatLines>,
 		boost::recursive_wrapper<SatFunctionReference>
 	>;
 
@@ -333,6 +332,52 @@ namespace cgl
 			rhs(rhs),
 			op(op)
 		{}
+	};
+
+	struct SatLines
+	{
+		std::vector<SatExpr> exprs;
+
+		SatLines() = default;
+
+		SatLines(const SatExpr& expr) :
+			exprs({ expr })
+		{}
+
+		SatLines(const std::vector<SatExpr>& exprs_) :
+			exprs(exprs_)
+		{}
+
+		void add(const SatExpr& expr)
+		{
+			exprs.push_back(expr);
+		}
+
+		void concat(const SatLines& lines)
+		{
+			exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
+		}
+
+		SatLines& operator+=(const SatLines& lines)
+		{
+			exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
+			return *this;
+		}
+
+		size_t size()const
+		{
+			return exprs.size();
+		}
+
+		const SatExpr& operator[](size_t index)const
+		{
+			return exprs[index];
+		}
+
+		SatExpr& operator[](size_t index)
+		{
+			return exprs[index];
+		}
 	};
 
 	bool IsLValue(const Evaluated& value)

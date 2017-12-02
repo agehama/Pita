@@ -1493,6 +1493,21 @@ main = {
 	return IsEqual(l1vertex1, answer);
 });
 
+testEval1(R"(
+
+main = {
+    x: 1
+    y: 2
+    r: 1
+    theta: 0
+    sat(r*cos(theta) == x & r*sin(theta) == y)
+    free(r, theta)
+}
+
+)", [](const Evaluated& result) {
+	return IsEqual(As<Record>(result).values.at("theta"),1.1071487177940905030170654601785);
+});
+
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 
 #endif

@@ -1000,8 +1000,8 @@ namespace cgl
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
-			//def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
-			def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
+			def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
+			//def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
 
 			//constraint‚ÍDNF‚ÌŒ`‚Å—^‚¦‚ç‚ê‚é‚à‚Ì‚Æ‚·‚é
 			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';

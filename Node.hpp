@@ -380,12 +380,12 @@ namespace cgl
 		}
 	};
 
-	bool IsLValue(const Evaluated& value)
+	inline bool IsLValue(const Evaluated& value)
 	{
 		return IsType<Identifier>(value) || IsType<ObjectReference>(value);
 	}
 
-	bool IsRValue(const Evaluated& value)
+	inline bool IsRValue(const Evaluated& value)
 	{
 		return !IsLValue(value);
 	}

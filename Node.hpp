@@ -5,6 +5,7 @@
 #include <memory>
 #include <functional>
 #include <iostream>
+#include <set>
 #include <map>
 #include <unordered_map>
 
@@ -568,7 +569,7 @@ namespace cgl
 		//std::shared_ptr<Environment> environment;
 		std::vector<Identifier> arguments;
 		Expr expr;
-		std::vector<std::vector<std::string>> referenceableVariables;
+		std::vector<std::set<std::string>> referenceableVariables;
 		mutable int currentScopeDepth;
 
 		FuncVal() = default;
@@ -577,7 +578,7 @@ namespace cgl
 			/*std::shared_ptr<Environment> environment,*/
 			const std::vector<Identifier>& arguments,
 			const Expr& expr,
-			const std::vector<std::vector<std::string>>& referenceableVariables,
+			const std::vector<std::set<std::string>>& referenceableVariables,
 			int currentScopeDepth) :
 			/*environment(environment),*/
 			arguments(arguments),

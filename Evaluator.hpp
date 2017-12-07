@@ -315,6 +315,199 @@ namespace cgl
 		bool operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
 	};
 
+	//式中の変数名の出現をチェック
+	class CheckNameAppearance : public boost::static_visitor<void>
+	{
+	public:
+
+		//内部でさらにローカル変数が定義される場合
+		std::set<std::string> ignoreNames;
+
+		std::vector<std::string> variableNames;
+		std::vector<char> appearances;
+
+		CheckNameAppearance(const std::vector<std::string>& variableNames) :
+			variableNames(variableNames),
+			appearances(variableNames.size(), 0)
+		{}
+
+		CheckNameAppearance& ignore(const std::string& name)
+		{
+			ignoreNames.insert(name);
+			return *this;
+		}
+
+		void check(const std::string& name)
+		{
+			for (size_t i = 0; i < variableNames.size(); ++i)
+			{
+				if (variableNames[i] == name && ignoreNames.find(name) == ignoreNames.end())
+				{
+					appearances[i] = 1;
+				}
+			}
+		}
+
+		void merge(const CheckNameAppearance& other)
+		{
+			assert(appearances.size() == other.appearances.size());
+
+			for (size_t i = 0; i < appearances.size(); ++i)
+			{
+				appearances[i] |= other.appearances[i];
+			}
+		}
+		
+		void operator()(bool node) {}
+
+		void operator()(int node) {}
+
+		void operator()(double node) {}
+
+		void operator()(const Identifier& node)
+		{
+			check(node.name);
+		}
+
+		void operator()(const UnaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+		}
+
+		void operator()(const BinaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Range& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Lines& node)
+		{
+			for (size_t i = 0; i < node.size(); ++i)
+			{
+				boost::apply_visitor(*this, node.exprs[i]);
+			}
+		}
+
+		void operator()(const DefFunc& node)
+		{
+			CheckNameAppearance child(*this);
+			for (const auto& argument : node.arguments)
+			{
+				child.ignore(argument.name);
+			}
+
+			boost::apply_visitor(child, node.expr);
+			merge(child);
+		}
+
+		void operator()(const If& node)
+		{
+			boost::apply_visitor(*this, node.cond_expr);
+			boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				boost::apply_visitor(*this, node.else_expr.value());
+			}
+		}
+
+		void operator()(const For& node)
+		{
+			boost::apply_visitor(*this, node.rangeStart);
+			boost::apply_visitor(*this, node.rangeEnd);
+
+			CheckNameAppearance child(*this);
+			child.ignore(node.loopCounter.name);
+			boost::apply_visitor(child, node.doExpr);
+			merge(child);
+		}
+
+		void operator()(const Return& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const ListConstractor& node)
+		{
+			for (const auto& expr : node.data)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const KeyExpr& node)
+		{
+			//名前付き変数の宣言を見たら以降無視する
+			ignore(node.name.name);
+			
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const RecordConstractor& node)
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const RecordInheritor& node)
+		{
+			check(node.original.name);
+			boost::apply_visitor(*this, node.adder);
+		}
+
+		void operator()(const Accessor& node)
+		{
+			boost::apply_visitor(*this, node.head);
+
+			for (const auto& access : node.accesses)
+			{
+				if(auto listAccess = AsOpt<ListAccess>(access))
+				{
+					boost::apply_visitor(*this, listAccess.value().index);
+				}
+				else if (auto recordAccess = AsOpt<RecordAccess>(access))
+				{
+					//.aとかについては特に何もしない
+				}
+				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
+				{
+					for (const auto& argument : functionAccess.value().actualArguments)
+					{
+						boost::apply_visitor(*this, argument);
+					}
+				}
+			}
+		}
+
+		void operator()(const FunctionCaller& node)
+		{
+			if (auto funcNameOpt = AsOpt<Identifier>(node.funcRef))
+			{
+				boost::apply_visitor(*this, funcNameOpt.value());
+			}
+		}
+
+		void operator()(const DeclSat& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const DeclFree& node)
+		{
+			for (const auto& access : node.accessors)
+			{
+				boost::apply_visitor(*this, access);
+			}
+		}
+	};
+
 	class EvalSatExpr : public boost::static_visitor<double>
 	{
 	public:

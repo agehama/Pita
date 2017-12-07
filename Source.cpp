@@ -455,6 +455,58 @@ namespace cgl
 
 	ObjectReference Environment::makeFuncVal(const std::vector<Identifier>& arguments, const Expr& expr)
 	{
+		auto referenceableVariables = currentReferenceableVariables();
+
+		//referenceableVariables は現在のスコープで参照可能な変数全てを表している
+		//実際に関数の中で参照される変数はこの中のごく一部なので、事前にフィルタを掛けた方がいい
+		{
+			//スコープ間で同名の変数がある場合は内側の変数で遮蔽されて、外側の変数は参照されないので削除してよい
+			for (auto scopeIt = referenceableVariables.rbegin(); scopeIt + 1 != referenceableVariables.rend(); ++scopeIt)
+			{
+				for (const auto& innerName : *scopeIt)
+				{
+					for (auto outerScopeIt = scopeIt + 1; outerScopeIt != referenceableVariables.rend(); ++outerScopeIt)
+					{
+						const auto outerNameIt = outerScopeIt->find(innerName);
+						if (outerNameIt != outerScopeIt->end())
+						{
+							outerScopeIt->erase(outerNameIt);
+						}
+					}
+				}
+			}
+
+			std::vector<std::string> names;
+			for (size_t v = 0; v < referenceableVariables.size(); ++v)
+			{
+				const auto& ns = referenceableVariables[v];
+				for (int index = static_cast<int>(ns.size()) - 1; 0 <= index; --index)
+				{
+					names.push_back(ns[index]);
+				}
+			}
+
+			CheckNameAppearance checker(names);
+			boost::apply_visitor(checker, expr);
+
+			for (size_t v = 0, i = 0; v < referenceableVariables.size(); ++v)
+			{
+				auto& ns = referenceableVariables[v];
+				for (int index = static_cast<int>(ns.size()) - 1; 0 <= index; ++i)
+				{
+					if (checker.appearances[i] == 1)
+					{
+						--index;
+						continue;
+					}
+					else
+					{
+						ns.erase(std::next(ns.begin(), index));
+					}
+				}
+			}
+		}
+
 		FuncVal val(arguments, expr, currentReferenceableVariables(), scopeDepth());
 		const unsigned valueID = makeTemporaryValue(val);
 		m_funcValIDs.push_back(valueID);
@@ -494,6 +546,9 @@ namespace cgl
 	void Environment::exitScope()
 	{
 		{
+			//このスコープを抜けると削除される変数リスト
+			const auto& deletingVariables = m_variables.back();
+
 			/*{
 				std::cout << "Prev Decrement:" << std::endl;
 				for (const unsigned id : m_funcValIDs)
@@ -513,6 +568,11 @@ namespace cgl
 						//関数が内部で外の変数を参照している時、その変数が関数より先に解放されてしまうと困るので、このタイミングでpopされる変数について関数の内部に存在する変数をその値で置き換えるという処理を行う。
 
 						//その後、currentScopeDepthを1つデクリメントする。
+						
+						;
+						
+						funcValOpt.value().referenceableVariables;
+						funcValOpt.value().expr;
 
 						std::cout << "extiScope : decrement" << std::endl;
 						--funcValOpt.value().currentScopeDepth;

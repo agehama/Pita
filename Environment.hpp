@@ -326,16 +326,17 @@ namespace cgl
 		}
 
 		//現在参照可能な変数名のリストのリストを返す
-		std::vector<std::vector<std::string>> currentReferenceableVariables()const
+		std::vector<std::set<std::string>> currentReferenceableVariables()const
 		{
-			std::vector<std::vector<std::string>> result;
+			std::vector<std::set<std::string>> result;
 			for (const auto& scope : m_variables)
 			{
 				result.emplace_back();
 				auto& currentScope = result.back();
 				for (const auto& var : scope)
 				{
-					currentScope.push_back(var.first);
+					//currentScope.push_back(var.first);
+					currentScope.insert(var.first);
 				}
 			}
 

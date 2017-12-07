@@ -380,12 +380,12 @@ namespace cgl
 		}
 	};
 
-	bool IsLValue(const Evaluated& value)
+	inline bool IsLValue(const Evaluated& value)
 	{
 		return IsType<Identifier>(value) || IsType<ObjectReference>(value);
 	}
 
-	bool IsRValue(const Evaluated& value)
+	inline bool IsRValue(const Evaluated& value)
 	{
 		return !IsLValue(value);
 	}
@@ -565,19 +565,25 @@ namespace cgl
 
 	struct FuncVal
 	{
-		std::shared_ptr<Environment> environment;
+		//std::shared_ptr<Environment> environment;
 		std::vector<Identifier> arguments;
 		Expr expr;
+		std::vector<std::vector<std::string>> referenceableVariables;
+		mutable int currentScopeDepth;
 
 		FuncVal() = default;
 
 		FuncVal(
-			std::shared_ptr<Environment> environment,
+			/*std::shared_ptr<Environment> environment,*/
 			const std::vector<Identifier>& arguments,
-			const Expr& expr) :
-			environment(environment),
+			const Expr& expr,
+			const std::vector<std::vector<std::string>>& referenceableVariables,
+			int currentScopeDepth) :
+			/*environment(environment),*/
 			arguments(arguments),
-			expr(expr)
+			expr(expr),
+			referenceableVariables(referenceableVariables),
+			currentScopeDepth(currentScopeDepth)
 		{}
 
 		bool operator==(const FuncVal& other)const
@@ -1137,7 +1143,7 @@ namespace cgl
 
 		using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
 
-		using ObjectT = boost::variant<Identifier, boost::recursive_wrapper<Record>, boost::recursive_wrapper<List>, boost::recursive_wrapper<FuncVal>>;
+		using ObjectT = boost::variant<unsigned, Identifier, boost::recursive_wrapper<Record>, boost::recursive_wrapper<List>, boost::recursive_wrapper<FuncVal>>;
 
 		ObjectT headValue;
 

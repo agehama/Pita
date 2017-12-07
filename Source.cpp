@@ -453,6 +453,92 @@ namespace cgl
 		//return result;
 	}
 
+	ObjectReference Environment::makeFuncVal(const std::vector<Identifier>& arguments, const Expr& expr)
+	{
+		FuncVal val(arguments, expr, currentReferenceableVariables(), scopeDepth());
+		const unsigned valueID = makeTemporaryValue(val);
+		m_funcValIDs.push_back(valueID);
+
+		return ObjectReference(valueID);
+	}
+
+	void Environment::printEnvironment()const
+	{
+		std::cout << "Print Environment Begin:\n";
+
+		std::cout << "Values:\n";
+		for (const auto& keyval : m_values)
+		{
+			const auto& val = keyval.second;
+
+			std::cout << keyval.first << " : ";
+
+			printEvaluated(val);
+		}
+
+		std::cout << "References:\n";
+		for (size_t d = 0; d < m_variables.size(); ++d)
+		{
+			std::cout << "Depth : " << d << "\n";
+			const auto& names = m_variables[d];
+
+			for (const auto& keyval : names)
+			{
+				std::cout << keyval.first << " : " << keyval.second << "\n";
+			}
+		}
+
+		std::cout << "Print Environment End:\n";
+	}
+
+	void Environment::exitScope()
+	{
+		{
+			/*{
+				std::cout << "Prev Decrement:" << std::endl;
+				for (const unsigned id : m_funcValIDs)
+				{
+					if (auto funcValOpt = AsOpt<FuncVal>(m_values[id]))
+					{
+						std::cout << "func depth: " << funcValOpt.value().currentScopeDepth << std::endl;
+					}
+				}
+			}*/
+			for (const unsigned id : m_funcValIDs)
+			{
+				if (auto funcValOpt = AsOpt<FuncVal>(m_values[id]))
+				{
+					if (funcValOpt.value().currentScopeDepth == scopeDepth())
+					{
+						//関数が内部で外の変数を参照している時、その変数が関数より先に解放されてしまうと困るので、このタイミングでpopされる変数について関数の内部に存在する変数をその値で置き換えるという処理を行う。
+
+						//その後、currentScopeDepthを1つデクリメントする。
+
+						std::cout << "extiScope : decrement" << std::endl;
+						--funcValOpt.value().currentScopeDepth;
+					}
+				}
+				else
+				{
+					std::cerr << "Error(" << __LINE__ << ")\n";
+				}
+			}
+			/*{
+				std::cout << "Post Decrement:" << std::endl;
+				for (const unsigned id : m_funcValIDs)
+				{
+					if (auto funcValOpt = AsOpt<FuncVal>(m_values[id]))
+					{
+						std::cout << "func depth: " << funcValOpt.value().currentScopeDepth << std::endl;
+					}
+				}
+			}*/
+		}
+
+		m_variables.pop_back();
+	}
+
+
 	const Evaluated& Environment::dereference(const Evaluated& reference)
 	{
 		if (auto nameOpt = AsOpt<Identifier>(reference))
@@ -472,7 +558,11 @@ namespace cgl
 
 			boost::optional<unsigned> valueIDOpt;
 
-			if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
+			if (auto idOpt = AsOpt<unsigned>(referenceProcess.headValue))
+			{
+				valueIDOpt = idOpt.value();
+			}
+			else if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
 			{
 				valueIDOpt = findValueID(opt.value().name);
 			}
@@ -533,6 +623,61 @@ namespace cgl
 				}
 				else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
 				{
+					boost::optional<const FuncVal&> funcValOpt;
+
+					std::cout << "FuncRef ";
+					if (auto recordOpt = AsOpt<FuncVal>(result.value()))
+					{
+						std::cout << "is FuncVal ";
+						funcValOpt = recordOpt.value();
+					}
+					else if (IsType<ObjectReference>(result.value()))
+					{
+						std::cout << "is ObjectReference ";
+						if (auto funcValOpt2 = AsOpt<FuncVal>(dereference(result.value())))
+						{
+							std::cout << "is FuncVal ";
+							funcValOpt = funcValOpt2.value();
+						}
+						else
+						{
+							std::cout << "isn't FuncVal ";
+						}
+					}
+					else
+					{
+						std::cout << "isn't AnyRef: ";
+						printEvaluated(result.value());
+					}
+					
+					std::cout << std::endl;
+
+					if (funcValOpt)
+					{
+						Expr caller = FunctionCaller(funcValOpt.value(), funcRefOpt.value().args);
+
+						if (auto sharedThis = m_weakThis.lock())
+						{
+							Eval evaluator(sharedThis);
+
+							const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
+							result = m_values[ID];
+						}
+						else
+						{
+							//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+							std::cerr << "Error(" << __LINE__ << ")\n";
+							return reference;
+						}
+					}
+					else
+					{
+						//関数としてアクセスするのに失敗
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return reference;
+					}
+
+					/*
 					if (auto recordOpt = AsOpt<FuncVal>(result.value()))
 					{
 						Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
@@ -557,6 +702,7 @@ namespace cgl
 						std::cerr << "Error(" << __LINE__ << ")\n";
 						return reference;
 					}
+					*/
 				}
 			}
 
@@ -663,6 +809,10 @@ namespace cgl
 	{
 		boost::optional<unsigned> valueIDOpt;
 
+		if (auto idOpt = AsOpt<unsigned>(objectRef.headValue))
+		{
+			valueIDOpt = idOpt.value();
+		}
 		if (auto opt = AsOpt<Identifier>(objectRef.headValue))
 		{
 			valueIDOpt = findValueID(opt.value().name);
@@ -720,6 +870,44 @@ namespace cgl
 			}
 			else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
 			{
+				boost::optional<const FuncVal&> funcValOpt;
+				if (auto recordOpt = AsOpt<FuncVal>(result.value()))
+				{
+					funcValOpt = recordOpt.value();
+				}
+				else if (IsType<ObjectReference>(result.value()))
+				{
+					if (auto funcValOpt = AsOpt<FuncVal>(dereference(result.value())))
+					{
+						funcValOpt = funcValOpt.value();
+					}
+				}
+
+				if (funcValOpt)
+				{
+					Expr caller = FunctionCaller(funcValOpt.value(), funcRefOpt.value().args);
+
+					if (auto sharedThis = m_weakThis.lock())
+					{
+						Eval evaluator(sharedThis);
+						const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
+						result = m_values[ID];
+					}
+					else
+					{
+						//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return;
+					}
+				}
+				else
+				{
+					//関数としてアクセスするのに失敗
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return;
+				}
+
+				/*
 				if (auto recordOpt = AsOpt<FuncVal>(result.value()))
 				{
 					Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
@@ -741,6 +929,7 @@ namespace cgl
 					std::cerr << "Error(" << __LINE__ << ")\n";
 					return;
 				}
+				*/
 			}
 		}
 
@@ -1000,8 +1189,8 @@ namespace cgl
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
-			//def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
-			def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
+			def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
+			//def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
 
 			//constraintはDNFの形で与えられるものとする
 			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';

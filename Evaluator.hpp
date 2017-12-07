@@ -1,4 +1,5 @@
 #pragma once
+#pragma warning(disable:4996)
 #include <iomanip>
 #include "Node.hpp"
 #include "Environment.hpp"
@@ -7,216 +8,6 @@
 
 namespace cgl
 {
-	class EvalSat : public boost::static_visitor<Evaluated>
-	{
-	public:
-
-		EvalSat(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
-
-		Evaluated operator()(bool node)
-		{
-			return node;
-		}
-
-		Evaluated operator()(int node)
-		{
-			return node;
-		}
-
-		Evaluated operator()(double node)
-		{
-			return node;
-		}
-
-		Evaluated operator()(const Identifier& node)
-		{
-			return pEnv->dereference(node);
-		}
-
-		Evaluated operator()(const UnaryExpr& node)
-		{
-			const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
-
-			switch (node.op)
-			{
-			case UnaryOp::Not:   return Not(lhs, *pEnv);
-			case UnaryOp::Minus: return Minus(lhs, *pEnv);
-			case UnaryOp::Plus:  return Plus(lhs, *pEnv);
-			}
-
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
-			return 0;
-		}
-
-		Evaluated operator()(const BinaryExpr& node)
-		{
-			const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
-			const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
-
-			/*
-			a == b => Minimize(C * Abs(a - b))
-			a != b => Minimize(C * (a == b ? 1 : 0))
-			a < b  => Minimize(C * Max(a - b, 0))
-			a > b  => Minimize(C * Max(b - a, 0))
-
-			e : error
-			a == b => Minimize(C * Max(Abs(a - b) - e, 0))
-			a != b => Minimize(C * (a == b ? 1 : 0))
-			a < b  => Minimize(C * Max(a - b - e, 0))
-			a > b  => Minimize(C * Max(b - a - e, 0))
-			*/
-			switch (node.op)
-			{
-			case BinaryOp::And: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
-
-			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
-			case BinaryOp::NotEqual:     return As<bool>(Equal(lhs, rhs, *pEnv)) ? 1.0 : 0.0;
-			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);
-			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0, *pEnv);
-			case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0, *pEnv);
-			case BinaryOp::GreaterEqual: return Max(Sub(rhs, lhs, *pEnv), 0, *pEnv);
-
-			case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
-			case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
-			case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
-
-			case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
-				//case BinaryOp::Assign: return Assign(lhs, rhs, *pEnv);
-			}
-
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
-			return 0;
-		}
-
-		Evaluated operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const Accessor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		Evaluated operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-
-	private:
-
-		std::shared_ptr<Environment> pEnv;
-	};
-
-	/*
-	class Expr2SatExpr : public boost::static_visitor<SatExpr>
-	{
-	public:
-
-		int refID_Offset;
-		//std::vector<ObjectReference> refs;
-		std::vector<Accessor> refs;
-
-		Expr2SatExpr(int refID_Offset) :
-			refID_Offset(refID_Offset)
-		{}
-
-		SatExpr operator()(bool node)
-		{
-			std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0.0;
-		}
-
-		SatExpr operator()(int node)
-		{
-			return static_cast<double>(node);
-		}
-
-		SatExpr operator()(double node)
-		{
-			return node;
-		}
-
-		SatExpr operator()(const Identifier& node)
-		{
-			SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-			refs.push_back(Accessor(node));
-			return satRef;
-		}
-
-		SatExpr operator()(const UnaryExpr& node)
-		{
-			const SatExpr lhs = boost::apply_visitor(*this, node.lhs);
-
-			switch (node.op)
-			{
-			case UnaryOp::Not:   return SatUnaryExpr(lhs, UnaryOp::Not);
-			case UnaryOp::Minus: return SatUnaryExpr(lhs, UnaryOp::Minus);
-			case UnaryOp::Plus:  return lhs;
-			}
-
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
-			return 0.0;
-		}
-
-		SatExpr operator()(const BinaryExpr& node)
-		{
-			const SatExpr lhs = boost::apply_visitor(*this, node.lhs);
-			const SatExpr rhs = boost::apply_visitor(*this, node.rhs);
-
-			switch (node.op)
-			{
-			case BinaryOp::And: return SatBinaryExpr(lhs, rhs, BinaryOp::And);
-			case BinaryOp::Or:  return SatBinaryExpr(lhs, rhs, BinaryOp::Or);
-
-			case BinaryOp::Equal:        return SatBinaryExpr(lhs, rhs, BinaryOp::Equal);
-			case BinaryOp::NotEqual:     return SatBinaryExpr(lhs, rhs, BinaryOp::NotEqual);
-			case BinaryOp::LessThan:     return SatBinaryExpr(lhs, rhs, BinaryOp::LessThan);
-			case BinaryOp::LessEqual:    return SatBinaryExpr(lhs, rhs, BinaryOp::LessEqual);
-			case BinaryOp::GreaterThan:  return SatBinaryExpr(lhs, rhs, BinaryOp::GreaterThan);
-			case BinaryOp::GreaterEqual: return SatBinaryExpr(lhs, rhs, BinaryOp::GreaterEqual);
-
-			case BinaryOp::Add: return SatBinaryExpr(lhs, rhs, BinaryOp::Add);
-			case BinaryOp::Sub: return SatBinaryExpr(lhs, rhs, BinaryOp::Sub);
-			case BinaryOp::Mul: return SatBinaryExpr(lhs, rhs, BinaryOp::Mul);
-			case BinaryOp::Div: return SatBinaryExpr(lhs, rhs, BinaryOp::Div);
-
-			case BinaryOp::Pow: return SatBinaryExpr(lhs, rhs, BinaryOp::Pow);
-			}
-
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
-			return 0;
-		}
-
-		SatExpr operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		
-		SatExpr operator()(const Accessor& node)
-		{
-			SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-			refs.push_back(node);
-			return satRef;
-		}
-
-		SatExpr operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	};
-	*/
-
 	class Expr2SatExpr : public boost::static_visitor<SatExpr>
 	{
 	public:
@@ -719,14 +510,20 @@ namespace cgl
 			//auto val = FuncVal(pEnv, defFunc.arguments, defFunc.expr);
 
 			//FuncVal val(std::make_shared<Environment>(*pEnv), defFunc.arguments, defFunc.expr);
-			FuncVal val(Environment::Make(*pEnv), defFunc.arguments, defFunc.expr);
-
-			return val;
+			//FuncVal val(Environment::Make(*pEnv), defFunc.arguments, defFunc.expr);
+			//FuncVal val(defFunc.arguments, defFunc.expr, pEnv->scopeDepth());
+			//FuncVal val(defFunc.arguments, defFunc.expr, pEnv->currentReferenceableVariables(), pEnv->scopeDepth());
+			return pEnv->makeFuncVal(defFunc.arguments, defFunc.expr);
 		}
 
 		Evaluated operator()(const FunctionCaller& callFunc)
 		{
-			std::shared_ptr<Environment> buckUp = pEnv;
+			//std::shared_ptr<Environment> buckUp = pEnv;
+
+			std::cout << "CALLFUNC_A" << std::endl;
+
+			std::cout << "Function Environment:\n";
+			pEnv->printEnvironment();
 
 			FuncVal funcVal;
 
@@ -749,6 +546,8 @@ namespace cgl
 				}
 			}
 
+			std::cout << "CALLFUNC_B" << std::endl;
+
 			assert(funcVal.arguments.size() == callFunc.actualArguments.size());
 
 			/*
@@ -761,13 +560,56 @@ namespace cgl
 				expandedArguments[i] = pEnv->expandObject(callFunc.actualArguments[i]);
 			}
 
+			std::cout << "CALLFUNC_C" << std::endl;
+
+			//関数の評価
+			//(1)ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える
+
+			
+			pEnv->switchFrontScope(funcVal.currentScopeDepth);
+
+			std::cout << "CALLFUNC_D" << std::endl;
+
+			//(2)関数の引数用にスコープを一つ追加する
+			pEnv->enterScope();
+
+			std::cout << "CALLFUNC_E" << std::endl;
+
+			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
+			{
+				//現在は値も変数も全て値渡し（コピー）をしているので、単純に bindNewValue を行えばよい
+				//本当は変数の場合は bindReference で参照情報だけ渡すべきなのかもしれない
+				//要考察
+				//pEnv->bindNewValue(funcVal.arguments[i].name, callFunc.actualArguments[i]);
+
+				pEnv->bindNewValue(funcVal.arguments[i].name, expandedArguments[i]);
+			}
+
+			std::cout << "CALLFUNC_F" << std::endl;
+
+			std::cout << "Function Definition:\n";
+			boost::apply_visitor(Printer(), funcVal.expr);
+
+			//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
+			Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
+
+			std::cout << "CALLFUNC_G" << std::endl;
+			
+			//(4)関数を抜ける時に、仮引数は全て解放される
+			pEnv->exitScope();
+
+			std::cout << "CALLFUNC_H" << std::endl;
+
+			//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
+			pEnv->switchBackScope();
+
+			std::cout << "CALLFUNC_I" << std::endl;
 			/*
-			関数の評価
-			ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える。
-			*/
+			//関数の評価
+			//(1)ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える
 			pEnv = funcVal.environment;
 
-			//関数の引数用にスコープを一つ追加する
+			//(2)関数の引数用にスコープを一つ追加する
 			pEnv->pushNormal();
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
@@ -785,18 +627,15 @@ namespace cgl
 			std::cout << "Function Definition:\n";
 			boost::apply_visitor(Printer(), funcVal.expr);
 
-			/*
-			関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
-			*/
+			//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
 			Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
 
-			//関数を抜ける時に、仮引数は全て解放される
+			//(4)関数を抜ける時に、仮引数は全て解放される
 			pEnv->pop();
 
-			/*
-			最後にローカル変数の環境を関数の実行前のものに戻す。
-			*/
+			//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
 			pEnv = buckUp;
+			*/
 
 			//評価結果がreturn式だった場合はreturnを外して中身を返す
 			//return以外のジャンプ命令は関数では効果を持たないのでそのまま上に返す
@@ -828,13 +667,16 @@ namespace cgl
 
 		Evaluated operator()(const Lines& statement)
 		{
-			pEnv->pushNormal();
+			//pEnv->pushNormal();
+			pEnv->enterScope();
 
 			Evaluated result;
 			int i = 0;
 			for (const auto& expr : statement.exprs)
 			{
 				std::cout << "Evaluate expression(" << i << ")" << std::endl;
+				pEnv->printEnvironment();
+
 				result = boost::apply_visitor(*this, expr);
 
 				//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
@@ -858,9 +700,22 @@ namespace cgl
 			}
 
 			//この後すぐ解放されるので dereference しておく
-			result = pEnv->dereference(result);
-
-			pEnv->pop();
+			bool deref = true;
+			if (auto refOpt = AsOpt<ObjectReference>(result))
+			{
+				if (IsType<unsigned>(refOpt.value().headValue))
+				{
+					deref = false;
+				}
+			}
+			
+			if (deref)
+			{
+				result = pEnv->dereference(result);
+			}
+			
+			//pEnv->pop();
+			pEnv->exitScope();
 
 			return result;
 		}
@@ -972,7 +827,8 @@ namespace cgl
 
 			Evaluated loopResult;
 
-			pEnv->pushNormal();
+			//pEnv->pushNormal();
+			pEnv->enterScope();
 
 			while (true)
 			{
@@ -998,7 +854,8 @@ namespace cgl
 				loopCountValue = Add(loopCountValue, step, *pEnv);
 			}
 
-			pEnv->pop();
+			//pEnv->pop();
+			pEnv->exitScope();
 
 			return loopResult;
 		}
@@ -1031,7 +888,11 @@ namespace cgl
 
 		Evaluated operator()(const RecordConstractor& recordConsractor)
 		{
-			pEnv->pushRecord();
+			//pEnv->pushRecord();
+
+			std::cout << "RECORD_A" << std::endl;
+			pEnv->enterScope();
+			std::cout << "RECORD_B" << std::endl;
 
 			std::vector<Identifier> keyList;
 			/*
@@ -1042,6 +903,7 @@ namespace cgl
 			Record record;
 
 			int i = 0;
+
 			for (const auto& expr : recordConsractor.exprs)
 			{
 				//std::cout << "Evaluate expression(" << i << ")" << std::endl;
@@ -1110,6 +972,8 @@ namespace cgl
 				++i;
 			}
 
+
+			std::cout << "RECORD_C" << std::endl;
 			//制約の解決を行ってからまとめて代入する
 			/*for (const auto& key : keyList)
 			{
@@ -1228,6 +1092,7 @@ namespace cgl
 				resultxs = cmasols.best_candidate().get_x();
 			}
 
+			std::cout << "RECORD_D" << std::endl;
 			for (int i = 0; i < resultxs.size(); ++i)
 			{
 				ObjectReference ref = record.freeVariableRefs[i];
@@ -1239,7 +1104,12 @@ namespace cgl
 				record.append(key.name, pEnv->dereference(key));
 			}
 
-			pEnv->pop();
+			std::cout << "RECORD_E" << std::endl;
+
+			//pEnv->pop();
+			pEnv->exitScope();
+
+			std::cout << "RECORD_F" << std::endl;
 
 			return record;
 		}
@@ -1275,7 +1145,8 @@ namespace cgl
 			Record clone = recordOpt.value();
 
 			//(2)
-			pEnv->pushRecord();
+			//pEnv->pushRecord();
+			pEnv->enterScope();
 			for (auto& keyval : clone.values)
 			{
 				pEnv->bindNewValue(keyval.first, keyval.second);
@@ -1305,14 +1176,16 @@ namespace cgl
 
 				//TODO:ここで制約処理を行う
 
-				pEnv->pop();
+				//pEnv->pop();
+				pEnv->exitScope();
 
 				return clone;
 
 				//MargeRecord(recordOpt.value(), opt.value());
 			}
 
-			pEnv->pop();
+			//pEnv->pop();
+			pEnv->exitScope();
 
 			//ここは通らないはず。{}で囲まれた式を評価した結果がレコードでなかった。
 			std::cerr << "Error(" << __LINE__ << ")\n";

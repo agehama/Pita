@@ -623,8 +623,9 @@ namespace cgl
 			}
 			else if (rhsIsObjRef)
 			{
-				const auto& valueRhs = env.dereference(rhs);
-				env.bindNewValue(nameLhs, valueRhs);
+				//const auto& valueRhs = env.dereference(rhs);
+				//env.bindNewValue(nameLhs, valueRhs);
+				env.bindObjectRef(nameLhs, As<ObjectReference>(rhs));
 			}
 			else if (IsType<List>(rhs))
 			{

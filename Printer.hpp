@@ -206,24 +206,37 @@ namespace cgl
 			return str;
 		}
 
-		auto operator()(bool node)const -> void
+		void operator()(bool node)const
 		{
 			std::cout << indent() << "Bool(" << node << ")" << std::endl;
 		}
 
-		auto operator()(int node)const -> void
+		void operator()(int node)const
 		{
 			std::cout << indent() << "Int(" << node << ")" << std::endl;
 		}
 
-		auto operator()(double node)const -> void
+		void operator()(double node)const
 		{
 			std::cout << indent() << "Double(" << node << ")" << std::endl;
 		}
 
-		auto operator()(const Identifier& node)const -> void
+		void operator()(const Identifier& node)const
 		{
 			std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
+		}
+
+		void operator()(const List& node)const
+		{
+			//std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
+		}
+		void operator()(const Record& node)const
+		{
+			//std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
+		}
+		void operator()(const FuncVal& node)const
+		{
+			//std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
 		}
 
 		void operator()(const UnaryExpr& node)const
@@ -243,7 +256,7 @@ namespace cgl
 			std::cout << indent() << ")" << std::endl;
 		}
 
-		auto operator()(const DefFunc& defFunc)const -> void
+		void operator()(const DefFunc& defFunc)const
 		{
 			std::cout << indent() << "DefFunc(" << std::endl;
 
@@ -267,7 +280,7 @@ namespace cgl
 			std::cout << indent() << ")" << std::endl;
 		}
 
-		auto operator()(const FunctionCaller& callFunc)const -> void
+		void operator()(const FunctionCaller& callFunc)const
 		{
 			std::cout << indent() << "FunctionCaller(" << std::endl;
 

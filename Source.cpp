@@ -386,6 +386,7 @@ namespace cgl
 		}
 	}
 
+	/*
 	Expr ExprFuncExpander::operator()(const Accessor& accessor)
 	{
 		return 0;
@@ -452,14 +453,18 @@ namespace cgl
 
 		//return result;
 	}
+	*/
 
 	ObjectReference Environment::makeFuncVal(const std::vector<Identifier>& arguments, const Expr& expr)
 	{
+		std::cout << "makeFuncVal_A" << std::endl;
 		auto referenceableVariables = currentReferenceableVariables();
 
-		//referenceableVariables は現在のスコープで参照可能な変数全てを表している
-		//実際に関数の中で参照される変数はこの中のごく一部なので、事前にフィルタを掛けた方がいい
+		//その関数が参照している変数名のリストを作る
 		{
+			//referenceableVariables は現在のスコープで参照可能な変数全てを表している
+			//実際に関数の中で参照される変数はこの中のごく一部なので、事前にフィルタを掛けた方がいい
+
 			//スコープ間で同名の変数がある場合は内側の変数で遮蔽されて、外側の変数は参照されないので削除してよい
 			for (auto scopeIt = referenceableVariables.rbegin(); scopeIt + 1 != referenceableVariables.rend(); ++scopeIt)
 			{
@@ -476,20 +481,32 @@ namespace cgl
 				}
 			}
 
+			std::cout << "makeFuncVal_B" << std::endl;
+
 			std::vector<std::string> names;
 			for (size_t v = 0; v < referenceableVariables.size(); ++v)
 			{
 				const auto& ns = referenceableVariables[v];
-				for (int index = static_cast<int>(ns.size()) - 1; 0 <= index; --index)
+				//for (int index = static_cast<int>(ns.size()) - 1; 0 <= index; --index)
 				{
-					names.push_back(ns[index]);
+					//names.insert(names.end(), ns.begin(), ns.end());
+					names.insert(names.end(), ns.rbegin(), ns.rend());
 				}
 			}
 
+			std::cout << "Names: ";
+			for (const auto& n : names)
+			{
+				std::cout << n << " ";
+			}
+			std::cout << std::endl;
+
+			std::cout << "makeFuncVal_C" << std::endl;
 			CheckNameAppearance checker(names);
 			boost::apply_visitor(checker, expr);
+			std::cout << "makeFuncVal_D" << std::endl;
 
-			for (size_t v = 0, i = 0; v < referenceableVariables.size(); ++v)
+			/*for (size_t v = 0, i = 0; v < referenceableVariables.size(); ++v)
 			{
 				auto& ns = referenceableVariables[v];
 				for (int index = static_cast<int>(ns.size()) - 1; 0 <= index; ++i)
@@ -504,13 +521,36 @@ namespace cgl
 						ns.erase(std::next(ns.begin(), index));
 					}
 				}
+			}*/
+
+			
+			for (int i = 0; i < names.size(); ++i)
+			{
+				if (checker.appearances[i] == 0)
+				{
+					const std::string& deleteName = checker.variableNames[i];
+
+					//for (size_t v = 0, i = 0; v < referenceableVariables.size(); ++v)
+					for (size_t v = 0; v < referenceableVariables.size(); ++v)
+					{
+						auto& ns = referenceableVariables[v];
+						ns.erase(deleteName);
+					}
+				}
 			}
+			
 		}
 
-		FuncVal val(arguments, expr, currentReferenceableVariables(), scopeDepth());
-		const unsigned valueID = makeTemporaryValue(val);
-		m_funcValIDs.push_back(valueID);
+		std::cout << "makeFuncVal_E" << std::endl;
 
+		FuncVal val(arguments, expr, referenceableVariables, scopeDepth());
+
+		std::cout << "makeFuncVal_F" << std::endl;
+		const unsigned valueID = makeTemporaryValue(val);
+		std::cout << "makeFuncVal_G" << std::endl;
+		//m_funcValIDs.push_back(valueID);
+
+		std::cout << "makeFuncVal_H" << std::endl;
 		return ObjectReference(valueID);
 	}
 
@@ -549,7 +589,7 @@ namespace cgl
 			//このスコープを抜けると削除される変数リスト
 			const auto& deletingVariables = m_variables.back();
 
-			/*{
+			{
 				std::cout << "Prev Decrement:" << std::endl;
 				for (const unsigned id : m_funcValIDs)
 				{
@@ -558,7 +598,27 @@ namespace cgl
 						std::cout << "func depth: " << funcValOpt.value().currentScopeDepth << std::endl;
 					}
 				}
-			}*/
+			}
+
+			//今削除しようとしている変数で、なおかつあるスコープから参照可能な変数のリストを返す
+			const auto intersectNames = [&](const std::vector<std::set<std::string>>& names)->std::vector<std::string>
+			{
+				std::vector<std::string> resultNames;
+
+				for (const auto& vs : names)
+				{
+					for (const auto& vname : vs)
+					{
+						if (deletingVariables.find(vname) != deletingVariables.end())
+						{
+							resultNames.push_back(vname);
+						}
+					}
+				}
+
+				return resultNames;
+			};
+
 			for (const unsigned id : m_funcValIDs)
 			{
 				if (auto funcValOpt = AsOpt<FuncVal>(m_values[id]))
@@ -569,12 +629,38 @@ namespace cgl
 
 						//その後、currentScopeDepthを1つデクリメントする。
 						
-						;
-						
-						funcValOpt.value().referenceableVariables;
-						funcValOpt.value().expr;
+						std::map<std::string, Evaluated> variableNames;
 
-						std::cout << "extiScope : decrement" << std::endl;
+						const auto names = intersectNames(funcValOpt.value().referenceableVariables);
+						for (const auto& name : names)
+						{
+							const auto valueOpt = find(name);
+							if (!valueOpt)
+							{
+								//これから削除される変数を保存しようとしたが既に消されていた
+								std::cerr << "Error(" << __LINE__ << ")\n";
+								return;
+							}
+
+							variableNames[name] = valueOpt.value();
+						}
+
+						std::cout << "exitScope: Replace Variable Names: " << std::endl;
+						for (const auto& name : variableNames)
+						{
+							std::cout << name.first << " ";
+						}
+						std::cout << std::endl;
+						
+						//削除される変数を定数に置き換える
+						ReplaceExprValue replacer(variableNames);
+						funcValOpt.value().expr = boost::apply_visitor(replacer, funcValOpt.value().expr);
+
+						std::cout << "exitScope: Function Expr Replaced to: " << std::endl;
+						printExpr(funcValOpt.value().expr);
+						std::cout << std::endl;
+
+						std::cout << "exitScope: decrement" << std::endl;
 						--funcValOpt.value().currentScopeDepth;
 					}
 				}
@@ -583,7 +669,7 @@ namespace cgl
 					std::cerr << "Error(" << __LINE__ << ")\n";
 				}
 			}
-			/*{
+			{
 				std::cout << "Post Decrement:" << std::endl;
 				for (const unsigned id : m_funcValIDs)
 				{
@@ -592,7 +678,7 @@ namespace cgl
 						std::cout << "func depth: " << funcValOpt.value().currentScopeDepth << std::endl;
 					}
 				}
-			}*/
+			}
 		}
 
 		m_variables.pop_back();
@@ -1674,6 +1760,9 @@ vec2(vec2(3))
 
 )", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
+/*
+このプログラムについて、LINES_Aが出力されてLINES_Bが出力される前に落ちる再現性の無いバグ有り。
+*/
 testEval(R"(
 
 vec3 = (v -> {
@@ -1736,8 +1825,8 @@ main = {
 }
 
 )", [](const Evaluated& result) {
-	const auto l1vertex1 = As<List>(As<Record>(As<Record>(result).values.at("l1")).values.at("vertex"));
-	const auto answer = List().append(Record("x", 0).append("y", 0)).append(Record("x", 2).append("y", 3));
+	const Evaluated l1vertex1 = As<List>(As<Record>(As<Record>(result).values.at("l1")).values.at("vertex"));
+	const Evaluated answer = List().append(Record("x", 0).append("y", 0)).append(Record("x", 2).append("y", 3));
 	printEvaluated(answer);
 	return IsEqual(l1vertex1, answer);
 });

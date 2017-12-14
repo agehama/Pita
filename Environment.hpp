@@ -142,6 +142,8 @@ namespace cgl
 		//関数呼び出しなど別のスコープに切り替える/戻す
 		void switchFrontScope(int switchDepth)
 		{
+			//関数のスコープが同じ時は？
+
 			std::cout << "FuncScope:" << switchDepth << std::endl;
 			std::cout << "Variables:" << m_variables.size() << std::endl;
 
@@ -347,7 +349,15 @@ namespace cgl
 		//式の評価途中でGCは走らないようにするべきか？
 		unsigned makeTemporaryValue(const Evaluated& value)
 		{
-			return m_values.add(value);
+			const unsigned valueID = m_values.add(value);
+
+			//関数はスコープを抜ける時に定義式中の変数が解放されないか監視する必要があるのでIDを保存しておく
+			if (IsType<FuncVal>(value))
+			{
+				m_funcValIDs.push_back(valueID);
+			}
+			
+			return valueID;
 		}
 
 		//内側のスコープから順番に変数を探して返す

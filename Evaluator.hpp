@@ -101,6 +101,10 @@ namespace cgl
 
 		SatExpr operator()(const Identifier& node);
 
+		SatExpr operator()(const List& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const Record& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const FuncVal& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+
 		SatExpr operator()(const UnaryExpr& node)
 		{
 			const SatExpr lhs = boost::apply_visitor(*this, node.lhs);
@@ -177,6 +181,7 @@ namespace cgl
 		SatExpr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	};
 
+	/*
 	class ExprFuncExpander : public boost::static_visitor<Expr>
 	{
 	public:
@@ -258,6 +263,7 @@ namespace cgl
 		Expr operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 		Expr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
 	};
+	*/
 
 	class HasFreeVariables : public boost::static_visitor<bool>
 	{
@@ -281,7 +287,10 @@ namespace cgl
 		bool operator()(double node) { return false; }
 
 		bool operator()(const Identifier& node);
-		bool operator()(const Accessor& node);
+
+		bool operator()(const List& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const Record& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const FuncVal& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
 
 		bool operator()(const UnaryExpr& node)
 		{
@@ -310,6 +319,9 @@ namespace cgl
 		bool operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
 		bool operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
 		bool operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		
+		bool operator()(const Accessor& node);
+
 		bool operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
 		bool operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
 		bool operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
@@ -368,6 +380,10 @@ namespace cgl
 		{
 			check(node.name);
 		}
+
+		void operator()(const List& node) {}
+		void operator()(const Record& node) {}
+		void operator()(const FuncVal& node) {}
 
 		void operator()(const UnaryExpr& node)
 		{
@@ -458,8 +474,13 @@ namespace cgl
 
 		void operator()(const RecordInheritor& node)
 		{
-			check(node.original.name);
-			boost::apply_visitor(*this, node.adder);
+			if (auto opt = AsOpt<Identifier>(node.original))
+			{
+				check(opt.value().name);
+			}
+			
+			const Expr expr = node.adder;
+			boost::apply_visitor(*this, expr);
 		}
 
 		void operator()(const Accessor& node)
@@ -490,7 +511,8 @@ namespace cgl
 		{
 			if (auto funcNameOpt = AsOpt<Identifier>(node.funcRef))
 			{
-				boost::apply_visitor(*this, funcNameOpt.value());
+				const Expr expr = funcNameOpt.value();
+				boost::apply_visitor(*this, expr);
 			}
 		}
 
@@ -503,9 +525,258 @@ namespace cgl
 		{
 			for (const auto& access : node.accessors)
 			{
-				boost::apply_visitor(*this, access);
+				const Expr expr = access;
+				boost::apply_visitor(*this, expr);
 			}
 		}
+	};
+
+	//式中の指定された変数を値で置き換えた式を返す
+	class ReplaceExprValue : public boost::static_visitor<Expr>
+	{
+	public:
+
+		//内部でさらにローカル変数が定義される場合
+		std::set<std::string> ignoreNames;
+		std::map<std::string, Evaluated> variableValues;
+
+		/*ReplaceExprValue(const std::map<std::string, Evaluated>& variableNames) :
+			variableValues(variableValues)
+		{}*/
+		ReplaceExprValue(const std::map<std::string, Evaluated>& variableNames) :
+			variableValues(variableNames)
+		{}
+
+		ReplaceExprValue& ignore(const std::string& name)
+		{
+			ignoreNames.insert(name);
+			return *this;
+		}
+
+		bool isIgnored(const std::string& name)const
+		{
+			return ignoreNames.find(name) != ignoreNames.end();
+		}
+		
+		Expr operator()(bool node) { return node; }
+
+		Expr operator()(int node) { return node; }
+
+		Expr operator()(double node) { return node; }
+
+		Expr operator()(const Identifier& node)
+		{
+			auto it = variableValues.find(node.name);
+
+			std::cout << "Identifier(" << node.name << ") was " << (it == variableValues.end() ? "not found.\n" : "found.\n");
+			std::cout << "  and was " << (isIgnored(node.name) ? "ignored." : "not ignored.");
+			std::cout << std::endl;
+
+			if (it == variableValues.end() || isIgnored(node.name))
+			{
+				std::cout << "return node;" << std::endl;
+				return node;
+			}
+
+			if (auto opt = AsOpt<bool>(it->second))
+			{
+				std::cout << "return bool;" << std::endl;
+				return opt.value();
+			}
+			else if (auto opt = AsOpt<int>(it->second))
+			{
+				std::cout << "return int;" << std::endl;
+				return opt.value();
+			}
+			else if (auto opt = AsOpt<double>(it->second))
+			{
+				std::cout << "return double;" << std::endl;
+				return opt.value();
+			}
+			else if (auto opt = AsOpt<Identifier>(it->second))
+			{
+				std::cout << "return Identifier;" << std::endl;
+				return opt.value();
+			}
+			else if (auto opt = AsOpt<List>(it->second))
+			{
+				std::cout << "return List;" << std::endl;
+				return opt.value();
+			}
+			else if (auto opt = AsOpt<Record>(it->second))
+			{
+				std::cout << "return Record;" << std::endl;
+				return opt.value();
+			}
+			else if (auto opt = AsOpt<FuncVal>(it->second))
+			{
+				std::cout << "return FuncVal;" << std::endl;
+				return opt.value();
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return 0;
+		}
+
+		Expr operator()(const List& node) { return node; }
+		Expr operator()(const Record& node) { return node; }
+		Expr operator()(const FuncVal& node) { return node; }
+
+		Expr operator()(const UnaryExpr& node)
+		{
+			const auto resultExpr = boost::apply_visitor(*this, node.lhs);
+			return UnaryExpr(resultExpr, node.op);
+		}
+
+		Expr operator()(const BinaryExpr& node)
+		{
+			const auto resultExprLhs = boost::apply_visitor(*this, node.lhs);
+			const auto resultExprRhs = boost::apply_visitor(*this, node.rhs);
+			return BinaryExpr(resultExprLhs, resultExprRhs, node.op);
+		}
+
+		Expr operator()(const Range& node)
+		{
+			const auto resultExprLhs = boost::apply_visitor(*this, node.lhs);
+			const auto resultExprRhs = boost::apply_visitor(*this, node.rhs);
+			return Range(resultExprLhs, resultExprRhs);
+		}
+
+		Expr operator()(const Lines& node)
+		{
+			Lines resultLines;
+			for (size_t i = 0; i < node.size(); ++i)
+			{
+				resultLines.add(boost::apply_visitor(*this, node.exprs[i]));
+			}
+			return resultLines;
+		}
+
+		Expr operator()(const DefFunc& node)
+		{
+			DefFunc resultDefFunc;
+			resultDefFunc.arguments = node.arguments;
+
+			{
+				ReplaceExprValue child(*this);
+				for (const auto& argument : node.arguments)
+				{
+					child.ignore(argument.name);
+				}
+
+				resultDefFunc.expr = boost::apply_visitor(child, node.expr);
+			}
+			
+			//階層によって遮蔽される/されないの挙動が変わると思うので
+			//やっぱりvariableValuesは単なるmapじゃだめな気がする
+			
+			return resultDefFunc;
+		}
+
+		Expr operator()(const If& node)
+		{
+			If resultIf;
+			resultIf.cond_expr = boost::apply_visitor(*this, node.cond_expr);
+			resultIf.then_expr = boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				resultIf.else_expr = boost::apply_visitor(*this, node.else_expr.value());
+			}
+
+			return resultIf;
+		}
+
+		Expr operator()(const For& node)
+		{
+			For resultFor;
+			resultFor.rangeStart = boost::apply_visitor(*this, node.rangeStart);
+			resultFor.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
+			resultFor.loopCounter = node.loopCounter;
+			
+			{
+				ReplaceExprValue child(*this);
+				child.ignore(node.loopCounter.name);
+				resultFor.doExpr = boost::apply_visitor(child, node.doExpr);
+			}
+			
+			return resultFor;
+		}
+
+		Expr operator()(const Return& node)
+		{
+			return boost::apply_visitor(*this, node.expr);
+		}
+
+		Expr operator()(const ListConstractor& node)
+		{
+			ListConstractor resultListConstractor;
+			for (const auto& expr : node.data)
+			{
+				resultListConstractor.data.push_back(boost::apply_visitor(*this, expr));
+			}
+			return resultListConstractor;
+		}
+
+		Expr operator()(const KeyExpr& node)
+		{
+			KeyExpr resultKeyExpr;
+
+			resultKeyExpr.name = node.name;
+
+			//名前付き変数の宣言を見たら以降無視する
+			ignore(node.name.name);
+
+			resultKeyExpr.expr = boost::apply_visitor(*this, node.expr);
+
+			return resultKeyExpr;
+		}
+
+		Expr operator()(const RecordConstractor& node)
+		{
+			RecordConstractor resultRecordConstractor;
+			for (const auto& expr : node.exprs)
+			{
+				resultRecordConstractor.exprs.push_back(boost::apply_visitor(*this, expr));
+			}
+			return resultRecordConstractor;
+		}
+
+		Expr operator()(const RecordInheritor& node)
+		{
+			RecordInheritor resultRecordInheritor;
+			
+			auto resultOriginal = boost::apply_visitor(*this, node.original);
+			if (IsType<Identifier>(resultOriginal))
+			{
+				resultRecordInheritor.original = As<Identifier>(resultOriginal);
+			}
+			else if (IsType<Record>(resultOriginal))
+			{
+				resultRecordInheritor.original = As<Record>(resultOriginal);
+			}
+			else
+			{
+				std::cerr << "Error(" << __LINE__ << "): invalid expression\n";
+				return 0;
+			}
+
+			const Expr expr = node.adder;
+			resultRecordInheritor.adder = As<RecordConstractor>(boost::apply_visitor(*this, expr));
+
+			return resultRecordInheritor;
+		}
+
+		Expr operator()(const Accessor& node)
+		{
+			return node;
+			//TODO: node.headが識別子でかつ参照されていた場合、全体をObjectReferenceに置き換えて返す
+		}
+
+		Expr operator()(const FunctionCaller& node) { return node; }
+
+		Expr operator()(const DeclSat& node) { return node; }
+
+		Expr operator()(const DeclFree& node){ return node; }
 	};
 
 	class EvalSatExpr : public boost::static_visitor<double>
@@ -628,25 +899,13 @@ namespace cgl
 
 		Eval(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
 
-		Evaluated operator()(bool node)
-		{
-			return node;
-		}
-
-		Evaluated operator()(int node)
-		{
-			return node;
-		}
-
-		Evaluated operator()(double node)
-		{
-			return node;
-		}
-
-		Evaluated operator()(const Identifier& node)
-		{
-			return node;
-		}
+		Evaluated operator()(bool node) { return node; }
+		Evaluated operator()(int node) { return node; }
+		Evaluated operator()(double node) { return node; }
+		Evaluated operator()(const Identifier& node) { return node; }
+		Evaluated operator()(const List& node) { return node; }
+		Evaluated operator()(const Record& node) { return node; }
+		Evaluated operator()(const FuncVal& node) { return node; }
 
 		Evaluated operator()(const UnaryExpr& node)
 		{
@@ -870,7 +1129,11 @@ namespace cgl
 				std::cout << "Evaluate expression(" << i << ")" << std::endl;
 				pEnv->printEnvironment();
 
+				std::cout << "LINES_A Expr:" << std::endl;
+				//printExpr(expr);
 				result = boost::apply_visitor(*this, expr);
+
+				std::cout << "LINES_B" << std::endl;
 
 				//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
 				if (IsLValue(result))
@@ -883,14 +1146,20 @@ namespace cgl
 					}
 				}
 
+				std::cout << "LINES_C" << std::endl;
 				//途中でジャンプ命令を読んだら即座に評価を終了する
 				if (IsType<Jump>(result))
 				{
+					std::cout << "LINES_D" << std::endl;
 					break;
 				}
 
+				std::cout << "LINES_D" << std::endl;
+
 				++i;
 			}
+
+			std::cout << "LINES_E" << std::endl;
 
 			//この後すぐ解放されるので dereference しておく
 			bool deref = true;
@@ -902,14 +1171,19 @@ namespace cgl
 				}
 			}
 			
+			std::cout << "LINES_F" << std::endl;
+
 			if (deref)
 			{
 				result = pEnv->dereference(result);
 			}
+
+			std::cout << "LINES_G" << std::endl;
 			
 			//pEnv->pop();
 			pEnv->exitScope();
 
+			std::cout << "LINES_H" << std::endl;
 			return result;
 		}
 
@@ -1309,22 +1583,31 @@ namespace cgl
 
 		Evaluated operator()(const RecordInheritor& record)
 		{
-			auto originalOpt = pEnv->find(record.original.name);
-			if (!originalOpt)
+			boost::optional<Record> recordOpt;
+			
+			if (auto opt = AsOpt<Identifier>(record.original))
 			{
-				//エラー：未定義のレコードを参照しようとした
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
+				auto originalOpt = pEnv->find(opt.value().name);
+				if (!originalOpt)
+				{
+					//エラー：未定義のレコードを参照しようとした
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return 0;
+				}
+
+				recordOpt = AsOpt<Record>(originalOpt.value());
+				if (!recordOpt)
+				{
+					//エラー：識別子の指すオブジェクトがレコード型ではない
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return 0;
+				}
+			}
+			else if (auto opt = AsOpt<Record>(record.original))
+			{
+				recordOpt = opt.value();
 			}
 			
-			auto recordOpt = AsOpt<Record>(originalOpt.value());
-			if (!recordOpt)
-			{
-				//エラー：識別子の指すオブジェクトがレコード型ではない
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
-			}
-
 			/*
 			a{}を評価する手順
 			(1) オリジナルのレコードaのクローン(a')を作る

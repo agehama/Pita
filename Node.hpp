@@ -187,12 +187,26 @@ namespace cgl
 	struct DeclSat;
 	struct DeclFree;
 
+	/*
+	TODO: Expr‚Ì’†‚ÉEvaluated‚ð“ü‚ê‚½‚¢
+	*/
 	using types =
-		boost::mpl::vector20<
+		boost::mpl::vector23<
 		bool,
 		int,
 		double,
 		Identifier,
+
+		boost::recursive_wrapper<List>,
+		boost::recursive_wrapper<Record>,
+		boost::recursive_wrapper<FuncVal>,
+
+		/*boost::recursive_wrapper<ObjectReference>,
+
+		boost::recursive_wrapper<KeyValue>,
+		boost::recursive_wrapper<Jump>,
+		boost::recursive_wrapper<DeclSat>,
+		boost::recursive_wrapper<DeclFree>,*/
 
 		boost::recursive_wrapper<Range>,
 
@@ -981,53 +995,6 @@ namespace cgl
 		}
 	};
 
-	struct RecordInheritor
-	{
-		Identifier original;
-		//std::vector<Expr> exprs;
-		RecordConstractor adder;
-
-		RecordInheritor() = default;
-
-		RecordInheritor(const Identifier& original):
-			original(original)
-		{}
-
-		static RecordInheritor Make(const Identifier& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
-		{
-			rec.adder.exprs.push_back(KeyExpr);
-		}
-
-		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
-		{
-			rec.adder.exprs.push_back(expr);
-		}
-
-		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
-		{
-			auto& exprs = rec.adder.exprs;
-			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
-		}
-
-		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
-		{
-			RecordInheritor obj(original);
-			AppendRecord(obj, rec2);
-			return obj;
-		}
-
-		bool operator==(const RecordInheritor& other)const
-		{
-			return original == other.original
-				&& adder == other.adder;
-		}
-	};
-
 	struct KeyValue
 	{
 		Identifier name;
@@ -1720,6 +1687,64 @@ namespace cgl
 			{
 				return !other.lhs;
 			}
+		}
+	};
+
+	struct RecordInheritor
+	{
+		using OriginalRecord = boost::variant<Identifier, boost::recursive_wrapper<Record>>;
+		//Identifier original;
+		OriginalRecord original;
+		//std::vector<Expr> exprs;
+		RecordConstractor adder;
+
+		RecordInheritor() = default;
+
+		RecordInheritor(const Identifier& original) :
+			original(original)
+		{}
+
+		static RecordInheritor Make(const Identifier& original)
+		{
+			return RecordInheritor(original);
+		}
+
+		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
+		{
+			rec.adder.exprs.push_back(KeyExpr);
+		}
+
+		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
+		{
+			rec.adder.exprs.push_back(expr);
+		}
+
+		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
+		{
+			auto& exprs = rec.adder.exprs;
+			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
+		}
+
+		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
+		{
+			RecordInheritor obj(original);
+			AppendRecord(obj, rec2);
+			return obj;
+		}
+
+		bool operator==(const RecordInheritor& other)const
+		{
+			if (IsType<Identifier>(original) && IsType<Identifier>(other.original))
+			{
+				return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
+			}
+			if (IsType<Record>(original) && IsType<Record>(other.original))
+			{
+				return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
+			}
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return false;
 		}
 	};
 }

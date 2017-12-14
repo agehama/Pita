@@ -962,6 +962,11 @@ namespace cgl
 		if (auto opt = AsOpt<Identifier>(objectRef.headValue))
 		{
 			valueIDOpt = findValueID(opt.value().name);
+			if (!valueIDOpt)
+			{
+				bindNewValue(opt.value().name, newValue);
+			}
+			valueIDOpt = findValueID(opt.value().name);
 		}
 		else if (auto opt = AsOpt<Record>(objectRef.headValue))
 		{
@@ -992,7 +997,8 @@ namespace cgl
 
 				if (auto listOpt = AsOpt<List>(result.value()))
 				{
-					result = listOpt.value().data[index];
+					//result = listOpt.value().data[index];
+					result = m_values[listOpt.value().data[index].valueID];
 				}
 				else//リストとしてアクセスするのに失敗
 				{
@@ -1006,7 +1012,8 @@ namespace cgl
 
 				if (auto recordOpt = AsOpt<Record>(result.value()))
 				{
-					result = recordOpt.value().values.at(key);
+					//result = recordOpt.value().values.at(key);
+					result = m_values[recordOpt.value().values.at(key).valueID];
 				}
 				else//レコードとしてアクセスするのに失敗
 				{
@@ -1080,6 +1087,16 @@ namespace cgl
 		}
 
 		result.value() = newValue;
+	}
+
+	inline Evaluated EliminateScopeDependency::operator()(const Address& node)const
+	{
+		return node;
+	}
+
+	inline Evaluated EliminateScopeDependency::operator()(const ObjectReference& node)const
+	{
+		return node;
 	}
 
 	void OptimizationProblemSat::addConstraint(const Expr& logicExpr)
@@ -1495,6 +1512,83 @@ namespace cgl
 
 #define DO_TEST2
 
+namespace cgl
+{
+	class Program
+	{
+	public:
+
+		Program() :
+			pEnv(Environment::Make()),
+			evaluator(pEnv)
+		{}
+
+		boost::optional<Expr> parse(const std::string& program)
+		{
+			using namespace cgl;
+
+			Lines lines;
+
+			SpaceSkipper<IteratorT> skipper;
+			Parser<IteratorT, SpaceSkipperT> grammer;
+
+			std::string::const_iterator it = program.begin();
+			if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
+			{
+				std::cerr << "Syntax Error: parse failed\n";
+				return boost::none;
+			}
+
+			if (it != program.end())
+			{
+				std::cerr << "Syntax Error: ramains input\n" << std::string(it, program.end());
+				return boost::none;
+			}
+
+			return lines;
+		}
+
+		boost::optional<Evaluated> execute(const std::string& program)
+		{
+			if (auto exprOpt = parse(program))
+			{
+				return boost::apply_visitor(evaluator, exprOpt.value());
+			}
+
+			return boost::none;
+		}
+
+		void clear()
+		{
+			pEnv = Environment::Make();
+			evaluator = Eval(pEnv);
+		}
+
+		bool test(const std::string& program, const Expr& expr)
+		{
+			clear();
+
+			if (auto result = execute(program))
+			{
+				std::shared_ptr<Environment> pEnv2 = Environment::Make();
+				Eval evaluator2(pEnv2);
+
+				const Evaluated answer = boost::apply_visitor(evaluator2, expr);
+
+				return IsEqual(result.value(), answer);
+			}
+
+			return false;
+		}
+
+	private:
+
+		std::shared_ptr<Environment> pEnv;
+		Eval evaluator;
+	};
+}
+
+
 int main()
 {
 	using namespace cgl;
@@ -1722,7 +1816,10 @@ vec3(3)
 
 )", Record("x", 3).append("y", 3).append("z", 3));
 
-testEval(R"(
+using Li = cgl::ListConstractor;
+Program program;
+
+program.test(R"(
 
 vec2 = (v -> [
 	v, v
@@ -1730,39 +1827,64 @@ vec2 = (v -> [
 a = vec2(3)
 vec2(a)
 
-)", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
+)", Li(Li({ 3, 3 }))(Li({ 3, 3 })));
 
-testEval(R"(
+
+program.test(R"(
 
 vec2 = (v -> [
 	v, v
 ])
 vec2(vec2(3))
 
-)", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
+)", Li(Li({ 3, 3 }))(Li({ 3, 3 })));
 
-testEval(R"(
 
-vec2 = (v -> {
-	x:v, y : v
-})
-a = vec2(3)
-vec2(a)
-
-)", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
-
-testEval(R"(
-
-vec2 = (v -> {
-	x:v, y : v
-})
-vec2(vec2(3))
-
-)", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
 /*
-このプログラムについて、LINES_Aが出力されてLINES_Bが出力される前に落ちる再現性の無いバグ有り。
+testEval(R"(
+
+vec2 = (v -> [
+	v, v
+])
+a = vec2(3)
+vec2(a)
+
+)", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
 */
+/*
+testEval(R"(
+
+vec2 = (v -> [
+	v, v
+])
+vec2(vec2(3))
+
+)", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
+*/
+
+/*
+testEval(R"(
+
+vec2 = (v -> {
+	x:v, y : v
+})
+a = vec2(3)
+vec2(a)
+
+)", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
+
+testEval(R"(
+
+vec2 = (v -> {
+	x:v, y : v
+})
+vec2(vec2(3))
+
+)", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
+
+
+//このプログラムについて、LINES_Aが出力されてLINES_Bが出力される前に落ちるバグ有り
 testEval(R"(
 
 vec3 = (v -> {
@@ -1845,9 +1967,10 @@ main = {
 )", [](const Evaluated& result) {
 	return IsEqual(As<Record>(result).values.at("theta"),1.1071487177940905030170654601785);
 });
+*/
 
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
-
+	
 #endif
 	
 	while (true)

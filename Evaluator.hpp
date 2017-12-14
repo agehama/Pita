@@ -8,6 +8,68 @@
 
 namespace cgl
 {
+	//Evaluated中のIdentifierを削除してスコープへの依存を無くす
+	class EliminateScopeDependency : public boost::static_visitor<Evaluated>
+	{
+	public:
+
+		EliminateScopeDependency(std::shared_ptr<Environment> pEnv) :
+			pEnv(pEnv)
+		{}
+
+		Evaluated operator()(bool node)const { return node; }
+
+		Evaluated operator()(int node)const { return node; }
+
+		Evaluated operator()(double node)const { return node; }
+
+		//addressの場合は中にさらに参照がある場合があるので中身を全て見る
+		Evaluated operator()(const Address& node)const;
+
+		Evaluated operator()(const ObjectReference& node)const;
+
+		Evaluated operator()(const List& node)const
+		{
+			List resultList;
+			
+			const auto& data = node.data;
+			for (size_t i = 0; i < data.size(); ++i)
+			{
+				const auto val = boost::apply_visitor(*this, data[i]);
+				const Address address = IsType<Address>(val) ? As<Address>(val) : Address(pEnv->makeTemporaryValue(val));
+				resultList.data.push_back(address);
+			}
+
+			return resultList;
+		}
+
+		Evaluated operator()(const KeyValue& node)const { return node; }
+
+		Evaluated operator()(const Record& node)const
+		{
+			Record resultRecord;
+
+			for (const auto& value : node.values)
+			{
+				const auto val = boost::apply_visitor(*this, value.second);
+				const Address address = IsType<Address>(val) ? As<Address>(val) : Address(pEnv->makeTemporaryValue(val));
+				resultRecord.append(value.first, address);
+			}
+
+			return resultRecord;
+		}
+
+		Evaluated operator()(const FuncVal& node)const { return node; }
+
+		Evaluated operator()(const Jump& node)const { return node; }
+
+		Evaluated operator()(const DeclSat& node)const { return node; }
+
+		Evaluated operator()(const DeclFree& node)const { return node; }
+
+		std::shared_ptr<Environment> pEnv;
+	};
+
 	class Expr2SatExpr : public boost::static_visitor<SatExpr>
 	{
 	public:
@@ -902,7 +964,21 @@ namespace cgl
 		Evaluated operator()(bool node) { return node; }
 		Evaluated operator()(int node) { return node; }
 		Evaluated operator()(double node) { return node; }
-		Evaluated operator()(const Identifier& node) { return node; }
+		
+		Evaluated operator()(const Identifier& node)
+		{
+			ObjectReference ref(node);
+			return ref;
+			/*if (auto resultOpt = pEnv->find(node.name))
+			{
+				return resultOpt.value();
+			}
+
+			std::cerr << "Error(" << __LINE__ << "): reference error\n";
+
+			return 0;*/
+		}
+
 		Evaluated operator()(const List& node) { return node; }
 		Evaluated operator()(const Record& node) { return node; }
 		Evaluated operator()(const FuncVal& node) { return node; }
@@ -1006,10 +1082,26 @@ namespace cgl
 			まだ参照をスコープ間で共有できるようにしていないため、引数に与えられたオブジェクトは全て展開して渡す。
 			そして、引数の評価時点ではまだ関数の中に入っていないので、スコープを変える前に展開を行う。
 			*/
-			std::vector<Evaluated> expandedArguments(funcVal.arguments.size());
+			//std::vector<Evaluated> expandedArguments(funcVal.arguments.size());
+			//for (size_t i = 0; i < funcVal.arguments.size(); ++i)
+			//{
+			//	expandedArguments[i] = pEnv->expandObject(callFunc.actualArguments[i]);
+			//}
+			
+			/*
+			12/14
+			全ての値はIDで管理するようにする。
+			そしてスコープが変わると、変数のマッピングは変わるが、値は共通なのでどちらからも参照できる。
+			*/
+			std::vector<unsigned> expandedArguments(funcVal.arguments.size());
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
-				expandedArguments[i] = pEnv->expandObject(callFunc.actualArguments[i]);
+				//Evaluated型の値は、ObjectReferenceの中に識別子を持つことができる（これは ((a))=2 などの代入を正しく行うために必要なことである）
+				//ただし、これはスコープをまたぐ時には外すべきである（外さないと動的スコープみたいになる）
+				//したがってEvaluatedの中身をもう一度再帰的に評価し、IdentifierのみAddressに置き換えるという処理を行う
+				//expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
+				EliminateScopeDependency elim(pEnv);
+				expandedArguments[i] = pEnv->makeTemporaryValue(boost::apply_visitor(elim, callFunc.actualArguments[i]));
 			}
 
 			std::cout << "CALLFUNC_C" << std::endl;
@@ -1032,9 +1124,13 @@ namespace cgl
 				//現在は値も変数も全て値渡し（コピー）をしているので、単純に bindNewValue を行えばよい
 				//本当は変数の場合は bindReference で参照情報だけ渡すべきなのかもしれない
 				//要考察
-				//pEnv->bindNewValue(funcVal.arguments[i].name, callFunc.actualArguments[i]);
+				//pEnv->bindNewValue(funcVal.arguments[i].name, expandedArguments[i]);
 
-				pEnv->bindNewValue(funcVal.arguments[i].name, expandedArguments[i]);
+				/*
+				12/14
+				引数はスコープをまたぐ時に参照先が変わらないように全てIDで渡すことにする。
+				*/
+				pEnv->bindValueID(funcVal.arguments[i].name, expandedArguments[i]);
 			}
 
 			std::cout << "CALLFUNC_F" << std::endl;
@@ -1043,7 +1139,14 @@ namespace cgl
 			boost::apply_visitor(Printer(), funcVal.expr);
 
 			//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
-			Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
+			//Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
+			Evaluated result;
+			{
+				const Evaluated resultValue = boost::apply_visitor(*this, funcVal.expr);
+				EliminateScopeDependency elim(pEnv);
+				result = pEnv->makeTemporaryValue(boost::apply_visitor(elim, resultValue));
+			}
+			//Evaluated result = pEnv->expandObject();
 
 			std::cout << "CALLFUNC_G" << std::endl;
 			
@@ -1340,7 +1443,8 @@ namespace cgl
 			for (const auto& expr : listConstractor.data)
 			{
 				const Evaluated value = boost::apply_visitor(*this, expr);
-				list.append(value);
+				
+				list.append(pEnv->makeTemporaryValue(value));
 			}
 
 			return list;
@@ -1382,7 +1486,8 @@ namespace cgl
 					const auto keyVal = keyValOpt.value();
 					keyList.push_back(keyVal.name);
 
-					Assign(keyVal.name, keyVal.value, *pEnv);
+					//Assign(keyVal.name, keyVal.value, *pEnv);
+					Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 				}
 				else if (auto declSatOpt = AsOpt<DeclSat>(value))
 				{
@@ -1568,7 +1673,8 @@ namespace cgl
 
 			for (const auto& key : keyList)
 			{
-				record.append(key.name, pEnv->dereference(key));
+				//record.append(key.name, pEnv->dereference(key));
+				record.append(key.name, pEnv->makeTemporaryValue(pEnv->dereference(ObjectReference(key))));
 			}
 
 			std::cout << "RECORD_E" << std::endl;
@@ -1644,7 +1750,8 @@ namespace cgl
 						return 0;
 					}
 
-					clone.values[keyval.first] = valOpt.value();
+					//clone.values[keyval.first] = valOpt.value();
+					clone.values[keyval.first] = pEnv->makeTemporaryValue(valOpt.value());
 				}
 
 				//(5)

@@ -600,17 +600,18 @@ namespace cgl
 			return 0;
 		}
 
+		/*
+		代入式は、左辺と右辺の形の組み合わせにより4パターンの挙動が起こり得る。
+
+		式の左辺：現在の環境にすでに存在する識別子か、新たに束縛を行う識別子か
+		式の右辺：左辺値であるか、右辺値であるか
+
+		左辺値の場合は、その参照先を取得し新たに
+		*/
+
+		/*
 		if (auto nameLhsOpt = AsOpt<Identifier>(lhs))
 		{
-			/*
-			代入式は、左辺と右辺の形の組み合わせにより4パターンの挙動が起こり得る。
-
-			式の左辺：現在の環境にすでに存在する識別子か、新たに束縛を行う識別子か
-			式の右辺：左辺値であるか、右辺値であるか
-
-			左辺値の場合は、その参照先を取得し新たに
-			*/
-
 			const auto& nameLhs = As<Identifier>(lhs).name;
 
 			const bool rhsIsIdentifier = IsType<Identifier>(rhs);
@@ -623,8 +624,6 @@ namespace cgl
 			}
 			else if (rhsIsObjRef)
 			{
-				//const auto& valueRhs = env.dereference(rhs);
-				//env.bindNewValue(nameLhs, valueRhs);
 				env.bindObjectRef(nameLhs, As<ObjectReference>(rhs));
 			}
 			else if (IsType<List>(rhs))
@@ -662,6 +661,29 @@ namespace cgl
 			{
 				env.assignToObject(objRefLhs, rhs);
 			}
+		}
+		*/
+		
+		if (auto objLhsOpt = AsOpt<ObjectReference>(lhs))
+		{
+			const auto& objRefLhs = objLhsOpt.value();
+
+			const bool rhsIsIdentifier = IsType<Identifier>(rhs);
+			const bool rhsIsObjRef = IsType<ObjectReference>(rhs);
+
+			if (rhsIsObjRef)
+			{
+				const auto& valueRhs = env.dereference(rhs);
+				env.assignToObject(objRefLhs, valueRhs);
+			}
+			else
+			{
+				env.assignToObject(objRefLhs, rhs);
+			}
+		}
+		else
+		{
+			std::cerr << "Error(" << __LINE__ << "): Assign Error.\n";
 		}
 
 		return lhs;

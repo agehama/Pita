@@ -190,6 +190,7 @@ namespace cgl
 		}
 
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
+		/*
 		Evaluated expandList(const Evaluated& reference)
 		{
 			if (auto listOpt = AsOpt<List>(reference))
@@ -204,9 +205,11 @@ namespace cgl
 
 			return dereference(reference);
 		}
-
+		*/
+		
 		//ローカル変数を全て展開する
 		//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
+		/*
 		Evaluated expandObject(const Evaluated& reference)
 		{
 			if (auto opt = AsOpt<Record>(reference))
@@ -230,6 +233,7 @@ namespace cgl
 
 			return dereference(reference);
 		}
+		*/
 
 		void bindObjectRef(const std::string& name, const ObjectReference& ref)
 		{
@@ -318,6 +322,21 @@ namespace cgl
 			return p;
 		}
 
+		//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
+		//式の評価途中でGCは走らないようにするべきか？
+		unsigned makeTemporaryValue(const Evaluated& value)
+		{
+			const unsigned valueID = m_values.add(value);
+
+			//関数はスコープを抜ける時に定義式中の変数が解放されないか監視する必要があるのでIDを保存しておく
+			if (IsType<FuncVal>(value))
+			{
+				m_funcValIDs.push_back(valueID);
+			}
+
+			return valueID;
+		}
+
 		Environment() = default;
 
 	private:
@@ -343,21 +362,6 @@ namespace cgl
 			}
 
 			return result;
-		}
-
-		//値を作って返す（変数で束縛されないのでGCが走ったら即座に消される）
-		//式の評価途中でGCは走らないようにするべきか？
-		unsigned makeTemporaryValue(const Evaluated& value)
-		{
-			const unsigned valueID = m_values.add(value);
-
-			//関数はスコープを抜ける時に定義式中の変数が解放されないか監視する必要があるのでIDを保存しておく
-			if (IsType<FuncVal>(value))
-			{
-				m_funcValIDs.push_back(valueID);
-			}
-			
-			return valueID;
 		}
 
 		//内側のスコープから順番に変数を探して返す

@@ -151,6 +151,27 @@ namespace cgl
 		}
 	};
 
+	struct Address
+	{
+		unsigned valueID;
+
+		Address() = default;
+
+		Address(unsigned valueID) :
+			valueID(valueID)
+		{}
+
+		/*bool operator==(const Address& other)const
+		{
+			return valueID == other.valueID;
+		}
+
+		bool operator!=(const Address& other)const
+		{
+			return !(*this == other);
+		}*/
+	};
+
 	struct FuncVal;
 
 	struct UnaryExpr;
@@ -186,7 +207,7 @@ namespace cgl
 
 	struct DeclSat;
 	struct DeclFree;
-
+	
 	/*
 	TODO: Exprの中にEvaluatedを入れたい
 	*/
@@ -247,7 +268,7 @@ namespace cgl
 		bool,
 		int,
 		double,
-		Identifier,
+		Address,
 		boost::recursive_wrapper<ObjectReference>,
 		boost::recursive_wrapper<List>,
 		boost::recursive_wrapper<KeyValue>,
@@ -867,6 +888,21 @@ namespace cgl
 			data({ expr })
 		{}
 
+		ListConstractor(const std::vector<int>& vs) :
+			data(vs.size())
+		{
+			for (size_t i = 0; i < data.size(); ++i)
+			{
+				data[i] = vs[i];
+			}
+		}
+
+		ListConstractor& operator()(const Expr& expr)
+		{
+			data.push_back(expr);
+			return *this;
+		}
+
 		static ListConstractor Make(const Expr& expr)
 		{
 			return ListConstractor(expr);
@@ -898,16 +934,18 @@ namespace cgl
 
 	struct List
 	{
-		std::vector<Evaluated> data;
+		//std::vector<Evaluated> data;
+		std::vector<Address> data;
 
 		List() = default;
 
+		/*
 		List& append(const Evaluated& value)
 		{
 			data.push_back(value);
 			return *this;
 		}
-
+		
 		std::vector<Evaluated>::iterator get(int index)
 		{
 			return data.begin() + index;
@@ -923,6 +961,40 @@ namespace cgl
 			for (size_t i = 0; i < data.size(); ++i)
 			{
 				if (!IsEqual(data[i], other.data[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+		*/
+
+		List& append(const Address& address)
+		{
+			data.push_back(address);
+			return *this;
+		}
+
+		//std::vector<unsigned>::iterator get(int index)
+		std::vector<Address>::iterator get(int index)
+		{
+			return data.begin() + index;
+		}
+
+		bool operator==(const List& other)const
+		{
+			if (data.size() != other.data.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < data.size(); ++i)
+			{
+				//if (!IsEqual(data[i], other.data[i]))
+
+				//TODO: アドレス比較ではなく値の比較にすべき(リストが環境の参照を持つ？)
+				if (data[i].valueID == other.data[i].valueID)
 				{
 					return false;
 				}
@@ -1426,14 +1498,16 @@ namespace cgl
 
 	struct Record
 	{
-		std::unordered_map<std::string, Evaluated> values;
+		//std::unordered_map<std::string, Evaluated> values;
+		std::unordered_map<std::string, Address> values;
 		OptimizationProblemSat problem;
 		//std::vector<DeclFree::Ref> freeVariables;
 		std::vector<Accessor> freeVariables;
 		std::vector<ObjectReference> freeVariableRefs;
 
 		Record() = default;
-
+		
+		/*
 		Record(const std::string& name, const Evaluated& value)
 		{
 			append(name, value);
@@ -1442,6 +1516,47 @@ namespace cgl
 		Record& append(const std::string& name, const Evaluated& value)
 		{
 			values[name] = value;
+			return *this;
+		}
+
+		bool operator==(const Record& other)const
+		{
+			if (values.size() != other.values.size())
+			{
+				return false;
+			}
+
+			const auto& vs = other.values;
+
+			for (const auto& keyval : values)
+			{
+				const auto otherIt = vs.find(keyval.first);
+				if (otherIt == vs.end())
+				{
+					return false;
+				}
+
+				if (!IsEqual(keyval.second, otherIt->second))
+				{
+					return false;
+				}
+			}
+
+			std::cerr << "Warning: IsEqual<Record>() don't care about constraint" << std::endl;
+			//constraint;
+			//freeVariables;
+			return true;
+		}
+		*/
+
+		Record(const std::string& name, const Address& address)
+		{
+			append(name, address);
+		}
+
+		Record& append(const std::string& name, const Address& address)
+		{
+			values[name] = address;
 			return *this;
 		}
 

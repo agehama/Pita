@@ -684,8 +684,7 @@ namespace cgl
 		m_variables.pop_back();
 	}
 
-
-	const Evaluated& Environment::dereference(const Evaluated& reference)
+	Address Environment::dereference(const Evaluated& reference)
 	{
 		if (auto nameOpt = AsOpt<Identifier>(reference))
 		{
@@ -743,6 +742,8 @@ namespace cgl
 
 					if (auto listOpt = AsOpt<List>(result.value()))
 					{
+						listOpt.value().data[index];;
+						listOpt.value().data;
 						result = listOpt.value().data[index];
 					}
 					else

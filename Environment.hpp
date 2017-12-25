@@ -8,7 +8,7 @@ namespace cgl
 	{
 	public:
 
-		using ValueList = std::unordered_map<unsigned, Evaluated>;
+		using ValueList = std::unordered_map<Address, Evaluated>;
 
 		unsigned add(const Evaluated& value)
 		{
@@ -65,65 +65,6 @@ namespace cgl
 
 	};
 
-	/*
-	class GlobalEnvironment
-	{
-	public:
-
-		using Scope = std::unordered_map<std::string, unsigned>;
-
-		void bind(const std::string& name, unsigned ID)
-		{
-			variables.back()[name] = ID;
-		}
-
-		boost::optional<unsigned> find(const std::string& name)const
-		{
-			for (auto scopeIt = variables.rbegin(); scopeIt != variables.rend(); ++scopeIt)
-			{
-				auto variableIt = scopeIt->find(name);
-				if (variableIt != scopeIt->end())
-				{
-					return variableIt->second;
-				}
-			}
-
-			return boost::none;
-		}
-		
-		//スコープの内側に入る/出る
-		void enterScope()
-		{
-			variables.emplace_back();
-		}
-		void exitScope()
-		{
-			variables.pop_back();
-		}
-
-		//関数呼び出しなど別のスコープに切り替える/戻す
-		void switchFrontScope(int switchDepth)
-		{
-			diffScopes.push({ switchDepth,std::vector<Scope>(variables.begin() + switchDepth + 1, variables.end()) });
-			variables.erase(variables.begin() + switchDepth + 1, variables.end());
-		}
-		void switchBackScope()
-		{
-			const int switchDepth = diffScopes.top().first;
-			const auto& diffScope = diffScopes.top().second;
-			
-			variables.erase(variables.begin() + switchDepth + 1, variables.end());
-			variables.insert(variables.end(), diffScope.begin(), diffScope.end());
-			diffScopes.pop();
-		}
-
-	private:
-
-		std::vector<Scope> variables;
-		std::stack<std::pair<int, std::vector<Scope>>> diffScopes;
-	};
-	*/
-
 	class Environment
 	{
 	public:
@@ -160,7 +101,7 @@ namespace cgl
 			m_diffScopes.pop();
 		}
 
-		boost::optional<const Evaluated&> find(const std::string& name)const
+		boost::optional<Address> find(const std::string& name)const
 		{
 			const auto valueIDOpt = findValueID(name);
 			if (!valueIDOpt)
@@ -172,7 +113,7 @@ namespace cgl
 			return m_values[valueIDOpt.value()];
 		}
 
-		const Evaluated& dereference(const Evaluated& reference);
+		Address dereference(const Evaluated& reference);
 		
 		//const Evaluated& dereference(const Accessor& access);
 		//boost::optional<const Evaluated&> evalReference(const Accessor& access);

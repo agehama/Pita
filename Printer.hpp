@@ -63,7 +63,8 @@ namespace cgl
 			{
 				const std::string header = std::string("(") + std::to_string(i) + "): ";
 				const auto child = ValuePrinter(m_indent + 1, header);
-				boost::apply_visitor(child, data[i]);
+				const Evaluated currentData = data[i];
+				boost::apply_visitor(child, currentData);
 			}
 
 			std::cout << indent() << "]" << std::endl;
@@ -108,6 +109,11 @@ namespace cgl
 		void operator()(const DeclFree& node)const
 		{
 			std::cout << indent() << "DeclFree(" << ")" << std::endl;
+		}
+
+		void operator()(const Address& address)const
+		{
+			std::cout << indent() << "Address(" << ")" << std::endl;
 		}
 	};
 

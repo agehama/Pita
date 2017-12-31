@@ -14,36 +14,14 @@ namespace cgl
 
 		Eval(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
 
-		//Evaluated operator()(bool node) { return node; }
-		//Evaluated operator()(int node) { return node; }
-		//Evaluated operator()(double node) { return node; }
-
 		Evaluated operator()(const ValueType& node) { return node.value; }
 
 		Evaluated operator()(const Identifier& node)
 		{
-			/*
-			ObjectReference ref(node);
-			return ref;
-			*/
-
-			/*if (auto resultOpt = pEnv->find(node.name))
-			{
-			return resultOpt.value();
-			}
-
-			std::cerr << "Error(" << __LINE__ << "): reference error\n";
-
-			return 0;*/
-
 			//この時点では変数の宣言か参照かわからないので、エラー検出はしない
 			//TODO: 変数宣言の場合は、どこかで名前とアドレスの対応付けを行う必要がある（どこで？）
 			return pEnv->findAddress(node);
 		}
-
-		//Evaluated operator()(const List& node) { return node; }
-		//Evaluated operator()(const Record& node) { return node; }
-		//Evaluated operator()(const FuncVal& node) { return node; }
 
 		Evaluated operator()(const UnaryExpr& node)
 		{
@@ -56,10 +34,7 @@ namespace cgl
 			case UnaryOp::Plus:  return Plus(lhs, *pEnv);
 			}
 
-			//std::cout << "End UnaryExpr expression(" << ")" << std::endl;
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
-			//return lhs;
+			ErrorLog("Invalid UnaryExpr");
 			return 0;
 		}
 
@@ -105,7 +80,7 @@ namespace cgl
 						}
 						else
 						{
-							ErrorLog("");
+							ErrorLog("Invalid address");
 							return 0;
 						}
 					}
@@ -167,8 +142,7 @@ namespace cgl
 			}
 			}
 
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
+			ErrorLog("Invalid BinaryExpr");
 			return 0;
 		}
 
@@ -318,7 +292,9 @@ namespace cgl
 				EliminateScopeDependency elim(pEnv);
 				result = pEnv->makeTemporaryValue(boost::apply_visitor(elim, resultValue));
 				*/
-				result = pEnv->makeTemporaryValue(resultValue);
+				result = pEnv->expandRef(pEnv->makeTemporaryValue(resultValue));
+				std::cout << "Function Evaluated:\n";
+				printEvaluated(result);
 			}
 			//Evaluated result = pEnv->expandObject();
 
@@ -1077,7 +1053,8 @@ namespace cgl
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
-					Evaluated value = boost::apply_visitor(*this, listAccessOpt.value().index);
+					Evaluated valueRef = boost::apply_visitor(*this, listAccessOpt.value().index);
+					Evaluated value = pEnv->expandRef(valueRef);
 
 					if (!IsType<List>(objRef))
 					{
@@ -2435,6 +2412,9 @@ namespace cgl
 		Eval evaluator(env);
 
 		const Evaluated result = boost::apply_visitor(evaluator, expr);
+
+		std::cout << "Environment:\n";
+		env->printEnvironment();
 
 		return result;
 	}

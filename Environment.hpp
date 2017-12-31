@@ -257,7 +257,7 @@ namespace cgl
 
 		void bindNewValue(const std::string& name, const Evaluated& value)
 		{
-			const Address newAddress = m_values.add(value);
+			const Address newAddress = m_values.add(expandRef(value));
 			bindValueID(name, newAddress);
 		}
 

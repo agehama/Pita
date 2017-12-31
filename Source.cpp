@@ -620,7 +620,7 @@ namespace cgl
 		{
 			const auto& val = keyval.second;
 
-			std::cout << keyval.first << " : ";
+			std::cout << keyval.first.toString() << " : ";
 
 			printEvaluated(val);
 		}

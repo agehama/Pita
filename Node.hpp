@@ -273,11 +273,17 @@ namespace cgl
 
 	struct Jump;
 
+	/*struct Reference
+	{
+		Address address;
+	};*/
+
 	using Evaluated = boost::variant<
 		bool,
 		int,
 		double,
 		Address,
+		//Reference,
 		//boost::recursive_wrapper<ObjectReference>,
 		boost::recursive_wrapper<List>,
 		boost::recursive_wrapper<KeyValue>,

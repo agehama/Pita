@@ -11,7 +11,57 @@
 
 namespace cgl
 {
+	SatExpr Expr2SatExpr::operator()(const ValueType& node)
+	{
+		const Evaluated& val = node.value;
+		if (IsType<double>(val))
+		{
+			return As<double>(val);
+		}
+		else if (IsType<int>(val))
+		{
+			return static_cast<double>(As<int>(val));
+		}
+		else if (IsType<Address>(val))
+		{
+			Address address = As<Address>(val);
+
+			if (!address)
+			{
+				ErrorLog("識別子が定義されていません");
+				return 0.0;
+			}
+
+			//free変数にあった場合は制約用の参照値を返す
+			if (auto satRefOpt = addSatRef(address))
+			{
+				return satRefOpt.value();
+			}
+			//free変数になかった場合は評価した結果を返す
+			else
+			{
+				const Evaluated evaluated = pEnv->expandRef(address);
+				if (IsType<double>(evaluated))
+				{
+					return As<double>(evaluated);
+				}
+				else if (IsType<int>(evaluated))
+				{
+					return static_cast<double>(As<int>(evaluated));
+				}
+
+				//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
+				ErrorLog("sat 式中の変数の評価値は int 型もしくは double 型で無ければなりません");
+				return 0.0;
+			}
+		}
+
+		ErrorLog("不正な値");
+		return 0;
+	}
+
 	//要考察：satにも複数の値を省略して指定できるようにするためには、ここ(Identifier/Accessor)で複数の値を扱えるようにする必要がある
+	/*
 	SatExpr Expr2SatExpr::operator()(const Identifier& node)
 	{
 		ObjectReference currentRefVal(node);
@@ -20,31 +70,29 @@ namespace cgl
 		{
 			return satRefOpt.value();
 		}
-		/*
-		for (size_t i = 0; i < freeVariables.size(); ++i)
-		{
-			//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
-			//また、freeVariables側にもその変数を使用することを知らせる
-			if (freeVariables[i] == currentRefVal)
-			{
-				if (usedInSat[i] == 1)
-				{
-					return satRefs[i];
-				}
-				else
-				{
-					usedInSat[i] = 1;
+		//for (size_t i = 0; i < freeVariables.size(); ++i)
+		//{
+		//	//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
+		//	//また、freeVariables側にもその変数を使用することを知らせる
+		//	if (freeVariables[i] == currentRefVal)
+		//	{
+		//		if (usedInSat[i] == 1)
+		//		{
+		//			return satRefs[i];
+		//		}
+		//		else
+		//		{
+		//			usedInSat[i] = 1;
 
-					SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-					satRefs[i] = satRef;
+		//			SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
+		//			satRefs[i] = satRef;
 
-					refs.push_back(currentRefVal);
-					std::cout << "NewRef(" << satRef.refID << ")\n";
-					return satRef;
-				}
-			}
-		}
-		*/
+		//			refs.push_back(currentRefVal);
+		//			std::cout << "NewRef(" << satRef.refID << ")\n";
+		//			return satRef;
+		//		}
+		//	}
+		//}
 
 		//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
 		const Evaluated evaluated = pEnv->dereference(currentRefVal);
@@ -62,13 +110,57 @@ namespace cgl
 		std::cerr << "Error(" << __LINE__ << ")\n";
 		return 0.0;
 	}
-
-	inline bool HasFreeVariables::operator()(const Identifier& node)
+	*/
+	SatExpr Expr2SatExpr::operator()(const Identifier& node)
 	{
-		ObjectReference ref(node.name);
+		Address address = pEnv->findAddress(node);
+		if (!address)
+		{
+			ErrorLog("識別子が定義されていません");
+			return 0.0;
+		}
+
+		//free変数にあった場合は制約用の参照値を返す
+		if (auto satRefOpt = addSatRef(address))
+		{
+			return satRefOpt.value();
+		}
+		//free変数になかった場合は評価した結果を返す
+		else
+		{
+			const Evaluated evaluated = pEnv->expandRef(address);
+			if (IsType<double>(evaluated))
+			{
+				return As<double>(evaluated);
+			}
+			else if (IsType<int>(evaluated))
+			{
+				return static_cast<double>(As<int>(evaluated));
+			}
+
+			//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
+			ErrorLog("sat 式中の変数の評価値は int 型もしくは double 型で無ければなりません");
+			return 0.0;
+		}
+	}
+
+	inline bool HasFreeVariables::operator()(const ValueType& node)
+	{
+		const Evaluated& val = node.value;
+		if (IsType<double>(val) || IsType<int>(val) || IsType<bool>(val))
+		{
+			return false;
+		}
+		else if (!IsType<Address>(val))
+		{
+			ErrorLog("不正な値");
+			return false;
+		}
+
+		Address address = As<Address>(val);
 		for (const auto& freeVal : freeVariables)
 		{
-			if (ref == freeVal)
+			if (address == freeVal)
 			{
 				return true;
 			}
@@ -76,7 +168,23 @@ namespace cgl
 
 		return false;
 	}
-	
+
+	inline bool HasFreeVariables::operator()(const Identifier& node)
+	{
+		Address address = pEnv->findAddress(node);
+		for (const auto& freeVal : freeVariables)
+		{
+			if (address == freeVal)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	//今は関数の引数中にfreeVariablesがあるかどうかを調べるということを目的にしているので、ただ評価するだけで済んでいる
+	//TODO: 本当はアクセッサの中のそれぞれの数についてみるべき
 	inline bool HasFreeVariables::operator()(const Accessor& node)
 	{
 		//AccessorとObjectReferenceを比較するにはとりあえず評価すれば行えるがこのEvalは正しいか？
@@ -85,7 +193,7 @@ namespace cgl
 		const Evaluated evaluated = boost::apply_visitor(evaluator, expr);
 
 		//ここはObjectReferenceのみ考慮すればよい？
-		if (auto refOpt = AsOpt<ObjectReference>(evaluated))
+		if (auto refOpt = AsOpt<Address>(evaluated))
 		{
 			for (const auto& freeVal : freeVariables)
 			{
@@ -104,7 +212,8 @@ namespace cgl
 
 	inline boost::optional<SatFunctionReference> MakeSatFunctionReference(
 		//const FuncVal& head, 
-		const std::string& head,
+		//const std::string& head,
+		Address head,
 		const Accessor& node, 
 		size_t accessorIndex, 
 		Expr2SatExpr& converter,
@@ -140,7 +249,7 @@ namespace cgl
 			}
 			else if (auto recordOpt = AsOpt<RecordAccess>(access))
 			{
-				ref.appendRecordRef(recordOpt.value().name.name);
+				ref.appendRecordRef(recordOpt.value().name);
 			}
 			else
 			{
@@ -186,31 +295,38 @@ namespace cgl
 
 	SatExpr Expr2SatExpr::operator()(const Accessor& node)
 	{
+		//sat式中の関数の引数にfree変数がある場合は、アドレスを紐付けなければいけないので一旦中身を見る
+		//TODO: FunctionCallだけでなく、リストのインデックスアクセスも見るようにする
 		if (node.hasFunctionCall())
 		{
 			//Eval::operator()(const Accessor& accessor)をほぼコピペしたもの
-			//関数の引数がfreeVariablesに出てくるものであった場合のみ特別に考慮する
 
 			Eval evaluator(pEnv);
-			
-			ObjectReference result;
+
+			//ObjectReference result;
+			Address address;
 
 			Evaluated headValue = boost::apply_visitor(evaluator, node.head);
-			if (auto opt = AsOpt<Identifier>(headValue))
+			/*if (auto opt = AsOpt<Identifier>(headValue))
 			{
-				result.headValue = opt.value();
+				address = pEnv->findAddress(opt.value());
+			}
+			else */
+			if (auto opt = AsOpt<Address>(headValue))
+			{
+				address = opt.value();
 			}
 			else if (auto opt = AsOpt<Record>(headValue))
 			{
-				result.headValue = opt.value();
+				address = pEnv->makeTemporaryValue(opt.value());
 			}
 			else if (auto opt = AsOpt<List>(headValue))
 			{
-				result.headValue = opt.value();
+				address = pEnv->makeTemporaryValue(opt.value());
 			}
 			else if (auto opt = AsOpt<FuncVal>(headValue))
 			{
-				result.headValue = opt.value();
+				address = pEnv->makeTemporaryValue(opt.value());
 			}
 			else
 			{
@@ -224,47 +340,94 @@ namespace cgl
 			{
 				const auto& access = node.accesses[i];
 
-				if (auto listOpt = AsOpt<ListAccess>(access))
+				boost::optional<const Evaluated&> objOpt = pEnv->dereference(address);
+				if (!objOpt)
 				{
-					Evaluated value = boost::apply_visitor(evaluator, listOpt.value().index);
+					ErrorLog("参照エラー");
+					return 0;
+				}
+
+				const Evaluated& objRef = objOpt.value();
+
+				if (auto listAccessOpt = AsOpt<ListAccess>(access))
+				{
+					if (!IsType<List>(objRef))
+					{
+						ErrorLog("オブジェクトがリストでない");
+						return 0;
+					}
+
+					Evaluated value = boost::apply_visitor(evaluator, listAccessOpt.value().index);
+
+					const List& list = As<const List&>(objRef);
 
 					if (auto indexOpt = AsOpt<int>(value))
 					{
-						result.appendListRef(indexOpt.value());
+						address = list.get(indexOpt.value());
+					}
+					else if (auto indexOpt = AsOpt<Address>(value))
+					{
+						const Evaluated indexValue = pEnv->expandRef(indexOpt.value());
+
+						if (auto indexOpt = AsOpt<int>(indexValue))
+						{
+							address = list.get(indexOpt.value());
+						}
+						else
+						{
+							ErrorLog("list[index] の index が int 型でない");
+							return 0;
+						}
 					}
 					else
 					{
-						//エラー：list[index] の index が int 型でない
-						std::cerr << "Error(" << __LINE__ << ")\n";
+						ErrorLog("list[index] の index が int 型でない");
 						return 0;
 					}
 				}
-				else if (auto recordOpt = AsOpt<RecordAccess>(access))
+				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
 				{
-					result.appendRecordRef(recordOpt.value().name.name);
-				}
-				else
-				{
-					/*if (!IsType<FuncVal>(result))
+					if (!IsType<Record>(objRef))
 					{
-						std::cerr << "Error(" << __LINE__ << "):FunctionAccess is not a function\n";
+						ErrorLog("オブジェクトがリストでない");
 						return 0;
 					}
 
-					const FuncVal& funcVal = As<FuncVal>(result);*/
+					const Record& record = As<const Record&>(objRef);
+					auto it = record.values.find(recordAccessOpt.value().name);
+					if (it == record.values.end())
+					{
+						ErrorLog("指定された識別子がレコード中に存在しない");
+						return 0;
+					}
+
+					address = it->second;
+				}
+				else
+				{
+					if (!IsType<FuncVal>(objRef))
+					{
+						ErrorLog("オブジェクトが関数でない");
+						return 0;
+					}
+					const FuncVal& function = As<const FuncVal&>(objRef);
+
+					/*
 					if (!IsType<Identifier>(result.headValue))
 					{
 						std::cerr << "Error(" << __LINE__ << "):FunctionAccess must be a built-in function\n";
 						return 0;
 					}
-
+					
 					const Identifier& identifier = As<Identifier>(result.headValue);
+					*/
+					//以前の意味論では参照は全て識別子で管理していたので、識別子による関数アクセスが可能だった
+					//意味論の変更により参照は全てアドレスに置き換えることになったので、ビルトイン関数にも全てアドレスを割り当てる必要がある
 
 					auto funcAccess = As<FunctionAccess>(access);
 
 					bool hasFreeVariables = false;
 
-					std::vector<Evaluated> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
 						//関数の引数が参照型である場合は、freeVariablesに登録された参照かどうかを調べる
@@ -272,31 +435,6 @@ namespace cgl
 						//また、a.b(x).cのようなアクセスについて、
 						//アクセッサの中で一度でも関数を呼び出していたら、それ以降のアクセスによる参照がfreeVariablesと被ることはあり得ない。
 						//したがって、SatExprにも関数をヘッドとするObjectReferenceは存在し得る。
-
-						/*
-						const Evaluated currentArg = boost::apply_visitor(evaluator, expr);
-
-						if (IsType<ObjectReference>(currentArg))
-						{
-							const ObjectReference& currentRefVal = As<ObjectReference>(currentArg);
-
-							if (auto freeIndexOpt = freeVariableIndex(currentRefVal))
-							{
-								//satFuncRefにaccessesの残りをつなげて関数とその先のアクセッサとする。
-								if (auto satFuncOpt = MakeSatFunctionReference(identifier.name, node, i, *this, evaluator, pEnv))
-								{
-									return satFuncOpt.value();
-								}
-
-								std::cerr << "Error(" << __LINE__ << "):Invalid FunctionAccess\n";
-								return 0;
-							}
-						}
-						else
-						{
-							args.push_back(currentArg);
-						}
-						*/
 
 						//↑の書き方だとargumentがidentifierのケースを考慮できていない
 						//identifierを含む式の場合もやはり全て中身を見て検出しなければならない
@@ -312,7 +450,7 @@ namespace cgl
 					if (hasFreeVariables)
 					{
 						//satFuncRefにaccessesの残りをつなげて関数とその先のアクセッサとする。
-						if (auto satFuncOpt = MakeSatFunctionReference(identifier.name, node, i, *this, evaluator, pEnv))
+						if (auto satFuncOpt = MakeSatFunctionReference(address, node, i, *this, evaluator, pEnv))
 						{
 							return satFuncOpt.value();
 						}
@@ -322,7 +460,18 @@ namespace cgl
 					}
 					else
 					{
-						result.appendFunctionRef(std::move(args));
+						std::vector<Evaluated> args;
+						for (const auto& expr : funcAccess.actualArguments)
+						{
+							args.push_back(boost::apply_visitor(evaluator, expr));
+						}
+
+						Expr caller = FunctionCaller(function, args);
+
+						const Evaluated returnedValue = boost::apply_visitor(evaluator, caller);
+						address = pEnv->makeTemporaryValue(returnedValue);
+
+						//result.appendFunctionRef(std::move(args));
 					}
 				}
 			}
@@ -336,19 +485,26 @@ namespace cgl
 			Eval evaluator(pEnv);
 			const Evaluated refVal = boost::apply_visitor(evaluator, expr);
 
-			if (!IsType<ObjectReference>(refVal))
+			if (!IsType<Address>(refVal))
 			{
 				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0.0;
+				return 0;
 			}
 
-			const ObjectReference& currentRefVal = As<ObjectReference>(refVal);
+			Address address = As<Address>(refVal);
+			if (!address)
+			{
+				ErrorLog("アドレスが無効");
+				return 0;
+			}
+
+			//const ObjectReference& currentRefVal = As<ObjectReference>(refVal);
 
 			for (size_t i = 0; i < freeVariables.size(); ++i)
 			{
 				//freeVariablesに存在した場合は、最適化用の変数を一つ作り、その参照を返す
 				//また、freeVariables側にもその変数を使用することを知らせる
-				if (freeVariables[i] == currentRefVal)
+				if (freeVariables[i] == address)
 				{
 					if (usedInSat[i] == 1)
 					{
@@ -361,7 +517,7 @@ namespace cgl
 						SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
 						satRefs[i] = satRef;
 
-						refs.push_back(currentRefVal);
+						refs.push_back(address);
 						std::cout << "NewRef(" << satRef.refID << ")\n";
 						return satRef;
 					}
@@ -369,7 +525,7 @@ namespace cgl
 			}
 
 			//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
-			const Evaluated evaluated = pEnv->dereference(currentRefVal);
+			const Evaluated evaluated = pEnv->expandRef(address);
 
 			if (IsType<double>(evaluated))
 			{
@@ -382,10 +538,11 @@ namespace cgl
 
 			//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
 			std::cerr << "Error(" << __LINE__ << ")\n";
-			return 0.0;
+			return 0;
 		}
 	}
 
+	/*
 	Expr ExprFuncExpander::operator()(const Accessor& accessor)
 	{
 		return 0;
@@ -452,8 +609,262 @@ namespace cgl
 
 		//return result;
 	}
+	*/
 
-	const Evaluated& Environment::dereference(const Evaluated& reference)
+	void Environment::printEnvironment()const
+	{
+		std::cout << "Print Environment Begin:\n";
+
+		std::cout << "Values:\n";
+		for (const auto& keyval : m_values)
+		{
+			const auto& val = keyval.second;
+
+			std::cout << keyval.first << " : ";
+
+			printEvaluated(val);
+		}
+
+		std::cout << "References:\n";
+		for (size_t d = 0; d < localEnv().size(); ++d)
+		{
+			std::cout << "Depth : " << d << "\n";
+			const auto& names = localEnv()[d];
+
+			for (const auto& keyval : names)
+			{
+				std::cout << keyval.first << " : " << keyval.second << "\n";
+			}
+		}
+
+		std::cout << "Print Environment End:\n";
+	}
+
+	Address Environment::makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr)
+	{
+		std::set<std::string> functionArguments;
+		for (const auto& arg : arguments)
+		{
+			functionArguments.insert(arg);
+		}
+
+		ClosureMaker maker(pEnv, functionArguments);
+		const Expr closedFuncExpr = boost::apply_visitor(maker, expr);
+
+		FuncVal funcVal(arguments, closedFuncExpr);
+
+		std::cout << "makeFuncVal_F" << std::endl;
+		Address address = makeTemporaryValue(funcVal);
+		std::cout << "makeFuncVal_G" << std::endl;
+
+		return address;
+	}
+
+#ifdef commentout
+	ObjectReference Environment::makeFuncVal(const std::vector<Identifier>& arguments, const Expr& expr)
+	{
+		std::cout << "makeFuncVal_A" << std::endl;
+		auto referenceableVariables = currentReferenceableVariables();
+
+		//その関数が参照している変数名のリストを作る
+		{
+			//referenceableVariables は現在のスコープで参照可能な変数全てを表している
+			//実際に関数の中で参照される変数はこの中のごく一部なので、事前にフィルタを掛けた方がいい
+
+			//スコープ間で同名の変数がある場合は内側の変数で遮蔽されて、外側の変数は参照されないので削除してよい
+			for (auto scopeIt = referenceableVariables.rbegin(); scopeIt + 1 != referenceableVariables.rend(); ++scopeIt)
+			{
+				for (const auto& innerName : *scopeIt)
+				{
+					for (auto outerScopeIt = scopeIt + 1; outerScopeIt != referenceableVariables.rend(); ++outerScopeIt)
+					{
+						const auto outerNameIt = outerScopeIt->find(innerName);
+						if (outerNameIt != outerScopeIt->end())
+						{
+							outerScopeIt->erase(outerNameIt);
+						}
+					}
+				}
+			}
+
+			std::cout << "makeFuncVal_B" << std::endl;
+
+			std::vector<std::string> names;
+			for (size_t v = 0; v < referenceableVariables.size(); ++v)
+			{
+				const auto& ns = referenceableVariables[v];
+				//for (int index = static_cast<int>(ns.size()) - 1; 0 <= index; --index)
+				{
+					//names.insert(names.end(), ns.begin(), ns.end());
+					names.insert(names.end(), ns.rbegin(), ns.rend());
+				}
+			}
+
+			std::cout << "Names: ";
+			for (const auto& n : names)
+			{
+				std::cout << n << " ";
+			}
+			std::cout << std::endl;
+
+			std::cout << "makeFuncVal_C" << std::endl;
+			CheckNameAppearance checker(names);
+			boost::apply_visitor(checker, expr);
+			std::cout << "makeFuncVal_D" << std::endl;
+
+			/*for (size_t v = 0, i = 0; v < referenceableVariables.size(); ++v)
+			{
+				auto& ns = referenceableVariables[v];
+				for (int index = static_cast<int>(ns.size()) - 1; 0 <= index; ++i)
+				{
+					if (checker.appearances[i] == 1)
+					{
+						--index;
+						continue;
+					}
+					else
+					{
+						ns.erase(std::next(ns.begin(), index));
+					}
+				}
+			}*/
+
+			
+			for (int i = 0; i < names.size(); ++i)
+			{
+				if (checker.appearances[i] == 0)
+				{
+					const std::string& deleteName = checker.variableNames[i];
+
+					//for (size_t v = 0, i = 0; v < referenceableVariables.size(); ++v)
+					for (size_t v = 0; v < referenceableVariables.size(); ++v)
+					{
+						auto& ns = referenceableVariables[v];
+						ns.erase(deleteName);
+					}
+				}
+			}
+			
+		}
+
+		std::cout << "makeFuncVal_E" << std::endl;
+
+		FuncVal val(arguments, expr, referenceableVariables, scopeDepth());
+
+		std::cout << "makeFuncVal_F" << std::endl;
+		const unsigned valueID = makeTemporaryValue(val);
+		std::cout << "makeFuncVal_G" << std::endl;
+		//m_funcValIDs.push_back(valueID);
+
+		std::cout << "makeFuncVal_H" << std::endl;
+		return ObjectReference(valueID);
+	}
+
+	void Environment::exitScope()
+	{
+		{
+			//このスコープを抜けると削除される変数リスト
+			const auto& deletingVariables = m_variables.back();
+
+			{
+				std::cout << "Prev Decrement:" << std::endl;
+				for (const unsigned id : m_funcValIDs)
+				{
+					if (auto funcValOpt = AsOpt<FuncVal>(m_values[id]))
+					{
+						std::cout << "func depth: " << funcValOpt.value().currentScopeDepth << std::endl;
+					}
+				}
+			}
+
+			//今削除しようとしている変数で、なおかつあるスコープから参照可能な変数のリストを返す
+			const auto intersectNames = [&](const std::vector<std::set<std::string>>& names)->std::vector<std::string>
+			{
+				std::vector<std::string> resultNames;
+
+				for (const auto& vs : names)
+				{
+					for (const auto& vname : vs)
+					{
+						if (deletingVariables.find(vname) != deletingVariables.end())
+						{
+							resultNames.push_back(vname);
+						}
+					}
+				}
+
+				return resultNames;
+			};
+
+			for (const unsigned id : m_funcValIDs)
+			{
+				if (auto funcValOpt = AsOpt<FuncVal>(m_values[id]))
+				{
+					if (funcValOpt.value().currentScopeDepth == scopeDepth())
+					{
+						//関数が内部で外の変数を参照している時、その変数が関数より先に解放されてしまうと困るので、このタイミングでpopされる変数について関数の内部に存在する変数をその値で置き換えるという処理を行う。
+
+						//その後、currentScopeDepthを1つデクリメントする。
+						
+						std::map<std::string, Evaluated> variableNames;
+
+						const auto names = intersectNames(funcValOpt.value().referenceableVariables);
+						for (const auto& name : names)
+						{
+							const auto valueOpt = find(name);
+							if (!valueOpt)
+							{
+								//これから削除される変数を保存しようとしたが既に消されていた
+								std::cerr << "Error(" << __LINE__ << ")\n";
+								return;
+							}
+
+							variableNames[name] = valueOpt.value();
+						}
+
+						std::cout << "exitScope: Replace Variable Names: " << std::endl;
+						for (const auto& name : variableNames)
+						{
+							std::cout << name.first << " ";
+						}
+						std::cout << std::endl;
+						
+						//削除される変数を定数に置き換える
+						ReplaceExprValue replacer(variableNames);
+						funcValOpt.value().expr = boost::apply_visitor(replacer, funcValOpt.value().expr);
+
+						std::cout << "exitScope: Function Expr Replaced to: " << std::endl;
+						printExpr(funcValOpt.value().expr);
+						std::cout << std::endl;
+
+						std::cout << "exitScope: decrement" << std::endl;
+						--funcValOpt.value().currentScopeDepth;
+					}
+				}
+				else
+				{
+					std::cerr << "Error(" << __LINE__ << ")\n";
+				}
+			}
+			{
+				std::cout << "Post Decrement:" << std::endl;
+				for (const unsigned id : m_funcValIDs)
+				{
+					if (auto funcValOpt = AsOpt<FuncVal>(m_values[id]))
+					{
+						std::cout << "func depth: " << funcValOpt.value().currentScopeDepth << std::endl;
+					}
+				}
+			}
+		}
+
+		m_variables.pop_back();
+	}
+
+#endif
+
+	/*
+	Address Environment::dereference(const Evaluated& reference)
 	{
 		if (auto nameOpt = AsOpt<Identifier>(reference))
 		{
@@ -472,7 +883,11 @@ namespace cgl
 
 			boost::optional<unsigned> valueIDOpt;
 
-			if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
+			if (auto idOpt = AsOpt<unsigned>(referenceProcess.headValue))
+			{
+				valueIDOpt = idOpt.value();
+			}
+			else if (auto opt = AsOpt<Identifier>(referenceProcess.headValue))
 			{
 				valueIDOpt = findValueID(opt.value().name);
 			}
@@ -507,6 +922,8 @@ namespace cgl
 
 					if (auto listOpt = AsOpt<List>(result.value()))
 					{
+						listOpt.value().data[index];;
+						listOpt.value().data;
 						result = listOpt.value().data[index];
 					}
 					else
@@ -533,9 +950,38 @@ namespace cgl
 				}
 				else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
 				{
+					boost::optional<const FuncVal&> funcValOpt;
+
+					std::cout << "FuncRef ";
 					if (auto recordOpt = AsOpt<FuncVal>(result.value()))
 					{
-						Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
+						std::cout << "is FuncVal ";
+						funcValOpt = recordOpt.value();
+					}
+					else if (IsType<ObjectReference>(result.value()))
+					{
+						std::cout << "is ObjectReference ";
+						if (auto funcValOpt2 = AsOpt<FuncVal>(dereference(result.value())))
+						{
+							std::cout << "is FuncVal ";
+							funcValOpt = funcValOpt2.value();
+						}
+						else
+						{
+							std::cout << "isn't FuncVal ";
+						}
+					}
+					else
+					{
+						std::cout << "isn't AnyRef: ";
+						printEvaluated(result.value());
+					}
+					
+					std::cout << std::endl;
+
+					if (funcValOpt)
+					{
+						Expr caller = FunctionCaller(funcValOpt.value(), funcRefOpt.value().args);
 
 						if (auto sharedThis = m_weakThis.lock())
 						{
@@ -557,6 +1003,31 @@ namespace cgl
 						std::cerr << "Error(" << __LINE__ << ")\n";
 						return reference;
 					}
+
+					//if (auto recordOpt = AsOpt<FuncVal>(result.value()))
+					//{
+					//	Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
+
+					//	if (auto sharedThis = m_weakThis.lock())
+					//	{
+					//		Eval evaluator(sharedThis);
+
+					//		const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
+					//		result = m_values[ID];
+					//	}
+					//	else
+					//	{
+					//		//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+					//		std::cerr << "Error(" << __LINE__ << ")\n";
+					//		return reference;
+					//	}
+					//}
+					//else
+					//{
+					//	//関数としてアクセスするのに失敗
+					//	std::cerr << "Error(" << __LINE__ << ")\n";
+					//	return reference;
+					//}
 				}
 			}
 
@@ -565,8 +1036,9 @@ namespace cgl
 
 		return reference;
 	}
+	*/
 
-	boost::optional<ObjectReference> Environment::evalReference(const Accessor & access)
+	Address Environment::evalReference(const Accessor & access)
 	{
 		if (auto sharedThis = m_weakThis.lock())
 		{
@@ -575,19 +1047,17 @@ namespace cgl
 			const Expr accessor = access;
 			const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
 
-			if (!IsType<ObjectReference>(refVal))
+			if (!IsType<Address>(refVal))
 			{
-				//存在しない参照をsatに指定した
-				std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
-				return boost::none;
+				ErrorLog("a");
+				return Address::Null();
 			}
 
-			return As<ObjectReference>(refVal);
+			return As<Address>(refVal);
 		}
 
-		std::cerr << "Error(" << __LINE__ << "): shared this does not exist.\n";
-
-		return boost::none;
+		ErrorLog("shared this does not exist.");
+		return Address::Null();
 	}
 
 	//std::pair<FunctionCaller, std::vector<Access>> Accessor::getFirstFunction(std::shared_ptr<Environment> pEnv)
@@ -610,6 +1080,50 @@ namespace cgl
 		return expr;
 	}
 
+	std::vector<Address> Environment::expandReferences(Address address)
+	{
+		std::vector<Address> result;
+		if (auto sharedThis = m_weakThis.lock())
+		{
+			const auto addElementRec = [&](auto rec, Address address)->void
+			{
+				const Evaluated value = sharedThis->expandRef(address);
+
+				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
+				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
+				{
+					result.push_back(address);
+				}
+				else if (IsType<List>(value))
+				{
+					for (Address elemAddress : As<List>(value).data)
+					{
+						rec(rec, elemAddress);
+					}
+				}
+				else if (IsType<Record>(value))
+				{
+					for (const auto& elem : As<Record>(value).values)
+					{
+						rec(rec, elem.second);
+					}
+				}
+				//それ以外のデータは特に捕捉しない
+				//TODO:最終的にintやdouble 以外のデータへの参照は持つことにするか？
+			};
+
+			const auto addElement = [&](const Address address)
+			{
+				addElementRec(addElementRec, address);
+			};
+
+			addElement(address);
+		}
+
+		return result;
+	}
+
+#ifdef commentout
 	std::vector<ObjectReference> Environment::expandReferences(const ObjectReference & reference, std::vector<ObjectReference>& output)
 	{
 		if (auto sharedThis = m_weakThis.lock())
@@ -659,12 +1173,22 @@ namespace cgl
 		return output;
 	}
 
-	inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
+	//inline void Environment::assignToObject(const ObjectReference & objectRef, const Evaluated & newValue)
+	inline void Environment::assignToObject(Address address, const Evaluated & newValue)
 	{
 		boost::optional<unsigned> valueIDOpt;
 
+		if (auto idOpt = AsOpt<unsigned>(objectRef.headValue))
+		{
+			valueIDOpt = idOpt.value();
+		}
 		if (auto opt = AsOpt<Identifier>(objectRef.headValue))
 		{
+			valueIDOpt = findValueID(opt.value().name);
+			if (!valueIDOpt)
+			{
+				bindNewValue(opt.value().name, newValue);
+			}
 			valueIDOpt = findValueID(opt.value().name);
 		}
 		else if (auto opt = AsOpt<Record>(objectRef.headValue))
@@ -696,7 +1220,8 @@ namespace cgl
 
 				if (auto listOpt = AsOpt<List>(result.value()))
 				{
-					result = listOpt.value().data[index];
+					//result = listOpt.value().data[index];
+					result = m_values[listOpt.value().data[index].valueID];
 				}
 				else//リストとしてアクセスするのに失敗
 				{
@@ -710,7 +1235,8 @@ namespace cgl
 
 				if (auto recordOpt = AsOpt<Record>(result.value()))
 				{
-					result = recordOpt.value().values.at(key);
+					//result = recordOpt.value().values.at(key);
+					result = m_values[recordOpt.value().values.at(key).valueID];
 				}
 				else//レコードとしてアクセスするのに失敗
 				{
@@ -720,6 +1246,44 @@ namespace cgl
 			}
 			else if (auto funcRefOpt = AsOpt<ObjectReference::FunctionRef>(ref))
 			{
+				boost::optional<const FuncVal&> funcValOpt;
+				if (auto recordOpt = AsOpt<FuncVal>(result.value()))
+				{
+					funcValOpt = recordOpt.value();
+				}
+				else if (IsType<ObjectReference>(result.value()))
+				{
+					if (auto funcValOpt = AsOpt<FuncVal>(dereference(result.value())))
+					{
+						funcValOpt = funcValOpt.value();
+					}
+				}
+
+				if (funcValOpt)
+				{
+					Expr caller = FunctionCaller(funcValOpt.value(), funcRefOpt.value().args);
+
+					if (auto sharedThis = m_weakThis.lock())
+					{
+						Eval evaluator(sharedThis);
+						const unsigned ID = m_values.add(boost::apply_visitor(evaluator, caller));
+						result = m_values[ID];
+					}
+					else
+					{
+						//エラー：m_weakThisが空（Environment::Makeを使わず初期化した？）
+						std::cerr << "Error(" << __LINE__ << ")\n";
+						return;
+					}
+				}
+				else
+				{
+					//関数としてアクセスするのに失敗
+					std::cerr << "Error(" << __LINE__ << ")\n";
+					return;
+				}
+
+				/*
 				if (auto recordOpt = AsOpt<FuncVal>(result.value()))
 				{
 					Expr caller = FunctionCaller(recordOpt.value(), funcRefOpt.value().args);
@@ -741,11 +1305,13 @@ namespace cgl
 					std::cerr << "Error(" << __LINE__ << ")\n";
 					return;
 				}
+				*/
 			}
 		}
 
 		result.value() = newValue;
 	}
+#endif
 
 	void OptimizationProblemSat::addConstraint(const Expr& logicExpr)
 	{
@@ -759,7 +1325,7 @@ namespace cgl
 		}
 	}
 
-	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<ObjectReference>& freeVariables)
+	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables)
 	{
 		if (!candidateExpr)
 		{
@@ -772,7 +1338,7 @@ namespace cgl
 		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
 		
 		{
-			std::cout << "Print1:\n";
+			std::cout << "Print:\n";
 			PrintSatExpr printer(data);
 			boost::apply_visitor(printer, expr.value());
 			std::cout << "\n";
@@ -796,7 +1362,7 @@ namespace cgl
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const Evaluated val = pEnv->dereference(refs[i]);
+			const Evaluated val = pEnv->expandRef(refs[i]);
 			if (auto opt = AsOpt<double>(val))
 			{
 				std::cout << "    " << i << " : " << opt.value() << std::endl;
@@ -956,16 +1522,16 @@ namespace cgl
 
 			auto makeDefFunc = [](const Arguments& arguments, const Expr& expr) { return DefFunc(arguments, expr); };
 
-			auto addCharacter = [](Identifier& identifier, char c) { identifier.name.push_back(c); };
+			//auto addCharacter = [](Identifier& identifier, char c) { identifier.name.push_back(c); };
 
 			auto concatArguments = [](Arguments& a, const Arguments& b) { a.concat(b); };
 
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
 
-			auto makeDouble = [](const Identifier& str) { return std::stod(str.name); };
-			auto makeString = [](char c) { return Identifier(std::string({ c })); };
-			auto appendString = [](Identifier& str, char c) { str.name.push_back(c); };
-			auto appendString2 = [](Identifier& str, const Identifier& str2) { str.name.append(str2.name); };
+			//auto makeDouble = [](const Identifier& str) { return std::stod(str.name); };
+			//auto makeString = [](char c) { return Identifier(std::string({ c })); };
+			//auto appendString = [](Identifier& str, char c) { str.name.push_back(c); };
+			//auto appendString2 = [](Identifier& str, const Identifier& str2) { str.name.append(str2.name); };
 
 			program = s >> -(expr_seq) >> s;
 
@@ -1107,15 +1673,33 @@ namespace cgl
 				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
 				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
 
+			//factor = /*double_[_val = _1]
+			//	| */int_[_val = _1]
+			//	| lit("true")[_val = true]
+			//	| lit("false")[_val = false]
+			//	| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
+			//	| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
+			//	| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
+			//	| constraints[_val = _1]
+			//	| freeVals[_val = _1]
+			//	| accessor[_val = _1]
+			//	| def_func[_val = _1]
+			//	| for_expr[_val = _1]
+			//	| list_maker[_val = _1]
+			//	| record_inheritor[_val = _1]
+			//	//| (id >> record_maker)[_val = Call(RecordInheritor::MakeRecord, _1,_2)]
+			//	| record_maker[_val = _1]
+			//	| id[_val = _1];
+			
 			factor = /*double_[_val = _1]
-				| */int_[_val = _1]
-				| lit("true")[_val = true]
-				| lit("false")[_val = false]
+					 | */int_[_val = Call(ValueType::Int, _1)]
+				| lit("true")[_val = Call(ValueType::Bool, true)]
+				| lit("false")[_val = Call(ValueType::Bool, false)]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| constraints[_val = _1]
-				| freeVals[_val = _1]
+				| constraints[_val = Call(ValueType::Sat, _1)]
+				| freeVals[_val = Call(ValueType::Free, _1)]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
@@ -1159,6 +1743,83 @@ namespace cgl
 #define DO_TEST
 
 #define DO_TEST2
+
+namespace cgl
+{
+	class Program
+	{
+	public:
+
+		Program() :
+			pEnv(Environment::Make()),
+			evaluator(pEnv)
+		{}
+
+		boost::optional<Expr> parse(const std::string& program)
+		{
+			using namespace cgl;
+
+			Lines lines;
+
+			SpaceSkipper<IteratorT> skipper;
+			Parser<IteratorT, SpaceSkipperT> grammer;
+
+			std::string::const_iterator it = program.begin();
+			if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
+			{
+				std::cerr << "Syntax Error: parse failed\n";
+				return boost::none;
+			}
+
+			if (it != program.end())
+			{
+				std::cerr << "Syntax Error: ramains input\n" << std::string(it, program.end());
+				return boost::none;
+			}
+
+			return lines;
+		}
+
+		boost::optional<Evaluated> execute(const std::string& program)
+		{
+			if (auto exprOpt = parse(program))
+			{
+				return boost::apply_visitor(evaluator, exprOpt.value());
+			}
+
+			return boost::none;
+		}
+
+		void clear()
+		{
+			pEnv = Environment::Make();
+			evaluator = Eval(pEnv);
+		}
+
+		bool test(const std::string& program, const Expr& expr)
+		{
+			clear();
+
+			if (auto result = execute(program))
+			{
+				std::shared_ptr<Environment> pEnv2 = Environment::Make();
+				Eval evaluator2(pEnv2);
+
+				const Evaluated answer = boost::apply_visitor(evaluator2, expr);
+
+				return IsEqualEvaluated(result.value(), answer);
+			}
+
+			return false;
+		}
+
+	private:
+
+		std::shared_ptr<Environment> pEnv;
+		Eval evaluator;
+	};
+}
+
 
 int main()
 {
@@ -1362,7 +2023,7 @@ func2 = x, y -> x + y)",
 
 	const auto testEval = [&](const std::string& source, const Evaluated& answer)
 	{
-		testEval1(source, [&](const Evaluated& result) {return IsEqual(result, answer); });
+		testEval1(source, [&](const Evaluated& result) {return IsEqualEvaluated(result, answer); });
 	};
 
 testEval(R"(
@@ -1378,6 +2039,7 @@ f(3).a
 
 )", 13);
 
+/*
 testEval(R"(
 
 vec3 = (v -> {
@@ -1387,6 +2049,32 @@ vec3(3)
 
 )", Record("x", 3).append("y", 3).append("z", 3));
 
+using Li = cgl::ListConstractor;
+Program program;
+
+program.test(R"(
+
+vec2 = (v -> [
+	v, v
+])
+a = vec2(3)
+vec2(a)
+
+)", Li(Li({ 3, 3 }))(Li({ 3, 3 })));
+
+
+program.test(R"(
+
+vec2 = (v -> [
+	v, v
+])
+vec2(vec2(3))
+
+)", Li(Li({ 3, 3 }))(Li({ 3, 3 })));
+*/
+
+
+/*
 testEval(R"(
 
 vec2 = (v -> [
@@ -1396,7 +2084,8 @@ a = vec2(3)
 vec2(a)
 
 )", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
-
+*/
+/*
 testEval(R"(
 
 vec2 = (v -> [
@@ -1405,7 +2094,9 @@ vec2 = (v -> [
 vec2(vec2(3))
 
 )", List().append(List().append(3).append(3)).append(List().append(3).append(3)));
+*/
 
+/*
 testEval(R"(
 
 vec2 = (v -> {
@@ -1425,6 +2116,8 @@ vec2(vec2(3))
 
 )", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
+
+//このプログラムについて、LINES_Aが出力されてLINES_Bが出力される前に落ちるバグ有り
 testEval(R"(
 
 vec3 = (v -> {
@@ -1487,8 +2180,8 @@ main = {
 }
 
 )", [](const Evaluated& result) {
-	const auto l1vertex1 = As<List>(As<Record>(As<Record>(result).values.at("l1")).values.at("vertex"));
-	const auto answer = List().append(Record("x", 0).append("y", 0)).append(Record("x", 2).append("y", 3));
+	const Evaluated l1vertex1 = As<List>(As<Record>(As<Record>(result).values.at("l1")).values.at("vertex"));
+	const Evaluated answer = List().append(Record("x", 0).append("y", 0)).append(Record("x", 2).append("y", 3));
 	printEvaluated(answer);
 	return IsEqual(l1vertex1, answer);
 });
@@ -1507,9 +2200,10 @@ main = {
 )", [](const Evaluated& result) {
 	return IsEqual(As<Record>(result).values.at("theta"),1.1071487177940905030170654601785);
 });
+*/
 
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
-
+	
 #endif
 	
 	while (true)

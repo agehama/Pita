@@ -4,7 +4,11 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <string>
 #include <iostream>
+#include <fstream>
+#include <regex>
+#include <set>
 #include <map>
 #include <unordered_map>
 
@@ -21,6 +25,24 @@
 #else
 #pragma comment(lib,"Release/cmaes.lib")
 #endif
+
+inline void Log(std::ostream& os, const std::string& str)
+{
+	std::regex regex("\n");
+	os << std::regex_replace(str, regex, "\n        |> ") << "\n";
+}
+
+#define FileName (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#define FileDesc (std::string(FileName) + "(" + std::to_string(__LINE__) + ") : ")
+#define TagError (std::string("[Error] |> "))
+#define TagLog   (std::string("[Log]   |> "))
+#define ErrorLog(message) (Log(std::cerr, TagError + FileDesc + message))
+#define DebugLog(message) (Log(std::cout, TagLog + FileDesc + message))
+
+namespace std
+{
+	template<class T> class hash;
+}
 
 namespace cgl
 {
@@ -127,8 +149,7 @@ namespace cgl
 
 	struct Identifier
 	{
-		std::string name;
-
+	public:
 		Identifier() = default;
 
 		Identifier(const std::string& name_) :
@@ -148,6 +169,70 @@ namespace cgl
 		{
 			return !(*this == other);
 		}
+
+		operator const std::string&()const
+		{
+			return name;
+		}
+
+	private:
+		std::string name;
+	};
+
+	struct Address
+	{
+	public:
+		Address() :valueID(0){}
+
+		explicit Address(unsigned valueID) :
+			valueID(valueID)
+		{}
+
+		/*bool operator==(const Address& other)const
+		{
+			return valueID == other.valueID;
+		}
+
+		bool operator!=(const Address& other)const
+		{
+			return !(*this == other);
+		}*/
+
+		/*bool operator()()const
+		{
+			return valueID != 0;
+		}*/
+
+		operator bool()const
+		{
+			return valueID != 0;
+		}
+
+		bool operator==(const Address other)const
+		{
+			return valueID == other.valueID;
+		}
+
+		bool operator!=(const Address other)const
+		{
+			return valueID != other.valueID;
+		}
+
+		//static constexpr Address Null = 0;
+		static Address Null()
+		{
+			return Address();
+		}
+
+		std::string toString()const
+		{
+			return std::to_string(valueID);
+		}
+
+	private:
+		friend class std::hash<Address>;
+
+		unsigned valueID;
 	};
 
 	struct FuncVal;
@@ -186,20 +271,56 @@ namespace cgl
 	struct DeclSat;
 	struct DeclFree;
 
-	using types =
-		boost::mpl::vector20<
+	struct Jump;
+
+	using Evaluated = boost::variant<
 		bool,
 		int,
 		double,
+		Address,
+		//boost::recursive_wrapper<ObjectReference>,
+		boost::recursive_wrapper<List>,
+		boost::recursive_wrapper<KeyValue>,
+		boost::recursive_wrapper<Record>,
+		boost::recursive_wrapper<FuncVal>,
+		boost::recursive_wrapper<Jump>,
+		boost::recursive_wrapper<DeclSat>,
+		boost::recursive_wrapper<DeclFree>
+	>;
+
+	struct ValueType;
+
+	/*
+	TODO: Exprの中にEvaluatedを入れたい
+	*/
+	/*
+	using types =
+		boost::mpl::vector16<
+		//bool,
+		//int,
+		//double,
+		//boost::recursive_wrapper<List>,
+		//boost::recursive_wrapper<Record>,
+		//boost::recursive_wrapper<FuncVal>,
+		//boost::recursive_wrapper<DeclSat>,
+		//boost::recursive_wrapper<DeclFree>,
+		//boost::recursive_wrapper<ObjectReference>,
+		//boost::recursive_wrapper<KeyValue>,
+		//boost::recursive_wrapper<Jump>,
+		//boost::recursive_wrapper<DeclSat>,
+		//boost::recursive_wrapper<DeclFree>,
+
+		boost::recursive_wrapper<Evaluated>,
 		Identifier,
-
-		boost::recursive_wrapper<Range>,
-
-		boost::recursive_wrapper<Lines>,
-		boost::recursive_wrapper<DefFunc>,
 
 		boost::recursive_wrapper<UnaryExpr>,
 		boost::recursive_wrapper<BinaryExpr>,
+
+		boost::recursive_wrapper<DefFunc>,
+		boost::recursive_wrapper<FunctionCaller>,
+		boost::recursive_wrapper<Range>,
+
+		boost::recursive_wrapper<Lines>,
 
 		boost::recursive_wrapper<If>,
 		boost::recursive_wrapper<For>,
@@ -210,41 +331,77 @@ namespace cgl
 		boost::recursive_wrapper<KeyExpr>,
 		boost::recursive_wrapper<RecordConstractor>,
 		boost::recursive_wrapper<RecordInheritor>,
-		
-		boost::recursive_wrapper<Accessor>,
-		boost::recursive_wrapper<FunctionCaller>,
 
-		boost::recursive_wrapper<DeclSat>,
-		boost::recursive_wrapper<DeclFree>
+		boost::recursive_wrapper<Accessor>
 		>;
 
 	using Expr = boost::make_variant_over<types>::type;
+	*/
+
+	using Expr = boost::variant<
+		//boost::recursive_wrapper<Evaluated>,
+		boost::recursive_wrapper<ValueType>,
+		Identifier,
+
+		boost::recursive_wrapper<UnaryExpr>,
+		boost::recursive_wrapper<BinaryExpr>,
+
+		boost::recursive_wrapper<DefFunc>,
+		boost::recursive_wrapper<FunctionCaller>,
+		boost::recursive_wrapper<Range>,
+
+		boost::recursive_wrapper<Lines>,
+
+		boost::recursive_wrapper<If>,
+		boost::recursive_wrapper<For>,
+		boost::recursive_wrapper<Return>,
+
+		boost::recursive_wrapper<ListConstractor>,
+
+		boost::recursive_wrapper<KeyExpr>,
+		boost::recursive_wrapper<RecordConstractor>,
+		boost::recursive_wrapper<RecordInheritor>,
+
+		boost::recursive_wrapper<Accessor>
+	>;
+
+	bool IsEqualEvaluated(const Evaluated& value1, const Evaluated& value2);
+	bool IsEqual(const Expr& value1, const Expr& value2);
 
 	void printExpr(const Expr& expr);
 
-	struct Jump;
+	struct ValueType
+	{
+		ValueType() = default;
+		explicit ValueType(const Evaluated& value) :value(value) {}
 
-	struct ObjectReference;
+		bool operator==(const ValueType& other)const
+		{
+			return IsEqualEvaluated(value, other.value);
+		}
+
+		bool operator!=(const ValueType& other)const
+		{
+			return !IsEqualEvaluated(value, other.value);
+		}
+
+		static ValueType Bool(bool a) { return ValueType(a); }
+		static ValueType Int(int a) { return ValueType(a); }
+		static ValueType Double(double a) { return ValueType(a); }
+		static ValueType Sat(const DeclSat& a) { return ValueType(a); }
+		static ValueType Free(const DeclFree& a) { return ValueType(a); }
+		/*static ValueType (int a) { return ValueType(a); }
+		static ValueType Int(int a) { return ValueType(a); }
+		static ValueType Int(int a) { return ValueType(a); }
+		static ValueType Int(int a) { return ValueType(a); }*/
+
+		
+		Evaluated value;
+	};
+
+	//struct ObjectReference;
 
 	struct OptimizationProblemSat;
-
-	using Evaluated = boost::variant<
-		bool,
-		int,
-		double,
-		Identifier,
-		boost::recursive_wrapper<ObjectReference>,
-		boost::recursive_wrapper<List>,
-		boost::recursive_wrapper<KeyValue>,
-		boost::recursive_wrapper<Record>,
-		boost::recursive_wrapper<FuncVal>,
-		boost::recursive_wrapper<Jump>,
-		boost::recursive_wrapper<DeclSat>,
-		boost::recursive_wrapper<DeclFree>
-	>;
-
-	bool IsEqual(const Evaluated& value1, const Evaluated& value2);
-	bool IsEqual(const Expr& value1, const Expr& value2);
 
 	struct SatUnaryExpr;
 	struct SatBinaryExpr;
@@ -285,7 +442,8 @@ namespace cgl
 		//std::unordered_map<int, int> refs;//参照ID -> dataのインデックス
 		std::vector<double> data;//Referenced Values
 
-		std::vector<ObjectReference> refs;//Referenced Values
+		//std::vector<ObjectReference> refs;//Referenced Values
+		std::vector<Address> refs;//Referenced Values
 		//std::vector<Accessor> refs;//Referenced Values
 
 		//expr = SatBinaryExpr(expr, other.expr, BinaryOp::And);
@@ -293,7 +451,8 @@ namespace cgl
 		void debugPrint();
 
 		void addConstraint(const Expr& logicExpr);
-		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<ObjectReference>& freeVariables);
+		//void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<ObjectReference>& freeVariables);
+		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables);
 
 		//bool initializeData(Environment& env);
 		bool initializeData(std::shared_ptr<Environment> pEnv);
@@ -382,7 +541,8 @@ namespace cgl
 
 	inline bool IsLValue(const Evaluated& value)
 	{
-		return IsType<Identifier>(value) || IsType<ObjectReference>(value);
+		return IsType<Identifier>(value);
+		//return IsType<Identifier>(value) || IsType<ObjectReference>(value);
 	}
 
 	inline bool IsRValue(const Evaluated& value)
@@ -565,19 +725,22 @@ namespace cgl
 
 	struct FuncVal
 	{
-		std::shared_ptr<Environment> environment;
 		std::vector<Identifier> arguments;
 		Expr expr;
+		//std::vector<std::set<std::string>> referenceableVariables;
+		//mutable int currentScopeDepth;
 
 		FuncVal() = default;
 
 		FuncVal(
-			std::shared_ptr<Environment> environment,
 			const std::vector<Identifier>& arguments,
-			const Expr& expr) :
-			environment(environment),
+			const Expr& expr/*,
+			const std::vector<std::set<std::string>>& referenceableVariables,
+			int currentScopeDepth*/) :
 			arguments(arguments),
-			expr(expr)
+			expr(expr)/*,
+			referenceableVariables(referenceableVariables),
+			currentScopeDepth(currentScopeDepth)*/
 		{}
 
 		bool operator==(const FuncVal& other)const
@@ -709,7 +872,7 @@ namespace cgl
 
 			for (size_t i = 0; i < actualArguments.size(); ++i)
 			{
-				if (!IsEqual(actualArguments[i], other.actualArguments[i]))
+				if (!IsEqualEvaluated(actualArguments[i], other.actualArguments[i]))
 				{
 					return false;
 				}
@@ -846,6 +1009,21 @@ namespace cgl
 			data({ expr })
 		{}
 
+		ListConstractor(const std::vector<int>& vs) :
+			data(vs.size())
+		{
+			for (size_t i = 0; i < data.size(); ++i)
+			{
+				data[i] = vs[i];
+			}
+		}
+
+		ListConstractor& operator()(const Expr& expr)
+		{
+			data.push_back(expr);
+			return *this;
+		}
+
 		static ListConstractor Make(const Expr& expr)
 		{
 			return ListConstractor(expr);
@@ -877,16 +1055,18 @@ namespace cgl
 
 	struct List
 	{
-		std::vector<Evaluated> data;
+		//std::vector<Evaluated> data;
+		std::vector<Address> data;
 
 		List() = default;
 
+		/*
 		List& append(const Evaluated& value)
 		{
 			data.push_back(value);
 			return *this;
 		}
-
+		
 		std::vector<Evaluated>::iterator get(int index)
 		{
 			return data.begin() + index;
@@ -902,6 +1082,44 @@ namespace cgl
 			for (size_t i = 0; i < data.size(); ++i)
 			{
 				if (!IsEqual(data[i], other.data[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+		*/
+
+		List& append(const Address& address)
+		{
+			data.push_back(address);
+			return *this;
+		}
+
+		/*std::vector<unsigned>::iterator get(int index)
+		{
+			return data.begin() + index;
+		}*/
+		Address get(int index)const
+		{
+			return data[index];
+		}
+
+		bool operator==(const List& other)const
+		{
+			if (data.size() != other.data.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < data.size(); ++i)
+			{
+				//if (!IsEqual(data[i], other.data[i]))
+
+				//TODO: アドレス比較ではなく値の比較にすべき(リストが環境の参照を持つ？)
+				//if (data[i].valueID == other.data[i].valueID)
+				if (data[i] == other.data[i])
 				{
 					return false;
 				}
@@ -974,53 +1192,6 @@ namespace cgl
 		}
 	};
 
-	struct RecordInheritor
-	{
-		Identifier original;
-		//std::vector<Expr> exprs;
-		RecordConstractor adder;
-
-		RecordInheritor() = default;
-
-		RecordInheritor(const Identifier& original):
-			original(original)
-		{}
-
-		static RecordInheritor Make(const Identifier& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
-		{
-			rec.adder.exprs.push_back(KeyExpr);
-		}
-
-		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
-		{
-			rec.adder.exprs.push_back(expr);
-		}
-
-		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
-		{
-			auto& exprs = rec.adder.exprs;
-			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
-		}
-
-		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
-		{
-			RecordInheritor obj(original);
-			AppendRecord(obj, rec2);
-			return obj;
-		}
-
-		bool operator==(const RecordInheritor& other)const
-		{
-			return original == other.original
-				&& adder == other.adder;
-		}
-	};
-
 	struct KeyValue
 	{
 		Identifier name;
@@ -1040,7 +1211,7 @@ namespace cgl
 				return false;
 			}
 
-			return IsEqual(value, other.value);
+			return IsEqualEvaluated(value, other.value);
 		}
 	};
 
@@ -1066,6 +1237,7 @@ namespace cgl
 		}
 	};
 
+#ifdef commentout
 	struct ObjectReference
 	{
 		struct ListRef
@@ -1137,7 +1309,7 @@ namespace cgl
 
 		using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
 
-		using ObjectT = boost::variant<Identifier, boost::recursive_wrapper<Record>, boost::recursive_wrapper<List>, boost::recursive_wrapper<FuncVal>>;
+		using ObjectT = boost::variant<unsigned, Identifier, boost::recursive_wrapper<Record>, boost::recursive_wrapper<List>, boost::recursive_wrapper<FuncVal>>;
 
 		ObjectT headValue;
 
@@ -1211,6 +1383,7 @@ namespace cgl
 			return str;
 		}
 	};
+#endif
 
 	struct SatFunctionReference
 	{
@@ -1304,7 +1477,9 @@ namespace cgl
 		//using ObjectT = boost::variant<boost::recursive_wrapper<FuncVal>>;
 
 		//ObjectT headValue;
-		std::string funcName;
+
+		//std::string funcName;
+		Address headAddress; //funcName -> headAddress に変更
 
 		std::vector<Ref> references;
 
@@ -1313,8 +1488,11 @@ namespace cgl
 		/*SatFunctionReference(const ObjectT& headValue)
 			:headValue(headValue)
 		{}*/
-		SatFunctionReference(const std::string& name)
+		/*SatFunctionReference(const std::string& name)
 			:funcName(name)
+		{}*/
+		SatFunctionReference(Address address)
+			:headAddress(address)
 		{}
 
 		void appendListRef(int index)
@@ -1337,7 +1515,11 @@ namespace cgl
 		bool operator==(const SatFunctionReference& other)const
 		{
 			//if (!(headValue == other.headValue))
-			if (!(funcName == other.funcName))
+			/*if (!(funcName == other.funcName))
+			{
+				return false;
+			}*/
+			if (!(headAddress == other.headAddress))
 			{
 				return false;
 			}
@@ -1452,14 +1634,17 @@ namespace cgl
 
 	struct Record
 	{
-		std::unordered_map<std::string, Evaluated> values;
+		//std::unordered_map<std::string, Evaluated> values;
+		std::unordered_map<std::string, Address> values;
 		OptimizationProblemSat problem;
 		//std::vector<DeclFree::Ref> freeVariables;
 		std::vector<Accessor> freeVariables;
-		std::vector<ObjectReference> freeVariableRefs;
+		//std::vector<ObjectReference> freeVariableRefs;
+		std::vector<Address> freeVariableRefs;
 
 		Record() = default;
-
+		
+		/*
 		Record(const std::string& name, const Evaluated& value)
 		{
 			append(name, value);
@@ -1499,6 +1684,47 @@ namespace cgl
 			//freeVariables;
 			return true;
 		}
+		*/
+
+		Record(const std::string& name, const Address& address)
+		{
+			append(name, address);
+		}
+
+		Record& append(const std::string& name, const Address& address)
+		{
+			values[name] = address;
+			return *this;
+		}
+
+		bool operator==(const Record& other)const
+		{
+			if (values.size() != other.values.size())
+			{
+				return false;
+			}
+
+			const auto& vs = other.values;
+
+			for (const auto& keyval : values)
+			{
+				const auto otherIt = vs.find(keyval.first);
+				if (otherIt == vs.end())
+				{
+					return false;
+				}
+
+				if (!IsEqualEvaluated(keyval.second, otherIt->second))
+				{
+					return false;
+				}
+			}
+
+			std::cerr << "Warning: IsEqual<Record>() don't care about constraint" << std::endl;
+			//constraint;
+			//freeVariables;
+			return true;
+		}
 	};
 
 	struct ListAccess
@@ -1506,6 +1732,8 @@ namespace cgl
 		Expr index;
 
 		ListAccess() = default;
+
+		ListAccess(const Expr& index) :index(index) {}
 
 		static void SetIndex(ListAccess& listAccess, const Expr& index)
 		{
@@ -1545,14 +1773,14 @@ namespace cgl
 
 		FunctionAccess() = default;
 
-		void append(const Expr& argument)
+		void add(const Expr& argument)
 		{
 			actualArguments.push_back(argument);
 		}
 
 		static void Append(FunctionAccess& obj, const Expr& argument)
 		{
-			obj.append(argument);
+			obj.add(argument);
 		}
 
 		bool operator==(const FunctionAccess& other)const
@@ -1588,6 +1816,12 @@ namespace cgl
 		Accessor(const Expr& head) :
 			head(head)
 		{}
+
+		Accessor& add(const Access& access)
+		{
+			accesses.push_back(access);
+			return *this;
+		}
 
 		static Accessor Make(const Expr& head)
 		{
@@ -1707,12 +1941,88 @@ namespace cgl
 					return false;
 				}
 
-				return IsEqual(lhs.value(), other.lhs.value());
+				return IsEqualEvaluated(lhs.value(), other.lhs.value());
 			}
 			else
 			{
 				return !other.lhs;
 			}
+		}
+	};
+
+	struct RecordInheritor
+	{
+		//using OriginalRecord = boost::variant<Identifier, boost::recursive_wrapper<Record>>;
+		//OriginalRecord original;
+		//OriginalRecordがRecordになるのはあり得なくない？
+		//それよりも関数の返り値がレコードの場合もあるのでoriginalには一般の式を取るべきだと思う
+
+		Expr original;
+		//std::vector<Expr> exprs;
+		RecordConstractor adder;
+
+		RecordInheritor() = default;
+
+		RecordInheritor(const Identifier& original) :
+			original(original)
+		{}
+
+		static RecordInheritor Make(const Identifier& original)
+		{
+			return RecordInheritor(original);
+		}
+
+		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
+		{
+			rec.adder.exprs.push_back(KeyExpr);
+		}
+
+		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
+		{
+			rec.adder.exprs.push_back(expr);
+		}
+
+		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
+		{
+			auto& exprs = rec.adder.exprs;
+			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
+		}
+
+		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
+		{
+			RecordInheritor obj(original);
+			AppendRecord(obj, rec2);
+			return obj;
+		}
+
+		bool operator==(const RecordInheritor& other)const
+		{
+			/*if (IsType<Identifier>(original) && IsType<Identifier>(other.original))
+			{
+				return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
+			}
+			if (IsType<Record>(original) && IsType<Record>(other.original))
+			{
+				return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
+			}*/
+
+			return IsEqual(original, other.original) && adder == other.adder;
+
+			std::cerr << "Error(" << __LINE__ << ")\n";
+			return false;
+		}
+	};
+}
+
+namespace std
+{
+	template <>
+	class hash<cgl::Address>
+	{
+	public:
+		size_t operator()(const cgl::Address& address)const
+		{
+			return hash<size_t>()(static_cast<size_t>(address.valueID));
 		}
 	};
 }

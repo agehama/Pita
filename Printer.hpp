@@ -6,7 +6,6 @@ namespace cgl
 	class ValuePrinter : public boost::static_visitor<void>
 	{
 	public:
-
 		ValuePrinter(int indent = 0, const std::string& header = "") :
 			m_indent(indent),
 			m_header(header)
@@ -43,15 +42,9 @@ namespace cgl
 			std::cout << indent() << "Double(" << node << ")" << std::endl;
 		}
 
-		void operator()(const Identifier& node)const
+		void operator()(Address node)const
 		{
-			std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
-		}
-
-		void operator()(const ObjectReference& node)const
-		{
-			//std::cout << indent() << "ObjectReference(" << node.name << ")" << std::endl;
-			std::cout << indent() << "ObjectReference(" << node.asString() << ")" << std::endl;
+			std::cout << indent() << "Address(" << node.toString() << ")" << std::endl;
 		}
 
 		void operator()(const List& node)const
@@ -63,7 +56,8 @@ namespace cgl
 			{
 				const std::string header = std::string("(") + std::to_string(i) + "): ";
 				const auto child = ValuePrinter(m_indent + 1, header);
-				boost::apply_visitor(child, data[i]);
+				const Evaluated currentData = data[i];
+				boost::apply_visitor(child, currentData);
 			}
 
 			std::cout << indent() << "]" << std::endl;
@@ -71,7 +65,7 @@ namespace cgl
 
 		void operator()(const KeyValue& node)const
 		{
-			const std::string header = node.name.name + ": ";
+			const std::string header = static_cast<std::string>(node.name) + ": ";
 			{
 				const auto child = ValuePrinter(m_indent, header);
 				boost::apply_visitor(child, node.value);
@@ -87,7 +81,8 @@ namespace cgl
 				const std::string header = value.first + ": ";
 
 				const auto child = ValuePrinter(m_indent + 1, header);
-				boost::apply_visitor(child, value.second);
+				const Evaluated evaluated = value.second;
+				boost::apply_visitor(child, evaluated);
 			}
 
 			std::cout << indent() << "}" << std::endl;
@@ -111,16 +106,15 @@ namespace cgl
 		}
 	};
 
-	inline void printEvaluated(const Evaluated& evaluated)
+	inline void printEvaluated(const Evaluated& evaluated, int indent = 0)
 	{
-		ValuePrinter printer;
+		ValuePrinter printer(indent);
 		boost::apply_visitor(printer, evaluated);
 	}
 
 	class PrintSatExpr : public boost::static_visitor<void>
 	{
 	public:
-
 		const std::vector<double>& data;
 
 		PrintSatExpr(const std::vector<double>& data) :
@@ -188,7 +182,6 @@ namespace cgl
 	class Printer : public boost::static_visitor<void>
 	{
 	public:
-
 		Printer(int indent = 0)
 			:m_indent(indent)
 		{}
@@ -206,24 +199,15 @@ namespace cgl
 			return str;
 		}
 
-		auto operator()(bool node)const -> void
+		void operator()(const ValueType& node)const
 		{
-			std::cout << indent() << "Bool(" << node << ")" << std::endl;
+			printEvaluated(node.value, m_indent);
+			//std::cout << indent() << "Double(" << node << ")" << std::endl;
 		}
 
-		auto operator()(int node)const -> void
+		void operator()(const Identifier& node)const
 		{
-			std::cout << indent() << "Int(" << node << ")" << std::endl;
-		}
-
-		auto operator()(double node)const -> void
-		{
-			std::cout << indent() << "Double(" << node << ")" << std::endl;
-		}
-
-		auto operator()(const Identifier& node)const -> void
-		{
-			std::cout << indent() << "Identifier(" << node.name << ")" << std::endl;
+			std::cout << indent() << "Identifier(" << static_cast<std::string>(node) << ")" << std::endl;
 		}
 
 		void operator()(const UnaryExpr& node)const
@@ -243,7 +227,7 @@ namespace cgl
 			std::cout << indent() << ")" << std::endl;
 		}
 
-		auto operator()(const DefFunc& defFunc)const -> void
+		void operator()(const DefFunc& defFunc)const
 		{
 			std::cout << indent() << "DefFunc(" << std::endl;
 
@@ -256,7 +240,7 @@ namespace cgl
 					const auto& args = defFunc.arguments;
 					for (size_t i = 0; i < args.size(); ++i)
 					{
-						std::cout << grandChild.indent() << args[i].name << (i + 1 == args.size() ? "\n" : ",\n");
+						std::cout << grandChild.indent() << static_cast<std::string>(args[i]) << (i + 1 == args.size() ? "\n" : ",\n");
 					}
 				}
 				std::cout << child.indent() << ")" << std::endl;
@@ -267,7 +251,7 @@ namespace cgl
 			std::cout << indent() << ")" << std::endl;
 		}
 
-		auto operator()(const FunctionCaller& callFunc)const -> void
+		void operator()(const FunctionCaller& callFunc)const
 		{
 			std::cout << indent() << "FunctionCaller(" << std::endl;
 
@@ -394,20 +378,13 @@ namespace cgl
 			std::cout << indent() << ")" << std::endl;
 		}
 
-		void operator()(const ListAccess& listAccess)const
-		{
-			std::cout << indent() << "ListAccess(" << std::endl;
-
-			std::cout << indent() << ")" << std::endl;
-		}
-
 		void operator()(const KeyExpr& keyExpr)const
 		{
 			std::cout << indent() << "KeyExpr(" << std::endl;
 
 			const auto child = Printer(m_indent + 1);
 
-			std::cout << child.indent() << keyExpr.name.name << std::endl;
+			std::cout << child.indent() << static_cast<std::string>(keyExpr.name) << std::endl;
 			boost::apply_visitor(Printer(m_indent + 1), keyExpr.expr);
 			std::cout << indent() << ")" << std::endl;
 		}
@@ -434,20 +411,6 @@ namespace cgl
 		void operator()(const Accessor& accessor)const
 		{
 			std::cout << indent() << "Accessor(" << std::endl;
-
-			std::cout << indent() << ")" << std::endl;
-		}
-
-		void operator()(const DeclSat& decl)const
-		{
-			std::cout << indent() << "DeclSat(" << std::endl;
-
-			std::cout << indent() << ")" << std::endl;
-		}
-
-		void operator()(const DeclFree& decl)const
-		{
-			std::cout << indent() << "DeclFree(" << std::endl;
 
 			std::cout << indent() << ")" << std::endl;
 		}
@@ -484,7 +447,7 @@ namespace cgl
 			std::cout << child.indent();
 			for (size_t i = 0; i < node.arguments.size(); ++i)
 			{
-				std::cout << node.arguments[i].name;
+				std::cout << static_cast<std::string>(node.arguments[i]);
 				if (i + 1 != node.arguments.size())
 				{
 					std::cout << ", ";

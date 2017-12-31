@@ -5,6 +5,7 @@
 #include <memory>
 #include <functional>
 #include <string>
+#include <exception>
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -26,18 +27,34 @@
 #pragma comment(lib,"Release/cmaes.lib")
 #endif
 
-inline void Log(std::ostream& os, const std::string& str)
+namespace cgl
 {
-	std::regex regex("\n");
-	os << std::regex_replace(str, regex, "\n        |> ") << "\n";
+	class Exception : public std::exception
+	{
+	public:
+		explicit Exception(const std::string& message) :message(message) {}
+		const char* what() const noexcept override { return message.c_str(); }
+
+	private:
+		std::string message;
+	};
+
+	inline void Log(std::ostream& os, const std::string& str)
+	{
+		std::regex regex("\n");
+		os << std::regex_replace(str, regex, "\n        |> ") << "\n";
+	}
 }
 
-#define FileName (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
-#define FileDesc (std::string(FileName) + "(" + std::to_string(__LINE__) + ") : ")
-#define TagError (std::string("[Error] |> "))
-#define TagLog   (std::string("[Log]   |> "))
-#define ErrorLog(message) (Log(std::cerr, TagError + FileDesc + message))
-#define DebugLog(message) (Log(std::cout, TagLog + FileDesc + message))
+#define CGL_FileName (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ") : ")
+#define CGL_TagError (std::string("[Error]   |> "))
+#define CGL_TagWarn  (std::string("[Warning] |> "))
+#define CGL_TagDebug (std::string("[Debug]   |> "))
+#define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))
+#define CGL_WarnLog(message)  (cgl::Log(std::cerr, CGL_TagWarn  + CGL_FileDesc + message))
+#define CGL_DebugLog(message) (cgl::Log(std::cout, CGL_TagDebug + CGL_FileDesc + message))
+#define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
 
 namespace std
 {
@@ -273,16 +290,16 @@ namespace cgl
 
 	struct Jump;
 
-	/*struct Reference
+	struct Reference
 	{
 		Address address;
-	};*/
+	};
 
 	using Evaluated = boost::variant<
 		bool,
 		int,
 		double,
-		Address,
+		//Address,
 		//Reference,
 		//boost::recursive_wrapper<ObjectReference>,
 		boost::recursive_wrapper<List>,
@@ -294,7 +311,8 @@ namespace cgl
 		boost::recursive_wrapper<DeclFree>
 	>;
 
-	struct ValueType;
+	struct RValue;
+	struct LRValue;
 
 	/*
 	TODO: Expr‚Ì’†‚ÉEvaluated‚ð“ü‚ê‚½‚¢
@@ -346,7 +364,8 @@ namespace cgl
 
 	using Expr = boost::variant<
 		//boost::recursive_wrapper<Evaluated>,
-		boost::recursive_wrapper<ValueType>,
+		//boost::recursive_wrapper<RValue>,
+		boost::recursive_wrapper<LRValue>,
 		Identifier,
 
 		boost::recursive_wrapper<UnaryExpr>,
@@ -376,33 +395,62 @@ namespace cgl
 
 	void printExpr(const Expr& expr);
 
-	struct ValueType
+	struct RValue
 	{
-		ValueType() = default;
-		explicit ValueType(const Evaluated& value) :value(value) {}
+		RValue() = default;
+		explicit RValue(const Evaluated& value) :value(value) {}
 
-		bool operator==(const ValueType& other)const
+		bool operator==(const RValue& other)const
 		{
 			return IsEqualEvaluated(value, other.value);
 		}
 
-		bool operator!=(const ValueType& other)const
+		bool operator!=(const RValue& other)const
 		{
 			return !IsEqualEvaluated(value, other.value);
 		}
 
-		static ValueType Bool(bool a) { return ValueType(a); }
-		static ValueType Int(int a) { return ValueType(a); }
-		static ValueType Double(double a) { return ValueType(a); }
-		static ValueType Sat(const DeclSat& a) { return ValueType(a); }
-		static ValueType Free(const DeclFree& a) { return ValueType(a); }
-		/*static ValueType (int a) { return ValueType(a); }
-		static ValueType Int(int a) { return ValueType(a); }
-		static ValueType Int(int a) { return ValueType(a); }
-		static ValueType Int(int a) { return ValueType(a); }*/
+		static RValue Bool(bool a) { return RValue(a); }
+		static RValue Int(int a) { return RValue(a); }
+		static RValue Double(double a) { return RValue(a); }
+		static RValue Sat(const DeclSat& a) { return RValue(a); }
+		static RValue Free(const DeclFree& a) { return RValue(a); }
+		/*static RValue (int a) { return RValue(a); }
+		static RValue Int(int a) { return RValue(a); }
+		static RValue Int(int a) { return RValue(a); }
+		static RValue Int(int a) { return RValue(a); }*/
 
-		
 		Evaluated value;
+	};
+
+	struct LRValue
+	{
+		LRValue() = default;
+
+		LRValue(const RValue& value) :value(value) {}
+		LRValue(Address value) :value(value) {}
+
+		bool isRValue()const
+		{
+			return IsType<RValue>(value);
+		}
+
+		bool isLValue()const
+		{
+			return !isRValue();
+		}
+
+		Address address()const
+		{
+			return As<Address>(value);
+		}
+
+		const Evaluated& evaluated()const
+		{
+			return As<RValue>(value).value;
+		}
+
+		boost::variant<boost::recursive_wrapper<RValue>, Address> value;
 	};
 
 	//struct ObjectReference;

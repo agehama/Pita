@@ -199,7 +199,7 @@ namespace cgl
 			return str;
 		}
 
-		void operator()(const ValueType& node)const
+		void operator()(const RValue& node)const
 		{
 			printEvaluated(node.value, m_indent);
 			//std::cout << indent() << "Double(" << node << ")" << std::endl;

@@ -11,7 +11,7 @@
 
 namespace cgl
 {
-	SatExpr Expr2SatExpr::operator()(const ValueType& node)
+	SatExpr Expr2SatExpr::operator()(const RValue& node)
 	{
 		const Evaluated& val = node.value;
 		if (IsType<double>(val))
@@ -28,8 +28,7 @@ namespace cgl
 
 			if (!address)
 			{
-				ErrorLog("識別子が定義されていません");
-				return 0.0;
+				CGL_Error("識別子が定義されていません");
 			}
 
 			//free変数にあった場合は制約用の参照値を返す
@@ -40,7 +39,7 @@ namespace cgl
 			//free変数になかった場合は評価した結果を返す
 			else
 			{
-				const Evaluated evaluated = pEnv->expandRef(address);
+				const Evaluated evaluated = pEnv->expand(address);
 				if (IsType<double>(evaluated))
 				{
 					return As<double>(evaluated);
@@ -51,12 +50,11 @@ namespace cgl
 				}
 
 				//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
-				ErrorLog("sat 式中の変数の評価値は int 型もしくは double 型で無ければなりません");
-				return 0.0;
+				CGL_Error("sat 式中の変数の評価値は int 型もしくは double 型で無ければなりません");
 			}
 		}
 
-		ErrorLog("不正な値");
+		CGL_Error("不正な値");
 		return 0;
 	}
 
@@ -116,8 +114,7 @@ namespace cgl
 		Address address = pEnv->findAddress(node);
 		if (!address)
 		{
-			ErrorLog("識別子が定義されていません");
-			return 0.0;
+			CGL_Error("識別子が定義されていません");
 		}
 
 		//free変数にあった場合は制約用の参照値を返す
@@ -128,7 +125,7 @@ namespace cgl
 		//free変数になかった場合は評価した結果を返す
 		else
 		{
-			const Evaluated evaluated = pEnv->expandRef(address);
+			const Evaluated evaluated = pEnv->expand(address);
 			if (IsType<double>(evaluated))
 			{
 				return As<double>(evaluated);
@@ -139,12 +136,14 @@ namespace cgl
 			}
 
 			//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
-			ErrorLog("sat 式中の変数の評価値は int 型もしくは double 型で無ければなりません");
-			return 0.0;
+			CGL_Error("sat 式中の変数の評価値は int 型もしくは double 型で無ければなりません");
 		}
+
+		CGL_Error("ここは通らないはず");
+		return 0.0;
 	}
 
-	inline bool HasFreeVariables::operator()(const ValueType& node)
+	inline bool HasFreeVariables::operator()(const RValue& node)
 	{
 		const Evaluated& val = node.value;
 		if (IsType<double>(val) || IsType<int>(val) || IsType<bool>(val))
@@ -153,8 +152,7 @@ namespace cgl
 		}
 		else if (!IsType<Address>(val))
 		{
-			ErrorLog("不正な値");
-			return false;
+			CGL_Error("不正な値");
 		}
 
 		Address address = As<Address>(val);
@@ -190,8 +188,9 @@ namespace cgl
 		//AccessorとObjectReferenceを比較するにはとりあえず評価すれば行えるがこのEvalは正しいか？
 		Expr expr = node;
 		Eval evaluator(pEnv);
-		const Evaluated evaluated = boost::apply_visitor(evaluator, expr);
+		const LRValue value = boost::apply_visitor(evaluator, expr);
 
+		/*
 		//ここはObjectReferenceのみ考慮すればよい？
 		if (auto refOpt = AsOpt<Address>(evaluated))
 		{
@@ -205,8 +204,24 @@ namespace cgl
 
 			return false;
 		}
-		
-		std::cerr << "Error(" << __LINE__ << "): invalid expression\n";
+		*/
+		if (value.isLValue())
+		{
+			const Address address = value.address();
+
+			for (const auto& freeVal : freeVariables)
+			{
+				if (address == freeVal)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		//std::cerr << "Error(" << __LINE__ << "): invalid expression\n";
+		CGL_Error("invalid expression");
 		return false;
 	}
 
@@ -228,7 +243,7 @@ namespace cgl
 
 			if (auto listOpt = AsOpt<ListAccess>(access))
 			{
-				Evaluated value = boost::apply_visitor(evaluator, listOpt.value().index);
+				Evaluated value = pEnv->expand(boost::apply_visitor(evaluator, listOpt.value().index));
 
 				if (auto indexOpt = AsOpt<int>(value))
 				{
@@ -237,8 +252,9 @@ namespace cgl
 				else
 				{
 					//エラー：list[index] の index が int 型でない
-					std::cerr << "Error(" << __LINE__ << ")\n";
-					return boost::none;
+					//std::cerr << "Error(" << __LINE__ << ")\n";
+					//return boost::none;
+					CGL_Error("list[index] の index が int 型でない");
 				}
 				/*
 				現在は以下のような制約の書き方は許していない。
@@ -306,12 +322,8 @@ namespace cgl
 			//ObjectReference result;
 			Address address;
 
+			/*
 			Evaluated headValue = boost::apply_visitor(evaluator, node.head);
-			/*if (auto opt = AsOpt<Identifier>(headValue))
-			{
-				address = pEnv->findAddress(opt.value());
-			}
-			else */
 			if (auto opt = AsOpt<Address>(headValue))
 			{
 				address = opt.value();
@@ -334,17 +346,44 @@ namespace cgl
 				std::cerr << "Error(" << __LINE__ << ")\n";
 				return 0;
 			}
+			*/
+
+			LRValue headValue = boost::apply_visitor(evaluator, node.head);
+			if (headValue.isLValue())
+			{
+				address = headValue.address();
+			}
+			else
+			{
+				Evaluated head = headValue.evaluated();
+				if (auto opt = AsOpt<Record>(head))
+				{
+					address = pEnv->makeTemporaryValue(opt.value());
+				}
+				else if (auto opt = AsOpt<List>(head))
+				{
+					address = pEnv->makeTemporaryValue(opt.value());
+				}
+				else if (auto opt = AsOpt<FuncVal>(head))
+				{
+					address = pEnv->makeTemporaryValue(opt.value());
+				}
+				else
+				{
+					CGL_Error("識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応");
+				}
+			}
 
 			//for (const auto& access : node.accesses)
 			for (size_t i = 0; i < node.accesses.size(); ++i)
 			{
 				const auto& access = node.accesses[i];
 
-				boost::optional<const Evaluated&> objOpt = pEnv->dereference(address);
+				//boost::optional<const Evaluated&> objOpt = pEnv->dereference(address);
+				boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(address);
 				if (!objOpt)
 				{
-					ErrorLog("参照エラー");
-					return 0;
+					CGL_Error("アドレス値が不正");
 				}
 
 				const Evaluated& objRef = objOpt.value();
@@ -353,11 +392,10 @@ namespace cgl
 				{
 					if (!IsType<List>(objRef))
 					{
-						ErrorLog("オブジェクトがリストでない");
-						return 0;
+						CGL_Error("オブジェクトがリストでない");
 					}
 
-					Evaluated value = boost::apply_visitor(evaluator, listAccessOpt.value().index);
+					Evaluated value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
 
 					const List& list = As<const List&>(objRef);
 
@@ -365,7 +403,7 @@ namespace cgl
 					{
 						address = list.get(indexOpt.value());
 					}
-					else if (auto indexOpt = AsOpt<Address>(value))
+					/*else if (auto indexOpt = AsOpt<Address>(value))
 					{
 						const Evaluated indexValue = pEnv->expandRef(indexOpt.value());
 
@@ -375,30 +413,26 @@ namespace cgl
 						}
 						else
 						{
-							ErrorLog("list[index] の index が int 型でない");
-							return 0;
+							CGL_Error("list[index] の index が int 型でない");
 						}
-					}
+					}*/
 					else
 					{
-						ErrorLog("list[index] の index が int 型でない");
-						return 0;
+						CGL_Error("list[index] の index が int 型でない");
 					}
 				}
 				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
 				{
 					if (!IsType<Record>(objRef))
 					{
-						ErrorLog("オブジェクトがリストでない");
-						return 0;
+						CGL_Error("オブジェクトがリストでない");
 					}
 
 					const Record& record = As<const Record&>(objRef);
 					auto it = record.values.find(recordAccessOpt.value().name);
 					if (it == record.values.end())
 					{
-						ErrorLog("指定された識別子がレコード中に存在しない");
-						return 0;
+						CGL_Error("指定された識別子がレコード中に存在しない");
 					}
 
 					address = it->second;
@@ -407,8 +441,7 @@ namespace cgl
 				{
 					if (!IsType<FuncVal>(objRef))
 					{
-						ErrorLog("オブジェクトが関数でない");
-						return 0;
+						CGL_Error("オブジェクトが関数でない");
 					}
 					const FuncVal& function = As<const FuncVal&>(objRef);
 
@@ -455,20 +488,19 @@ namespace cgl
 							return satFuncOpt.value();
 						}
 
-						std::cerr << "Error(" << __LINE__ << "):Invalid FunctionAccess\n";
-						return 0;
+						CGL_Error("Invalid FunctionAccess");
 					}
 					else
 					{
 						std::vector<Evaluated> args;
 						for (const auto& expr : funcAccess.actualArguments)
 						{
-							args.push_back(boost::apply_visitor(evaluator, expr));
+							args.push_back(pEnv->expand(boost::apply_visitor(evaluator, expr)));
 						}
 
 						Expr caller = FunctionCaller(function, args);
 
-						const Evaluated returnedValue = boost::apply_visitor(evaluator, caller);
+						const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
 						address = pEnv->makeTemporaryValue(returnedValue);
 
 						//result.appendFunctionRef(std::move(args));
@@ -476,13 +508,15 @@ namespace cgl
 				}
 			}
 
-			std::cerr << "Error(" << __LINE__ << "):Invalid Access\n";
-			return 0;
+			//std::cerr << "Error(" << __LINE__ << "):Invalid Access\n";
+			//return 0;
+			CGL_Error("Invalid Access");
 		}
 		else
 		{
 			Expr expr = node;
 			Eval evaluator(pEnv);
+			/*
 			const Evaluated refVal = boost::apply_visitor(evaluator, expr);
 
 			if (!IsType<Address>(refVal))
@@ -496,6 +530,19 @@ namespace cgl
 			{
 				ErrorLog("アドレスが無効");
 				return 0;
+			}
+			*/
+
+			Address address;
+
+			const LRValue refVal = boost::apply_visitor(evaluator, expr);
+			if (refVal.isLValue())
+			{
+				address = refVal.address();
+			}
+			else
+			{
+				CGL_Error("アクセッサの評価結果がアドレスでない");
 			}
 
 			//const ObjectReference& currentRefVal = As<ObjectReference>(refVal);
@@ -518,14 +565,16 @@ namespace cgl
 						satRefs[i] = satRef;
 
 						refs.push_back(address);
-						std::cout << "NewRef(" << satRef.refID << ")\n";
+						//std::cout << "NewRef(" << satRef.refID << ")\n";
+						CGL_DebugLog("NewRef(" + std::to_string(satRef.refID) + ")");
 						return satRef;
 					}
 				}
 			}
 
 			//freeVariablesに存在しなかった場合は、即座に評価してよい（定数式の畳み込み）
-			const Evaluated evaluated = pEnv->expandRef(address);
+			//const Evaluated evaluated = pEnv->expandRef(address);
+			const Evaluated evaluated = pEnv->expand(address);
 
 			if (IsType<double>(evaluated))
 			{
@@ -537,9 +586,10 @@ namespace cgl
 			}
 
 			//int/doubleじゃない場合はとりあえずエラー。boolは有り得る？
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return 0;
+			CGL_Error("int/doubleじゃない場合はとりあえずエラー。boolは有り得る？");
 		}
+
+		return 0.0;
 	}
 
 	/*
@@ -1045,18 +1095,27 @@ namespace cgl
 			Eval evaluator(sharedThis);
 
 			const Expr accessor = access;
+			/*
 			const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
 
 			if (!IsType<Address>(refVal))
 			{
-				ErrorLog("a");
-				return Address::Null();
+				CGL_Error("a");
 			}
 
 			return As<Address>(refVal);
+			*/
+
+			const LRValue refVal = boost::apply_visitor(evaluator, accessor);
+			if (refVal.isLValue())
+			{
+				return refVal.address();
+			}
+
+			CGL_Error("アクセッサの評価結果がアドレス値でない");
 		}
 
-		ErrorLog("shared this does not exist.");
+		CGL_Error("shared this does not exist.");
 		return Address::Null();
 	}
 
@@ -1362,7 +1421,8 @@ namespace cgl
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const Evaluated val = pEnv->expandRef(refs[i]);
+			//const Evaluated val = pEnv->expandRef(refs[i]);
+			const Evaluated val = pEnv->expand(refs[i]);
 			if (auto opt = AsOpt<double>(val))
 			{
 				std::cout << "    " << i << " : " << opt.value() << std::endl;
@@ -1376,8 +1436,9 @@ namespace cgl
 			else
 			{
 				//存在しない参照をsatに指定した
-				std::cerr << "Error(" << __LINE__ << "): reference does not exist.\n";
-				return false;
+				/*std::cerr << "Error(" << __LINE__ << "): reference does not exist.\n";
+				return false;*/
+				CGL_Error("存在しない参照をsatに指定した");
 			}
 		}
 
@@ -1692,14 +1753,14 @@ namespace cgl
 			//	| id[_val = _1];
 			
 			factor = /*double_[_val = _1]
-					 | */int_[_val = Call(ValueType::Int, _1)]
-				| lit("true")[_val = Call(ValueType::Bool, true)]
-				| lit("false")[_val = Call(ValueType::Bool, false)]
+					 | */int_[_val = Call(RValue::Int, _1)]
+				| lit("true")[_val = Call(RValue::Bool, true)]
+				| lit("false")[_val = Call(RValue::Bool, false)]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| constraints[_val = Call(ValueType::Sat, _1)]
-				| freeVals[_val = Call(ValueType::Free, _1)]
+				| constraints[_val = Call(RValue::Sat, _1)]
+				| freeVals[_val = Call(RValue::Free, _1)]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
@@ -1784,7 +1845,7 @@ namespace cgl
 		{
 			if (auto exprOpt = parse(program))
 			{
-				return boost::apply_visitor(evaluator, exprOpt.value());
+				return pEnv->expand(boost::apply_visitor(evaluator, exprOpt.value()));
 			}
 
 			return boost::none;
@@ -1805,7 +1866,7 @@ namespace cgl
 				std::shared_ptr<Environment> pEnv2 = Environment::Make();
 				Eval evaluator2(pEnv2);
 
-				const Evaluated answer = boost::apply_visitor(evaluator2, expr);
+				const Evaluated answer = pEnv->expand(boost::apply_visitor(evaluator2, expr));
 
 				return IsEqualEvaluated(result.value(), answer);
 			}

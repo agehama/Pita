@@ -8,59 +8,59 @@
 
 namespace cgl
 {
-	class Eval : public boost::static_visitor<Evaluated>
+	class Eval : public boost::static_visitor<LRValue>
 	{
 	public:
 
 		Eval(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
 
-		Evaluated operator()(const ValueType& node) { return node.value; }
+		LRValue operator()(const RValue& node) { return node; }
 
-		Evaluated operator()(const Identifier& node)
+		LRValue operator()(const Identifier& node)
 		{
 			//この時点では変数の宣言か参照かわからないので、エラー検出はしない
 			//TODO: 変数宣言の場合は、どこかで名前とアドレスの対応付けを行う必要がある（どこで？）
 			return pEnv->findAddress(node);
 		}
 
-		Evaluated operator()(const UnaryExpr& node)
+		LRValue operator()(const UnaryExpr& node)
 		{
-			const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
+			const Evaluated lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs));
 
 			switch (node.op)
 			{
-			case UnaryOp::Not:   return Not(lhs, *pEnv);
-			case UnaryOp::Minus: return Minus(lhs, *pEnv);
-			case UnaryOp::Plus:  return Plus(lhs, *pEnv);
+			case UnaryOp::Not:   return RValue(Not(lhs, *pEnv));
+			case UnaryOp::Minus: return RValue(Minus(lhs, *pEnv));
+			case UnaryOp::Plus:  return RValue(Plus(lhs, *pEnv));
 			}
 
-			ErrorLog("Invalid UnaryExpr");
-			return 0;
+			CGL_Error("Invalid UnaryExpr");
+			return RValue(0);
 		}
 
-		Evaluated operator()(const BinaryExpr& node)
+		LRValue operator()(const BinaryExpr& node)
 		{
-			const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
-			const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
+			const Evaluated lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs));
+			const Evaluated rhs = pEnv->expand(boost::apply_visitor(*this, node.rhs));
 
 			switch (node.op)
 			{
-			case BinaryOp::And: return And(lhs, rhs, *pEnv);
-			case BinaryOp::Or:  return Or(lhs, rhs, *pEnv);
+			case BinaryOp::And: return RValue(And(lhs, rhs, *pEnv));
+			case BinaryOp::Or:  return RValue(Or(lhs, rhs, *pEnv));
 
-			case BinaryOp::Equal:        return Equal(lhs, rhs, *pEnv);
-			case BinaryOp::NotEqual:     return NotEqual(lhs, rhs, *pEnv);
-			case BinaryOp::LessThan:     return LessThan(lhs, rhs, *pEnv);
-			case BinaryOp::LessEqual:    return LessEqual(lhs, rhs, *pEnv);
-			case BinaryOp::GreaterThan:  return GreaterThan(lhs, rhs, *pEnv);
-			case BinaryOp::GreaterEqual: return GreaterEqual(lhs, rhs, *pEnv);
+			case BinaryOp::Equal:        return RValue(Equal(lhs, rhs, *pEnv));
+			case BinaryOp::NotEqual:     return RValue(NotEqual(lhs, rhs, *pEnv));
+			case BinaryOp::LessThan:     return RValue(LessThan(lhs, rhs, *pEnv));
+			case BinaryOp::LessEqual:    return RValue(LessEqual(lhs, rhs, *pEnv));
+			case BinaryOp::GreaterThan:  return RValue(GreaterThan(lhs, rhs, *pEnv));
+			case BinaryOp::GreaterEqual: return RValue(GreaterEqual(lhs, rhs, *pEnv));
 
-			case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
-			case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
-			case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+			case BinaryOp::Add: return RValue(Add(lhs, rhs, *pEnv));
+			case BinaryOp::Sub: return RValue(Sub(lhs, rhs, *pEnv));
+			case BinaryOp::Mul: return RValue(Mul(lhs, rhs, *pEnv));
+			case BinaryOp::Div: return RValue(Div(lhs, rhs, *pEnv));
 
-			case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
+			case BinaryOp::Pow:    return RValue(Pow(lhs, rhs, *pEnv));
 			case BinaryOp::Assign:
 			{
 				//return Assign(lhs, rhs, *pEnv);
@@ -69,9 +69,26 @@ namespace cgl
 				//つまり現時点では、(if cond then x else y) = true のような式を許可していない
 				//ここで左辺に直接アドレスが入っていることは有り得る？
 				//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
-				if (auto valOpt = AsOpt<ValueType>(node.lhs))
+				if (auto valOpt = AsOpt<LRValue>(node.lhs))
 				{
-					const ValueType& val = valOpt.value();
+					const LRValue& val = valOpt.value();
+					if (val.isLValue())
+					{
+						if (val.address())
+						{
+							pEnv->assignToObject(val.address(), rhs);
+						}
+						else
+						{
+							CGL_Error("reference error");
+						}
+					}
+					else
+					{
+						CGL_Error("");
+					}
+
+					/*const RValue& val = valOpt.value();
 					if (IsType<Address>(val.value))
 					{
 						if (Address address = As<Address>(val.value))
@@ -80,15 +97,15 @@ namespace cgl
 						}
 						else
 						{
-							ErrorLog("Invalid address");
+							CGL_Error("Invalid address");
 							return 0;
 						}
 					}
 					else
 					{
-						ErrorLog("");
+						CGL_Error("");
 						return 0;
-					}
+					}*/
 				}
 				else if (auto valOpt = AsOpt<Identifier>(node.lhs))
 				{
@@ -105,7 +122,7 @@ namespace cgl
 						pEnv->bindNewValue(identifier, rhs);
 					}
 
-					return rhs;
+					return RValue(rhs);
 				}
 				else if (auto valOpt = AsOpt<Accessor>(node.lhs))
 				{
@@ -114,18 +131,16 @@ namespace cgl
 						if (Address address = addressOpt.value())
 						{
 							pEnv->assignToObject(address, rhs);
-							return rhs;
+							return RValue(rhs);
 						}
 						else
 						{
-							ErrorLog("参照エラー");
-							return 0;
+							CGL_Error("参照エラー");
 						}
 					}
 					else
 					{
-						ErrorLog("アクセッサの評価結果がアドレスでない");
-						return 0;
+						CGL_Error("アクセッサの評価結果がアドレスでない");
 					}
 
 					//アクセッサの場合は少なくとも変数宣言ではない
@@ -142,11 +157,11 @@ namespace cgl
 			}
 			}
 
-			ErrorLog("Invalid BinaryExpr");
-			return 0;
+			CGL_Error("Invalid BinaryExpr");
+			return RValue(0);
 		}
 
-		Evaluated operator()(const DefFunc& defFunc)
+		LRValue operator()(const DefFunc& defFunc)
 		{
 			//auto val = FuncVal(globalVariables, defFunc.arguments, defFunc.expr);
 			//auto val = FuncVal(pEnv, defFunc.arguments, defFunc.expr);
@@ -158,13 +173,11 @@ namespace cgl
 			return pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr);
 		}
 
-		Evaluated operator()(const FunctionCaller& callFunc)
+		LRValue operator()(const FunctionCaller& callFunc)
 		{
 			//std::shared_ptr<Environment> buckUp = pEnv;
 
-			std::cout << "CALLFUNC_A" << std::endl;
-
-			std::cout << "Function Environment:\n";
+			CGL_DebugLog("Function Environment:");
 			pEnv->printEnvironment();
 
 			FuncVal funcVal;
@@ -184,18 +197,14 @@ namespace cgl
 					{
 						funcVal = As<FuncVal>(funcOpt.value());
 					}
-					else //指定された変数名に紐つけられた値が関数でない
+					else
 					{
-						ErrorLog("指定された変数名に紐つけられた値が関数でない");
-						//std::cerr << "Error(" << __LINE__ << "): variable \"";
-						return 0;
+						CGL_Error("指定された変数名に紐つけられた値が関数でない");
 					}
 				}
-				else //指定された変数名に値が紐つけられていない
+				else
 				{
-					ErrorLog("指定された変数名に値が紐つけられていない");
-					//std::cerr << "Error(" << __LINE__ << "): variable \"";
-					return 0;
+					CGL_Error("指定された変数名に値が紐つけられていない");
 				}
 
 				/*if (IsType<FuncVal>(funcRef))
@@ -209,13 +218,12 @@ namespace cgl
 				}*/
 			}
 
-			std::cout << "CALLFUNC_B" << std::endl;
+			CGL_DebugLog("");
 
 			//assert(funcVal.arguments.size() == callFunc.actualArguments.size());
 			if (funcVal.arguments.size() != callFunc.actualArguments.size())
 			{
-				ErrorLog("仮引数の数と実引数の数が合っていない");
-				return 0;
+				CGL_Error("仮引数の数と実引数の数が合っていない");
 			}
 
 			/*
@@ -245,7 +253,7 @@ namespace cgl
 				//expandedArguments[i] = pEnv->makeTemporaryValue(boost::apply_visitor(elim, callFunc.actualArguments[i]));
 			}
 
-			std::cout << "CALLFUNC_C" << std::endl;
+			CGL_DebugLog("");
 
 			//関数の評価
 			//(1)ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える
@@ -257,12 +265,12 @@ namespace cgl
 			//TODO: これは、意味論的に正しいのか一度考える必要がある
 			//とりあえず関数がスコープに依存することはなくなったので、単純に別のスコープに切り替えるだけで良い
 
-			std::cout << "CALLFUNC_D" << std::endl;
+			CGL_DebugLog("");
 
 			//(2)関数の引数用にスコープを一つ追加する
 			pEnv->enterScope();
 
-			std::cout << "CALLFUNC_E" << std::endl;
+			CGL_DebugLog("");
 
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
@@ -278,37 +286,35 @@ namespace cgl
 				pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
 			}
 
-			std::cout << "CALLFUNC_F" << std::endl;
-
-			std::cout << "Function Definition:\n";
+			CGL_DebugLog("Function Definition:");
 			boost::apply_visitor(Printer(), funcVal.expr);
 
 			//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
 			//Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
 			Evaluated result;
 			{
-				const Evaluated resultValue = boost::apply_visitor(*this, funcVal.expr);
+				const Evaluated resultValue = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
 				/*
 				EliminateScopeDependency elim(pEnv);
 				result = pEnv->makeTemporaryValue(boost::apply_visitor(elim, resultValue));
 				*/
 				result = pEnv->expandRef(pEnv->makeTemporaryValue(resultValue));
-				std::cout << "Function Evaluated:\n";
+				CGL_DebugLog("Function Evaluated:");
 				printEvaluated(result);
 			}
 			//Evaluated result = pEnv->expandObject();
 
-			std::cout << "CALLFUNC_G" << std::endl;
+			CGL_DebugLog("");
 
 			//(4)関数を抜ける時に、仮引数は全て解放される
 			pEnv->exitScope();
 
-			std::cout << "CALLFUNC_H" << std::endl;
+			CGL_DebugLog("");
 
 			//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
 			pEnv->switchBackScope();
 
-			std::cout << "CALLFUNC_I" << std::endl;
+			CGL_DebugLog("");
 			/*
 			//関数の評価
 			//(1)ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える
@@ -351,26 +357,24 @@ namespace cgl
 				{
 					if (jump.lhs)
 					{
-						return jump.lhs.value();
+						return RValue(jump.lhs.value());
 					}
 					else
 					{
-						//std::cerr << "Error(" << __LINE__ << ")\n";
-						ErrorLog("return式の中身が入って無い");
-						return 0;
+						CGL_Error("return式の中身が入って無い");
 					}
 				}
 			}
 
-			return result;
+			return RValue(result);
 		}
 
-		Evaluated operator()(const Range& range)
+		LRValue operator()(const Range& range)
 		{
-			return 0;
+			return RValue(0);
 		}
 
-		Evaluated operator()(const Lines& statement)
+		LRValue operator()(const Lines& statement)
 		{
 			pEnv->enterScope();
 
@@ -378,14 +382,17 @@ namespace cgl
 			int i = 0;
 			for (const auto& expr : statement.exprs)
 			{
-				std::cout << "Evaluate expression(" << i << ")" << std::endl;
+				//std::cout << "Evaluate expression(" << i << ")" << std::endl;
+				CGL_DebugLog("Evaluate expression(" + std::to_string(i) + ")");
 				pEnv->printEnvironment();
 
-				std::cout << "LINES_A Expr:" << std::endl;
+				//std::cout << "LINES_A Expr:" << std::endl;
 				//printExpr(expr);
-				result = boost::apply_visitor(*this, expr);
+				CGL_DebugLog("");
+				result = pEnv->expand(boost::apply_visitor(*this, expr));
 
-				std::cout << "LINES_B" << std::endl;
+				//std::cout << "LINES_B" << std::endl;
+				CGL_DebugLog("");
 
 				//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
 				if (IsLValue(result))
@@ -399,20 +406,24 @@ namespace cgl
 					}
 				}
 
-				std::cout << "LINES_C" << std::endl;
+				//std::cout << "LINES_C" << std::endl;
+				CGL_DebugLog("");
 				//途中でジャンプ命令を読んだら即座に評価を終了する
 				if (IsType<Jump>(result))
 				{
-					std::cout << "LINES_D" << std::endl;
+					//std::cout << "LINES_D" << std::endl;
+					CGL_DebugLog("");
 					break;
 				}
 
-				std::cout << "LINES_D" << std::endl;
+				//std::cout << "LINES_D" << std::endl;
+				CGL_DebugLog("");
 
 				++i;
 			}
 
-			std::cout << "LINES_E" << std::endl;
+			//std::cout << "LINES_E" << std::endl;
+			CGL_DebugLog("");
 
 			//この後すぐ解放されるので dereference しておく
 			bool deref = true;
@@ -436,48 +447,52 @@ namespace cgl
 			if (auto refOpt = AsOpt<Address>(result))
 			{
 				//result = pEnv->dereference(refOpt.value());
-				result = pEnv->expandRef(refOpt.value());
+				//result = pEnv->expandRef(refOpt.value());
+				result = pEnv->expand(refOpt.value());
 			}
 
-			std::cout << "LINES_G" << std::endl;
+			//std::cout << "LINES_G" << std::endl;
+			CGL_DebugLog("");
 
 			pEnv->exitScope();
 
-			std::cout << "LINES_H" << std::endl;
-			return result;
+			//std::cout << "LINES_H" << std::endl;
+			CGL_DebugLog("");
+			return RValue(result);
 		}
 
-		Evaluated operator()(const If& if_statement)
+		LRValue operator()(const If& if_statement)
 		{
-			const Evaluated cond = boost::apply_visitor(*this, if_statement.cond_expr);
+			const Evaluated cond = pEnv->expand(boost::apply_visitor(*this, if_statement.cond_expr));
 			if (!IsType<bool>(cond))
 			{
 				//条件は必ずブール値である必要がある
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
+				//std::cerr << "Error(" << __LINE__ << ")\n";
+				CGL_Error("条件は必ずブール値である必要がある");
 			}
 
 			if (As<bool>(cond))
 			{
-				const Evaluated result = boost::apply_visitor(*this, if_statement.then_expr);
-				return result;
+				const Evaluated result = pEnv->expand(boost::apply_visitor(*this, if_statement.then_expr));
+				return RValue(result);
 
 			}
 			else if (if_statement.else_expr)
 			{
-				const Evaluated result = boost::apply_visitor(*this, if_statement.else_expr.value());
-				return result;
+				const Evaluated result = pEnv->expand(boost::apply_visitor(*this, if_statement.else_expr.value()));
+				return RValue(result);
 			}
 
 			//else式が無いケースで cond = False であったら一応警告を出す
-			std::cerr << "Warning(" << __LINE__ << ")\n";
-			return 0;
+			//std::cerr << "Warning(" << __LINE__ << ")\n";
+			CGL_WarnLog("else式が無いケースで cond = False であった");
+			return RValue(0);
 		}
 
-		Evaluated operator()(const For& forExpression)
+		LRValue operator()(const For& forExpression)
 		{
-			const Evaluated startVal = pEnv->expandRef(boost::apply_visitor(*this, forExpression.rangeStart));
-			const Evaluated endVal = pEnv->expandRef(boost::apply_visitor(*this, forExpression.rangeEnd));
+			const Evaluated startVal = pEnv->expand(pEnv->expandRef(boost::apply_visitor(*this, forExpression.rangeStart)));
+			const Evaluated endVal = pEnv->expand(pEnv->expandRef(boost::apply_visitor(*this, forExpression.rangeEnd)));
 
 			//startVal <= endVal なら 1
 			//startVal > endVal なら -1
@@ -493,8 +508,9 @@ namespace cgl
 				if (!((a_IsInt || a_IsDouble) && (b_IsInt || b_IsDouble)))
 				{
 					//エラー：ループのレンジが不正な型（整数か実数に評価できる必要がある）
-					std::cerr << "Error(" << __LINE__ << ")\n";
-					return boost::none;
+					//std::cerr << "Error(" << __LINE__ << ")\n";
+					//return boost::none;
+					CGL_Error("ループのレンジが不正な型（整数か実数に評価できる必要がある）");
 				}
 
 				const bool result_IsDouble = a_IsDouble || b_IsDouble;
@@ -504,8 +520,9 @@ namespace cgl
 					//エラー：aとbの比較に失敗した
 					//一応確かめているだけでここを通ることはないはず
 					//LessEqualの実装ミス？
-					std::cerr << "Error(" << __LINE__ << ")\n";
-					return boost::none;
+					//std::cerr << "Error(" << __LINE__ << ")\n";
+					//return boost::none;
+					CGL_Error("LessEqualの実装ミス？");
 				}
 
 				const bool isInOrder = As<bool>(lessEq);
@@ -517,10 +534,13 @@ namespace cgl
 					/*const Evaluated xx = Mul(1.0, sign, *pEnv);
 					return std::pair<Evaluated, bool>(xx, isInOrder);*/
 
-					const Evaluated xx = Mul(1.0, sign, *pEnv);
 					//std::pair<Evaluated, bool> xa(Mul(1.0, sign, *pEnv), isInOrder);
+
+					/*const Evaluated xx = Mul(1.0, sign, *pEnv);
 					std::pair<Evaluated, bool> xa(xx, isInOrder);
-					return boost::optional<std::pair<Evaluated, bool>>(xa);
+					return boost::optional<std::pair<Evaluated, bool>>(xa);*/
+
+					return boost::optional<std::pair<Evaluated, bool>>(Mul(1.0, sign, *pEnv), isInOrder);
 				}
 
 				return std::pair<Evaluated, bool>(Mul(1, sign, *pEnv), isInOrder);
@@ -538,8 +558,9 @@ namespace cgl
 				if (!IsType<bool>(result))
 				{
 					//ここを通ることはないはず
-					std::cerr << "Error(" << __LINE__ << ")\n";
-					return boost::none;
+					//std::cerr << "Error(" << __LINE__ << ")\n";
+					//return boost::none;
+					CGL_Error("ここを通ることはないはず");
 				}
 
 				return As<bool>(result) == isInOrder;
@@ -549,8 +570,9 @@ namespace cgl
 			if (!stepOrder)
 			{
 				//エラー：ループのレンジが不正
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
+				//std::cerr << "Error(" << __LINE__ << ")\n";
+				//return 0;
+				CGL_Error("ループのレンジが不正");
 			}
 
 			const Evaluated step = stepOrder.value().first;
@@ -569,8 +591,9 @@ namespace cgl
 				if (!isLoopContinuesOpt)
 				{
 					//エラー：ここを通ることはないはず
-					std::cerr << "Error(" << __LINE__ << ")\n";
-					return 0;
+					//std::cerr << "Error(" << __LINE__ << ")\n";
+					//return 0;
+					CGL_Error("ここを通ることはないはず");
 				}
 
 				//ループの継続条件を満たさなかったので抜ける
@@ -590,37 +613,37 @@ namespace cgl
 			//pEnv->pop();
 			pEnv->exitScope();
 
-			return loopResult;
+			return RValue(loopResult);
 		}
 
-		Evaluated operator()(const Return& return_statement)
+		LRValue operator()(const Return& return_statement)
 		{
-			const Evaluated lhs = boost::apply_visitor(*this, return_statement.expr);
+			const Evaluated lhs = pEnv->expand(boost::apply_visitor(*this, return_statement.expr));
 
-			return Jump::MakeReturn(lhs);
+			return RValue(Jump::MakeReturn(lhs));
 		}
 
-		Evaluated operator()(const ListConstractor& listConstractor)
+		LRValue operator()(const ListConstractor& listConstractor)
 		{
 			List list;
 			for (const auto& expr : listConstractor.data)
 			{
-				const Evaluated value = boost::apply_visitor(*this, expr);
+				const Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 
 				list.append(pEnv->makeTemporaryValue(value));
 			}
 
-			return list;
+			return RValue(list);
 		}
 
-		Evaluated operator()(const KeyExpr& keyExpr)
+		LRValue operator()(const KeyExpr& keyExpr)
 		{
-			const Evaluated value = boost::apply_visitor(*this, keyExpr.expr);
+			const Evaluated value = pEnv->expand(boost::apply_visitor(*this, keyExpr.expr));
 
-			return KeyValue(keyExpr.name, value);
+			return RValue(KeyValue(keyExpr.name, value));
 		}
 
-		Evaluated operator()(const RecordConstractor& recordConsractor)
+		LRValue operator()(const RecordConstractor& recordConsractor)
 		{
 			//pEnv->pushRecord();
 
@@ -641,7 +664,7 @@ namespace cgl
 			for (const auto& expr : recordConsractor.exprs)
 			{
 				//std::cout << "Evaluate expression(" << i << ")" << std::endl;
-				Evaluated value = boost::apply_visitor(*this, expr);
+				Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 
 				//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
 				if (auto keyValOpt = AsOpt<KeyValue>(value))
@@ -650,13 +673,12 @@ namespace cgl
 					keyList.push_back(keyVal.name);
 
 					//Assign(keyVal.name, keyVal.value, *pEnv);
-					
 
 					//識別子はEvaluatedからはずしたので、識別子に対して直接代入を行うことはできなくなった
 					//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 
 					//したがって、一度代入式を作ってからそれを評価する
-					Expr exprVal = ValueType(keyVal.value);
+					Expr exprVal = RValue(keyVal.value);
 					Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
 					boost::apply_visitor(*this, expr);
 
@@ -697,6 +719,9 @@ namespace cgl
 					}
 				}
 
+				//valueは今は右辺値のみになっている
+				//TODO: もう一度考察する
+				/*
 				//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
 				if (IsLValue(value))
 				{
@@ -713,17 +738,13 @@ namespace cgl
 				{
 					break;
 				}
+				*/
 
 				++i;
 			}
 
-
-			std::cout << "RECORD_C" << std::endl;
-			//制約の解決を行ってからまとめて代入する
-			/*for (const auto& key : keyList)
-			{
-			record.append(key.name, pEnv->dereference(key));
-			}*/
+			//std::cout << "RECORD_C" << std::endl;
+			CGL_DebugLog("");
 
 			std::vector<double> resultxs;
 			if (record.problem.candidateExpr)
@@ -749,7 +770,8 @@ namespace cgl
 						else
 						{
 							//std::cerr << "Error(" << __LINE__ << "): accessor was not reference.\n";
-							ErrorLog("accessor refers null address");
+							//ErrorLog("accessor refers null address");
+							CGL_Error("accessor refers null address");
 						}
 					}
 
@@ -811,6 +833,7 @@ namespace cgl
 					//単に無視しても良いが、恐らく入力のミスなので一応エラーを返す。
 					if (!found)
 					{
+						ここから
 						std::cerr << "Error(" << __LINE__ << "):freeに指定された変数が無効です。\n";
 						return 0;
 					}
@@ -875,7 +898,7 @@ namespace cgl
 			return record;
 		}
 
-		Evaluated operator()(const RecordInheritor& record)
+		LRValue operator()(const RecordInheritor& record)
 		{
 			boost::optional<Record> recordOpt;
 
@@ -979,7 +1002,7 @@ namespace cgl
 			return 0;
 		}
 
-		Evaluated operator()(const Accessor& accessor)
+		LRValue operator()(const Accessor& accessor)
 		{
 			/*
 			ObjectReference result;
@@ -1330,7 +1353,7 @@ namespace cgl
 			return node;
 		}*/
 
-		SatExpr operator()(const ValueType& node);
+		SatExpr operator()(const RValue& node);
 
 		SatExpr operator()(const Identifier& node);
 
@@ -1514,7 +1537,7 @@ namespace cgl
 
 		bool operator()(double node) { return false; }*/
 
-		bool operator()(const ValueType& node);
+		bool operator()(const RValue& node);
 
 		bool operator()(const Identifier& node);
 
@@ -1784,7 +1807,7 @@ namespace cgl
 			return localVariables.find(name) != localVariables.end();
 		}
 
-		Expr operator()(const ValueType& node)
+		Expr operator()(const RValue& node)
 		{
 			Expr expr = node;
 			return expr;
@@ -1800,7 +1823,7 @@ namespace cgl
 			//ローカル変数に無ければアドレスに置き換える
 			else if (Address address = pEnv->findAddress(node))
 			{
-				return ValueType(address);
+				return RValue(address);
 			}
 
 			ErrorLog("識別子が定義されていません");
@@ -1859,7 +1882,7 @@ namespace cgl
 				//ローカル変数に無く、スコープにあれば、アドレスに置き換える
 				else if (Address address = pEnv->findAddress(identifier))
 				{
-					return BinaryExpr(ValueType(address), rhs, node.op);
+					return BinaryExpr(RValue(address), rhs, node.op);
 				}
 				//スコープにも無い場合は新たなローカル変数の宣言なので、ローカル変数に追加しておく
 				else
@@ -2536,9 +2559,9 @@ namespace cgl
 			//return As<double>(value1) == As<double>(value2);
 		}
 		*/
-		if (IsType<ValueType>(value1))
+		if (IsType<RValue>(value1))
 		{
-			return IsEqualEvaluated(As<ValueType>(value1).value, As<ValueType>(value2).value);
+			return IsEqualEvaluated(As<RValue>(value1).value, As<RValue>(value2).value);
 		}
 		else if (IsType<Identifier>(value1))
 		{

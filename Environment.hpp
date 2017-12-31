@@ -42,7 +42,7 @@ namespace cgl
 			return it->second;
 		}
 
-		boost::optional<const Evaluated&> at(Address key)const
+		/*boost::optional<const Evaluated&> at(Address key)const
 		{
 			auto it = m_values.find(key);
 			if (it == m_values.end())
@@ -50,6 +50,16 @@ namespace cgl
 				return boost::none;
 			}
 			return it->second;
+		}*/
+
+		ValueList::iterator at(Address key)
+		{
+			return m_values.find(key);
+		}
+
+		ValueList::const_iterator at(Address key)const
+		{
+			return m_values.find(key);
 		}
 
 		ValueList::const_iterator begin()const
@@ -149,6 +159,11 @@ namespace cgl
 		}
 		*/
 
+		/*bool isValid(Address address)const
+		{
+			return m_values.at(address) != m_values.end();
+		}*/
+
 		//Address dereference(const Evaluated& reference);
 		boost::optional<const Evaluated&> dereference(const Evaluated& reference)const
 		{
@@ -157,10 +172,18 @@ namespace cgl
 				return boost::none;
 			}
 
-			return m_values.at(As<Address>(reference));
+			//return m_values.at(As<Address>(reference));
+
+			auto it = m_values.at(As<Address>(reference));
+			if (it == m_values.end())
+			{
+				return boost::none;
+			}
+
+			return it->second;
 		}
 
-		Evaluated expandRef(const Evaluated& reference)const
+		/*Evaluated expandRef(const Evaluated& reference)const
 		{
 			if (!IsType<Address>(reference))
 			{
@@ -175,12 +198,45 @@ namespace cgl
 				}
 				else
 				{
-					ErrorLog("reference error");
+					CGL_Error("reference error");
+					return 0;
 				}
 			}
 
-			ErrorLog("reference error");
+			CGL_Error("reference error");
 			return 0;
+		}*/
+
+		const Evaluated& expand(const LRValue& lrvalue)const
+		{
+			if (lrvalue.isLValue())
+			{
+				auto it = m_values.at(lrvalue.address());
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+
+				CGL_Error("reference error");
+			}
+
+			return lrvalue.evaluated();
+		}
+
+		boost::optional<const Evaluated&> expandOpt(const LRValue& lrvalue)const
+		{
+			if (lrvalue.isLValue())
+			{
+				auto it = m_values.at(lrvalue.address());
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+
+				return boost::none;
+			}
+
+			return lrvalue.evaluated();
 		}
 
 		Address evalReference(const Accessor& access);
@@ -257,7 +313,8 @@ namespace cgl
 
 		void bindNewValue(const std::string& name, const Evaluated& value)
 		{
-			const Address newAddress = m_values.add(expandRef(value));
+			//const Address newAddress = m_values.add(expandRef(value));
+			const Address newAddress = m_values.add(value);
 			bindValueID(name, newAddress);
 		}
 
@@ -331,15 +388,16 @@ namespace cgl
 		//void assignToObject(const ObjectReference& objectRef, const Evaluated& newValue);
 		void assignToObject(Address address, const Evaluated& newValue)
 		{
-			//m_values[address] = newValue;
-			m_values[address] = expandRef(newValue);
+			m_values[address] = newValue;
+			
+			//m_values[address] = expandRef(newValue);
 		}
 
 		//Ç±ÇÍÇ≈ê≥ÇµÇ¢ÅH
 		void assignAddress(Address addressTo, Address addressFrom)
 		{
-			//m_values[addressTo] = m_values[addressFrom];
-			m_values[addressTo] = expandRef(m_values[addressFrom]);
+			m_values[addressTo] = m_values[addressFrom];
+			//m_values[addressTo] = expandRef(m_values[addressFrom]);
 		}
 
 		static std::shared_ptr<Environment> Make()

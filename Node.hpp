@@ -220,7 +220,12 @@ namespace cgl
 			return valueID != 0;
 		}*/
 
-		operator bool()const
+		/*operator bool()const
+		{
+			return valueID != 0;
+		}*/
+
+		bool isValid()const
 		{
 			return valueID != 0;
 		}
@@ -427,8 +432,15 @@ namespace cgl
 	{
 		LRValue() = default;
 
+		LRValue(const Evaluated& value) :value(RValue(value)) {}
 		LRValue(const RValue& value) :value(value) {}
 		LRValue(Address value) :value(value) {}
+
+		static LRValue Bool(bool a) { return LRValue(a); }
+		static LRValue Int(int a) { return LRValue(a); }
+		static LRValue Double(double a) { return LRValue(a); }
+		static LRValue Sat(const DeclSat& a) { return LRValue(a); }
+		static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
 		bool isRValue()const
 		{
@@ -448,6 +460,20 @@ namespace cgl
 		const Evaluated& evaluated()const
 		{
 			return As<RValue>(value).value;
+		}
+
+		bool operator==(const LRValue& other)const
+		{
+			if (isLValue() && other.isLValue())
+			{
+				return address() == other.address();
+			}
+			else if (isRValue() && other.isRValue())
+			{
+				return IsEqualEvaluated(evaluated(), other.evaluated());
+			}
+
+			return false;
 		}
 
 		boost::variant<boost::recursive_wrapper<RValue>, Address> value;
@@ -1768,7 +1794,8 @@ namespace cgl
 					return false;
 				}
 
-				if (!IsEqualEvaluated(keyval.second, otherIt->second))
+				//if (!IsEqualEvaluated(keyval.second, otherIt->second))
+				if (keyval.second != otherIt->second)
 				{
 					return false;
 				}

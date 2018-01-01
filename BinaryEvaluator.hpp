@@ -591,6 +591,7 @@ namespace cgl
 		return 0;
 	}
 
+#ifdef commentout
 	inline Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{
 		if (!IsLValue(lhs))
@@ -698,4 +699,5 @@ namespace cgl
 
 		return lhs;
 	}
+#endif
 }

@@ -165,6 +165,7 @@ namespace cgl
 		}*/
 
 		//Address dereference(const Evaluated& reference);
+		/*
 		boost::optional<const Evaluated&> dereference(const Evaluated& reference)const
 		{
 			if (!IsType<Address>(reference))
@@ -182,6 +183,7 @@ namespace cgl
 
 			return it->second;
 		}
+		*/
 
 		/*Evaluated expandRef(const Evaluated& reference)const
 		{
@@ -313,6 +315,7 @@ namespace cgl
 
 		void bindNewValue(const std::string& name, const Evaluated& value)
 		{
+			CGL_DebugLog("");
 			//const Address newAddress = m_values.add(expandRef(value));
 			const Address newAddress = m_values.add(value);
 			bindValueID(name, newAddress);
@@ -321,7 +324,7 @@ namespace cgl
 		void bindReference(const std::string& nameLhs, const std::string& nameRhs)
 		{
 			const Address address = findAddress(nameRhs);
-			if (!address)
+			if (!address.isValid())
 			{
 				std::cerr << "Error(" << __LINE__ << ")\n";
 				return;
@@ -360,6 +363,7 @@ namespace cgl
 		}*/
 		void bindValueID(const std::string& name, const Address ID)
 		{
+			CGL_DebugLog("");
 			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 			{
 				auto valIt = scopeIt->find(name);
@@ -369,6 +373,7 @@ namespace cgl
 					return;
 				}
 			}
+			CGL_DebugLog("");
 
 			localEnv().back()[name] = ID;
 		}

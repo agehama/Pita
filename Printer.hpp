@@ -42,10 +42,10 @@ namespace cgl
 			std::cout << indent() << "Double(" << node << ")" << std::endl;
 		}
 
-		void operator()(Address node)const
+		/*void operator()(Address node)const
 		{
 			std::cout << indent() << "Address(" << node.toString() << ")" << std::endl;
-		}
+		}*/
 
 		void operator()(const List& node)const
 		{
@@ -54,10 +54,14 @@ namespace cgl
 
 			for (size_t i = 0; i < data.size(); ++i)
 			{
-				const std::string header = std::string("(") + std::to_string(i) + "): ";
+				/*const std::string header = std::string("(") + std::to_string(i) + "): ";
 				const auto child = ValuePrinter(m_indent + 1, header);
 				const Evaluated currentData = data[i];
-				boost::apply_visitor(child, currentData);
+				boost::apply_visitor(child, currentData);*/
+
+				const std::string header = std::string("(") + std::to_string(i) + "): ";
+				const auto child = ValuePrinter(m_indent + 1, header);
+				std::cout << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
 			}
 
 			std::cout << indent() << "]" << std::endl;
@@ -81,8 +85,10 @@ namespace cgl
 				const std::string header = value.first + ": ";
 
 				const auto child = ValuePrinter(m_indent + 1, header);
-				const Evaluated evaluated = value.second;
-				boost::apply_visitor(child, evaluated);
+				//const Evaluated evaluated = value.second;
+				//boost::apply_visitor(child, evaluated);
+
+				std::cout << child.indent() << "Address(" << value.second.toString() << ")" << std::endl;
 			}
 
 			std::cout << indent() << "}" << std::endl;
@@ -199,9 +205,18 @@ namespace cgl
 			return str;
 		}
 
-		void operator()(const RValue& node)const
+		void operator()(const LRValue& node)const
 		{
-			printEvaluated(node.value, m_indent);
+			if (node.isLValue())
+			{
+				//std::cout << indent() << "Address(" << node.address() << ")" << std::endl;
+				std::cout << indent() << "Address(" << node.address().toString() << ")" << std::endl;
+			}
+			else
+			{
+				printEvaluated(node.evaluated(), m_indent);
+			}
+			//printEvaluated(node.value, m_indent);
 			//std::cout << indent() << "Double(" << node << ")" << std::endl;
 		}
 

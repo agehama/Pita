@@ -11,22 +11,27 @@
 
 namespace cgl
 {
-	SatExpr Expr2SatExpr::operator()(const RValue& node)
+	SatExpr Expr2SatExpr::operator()(const LRValue& node)
 	{
-		const Evaluated& val = node.value;
-		if (IsType<double>(val))
+		if (node.isRValue())
 		{
-			return As<double>(val);
-		}
-		else if (IsType<int>(val))
-		{
-			return static_cast<double>(As<int>(val));
-		}
-		else if (IsType<Address>(val))
-		{
-			Address address = As<Address>(val);
+			const Evaluated& val = node.evaluated();
+			if (IsType<double>(val))
+			{
+				return As<double>(val);
+			}
+			else if (IsType<int>(val))
+			{
+				return static_cast<double>(As<int>(val));
+			}
 
-			if (!address)
+			CGL_Error("sat 式中の変数の評価値は int 型もしくは double 型で無ければなりません");
+		}
+		else
+		{
+			const Address address = node.address();
+
+			if (!address.isValid())
 			{
 				CGL_Error("識別子が定義されていません");
 			}
@@ -112,7 +117,7 @@ namespace cgl
 	SatExpr Expr2SatExpr::operator()(const Identifier& node)
 	{
 		Address address = pEnv->findAddress(node);
-		if (!address)
+		if (!address.isValid())
 		{
 			CGL_Error("識別子が定義されていません");
 		}
@@ -143,7 +148,7 @@ namespace cgl
 		return 0.0;
 	}
 
-	inline bool HasFreeVariables::operator()(const RValue& node)
+	/*inline bool HasFreeVariables::operator()(const RValue& node)
 	{
 		const Evaluated& val = node.value;
 		if (IsType<double>(val) || IsType<int>(val) || IsType<bool>(val))
@@ -156,6 +161,30 @@ namespace cgl
 		}
 
 		Address address = As<Address>(val);
+		for (const auto& freeVal : freeVariables)
+		{
+			if (address == freeVal)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}*/
+	inline bool HasFreeVariables::operator()(const LRValue& node)
+	{
+		if (node.isRValue())
+		{
+			const Evaluated& val = node.evaluated();
+			if (IsType<double>(val) || IsType<int>(val) || IsType<bool>(val))
+			{
+				return false;
+			}
+
+			CGL_Error("不正な値");
+		}
+
+		Address address = node.address();
 		for (const auto& freeVal : freeVariables)
 		{
 			if (address == freeVal)
@@ -683,7 +712,7 @@ namespace cgl
 
 			for (const auto& keyval : names)
 			{
-				std::cout << keyval.first << " : " << keyval.second << "\n";
+				std::cout << keyval.first << " : " << keyval.second.toString() << "\n";
 			}
 		}
 
@@ -1146,7 +1175,7 @@ namespace cgl
 		{
 			const auto addElementRec = [&](auto rec, Address address)->void
 			{
-				const Evaluated value = sharedThis->expandRef(address);
+				const Evaluated value = sharedThis->expand(address);
 
 				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
 				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
@@ -1753,14 +1782,14 @@ namespace cgl
 			//	| id[_val = _1];
 			
 			factor = /*double_[_val = _1]
-					 | */int_[_val = Call(RValue::Int, _1)]
-				| lit("true")[_val = Call(RValue::Bool, true)]
-				| lit("false")[_val = Call(RValue::Bool, false)]
+					 | */int_[_val = Call(LRValue::Int, _1)]
+				| lit("true")[_val = Call(LRValue::Bool, true)]
+				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| constraints[_val = Call(RValue::Sat, _1)]
-				| freeVals[_val = Call(RValue::Free, _1)]
+				| constraints[_val = Call(LRValue::Sat, _1)]
+				| freeVals[_val = Call(LRValue::Free, _1)]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
@@ -2303,9 +2332,16 @@ main = {
 
 		if (succeed)
 		{
-			Evaluated result = evalExpr(lines);
-			std::cout << "Result Evaluation:\n";
-			printEvaluated(result);
+			try
+			{
+				Evaluated result = evalExpr(lines);
+				std::cout << "Result Evaluation:\n";
+				printEvaluated(result);
+			}
+			catch (const cgl::Exception& e)
+			{
+				std::cerr << "Exception: " << e.what() << std::endl;
+			}
 		}
 	}
 

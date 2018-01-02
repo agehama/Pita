@@ -42,7 +42,7 @@ namespace cgl
 	inline void Log(std::ostream& os, const std::string& str)
 	{
 		std::regex regex("\n");
-		os << std::regex_replace(str, regex, "\n        |> ") << "\n";
+		os << std::regex_replace(str, regex, "\n          |> ") << "\n";
 	}
 }
 
@@ -205,26 +205,6 @@ namespace cgl
 			valueID(valueID)
 		{}
 
-		/*bool operator==(const Address& other)const
-		{
-			return valueID == other.valueID;
-		}
-
-		bool operator!=(const Address& other)const
-		{
-			return !(*this == other);
-		}*/
-
-		/*bool operator()()const
-		{
-			return valueID != 0;
-		}*/
-
-		/*operator bool()const
-		{
-			return valueID != 0;
-		}*/
-
 		bool isValid()const
 		{
 			return valueID != 0;
@@ -240,7 +220,6 @@ namespace cgl
 			return valueID != other.valueID;
 		}
 
-		//static constexpr Address Null = 0;
 		static Address Null()
 		{
 			return Address();
@@ -304,9 +283,6 @@ namespace cgl
 		bool,
 		int,
 		double,
-		//Address,
-		//Reference,
-		//boost::recursive_wrapper<ObjectReference>,
 		boost::recursive_wrapper<List>,
 		boost::recursive_wrapper<KeyValue>,
 		boost::recursive_wrapper<Record>,
@@ -319,57 +295,7 @@ namespace cgl
 	struct RValue;
 	struct LRValue;
 
-	/*
-	TODO: Exprの中にEvaluatedを入れたい
-	*/
-	/*
-	using types =
-		boost::mpl::vector16<
-		//bool,
-		//int,
-		//double,
-		//boost::recursive_wrapper<List>,
-		//boost::recursive_wrapper<Record>,
-		//boost::recursive_wrapper<FuncVal>,
-		//boost::recursive_wrapper<DeclSat>,
-		//boost::recursive_wrapper<DeclFree>,
-		//boost::recursive_wrapper<ObjectReference>,
-		//boost::recursive_wrapper<KeyValue>,
-		//boost::recursive_wrapper<Jump>,
-		//boost::recursive_wrapper<DeclSat>,
-		//boost::recursive_wrapper<DeclFree>,
-
-		boost::recursive_wrapper<Evaluated>,
-		Identifier,
-
-		boost::recursive_wrapper<UnaryExpr>,
-		boost::recursive_wrapper<BinaryExpr>,
-
-		boost::recursive_wrapper<DefFunc>,
-		boost::recursive_wrapper<FunctionCaller>,
-		boost::recursive_wrapper<Range>,
-
-		boost::recursive_wrapper<Lines>,
-
-		boost::recursive_wrapper<If>,
-		boost::recursive_wrapper<For>,
-		boost::recursive_wrapper<Return>,
-
-		boost::recursive_wrapper<ListConstractor>,
-
-		boost::recursive_wrapper<KeyExpr>,
-		boost::recursive_wrapper<RecordConstractor>,
-		boost::recursive_wrapper<RecordInheritor>,
-
-		boost::recursive_wrapper<Accessor>
-		>;
-
-	using Expr = boost::make_variant_over<types>::type;
-	*/
-
 	using Expr = boost::variant<
-		//boost::recursive_wrapper<Evaluated>,
-		//boost::recursive_wrapper<RValue>,
 		boost::recursive_wrapper<LRValue>,
 		Identifier,
 
@@ -415,15 +341,11 @@ namespace cgl
 			return !IsEqualEvaluated(value, other.value);
 		}
 
-		static RValue Bool(bool a) { return RValue(a); }
+		/*static RValue Bool(bool a) { return RValue(a); }
 		static RValue Int(int a) { return RValue(a); }
 		static RValue Double(double a) { return RValue(a); }
 		static RValue Sat(const DeclSat& a) { return RValue(a); }
-		static RValue Free(const DeclFree& a) { return RValue(a); }
-		/*static RValue (int a) { return RValue(a); }
-		static RValue Int(int a) { return RValue(a); }
-		static RValue Int(int a) { return RValue(a); }
-		static RValue Int(int a) { return RValue(a); }*/
+		static RValue Free(const DeclFree& a) { return RValue(a); }*/
 
 		Evaluated value;
 	};
@@ -479,8 +401,6 @@ namespace cgl
 		boost::variant<boost::recursive_wrapper<RValue>, Address> value;
 	};
 
-	//struct ObjectReference;
-
 	struct OptimizationProblemSat;
 
 	struct SatUnaryExpr;
@@ -522,19 +442,13 @@ namespace cgl
 		//std::unordered_map<int, int> refs;//参照ID -> dataのインデックス
 		std::vector<double> data;//Referenced Values
 
-		//std::vector<ObjectReference> refs;//Referenced Values
 		std::vector<Address> refs;//Referenced Values
-		//std::vector<Accessor> refs;//Referenced Values
-
-		//expr = SatBinaryExpr(expr, other.expr, BinaryOp::And);
 
 		void debugPrint();
 
 		void addConstraint(const Expr& logicExpr);
-		//void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<ObjectReference>& freeVariables);
 		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables);
 
-		//bool initializeData(Environment& env);
 		bool initializeData(std::shared_ptr<Environment> pEnv);
 
 		void update(int index, double x)
@@ -618,17 +532,6 @@ namespace cgl
 			return exprs[index];
 		}
 	};
-
-	inline bool IsLValue(const Evaluated& value)
-	{
-		return IsType<Identifier>(value);
-		//return IsType<Identifier>(value) || IsType<ObjectReference>(value);
-	}
-
-	inline bool IsRValue(const Evaluated& value)
-	{
-		return !IsLValue(value);
-	}
 
 	struct UnaryExpr
 	{
@@ -1135,7 +1038,6 @@ namespace cgl
 
 	struct List
 	{
-		//std::vector<Evaluated> data;
 		std::vector<Address> data;
 
 		List() = default;
@@ -1317,154 +1219,6 @@ namespace cgl
 		}
 	};
 
-#ifdef commentout
-	struct ObjectReference
-	{
-		struct ListRef
-		{
-			int index;
-
-			ListRef() = default;
-			ListRef(int index) :index(index) {}
-
-			bool operator==(const ListRef& other)const
-			{
-				return index == other.index;
-			}
-
-			std::string asString()const
-			{
-				return std::string("[") + std::to_string(index) + "]";
-			}
-		};
-
-		struct RecordRef
-		{
-			std::string key;
-
-			RecordRef() = default;
-			RecordRef(const std::string& key) :key(key) {}
-
-			bool operator==(const RecordRef& other)const
-			{
-				return key == other.key;
-			}
-
-			std::string asString()const
-			{
-				return std::string(".") + key;
-			}
-		};
-
-		struct FunctionRef
-		{
-			std::vector<Evaluated> args;
-
-			FunctionRef() = default;
-			FunctionRef(const std::vector<Evaluated>& args) :args(args) {}
-
-			bool operator==(const FunctionRef& other)const
-			{
-				if (args.size() != other.args.size())
-				{
-					return false;
-				}
-
-				for (size_t i = 0; i < args.size(); ++i)
-				{
-					if (!IsEqual(args[i], other.args[i]))
-					{
-						return false;
-					}
-				}
-
-				return true;
-			}
-
-			std::string asString()const
-			{
-				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
-			}
-		};
-
-		using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
-
-		using ObjectT = boost::variant<unsigned, Identifier, boost::recursive_wrapper<Record>, boost::recursive_wrapper<List>, boost::recursive_wrapper<FuncVal>>;
-
-		ObjectT headValue;
-
-		std::vector<Ref> references;
-
-		ObjectReference() = default;
-
-		ObjectReference(const ObjectT& headValue)
-			:headValue(headValue)
-		{}
-
-		void appendListRef(int index)
-		{
-			references.push_back(ListRef(index));
-		}
-
-		void appendRecordRef(const std::string& key)
-		{
-			references.push_back(RecordRef(key));
-		}
-
-		void appendFunctionRef(const std::vector<Evaluated>& args)
-		{
-			references.push_back(FunctionRef(args));
-		}
-
-		bool operator==(const ObjectReference& other)const
-		{
-			if (!(headValue == other.headValue))
-			{
-				return false;
-			}
-
-			if (references.size() != other.references.size())
-			{
-				return false;
-			}
-
-			for (size_t i = 0; i<references.size(); ++i)
-			{
-				if (!(references[i] == other.references[i]))
-				{
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		std::string asString()const
-		{
-			//std::string str = name;
-			std::string str = "objName";
-
-			for (const auto& r : references)
-			{
-				if (auto opt = AsOpt<ListRef>(r))
-				{
-					str += opt.value().asString();
-				}
-				else if (auto opt = AsOpt<RecordRef>(r))
-				{
-					str += opt.value().asString();
-				}
-				else if (auto opt = AsOpt<FunctionRef>(r))
-				{
-					str += opt.value().asString();
-				}
-			}
-
-			return str;
-		}
-	};
-#endif
-
 	struct SatFunctionReference
 	{
 		struct ListRef
@@ -1565,12 +1319,6 @@ namespace cgl
 
 		SatFunctionReference() = default;
 
-		/*SatFunctionReference(const ObjectT& headValue)
-			:headValue(headValue)
-		{}*/
-		/*SatFunctionReference(const std::string& name)
-			:funcName(name)
-		{}*/
 		SatFunctionReference(Address address)
 			:headAddress(address)
 		{}
@@ -1654,21 +1402,6 @@ namespace cgl
 		std::vector<Accessor> accessors;
 
 		DeclFree() = default;
-
-		/*static void AddIdentifier(DeclFree& decl, const Identifier& ref)
-		{
-			decl.refs.push_back(ref);
-		}
-
-		static void AddReference(DeclFree& decl, const ObjectReference& ref)
-		{
-			decl.refs.push_back(ref);
-		}
-
-		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
-		{
-			decl.accessors.push_back(accessor);
-		}*/
 
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
 		{

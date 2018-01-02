@@ -16,12 +16,7 @@ namespace cgl
 
 		LRValue operator()(const LRValue& node) { return node; }
 
-		LRValue operator()(const Identifier& node)
-		{
-			//‚±‚Ì“_‚Å‚Í•Ï”‚ÌéŒ¾‚©QÆ‚©‚í‚©‚ç‚È‚¢‚Ì‚ÅAƒGƒ‰[ŒŸo‚Í‚µ‚È‚¢
-			//TODO: •Ï”éŒ¾‚Ìê‡‚ÍA‚Ç‚±‚©‚Å–¼‘O‚ÆƒAƒhƒŒƒX‚Ì‘Î‰•t‚¯‚ğs‚¤•K—v‚ª‚ ‚éi‚Ç‚±‚ÅHj
-			return pEnv->findAddress(node);
-		}
+		LRValue operator()(const Identifier& node) { return pEnv->findAddress(node); }
 
 		LRValue operator()(const UnaryExpr& node)
 		{
@@ -137,23 +132,6 @@ namespace cgl
 				}
 				else if (auto valOpt = AsOpt<Accessor>(node.lhs))
 				{
-					/*if (auto addressOpt = AsOpt<Address>(lhs))
-					{
-						if (Address address = addressOpt.value())
-						{
-							pEnv->assignToObject(address, rhs);
-							return RValue(rhs);
-						}
-						else
-						{
-							CGL_Error("QÆƒGƒ‰[");
-						}
-					}
-					else
-					{
-						CGL_Error("ƒAƒNƒZƒbƒT‚Ì•]‰¿Œ‹‰Ê‚ªƒAƒhƒŒƒX‚Å‚È‚¢");
-					}*/
-
 					if (lhs_.isLValue())
 					{
 						Address address = lhs_.address();
@@ -171,17 +149,6 @@ namespace cgl
 					{
 						CGL_Error("ƒAƒNƒZƒbƒT‚Ì•]‰¿Œ‹‰Ê‚ªƒAƒhƒŒƒX‚Å‚È‚¢");
 					}
-
-					//ƒAƒNƒZƒbƒT‚Ìê‡‚Í­‚È‚­‚Æ‚à•Ï”éŒ¾‚Å‚Í‚È‚¢
-					//ƒ[ƒJƒ‹•Ï” or ƒXƒR[ƒv
-					/*`````````````````````````````
-					Accessor‚Ìhead‚¾‚¯•]‰¿‚µ‚ÄƒAƒhƒŒƒX’l‚É•ÏŠ·‚µ‚½‚¢
-						head‚³‚¦•ª‚©‚ê‚Î‚ ‚Æ‚Í‚»‚±‚©‚ç’H‚ê‚é‚Ì‚Å
-						¡‚ÌÀ‘•‚Å‚Íhead‚Í®‚É‚È‚Á‚Ä‚¢‚é‚ªA‚±‚ê‚¾‚Æ—Ç‚­‚È‚¢
-						¡‚Í¶•Ó‚É‚Í‚»‚ñ‚È‚É•¡G‚È®‚Í‹–‰Â‚µ‚Ä‚¢‚È‚¢‚Ì‚ÅA‚±‚ê‚à¯•Êq‚­‚ç‚¢‚Ì’Pƒ‚ÈŒ`‚É§ŒÀ‚µ‚Ä‚æ‚¢‚Ì‚Å‚Í‚È‚¢‚©
-					`````````````````````````````*/
-
-					//•]‰¿‚·‚é‚±‚Æ‚É‚µ‚½
 				}
 			}
 			}
@@ -192,13 +159,6 @@ namespace cgl
 
 		LRValue operator()(const DefFunc& defFunc)
 		{
-			//auto val = FuncVal(globalVariables, defFunc.arguments, defFunc.expr);
-			//auto val = FuncVal(pEnv, defFunc.arguments, defFunc.expr);
-
-			//FuncVal val(std::make_shared<Environment>(*pEnv), defFunc.arguments, defFunc.expr);
-			//FuncVal val(Environment::Make(*pEnv), defFunc.arguments, defFunc.expr);
-			//FuncVal val(defFunc.arguments, defFunc.expr, pEnv->scopeDepth());
-			//FuncVal val(defFunc.arguments, defFunc.expr, pEnv->currentReferenceableVariables(), pEnv->scopeDepth());
 			return pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr);
 		}
 
@@ -339,7 +299,7 @@ namespace cgl
 				*/
 				result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
 				CGL_DebugLog("Function Evaluated:");
-				printEvaluated(result);
+				printEvaluated(result, nullptr);
 			}
 			//Evaluated result = pEnv->expandObject();
 
@@ -674,7 +634,7 @@ namespace cgl
 			{
 				const Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 				CGL_DebugLog("");
-				printEvaluated(value);
+				printEvaluated(value, nullptr);
 
 				list.append(pEnv->makeTemporaryValue(value));
 			}
@@ -855,9 +815,12 @@ namespace cgl
 						return LRValue(0);
 					}
 
-					std::cout << "Record FreeVariablesSize: " << record.freeVariableRefs.size() << std::endl;
-					std::cout << "Record SatExpr: " << std::endl;
-					//problem.debugPrint();
+					//std::cout << "Record FreeVariablesSize: " << record.freeVariableRefs.size() << std::endl;
+					//std::cout << "Record SatExpr: " << std::endl;
+
+					CGL_DebugLog(std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
+					CGL_DebugLog(std::string("Record SatExpr: "));
+					problem.debugPrint();
 				}
 
 				//std::cout << "Begin Record MakeMap" << std::endl;
@@ -865,11 +828,16 @@ namespace cgl
 				std::unordered_map<int, int> variable2Data;
 				for (int freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
 				{
+					CGL_DebugLog(ToS(freeIndex));
+					CGL_DebugLog(std::string("Address(") + record.freeVariableRefs[freeIndex].toString() + ")");
 					const auto& ref1 = record.freeVariableRefs[freeIndex];
 
 					bool found = false;
 					for (int dataIndex = 0; dataIndex < problemRefs.size(); ++dataIndex)
 					{
+						CGL_DebugLog(ToS(dataIndex));
+						CGL_DebugLog(std::string("Address(") + problemRefs[dataIndex].toString() + ")");
+
 						const auto& ref2 = problemRefs[dataIndex];
 
 						if (ref1 == ref2)
@@ -892,6 +860,7 @@ namespace cgl
 					}
 				}
 				//std::cout << "End Record MakeMap" << std::endl;
+				CGL_DebugLog("End Record MakeMap");
 
 				libcmaes::FitFunc func = [&](const double *x, const int N)->double
 				{
@@ -904,20 +873,27 @@ namespace cgl
 					return problem.eval();
 				};
 
+				CGL_DebugLog("");
+
 				std::vector<double> x0(record.freeVariableRefs.size());
 				for (int i = 0; i < x0.size(); ++i)
 				{
 					x0[i] = problem.data[variable2Data[i]];
+					CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
 				}
+
+				CGL_DebugLog("");
 
 				const double sigma = 0.1;
 
 				const int lambda = 100;
 
 				libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+				CGL_DebugLog("");
 				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
-
+				CGL_DebugLog("");
 				resultxs = cmasols.best_candidate().get_x();
+				CGL_DebugLog("");
 			}
 
 			//std::cout << "RECORD_D" << std::endl;
@@ -948,8 +924,11 @@ namespace cgl
 			//pEnv->pop();
 			pEnv->exitScope();
 
+			CGL_DebugLog("--------------------------- Print Environment ---------------------------");
+			pEnv->printEnvironment();
+			CGL_DebugLog("-------------------------------------------------------------------------");
 			//std::cout << "RECORD_F" << std::endl;
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			return RValue(record);
 		}
@@ -2523,6 +2502,9 @@ namespace cgl
 
 		std::cout << "Environment:\n";
 		env->printEnvironment();
+
+		std::cout << "Result Evaluation:\n";
+		printEvaluated(result, env);
 
 		return result;
 	}

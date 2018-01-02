@@ -701,7 +701,7 @@ namespace cgl
 
 			std::cout << keyval.first.toString() << " : ";
 
-			printEvaluated(val);
+			printEvaluated(val, nullptr);
 		}
 
 		std::cout << "References:\n";
@@ -1426,10 +1426,13 @@ namespace cgl
 		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
 		
 		{
-			std::cout << "Print:\n";
-			PrintSatExpr printer(data);
+			//std::cout << "Print:\n";
+			CGL_DebugLog("Print:");
+			std::stringstream ss;
+			PrintSatExpr printer(data, ss);
 			boost::apply_visitor(printer, expr.value());
-			std::cout << "\n";
+			//std::cout << "\n";
+			CGL_DebugLog(ss.str());
 		}
 
 		//sat‚Éo‚Ä‚±‚È‚¢freeVariables‚Ìíœ
@@ -1454,12 +1457,12 @@ namespace cgl
 			const Evaluated val = pEnv->expand(refs[i]);
 			if (auto opt = AsOpt<double>(val))
 			{
-				std::cout << "    " << i << " : " << opt.value() << std::endl;
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
 				data[i] = opt.value();
 			}
 			else if (auto opt = AsOpt<int>(val))
 			{
-				std::cout << "    " << i << " : " << opt.value() << std::endl;
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
 				data[i] = opt.value();
 			}
 			else
@@ -1493,8 +1496,10 @@ namespace cgl
 			return;
 		}
 
-		PrintSatExpr evaluator(data);
-		boost::apply_visitor(evaluator, expr.value());
+		std::stringstream ss;
+		PrintSatExpr printer(data, ss);
+		boost::apply_visitor(printer, expr.value());
+		CGL_DebugLog(ss.str());
 	}
 }
 
@@ -2088,7 +2093,7 @@ func2 = x, y -> x + y)",
 			Evaluated result = evalExpr(lines);
 
 			std::cout << "result:\n";
-			printEvaluated(result);
+			printEvaluated(result, nullptr);
 
 			const bool isCorrect = pred(result);
 
@@ -2335,8 +2340,6 @@ main = {
 			try
 			{
 				Evaluated result = evalExpr(lines);
-				std::cout << "Result Evaluation:\n";
-				printEvaluated(result);
 			}
 			catch (const cgl::Exception& e)
 			{

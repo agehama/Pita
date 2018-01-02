@@ -1,16 +1,25 @@
 #pragma once
 #include "Node.hpp"
+#include "Environment.hpp"
 
 namespace cgl
 {
+	template<typename T>
+	std::string ToS(T str)
+	{
+		return std::to_string(str);
+	}
+
 	class ValuePrinter : public boost::static_visitor<void>
 	{
 	public:
-		ValuePrinter(int indent = 0, const std::string& header = "") :
+		ValuePrinter(std::shared_ptr<Environment> pEnv, int indent, const std::string& header = "") :
+			pEnv(pEnv),
 			m_indent(indent),
 			m_header(header)
 		{}
 
+		std::shared_ptr<Environment> pEnv;
 		int m_indent;
 		mutable std::string m_header;
 
@@ -42,11 +51,6 @@ namespace cgl
 			std::cout << indent() << "Double(" << node << ")" << std::endl;
 		}
 
-		/*void operator()(Address node)const
-		{
-			std::cout << indent() << "Address(" << node.toString() << ")" << std::endl;
-		}*/
-
 		void operator()(const List& node)const
 		{
 			std::cout << indent() << "[" << std::endl;
@@ -60,8 +64,18 @@ namespace cgl
 				boost::apply_visitor(child, currentData);*/
 
 				const std::string header = std::string("(") + std::to_string(i) + "): ";
-				const auto child = ValuePrinter(m_indent + 1, header);
-				std::cout << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
+				const auto child = ValuePrinter(pEnv, m_indent + 1, header);
+				//std::cout << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
+
+				if (pEnv)
+				{
+					const Evaluated evaluated = pEnv->expand(data[i]);
+					boost::apply_visitor(child, evaluated);
+				}
+				else
+				{
+					std::cout << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
+				}
 			}
 
 			std::cout << indent() << "]" << std::endl;
@@ -71,7 +85,7 @@ namespace cgl
 		{
 			const std::string header = static_cast<std::string>(node.name) + ": ";
 			{
-				const auto child = ValuePrinter(m_indent, header);
+				const auto child = ValuePrinter(pEnv, m_indent, header);
 				boost::apply_visitor(child, node.value);
 			}
 		}
@@ -84,11 +98,17 @@ namespace cgl
 			{
 				const std::string header = value.first + ": ";
 
-				const auto child = ValuePrinter(m_indent + 1, header);
-				//const Evaluated evaluated = value.second;
-				//boost::apply_visitor(child, evaluated);
+				const auto child = ValuePrinter(pEnv, m_indent + 1, header);
 
-				std::cout << child.indent() << "Address(" << value.second.toString() << ")" << std::endl;
+				if (pEnv)
+				{
+					const Evaluated evaluated = pEnv->expand(value.second);
+					boost::apply_visitor(child, evaluated);
+				}
+				else
+				{
+					std::cout << child.indent() << "Address(" << value.second.toString() << ")" << std::endl;
+				}
 			}
 
 			std::cout << indent() << "}" << std::endl;
@@ -112,29 +132,35 @@ namespace cgl
 		}
 	};
 
-	inline void printEvaluated(const Evaluated& evaluated, int indent = 0)
+	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, int indent = 0)
 	{
-		ValuePrinter printer(indent);
+		ValuePrinter printer(pEnv, indent);
 		boost::apply_visitor(printer, evaluated);
 	}
 
 	class PrintSatExpr : public boost::static_visitor<void>
 	{
 	public:
+		std::ostream& os;
 		const std::vector<double>& data;
 
-		PrintSatExpr(const std::vector<double>& data) :
-			data(data)
+		PrintSatExpr(const std::vector<double>& data, std::ostream& os) :
+			data(data),
+			os(os)
 		{}
 
 		void operator()(double node)const
 		{
-			std::cout << node;
+			//std::cout << node;
+			//CGL_DebugLog(ToS(node));
+			os << node;
 		}
 
 		void operator()(const SatReference& node)const
 		{
-			std::cout << "$" << node.refID;
+			//std::cout << "$" << node.refID;
+			//CGL_DebugLog(ToS("$") + ToS(node.refID));
+			os << "$" << node.refID;
 		}
 
 		void operator()(const SatUnaryExpr& node)const
@@ -142,42 +168,42 @@ namespace cgl
 			switch (node.op)
 			{
 				//case UnaryOp::Not:   return lhs;
-			case UnaryOp::Minus: std::cout << "-( "; break;
-			case UnaryOp::Plus:  std::cout << "+( "; break;
+			case UnaryOp::Minus: os << "-( "; break;
+			case UnaryOp::Plus:  os << "+( "; break;
 			}
 
 			boost::apply_visitor(*this, node.lhs);
-			std::cout << " )";
+			os << " )";
 		}
 
 		void operator()(const SatBinaryExpr& node)const
 		{
-			std::cout << "( ";
+			os << "( ";
 			boost::apply_visitor(*this, node.lhs);
 
 			switch (node.op)
 			{
-			case BinaryOp::And: std::cout << " & "; break;
+			case BinaryOp::And: os << " & "; break;
 
-			case BinaryOp::Or:  std::cout << " | "; break;
+			case BinaryOp::Or:  os << " | "; break;
 
-			case BinaryOp::Equal:        std::cout << " == "; break;
-			case BinaryOp::NotEqual:     std::cout << " != "; break;
-			case BinaryOp::LessThan:     std::cout << " < "; break;
-			case BinaryOp::LessEqual:    std::cout << " <= "; break;
-			case BinaryOp::GreaterThan:  std::cout << " > "; break;
-			case BinaryOp::GreaterEqual: std::cout << " >= "; break;
+			case BinaryOp::Equal:        os << " == "; break;
+			case BinaryOp::NotEqual:     os << " != "; break;
+			case BinaryOp::LessThan:     os << " < "; break;
+			case BinaryOp::LessEqual:    os << " <= "; break;
+			case BinaryOp::GreaterThan:  os << " > "; break;
+			case BinaryOp::GreaterEqual: os << " >= "; break;
 
-			case BinaryOp::Add: std::cout << " + "; break;
-			case BinaryOp::Sub: std::cout << " - "; break;
-			case BinaryOp::Mul: std::cout << " * "; break;
-			case BinaryOp::Div: std::cout << " / "; break;
+			case BinaryOp::Add: os << " + "; break;
+			case BinaryOp::Sub: os << " - "; break;
+			case BinaryOp::Mul: os << " * "; break;
+			case BinaryOp::Div: os << " / "; break;
 
-			case BinaryOp::Pow: std::cout << " ^ "; break;
+			case BinaryOp::Pow: os << " ^ "; break;
 			}
 
 			boost::apply_visitor(*this, node.rhs);
-			std::cout << " )";
+			os << " )";
 		}
 
 		void operator()(const SatFunctionReference& node)const
@@ -214,7 +240,7 @@ namespace cgl
 			}
 			else
 			{
-				printEvaluated(node.evaluated(), m_indent);
+				printEvaluated(node.evaluated(), nullptr, m_indent);
 			}
 			//printEvaluated(node.value, m_indent);
 			//std::cout << indent() << "Double(" << node << ")" << std::endl;
@@ -458,7 +484,7 @@ namespace cgl
 		std::cout << indent() << "FuncVal(" << std::endl;
 
 		{
-			const auto child = ValuePrinter(m_indent + 1);
+			const auto child = ValuePrinter(pEnv, m_indent + 1);
 			std::cout << child.indent();
 			for (size_t i = 0; i < node.arguments.size(); ++i)
 			{

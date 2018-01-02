@@ -8,6 +8,69 @@
 
 namespace cgl
 {
+	//Evaluatedのアドレス値を再帰的に展開したクローンを作成する
+	class ValueCloner : public boost::static_visitor<Evaluated>
+	{
+	public:
+		ValueCloner(std::shared_ptr<Environment> pEnv) :
+			pEnv(pEnv)
+		{}
+
+		std::shared_ptr<Environment> pEnv;
+
+		Evaluated operator()(bool node)const { return node; }
+
+		Evaluated operator()(int node)const { return node; }
+
+		Evaluated operator()(double node)const { return node; }
+
+		Evaluated operator()(const List& node)const
+		{
+			List result;
+			const auto& data = node.data;
+
+			for (size_t i = 0; i < data.size(); ++i)
+			{
+				const Evaluated& substance = pEnv->expand(data[i]);
+				const Evaluated clone = boost::apply_visitor(*this, substance);
+				result.append(pEnv->makeTemporaryValue(clone));
+			}
+
+			return result;
+		}
+
+		Evaluated operator()(const KeyValue& node)const { return node; }
+
+		Evaluated operator()(const Record& node)const
+		{
+			Record result;
+
+			for (const auto& value : node.values)
+			{
+				const Evaluated& substance = pEnv->expand(value.second);
+				const Evaluated clone = boost::apply_visitor(*this, substance);
+				result.append(value.first, pEnv->makeTemporaryValue(clone));
+			}
+
+			return result;
+		}
+
+		Evaluated operator()(const FuncVal& node)const { return node; }
+
+		Evaluated operator()(const Jump& node)const { return node; }
+
+		Evaluated operator()(const DeclSat& node)const { return node; }
+
+		Evaluated operator()(const DeclFree& node)const { return node; }
+	};
+
+	
+	inline Evaluated Clone(std::shared_ptr<Environment> pEnv, const Evaluated& value)
+	{
+		ValueCloner cloner(pEnv);
+		return boost::apply_visitor(cloner, value);
+	}
+
 	class Eval : public boost::static_visitor<LRValue>
 	{
 	public:
@@ -985,16 +1048,20 @@ namespace cgl
 			*/
 
 			//(1)
-			Record clone = recordOpt.value();
+			//Record clone = recordOpt.value();
+			Record clone = As<Record>(Clone(pEnv, recordOpt.value()));
 
 			//(2)
 			//pEnv->pushRecord();
 			pEnv->enterScope();
 			for (auto& keyval : clone.values)
 			{
-				//pEnv->bindNewValue(keyval.first, keyval.second);
 				pEnv->bindObjectRef(keyval.first, keyval.second);
+
+				CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 			}
+
+			CGL_DebugLog("");
 
 			//(3)
 			Expr expr = record.adder;
@@ -1002,6 +1069,8 @@ namespace cgl
 			Evaluated recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
 			if (auto opt = AsOpt<Record>(recordValue))
 			{
+				CGL_DebugLog("");
+
 				//(4)
 				for (auto& keyval : recordOpt.value().values)
 				{
@@ -1019,8 +1088,12 @@ namespace cgl
 					clone.values[keyval.first] = pEnv->makeTemporaryValue(valOpt.value());
 				}
 
+				CGL_DebugLog("");
+
 				//(5)
 				MargeRecordInplace(clone, opt.value());
+
+				CGL_DebugLog("");
 
 				//TODO:ここで制約処理を行う
 
@@ -1031,6 +1104,8 @@ namespace cgl
 
 				//MargeRecord(recordOpt.value(), opt.value());
 			}
+
+			CGL_DebugLog("");
 
 			//pEnv->pop();
 			pEnv->exitScope();
@@ -1850,9 +1925,13 @@ namespace cgl
 
 		std::shared_ptr<Environment> pEnv;
 
-		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::string>& functionArguments) :
+		//レコード継承の構文を扱うために必要必要
+		bool isInnerRecord;
+
+		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
 			pEnv(pEnv),
-			localVariables(functionArguments)
+			localVariables(functionArguments),
+			isInnerRecord(isInnerRecord)
 		{}
 
 		ClosureMaker& addLocalVariable(const std::string& name)
@@ -1882,6 +1961,21 @@ namespace cgl
 			const Address address = pEnv->findAddress(node);
 			if (address.isValid())
 			{
+				//Identifier RecordConstructor の形をしたレコード継承の head 部分
+				//とりあえず参照先のレコードのメンバはローカル変数とおく
+				if (isInnerRecord)
+				{
+					const Evaluated& evaluated = pEnv->expand(address);
+					if (auto opt = AsOpt<Record>(evaluated))
+					{
+						const Record& record = opt.value();
+						for (const auto& keyval : record.values)
+						{
+							addLocalVariable(keyval.first);
+						}
+					}
+				}
+
 				return LRValue(address);
 			}
 
@@ -1993,7 +2087,8 @@ namespace cgl
 
 		Expr operator()(const DefFunc& node)
 		{
-			ClosureMaker child(*this);
+			//ClosureMaker child(*this);
+			ClosureMaker child(pEnv, localVariables, false);
 			for (const auto& argument : node.arguments)
 			{
 				child.addLocalVariable(argument);
@@ -2020,7 +2115,8 @@ namespace cgl
 			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
 			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
 
-			ClosureMaker child(*this);
+			//ClosureMaker child(*this);
+			ClosureMaker child(pEnv, localVariables, false);
 			child.addLocalVariable(node.loopCounter);
 			result.doExpr = boost::apply_visitor(child, node.doExpr);
 
@@ -2037,7 +2133,8 @@ namespace cgl
 		Expr operator()(const ListConstractor& node)
 		{
 			ListConstractor result;
-			ClosureMaker child(*this);
+			//ClosureMaker child(*this);
+			ClosureMaker child(pEnv, localVariables, false);
 			for (const auto& expr : node.data)
 			{
 				result.data.push_back(boost::apply_visitor(child, expr));
@@ -2056,6 +2153,7 @@ namespace cgl
 			return result;
 		}
 
+		/*
 		Expr operator()(const RecordConstractor& node)
 		{
 			RecordConstractor result;
@@ -2066,15 +2164,48 @@ namespace cgl
 			}
 			return result;
 		}
+		*/
 
+		Expr operator()(const RecordConstractor& node)
+		{
+			RecordConstractor result;
+			
+			if (isInnerRecord)
+			{
+				isInnerRecord = false;
+				for (const auto& expr : node.exprs)
+				{
+					result.exprs.push_back(boost::apply_visitor(*this, expr));
+				}
+				isInnerRecord = true;
+			}
+			else
+			{
+				ClosureMaker child(pEnv, localVariables, false);
+				for (const auto& expr : node.exprs)
+				{
+					result.exprs.push_back(boost::apply_visitor(child, expr));
+				}
+			}			
+			
+			return result;
+		}
+
+		//レコード継承構文については特殊で、adderを評価する時のスコープはheadと同じである必要がある。
+		//つまり、headを評価する時にはその中身を、一段階だけ（波括弧一つ分だけ）展開するようにして評価しなければならない。
 		Expr operator()(const RecordInheritor& node)
 		{
 			RecordInheritor result;
 
-			result.original = boost::apply_visitor(*this, node.original);
+			//新たに追加
+			ClosureMaker child(pEnv, localVariables, true);
 
+			//result.original = boost::apply_visitor(*this, node.original);
+			result.original = boost::apply_visitor(child, node.original);
+			
 			Expr originalAdder = node.adder;
-			Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
+			//Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
+			Expr replacedAdder = boost::apply_visitor(child, originalAdder);
 			if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
 			{
 				result.adder = opt.value();

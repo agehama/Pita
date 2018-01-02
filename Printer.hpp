@@ -63,7 +63,8 @@ namespace cgl
 				const Evaluated currentData = data[i];
 				boost::apply_visitor(child, currentData);*/
 
-				const std::string header = std::string("(") + std::to_string(i) + "): ";
+				//const std::string header = std::string("(") + std::to_string(i) + "): ";
+				const std::string header = std::string("Address(") + data[i].toString() + "): ";
 				const auto child = ValuePrinter(pEnv, m_indent + 1, header);
 				//std::cout << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
 
@@ -96,7 +97,8 @@ namespace cgl
 
 			for (const auto& value : node.values)
 			{
-				const std::string header = value.first + ": ";
+				//const std::string header = value.first + ": ";
+				const std::string header = value.first + std::string("(") + value.second.toString() + "): ";
 
 				const auto child = ValuePrinter(pEnv, m_indent + 1, header);
 

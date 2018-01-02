@@ -2297,6 +2297,38 @@ main = {
 });
 */
 
+
+/*
+
+rod = {
+    r: 10
+    verts: [
+        {x:0, y:0}
+        {x:r, y:0}
+    ]
+}
+
+newRod = (x, y -> rod{verts:[{x:x, y:y}, {x:x+r, y:y}]})
+
+rod2 = {
+    rods: [newRod(0,0),newRod(10,10),newRod(20,20),newRod(30,30)]
+
+    sat(rods[0].verts[1].x == rods[0+1].verts[0].x & rods[0].verts[1].y == rods[0+1].verts[0].y)
+    sat(rods[1].verts[1].x == rods[1+1].verts[0].x & rods[1].verts[1].y == rods[1+1].verts[0].y)
+    sat(rods[2].verts[1].x == rods[2+1].verts[0].x & rods[2].verts[1].y == rods[2+1].verts[0].y)
+
+    sat((rods[0].verts[0].x - rods[0].verts[1].x)^2 + (rods[0].verts[0].y - rods[0].verts[1].y)^2 == rods[0].r^2)
+    sat((rods[1].verts[0].x - rods[1].verts[1].x)^2 + (rods[1].verts[0].y - rods[1].verts[1].y)^2 == rods[1].r^2)
+    sat((rods[2].verts[0].x - rods[2].verts[1].x)^2 + (rods[2].verts[0].y - rods[2].verts[1].y)^2 == rods[2].r^2)
+    sat((rods[3].verts[0].x - rods[3].verts[1].x)^2 + (rods[3].verts[0].y - rods[3].verts[1].y)^2 == rods[3].r^2)
+
+    sat(rods[0].verts[0].x == 0 & rods[0].verts[0].y == 0)
+    sat(rods[3].verts[1].x == 30 & rods[3].verts[1].y == 0)
+
+    free(rods[0].verts, rods[1].verts, rods[2].verts, rods[3].verts)
+}
+
+*/
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 	
 #endif

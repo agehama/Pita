@@ -123,10 +123,10 @@ namespace cgl
 			std::cout << indent() << "Jump(" << node.op << ")" << std::endl;
 		}
 
-		void operator()(const DeclSat& node)const
+		/*void operator()(const DeclSat& node)const
 		{
 			std::cout << indent() << "DeclSat(" << ")" << std::endl;
-		}
+		}*/
 
 		void operator()(const DeclFree& node)const
 		{
@@ -448,7 +448,12 @@ namespace cgl
 
 		void operator()(const RecordInheritor& record)const
 		{
-			;
+			std::cout << indent() << "RecordInheritor(" << ")" << std::endl;
+		}
+
+		void operator()(const DeclSat& node)const
+		{
+			std::cout << indent() << "DeclSat(" << ")" << std::endl;
 		}
 
 		void operator()(const Accessor& accessor)const

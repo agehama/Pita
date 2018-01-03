@@ -59,17 +59,368 @@ namespace cgl
 
 		Evaluated operator()(const Jump& node)const { return node; }
 
-		Evaluated operator()(const DeclSat& node)const { return node; }
+		//Evaluated operator()(const DeclSat& node)const { return node; }
 
 		Evaluated operator()(const DeclFree& node)const { return node; }
 	};
 
-	
 	inline Evaluated Clone(std::shared_ptr<Environment> pEnv, const Evaluated& value)
 	{
 		ValueCloner cloner(pEnv);
 		return boost::apply_visitor(cloner, value);
 	}
+
+	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
+	//外側のスコープを参照する識別子をアドレスに置き換えた式を返す
+	class ClosureMaker : public boost::static_visitor<Expr>
+	{
+	public:
+
+		//関数内部で閉じているローカル変数
+		std::set<std::string> localVariables;
+
+		std::shared_ptr<Environment> pEnv;
+
+		//レコード継承の構文を扱うために必要必要
+		bool isInnerRecord;
+
+		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
+			pEnv(pEnv),
+			localVariables(functionArguments),
+			isInnerRecord(isInnerRecord)
+		{}
+
+		ClosureMaker& addLocalVariable(const std::string& name)
+		{
+			localVariables.insert(name);
+			return *this;
+		}
+
+		bool isLocalVariable(const std::string& name)const
+		{
+			return localVariables.find(name) != localVariables.end();
+		}
+
+		Expr operator()(const LRValue& node)
+		{
+			return node;
+		}
+
+		Expr operator()(const Identifier& node)
+		{
+			//その関数のローカル変数であれば関数の実行時に評価すればよいので、名前を残す
+			if (isLocalVariable(node))
+			{
+				return node;
+			}
+			//ローカル変数に無ければアドレスに置き換える
+			const Address address = pEnv->findAddress(node);
+			if (address.isValid())
+			{
+				//Identifier RecordConstructor の形をしたレコード継承の head 部分
+				//とりあえず参照先のレコードのメンバはローカル変数とおく
+				if (isInnerRecord)
+				{
+					const Evaluated& evaluated = pEnv->expand(address);
+					if (auto opt = AsOpt<Record>(evaluated))
+					{
+						const Record& record = opt.value();
+						for (const auto& keyval : record.values)
+						{
+							addLocalVariable(keyval.first);
+						}
+					}
+				}
+
+				return LRValue(address);
+			}
+
+			CGL_Error("識別子が定義されていません");
+			return LRValue(0);
+		}
+
+		Expr operator()(const UnaryExpr& node)
+		{
+			return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op);
+		}
+
+		Expr operator()(const BinaryExpr& node)
+		{
+			const Expr lhs = boost::apply_visitor(*this, node.lhs);
+			const Expr rhs = boost::apply_visitor(*this, node.rhs);
+
+			if (node.op != BinaryOp::Assign)
+			{
+				return BinaryExpr(lhs, rhs, node.op);
+			}
+
+			//Assignの場合、lhs は Address or Identifier or Accessor に限られる
+			//つまり現時点では、(if cond then x else y) = true のような式を許可していない
+			//ここで左辺に直接アドレスが入っていることは有り得る？
+			//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
+			/*if (auto valOpt = AsOpt<Evaluated>(node.lhs))
+			{
+				const Evaluated& val = valOpt.value();
+				if (IsType<Address>(val))
+				{
+					if (Address address = As<Address>(val))
+					{
+
+					}
+					else
+					{
+						ErrorLog("");
+						return 0;
+					}
+				}
+				else
+				{
+					ErrorLog("");
+					return 0;
+				}
+			}
+			else */if (auto valOpt = AsOpt<Identifier>(node.lhs))
+			{
+				const Identifier identifier = valOpt.value();
+
+				//ローカル変数にあれば、その場で解決できる識別子なので何もしない
+				if (isLocalVariable(identifier))
+				{
+					return BinaryExpr(lhs, rhs, node.op);
+				}
+				else
+				{
+					const Address address = pEnv->findAddress(identifier);
+
+					//ローカル変数に無く、スコープにあれば、アドレスに置き換える
+					if (address.isValid())
+					{
+						return BinaryExpr(LRValue(address), rhs, node.op);
+					}
+					//スコープにも無い場合は新たなローカル変数の宣言なので、ローカル変数に追加しておく
+					else
+					{
+						addLocalVariable(identifier);
+						return BinaryExpr(lhs, rhs, node.op);
+					}
+				}
+			}
+			else if (auto valOpt = AsOpt<Accessor>(node.lhs))
+			{
+				//アクセッサの場合は少なくとも変数宣言ではない
+				//ローカル変数 or スコープ
+				/*～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
+				Accessorのheadだけ評価してアドレス値に変換したい
+					headさえ分かればあとはそこから辿れるので
+					今の実装ではheadは式になっているが、これだと良くない
+					今は左辺にはそんなに複雑な式は許可していないので、これも識別子くらいの単純な形に制限してよいのではないか
+				～～～～～～～～～～～～～～～～～～～～～～～～～～～～～*/
+
+				//評価することにした
+				return BinaryExpr(lhs, rhs, node.op);
+			}
+
+			CGL_Error("二項演算子\"=\"の左辺は単一の左辺値でなければなりません");
+			return LRValue(0);
+		}
+
+		Expr operator()(const Range& node)
+		{
+			return Range(
+				boost::apply_visitor(*this, node.lhs),
+				boost::apply_visitor(*this, node.rhs));
+		}
+
+		Expr operator()(const Lines& node)
+		{
+			Lines result;
+			for (size_t i = 0; i < node.size(); ++i)
+			{
+				result.add(boost::apply_visitor(*this, node.exprs[i]));
+			}
+			return result;
+		}
+
+		Expr operator()(const DefFunc& node)
+		{
+			//ClosureMaker child(*this);
+			ClosureMaker child(pEnv, localVariables, false);
+			for (const auto& argument : node.arguments)
+			{
+				child.addLocalVariable(argument);
+			}
+
+			return DefFunc(node.arguments, boost::apply_visitor(child, node.expr));
+		}
+
+		Expr operator()(const If& node)
+		{
+			If result(boost::apply_visitor(*this, node.cond_expr));
+			result.then_expr = boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				result.else_expr = boost::apply_visitor(*this, node.else_expr.value());
+			}
+
+			return result;
+		}
+
+		Expr operator()(const For& node)
+		{
+			For result;
+			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
+			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
+
+			//ClosureMaker child(*this);
+			ClosureMaker child(pEnv, localVariables, false);
+			child.addLocalVariable(node.loopCounter);
+			result.doExpr = boost::apply_visitor(child, node.doExpr);
+
+			return result;
+		}
+
+		Expr operator()(const Return& node)
+		{
+			return Return(boost::apply_visitor(*this, node.expr));
+			//これだとダメかもしれない？
+			//return a = 6, a + 2
+		}
+
+		Expr operator()(const ListConstractor& node)
+		{
+			ListConstractor result;
+			//ClosureMaker child(*this);
+			ClosureMaker child(pEnv, localVariables, false);
+			for (const auto& expr : node.data)
+			{
+				result.data.push_back(boost::apply_visitor(child, expr));
+			}
+			return result;
+		}
+
+		Expr operator()(const KeyExpr& node)
+		{
+			//変数宣言式
+			//再代入の可能性もあるがどっちにしろこれ以降この識別子はローカル変数と扱ってよい
+			addLocalVariable(node.name);
+
+			KeyExpr result(node.name);
+			result.expr = boost::apply_visitor(*this, node.expr);
+			return result;
+		}
+
+		/*
+		Expr operator()(const RecordConstractor& node)
+		{
+			RecordConstractor result;
+			ClosureMaker child(*this);
+			for (const auto& expr : node.exprs)
+			{
+				result.exprs.push_back(boost::apply_visitor(child, expr));
+			}
+			return result;
+		}
+		*/
+
+		Expr operator()(const RecordConstractor& node)
+		{
+			RecordConstractor result;
+			
+			if (isInnerRecord)
+			{
+				isInnerRecord = false;
+				for (const auto& expr : node.exprs)
+				{
+					result.exprs.push_back(boost::apply_visitor(*this, expr));
+				}
+				isInnerRecord = true;
+			}
+			else
+			{
+				ClosureMaker child(pEnv, localVariables, false);
+				for (const auto& expr : node.exprs)
+				{
+					result.exprs.push_back(boost::apply_visitor(child, expr));
+				}
+			}			
+			
+			return result;
+		}
+
+		//レコード継承構文については特殊で、adderを評価する時のスコープはheadと同じである必要がある。
+		//つまり、headを評価する時にはその中身を、一段階だけ（波括弧一つ分だけ）展開するようにして評価しなければならない。
+		Expr operator()(const RecordInheritor& node)
+		{
+			RecordInheritor result;
+
+			//新たに追加
+			ClosureMaker child(pEnv, localVariables, true);
+
+			//result.original = boost::apply_visitor(*this, node.original);
+			result.original = boost::apply_visitor(child, node.original);
+			
+			Expr originalAdder = node.adder;
+			//Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
+			Expr replacedAdder = boost::apply_visitor(child, originalAdder);
+			if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
+			{
+				result.adder = opt.value();
+				return result;
+			}
+
+			CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
+			return LRValue(0);
+		}
+
+		Expr operator()(const Accessor& node)
+		{
+			Accessor result;
+			result.head = boost::apply_visitor(*this, node.head);
+
+			for (const auto& access : node.accesses)
+			{
+				if (auto listAccess = AsOpt<ListAccess>(access))
+				{
+					result.add(ListAccess(boost::apply_visitor(*this, listAccess.value().index)));
+				}
+				else if (auto recordAccess = AsOpt<RecordAccess>(access))
+				{
+					result.add(recordAccess.value());
+				}
+				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
+				{
+					FunctionAccess access;
+					for (const auto& argument : functionAccess.value().actualArguments)
+					{
+						access.add(boost::apply_visitor(*this, argument));
+					}
+					result.add(access);
+				}
+				else
+				{
+					CGL_Error("aaa");
+				}
+			}
+
+			return result;
+		}
+
+		Expr operator()(const FunctionCaller& node)
+		{
+			FunctionCaller result;
+			//TODO: ExprからFunctionCaller自体を消す
+			CGL_Error("TODO: ExprからFunctionCaller自体を消す");
+			return LRValue(0);
+		}
+
+		Expr operator()(const DeclSat& node)
+		{
+			FunctionCaller result;
+			//TODO: 考察する（関数呼び出しの中でsat宣言をすることはあり得るか？）
+			CGL_Error("TODO: 考察する");
+			return LRValue(0);
+		}
+	};
 
 	class Eval : public boost::static_visitor<LRValue>
 	{
@@ -452,6 +803,7 @@ namespace cgl
 				//printExpr(expr);
 				CGL_DebugLog("");
 				result = pEnv->expand(boost::apply_visitor(*this, expr));
+				printEvaluated(result, pEnv);
 
 				//std::cout << "LINES_B" << std::endl;
 				CGL_DebugLog("");
@@ -734,8 +1086,9 @@ namespace cgl
 
 			for (const auto& expr : recordConsractor.exprs)
 			{
-				CGL_DebugLog("");
+				CGL_DebugLog("Evaluate: ");
 				//std::cout << "Evaluate expression(" << i << ")" << std::endl;
+				printExpr(expr);
 				Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 
 				CGL_DebugLog("");
@@ -762,20 +1115,16 @@ namespace cgl
 					CGL_DebugLog("");
 					//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 				}
+				/*
 				else if (auto declSatOpt = AsOpt<DeclSat>(value))
 				{
-					/*if (record.constraint)
-					{
-					record.constraint = BinaryExpr(record.constraint.value(), declSatOpt.value().expr, BinaryOp::And);
-					}
-					else
-					{
-					record.constraint = declSatOpt.value().expr;
-					}*/
-
-					record.problem.addConstraint(declSatOpt.value().expr);
-					//record.problem.candidateExprs.push_back(declSatOpt.value().expr);
+					//record.problem.addConstraint(declSatOpt.value().expr);
+					//ここでクロージャを作る必要がある
+					ClosureMaker closureMaker(pEnv, {});
+					const Expr closedSatExpr = boost::apply_visitor(closureMaker, declSatOpt.value().expr);
+					record.problem.addConstraint(closedSatExpr);
 				}
+				*/
 				else if (auto declFreeOpt = AsOpt<DeclFree>(value))
 				{
 					/*const auto& refs = declFreeOpt.value().refs;
@@ -820,6 +1169,14 @@ namespace cgl
 
 				++i;
 			}
+
+			CGL_DebugLog("");
+
+			for (const auto& satExpr : innerSatClosures)
+			{
+				record.problem.addConstraint(satExpr);
+			}
+			innerSatClosures.clear();
 
 			//std::cout << "RECORD_C" << std::endl;
 			CGL_DebugLog("");
@@ -1116,6 +1473,18 @@ namespace cgl
 			return RValue(0);
 		}
 
+		LRValue operator()(const DeclSat& node)
+		{
+			//ここでクロージャを作る必要がある
+			ClosureMaker closureMaker(pEnv, {});
+			const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
+			innerSatClosures.push_back(closedSatExpr);
+
+			//DeclSat自体は現在制約が満たされているかどうかを評価結果として返す
+			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, closedSatExpr));
+			return RValue(result);
+		}
+
 		LRValue operator()(const Accessor& accessor)
 		{
 			/*
@@ -1326,8 +1695,8 @@ namespace cgl
 		}
 
 	private:
-
 		std::shared_ptr<Environment> pEnv;
+		std::vector<Expr> innerSatClosures;
 	};
 
 	//Evaluated中のIdentifierを削除してスコープへの依存を無くす
@@ -1502,8 +1871,7 @@ namespace cgl
 			case UnaryOp::Plus:  return lhs;
 			}
 
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
+			CGL_Error("invalid expression");
 			return 0.0;
 		}
 
@@ -1532,36 +1900,35 @@ namespace cgl
 			case BinaryOp::Pow: return SatBinaryExpr(lhs, rhs, BinaryOp::Pow);
 			}
 
-			std::cerr << "Error(" << __LINE__ << ")\n";
-
+			CGL_Error("invalid expression");
 			return 0;
 		}
 
-		SatExpr operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const DefFunc& node) { CGL_Error("invalid expression"); return 0; }
 
-		SatExpr operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const FunctionCaller& node) { CGL_Error("invalid expression"); return 0; }
 
-		SatExpr operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const Range& node) { CGL_Error("invalid expression"); return 0; }
 
 		SatExpr operator()(const Lines& node)
 		{
 			if (node.exprs.size() != 1)
 			{
-				std::cerr << "Error(" << __LINE__ << "): invalid expression\n";
-				return 0;
+				CGL_Error("invalid expression");
 			}
 
 			const SatExpr lhs = boost::apply_visitor(*this, node.exprs.front());
 			return lhs;
 		}
 
-		SatExpr operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-		SatExpr operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+		SatExpr operator()(const If& node) { CGL_Error("invalid expression"); return 0; }
+		SatExpr operator()(const For& node) { CGL_Error("invalid expression"); return 0; }
+		SatExpr operator()(const Return& node) { CGL_Error("invalid expression"); return 0; }
+		SatExpr operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return 0; }
+		SatExpr operator()(const KeyExpr& node) { CGL_Error("invalid expression"); return 0; }
+		SatExpr operator()(const RecordConstractor& node) { CGL_Error("invalid expression"); return 0; }
+		SatExpr operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return 0; }
+		SatExpr operator()(const DeclSat& node) { CGL_Error("invalid expression"); return 0; }
 
 		SatExpr operator()(const Accessor& node);
 	};
@@ -1631,22 +1998,22 @@ namespace cgl
 	return 0;
 	}
 
-	Expr operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Expr operator()(const Range& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const Lines& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const DefFunc& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const If& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const For& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const Return& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const KeyExpr& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const RecordConstractor& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return 0; }
 
 	Expr operator()(const Accessor& node);
 
-	Expr operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const DeclSat& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
-	Expr operator()(const DeclFree& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return 0; }
+	Expr operator()(const FunctionCaller& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const DeclSat& node) { CGL_Error("invalid expression"); return 0; }
+	Expr operator()(const DeclFree& node) { CGL_Error("invalid expression"); return 0; }
 	};
 	*/
 
@@ -1692,18 +2059,19 @@ namespace cgl
 			return rhs;
 		}
 
-		bool operator()(const DefFunc& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const FunctionCaller& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const Range& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const Lines& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const DefFunc& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const FunctionCaller& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const Range& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const Lines& node) { CGL_Error("invalid expression"); return false; }
 		
-		bool operator()(const If& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const For& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const Return& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const ListConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const KeyExpr& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const RecordConstractor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
-		bool operator()(const RecordInheritor& node) { std::cerr << "Error(" << __LINE__ << "): invalid expression\n"; return false; }
+		bool operator()(const If& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const For& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const Return& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const KeyExpr& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const RecordConstractor& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
 
 		bool operator()(const Accessor& node);
 	};
@@ -1913,350 +2281,6 @@ namespace cgl
 		}
 	};
 #endif
-
-	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
-	//外側のスコープを参照する識別子をアドレスに置き換えた式を返す
-	class ClosureMaker : public boost::static_visitor<Expr>
-	{
-	public:
-
-		//関数内部で閉じているローカル変数
-		std::set<std::string> localVariables;
-
-		std::shared_ptr<Environment> pEnv;
-
-		//レコード継承の構文を扱うために必要必要
-		bool isInnerRecord;
-
-		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
-			pEnv(pEnv),
-			localVariables(functionArguments),
-			isInnerRecord(isInnerRecord)
-		{}
-
-		ClosureMaker& addLocalVariable(const std::string& name)
-		{
-			localVariables.insert(name);
-			return *this;
-		}
-
-		bool isLocalVariable(const std::string& name)const
-		{
-			return localVariables.find(name) != localVariables.end();
-		}
-
-		Expr operator()(const LRValue& node)
-		{
-			return node;
-		}
-
-		Expr operator()(const Identifier& node)
-		{
-			//その関数のローカル変数であれば関数の実行時に評価すればよいので、名前を残す
-			if (isLocalVariable(node))
-			{
-				return node;
-			}
-			//ローカル変数に無ければアドレスに置き換える
-			const Address address = pEnv->findAddress(node);
-			if (address.isValid())
-			{
-				//Identifier RecordConstructor の形をしたレコード継承の head 部分
-				//とりあえず参照先のレコードのメンバはローカル変数とおく
-				if (isInnerRecord)
-				{
-					const Evaluated& evaluated = pEnv->expand(address);
-					if (auto opt = AsOpt<Record>(evaluated))
-					{
-						const Record& record = opt.value();
-						for (const auto& keyval : record.values)
-						{
-							addLocalVariable(keyval.first);
-						}
-					}
-				}
-
-				return LRValue(address);
-			}
-
-			CGL_Error("識別子が定義されていません");
-			return LRValue(0);
-		}
-
-		Expr operator()(const UnaryExpr& node)
-		{
-			return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op);
-		}
-
-		Expr operator()(const BinaryExpr& node)
-		{
-			const Expr lhs = boost::apply_visitor(*this, node.lhs);
-			const Expr rhs = boost::apply_visitor(*this, node.rhs);
-
-			if (node.op != BinaryOp::Assign)
-			{
-				return BinaryExpr(lhs, rhs, node.op);
-			}
-
-			//Assignの場合、lhs は Address or Identifier or Accessor に限られる
-			//つまり現時点では、(if cond then x else y) = true のような式を許可していない
-			//ここで左辺に直接アドレスが入っていることは有り得る？
-			//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
-			/*if (auto valOpt = AsOpt<Evaluated>(node.lhs))
-			{
-				const Evaluated& val = valOpt.value();
-				if (IsType<Address>(val))
-				{
-					if (Address address = As<Address>(val))
-					{
-
-					}
-					else
-					{
-						ErrorLog("");
-						return 0;
-					}
-				}
-				else
-				{
-					ErrorLog("");
-					return 0;
-				}
-			}
-			else */if (auto valOpt = AsOpt<Identifier>(node.lhs))
-			{
-				const Identifier identifier = valOpt.value();
-
-				//ローカル変数にあれば、その場で解決できる識別子なので何もしない
-				if (isLocalVariable(identifier))
-				{
-					return BinaryExpr(lhs, rhs, node.op);
-				}
-				else
-				{
-					const Address address = pEnv->findAddress(identifier);
-
-					//ローカル変数に無く、スコープにあれば、アドレスに置き換える
-					if (address.isValid())
-					{
-						return BinaryExpr(LRValue(address), rhs, node.op);
-					}
-					//スコープにも無い場合は新たなローカル変数の宣言なので、ローカル変数に追加しておく
-					else
-					{
-						addLocalVariable(identifier);
-						return BinaryExpr(lhs, rhs, node.op);
-					}
-				}
-			}
-			else if (auto valOpt = AsOpt<Accessor>(node.lhs))
-			{
-				//アクセッサの場合は少なくとも変数宣言ではない
-				//ローカル変数 or スコープ
-				/*～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
-				Accessorのheadだけ評価してアドレス値に変換したい
-					headさえ分かればあとはそこから辿れるので
-					今の実装ではheadは式になっているが、これだと良くない
-					今は左辺にはそんなに複雑な式は許可していないので、これも識別子くらいの単純な形に制限してよいのではないか
-				～～～～～～～～～～～～～～～～～～～～～～～～～～～～～*/
-
-				//評価することにした
-				return BinaryExpr(lhs, rhs, node.op);
-			}
-
-			CGL_Error("二項演算子\"=\"の左辺は単一の左辺値でなければなりません");
-			return LRValue(0);
-		}
-
-		Expr operator()(const Range& node)
-		{
-			return Range(
-				boost::apply_visitor(*this, node.lhs),
-				boost::apply_visitor(*this, node.rhs));
-		}
-
-		Expr operator()(const Lines& node)
-		{
-			Lines result;
-			for (size_t i = 0; i < node.size(); ++i)
-			{
-				result.add(boost::apply_visitor(*this, node.exprs[i]));
-			}
-			return result;
-		}
-
-		Expr operator()(const DefFunc& node)
-		{
-			//ClosureMaker child(*this);
-			ClosureMaker child(pEnv, localVariables, false);
-			for (const auto& argument : node.arguments)
-			{
-				child.addLocalVariable(argument);
-			}
-
-			return DefFunc(node.arguments, boost::apply_visitor(child, node.expr));
-		}
-
-		Expr operator()(const If& node)
-		{
-			If result(boost::apply_visitor(*this, node.cond_expr));
-			result.then_expr = boost::apply_visitor(*this, node.then_expr);
-			if (node.else_expr)
-			{
-				result.else_expr = boost::apply_visitor(*this, node.else_expr.value());
-			}
-
-			return result;
-		}
-
-		Expr operator()(const For& node)
-		{
-			For result;
-			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
-			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
-
-			//ClosureMaker child(*this);
-			ClosureMaker child(pEnv, localVariables, false);
-			child.addLocalVariable(node.loopCounter);
-			result.doExpr = boost::apply_visitor(child, node.doExpr);
-
-			return result;
-		}
-
-		Expr operator()(const Return& node)
-		{
-			return Return(boost::apply_visitor(*this, node.expr));
-			//これだとダメかもしれない？
-			//return a = 6, a + 2
-		}
-
-		Expr operator()(const ListConstractor& node)
-		{
-			ListConstractor result;
-			//ClosureMaker child(*this);
-			ClosureMaker child(pEnv, localVariables, false);
-			for (const auto& expr : node.data)
-			{
-				result.data.push_back(boost::apply_visitor(child, expr));
-			}
-			return result;
-		}
-
-		Expr operator()(const KeyExpr& node)
-		{
-			//変数宣言式
-			//再代入の可能性もあるがどっちにしろこれ以降この識別子はローカル変数と扱ってよい
-			addLocalVariable(node.name);
-
-			KeyExpr result(node.name);
-			result.expr = boost::apply_visitor(*this, node.expr);
-			return result;
-		}
-
-		/*
-		Expr operator()(const RecordConstractor& node)
-		{
-			RecordConstractor result;
-			ClosureMaker child(*this);
-			for (const auto& expr : node.exprs)
-			{
-				result.exprs.push_back(boost::apply_visitor(child, expr));
-			}
-			return result;
-		}
-		*/
-
-		Expr operator()(const RecordConstractor& node)
-		{
-			RecordConstractor result;
-			
-			if (isInnerRecord)
-			{
-				isInnerRecord = false;
-				for (const auto& expr : node.exprs)
-				{
-					result.exprs.push_back(boost::apply_visitor(*this, expr));
-				}
-				isInnerRecord = true;
-			}
-			else
-			{
-				ClosureMaker child(pEnv, localVariables, false);
-				for (const auto& expr : node.exprs)
-				{
-					result.exprs.push_back(boost::apply_visitor(child, expr));
-				}
-			}			
-			
-			return result;
-		}
-
-		//レコード継承構文については特殊で、adderを評価する時のスコープはheadと同じである必要がある。
-		//つまり、headを評価する時にはその中身を、一段階だけ（波括弧一つ分だけ）展開するようにして評価しなければならない。
-		Expr operator()(const RecordInheritor& node)
-		{
-			RecordInheritor result;
-
-			//新たに追加
-			ClosureMaker child(pEnv, localVariables, true);
-
-			//result.original = boost::apply_visitor(*this, node.original);
-			result.original = boost::apply_visitor(child, node.original);
-			
-			Expr originalAdder = node.adder;
-			//Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
-			Expr replacedAdder = boost::apply_visitor(child, originalAdder);
-			if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
-			{
-				result.adder = opt.value();
-				return result;
-			}
-
-			CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
-			return LRValue(0);
-		}
-
-		Expr operator()(const Accessor& node)
-		{
-			Accessor result;
-			result.head = boost::apply_visitor(*this, node.head);
-
-			for (const auto& access : node.accesses)
-			{
-				if (auto listAccess = AsOpt<ListAccess>(access))
-				{
-					result.add(ListAccess(boost::apply_visitor(*this, listAccess.value().index)));
-				}
-				else if (auto recordAccess = AsOpt<RecordAccess>(access))
-				{
-					result.add(recordAccess.value());
-				}
-				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
-				{
-					FunctionAccess access;
-					for (const auto& argument : functionAccess.value().actualArguments)
-					{
-						access.add(boost::apply_visitor(*this, argument));
-					}
-					result.add(access);
-				}
-				else
-				{
-					CGL_Error("aaa");
-				}
-			}
-
-			return result;
-		}
-
-		Expr operator()(const FunctionCaller& node)
-		{
-			FunctionCaller result;
-			//TODO: ExprからFunctionCaller自体を消す
-			CGL_Error("TODO: ExprからFunctionCaller自体を消す");
-			return LRValue(0);
-		}
-	};
 
 #ifdef commentout
 	//式中の指定された変数を値で置き換えた式を返す
@@ -2707,10 +2731,6 @@ namespace cgl
 		{
 			return As<Jump>(value1) == As<Jump>(value2);
 		}
-		else if (IsType<DeclSat>(value1))
-		{
-			return As<DeclSat>(value1) == As<DeclSat>(value2);
-		}
 		else if (IsType<DeclFree>(value1))
 		{
 			return As<DeclFree>(value1) == As<DeclFree>(value2);
@@ -2831,6 +2851,10 @@ namespace cgl
 		else if (IsType<RecordInheritor>(value1))
 		{
 			return As<RecordInheritor>(value1) == As<RecordInheritor>(value2);
+		}
+		else if (IsType<DeclSat>(value1))
+		{
+			return As<DeclSat>(value1) == As<DeclSat>(value2);
 		}
 		else if (IsType<Accessor>(value1))
 		{

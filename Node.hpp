@@ -288,7 +288,6 @@ namespace cgl
 		boost::recursive_wrapper<Record>,
 		boost::recursive_wrapper<FuncVal>,
 		boost::recursive_wrapper<Jump>,
-		boost::recursive_wrapper<DeclSat>,
 		boost::recursive_wrapper<DeclFree>
 	>;
 
@@ -317,6 +316,7 @@ namespace cgl
 		boost::recursive_wrapper<KeyExpr>,
 		boost::recursive_wrapper<RecordConstractor>,
 		boost::recursive_wrapper<RecordInheritor>,
+		boost::recursive_wrapper<DeclSat>,
 
 		boost::recursive_wrapper<Accessor>
 	>;
@@ -361,7 +361,7 @@ namespace cgl
 		static LRValue Bool(bool a) { return LRValue(a); }
 		static LRValue Int(int a) { return LRValue(a); }
 		static LRValue Double(double a) { return LRValue(a); }
-		static LRValue Sat(const DeclSat& a) { return LRValue(a); }
+		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
 		static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
 		bool isRValue()const

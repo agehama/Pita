@@ -731,12 +731,9 @@ namespace cgl
 		const Expr closedFuncExpr = boost::apply_visitor(maker, expr);
 
 		FuncVal funcVal(arguments, closedFuncExpr);
-
-		std::cout << "makeFuncVal_F" << std::endl;
-		Address address = makeTemporaryValue(funcVal);
-		std::cout << "makeFuncVal_G" << std::endl;
-
-		return address;
+		return makeTemporaryValue(funcVal);
+		//Address address = makeTemporaryValue(funcVal);
+		//return address;
 	}
 
 #ifdef commentout
@@ -1793,7 +1790,8 @@ namespace cgl
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| constraints[_val = Call(LRValue::Sat, _1)]
+				//| constraints[_val = Call(LRValue::Sat, _1)]
+				| constraints[_val = _1]
 				| freeVals[_val = Call(LRValue::Free, _1)]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
@@ -2328,6 +2326,37 @@ rod2 = {
     free(rods[0].verts, rods[1].verts, rods[2].verts, rods[3].verts)
 }
 
+*/
+
+/*
+rod = {
+    r: 10
+    verts: [
+        {x:0, y:0}
+        {x:r, y:0}
+    ]
+}
+
+newRod = (x, y -> rod{verts:[{x:x, y:y}, {x:x+r, y:y}]})
+
+rod2 = {
+    rods: [newRod(0,0),newRod(10,10),newRod(20,20),newRod(30,30)]
+
+    for i in 0:2 do(
+        sat(rods[i].verts[1].x == rods[i+1].verts[0].x & rods[i].verts[1].y == rods[i+1].verts[0].y)
+    )
+
+    for i in 0:3 do(
+        sat((rods[i].verts[0].x - rods[i].verts[1].x)^2 + (rods[i].verts[0].y - rods[i].verts[1].y)^2 == rods[i].r^2)
+    )
+
+    sat(rods[0].verts[0].x == 0 & rods[0].verts[0].y == 0)
+    sat(rods[3].verts[1].x == 30 & rods[3].verts[1].y == 0)
+
+    free(rods[0].verts, rods[1].verts, rods[2].verts, rods[3].verts)
+}
+
+EOF
 */
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 	

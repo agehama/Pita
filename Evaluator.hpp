@@ -1304,9 +1304,9 @@ namespace cgl
 					}
 
 					pEnv->switchFrontScope();
-					CGL_DebugLog("");
+					//CGL_DebugLog("");
 					double result = problem.eval(pEnv);
-					CGL_DebugLog("");
+					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
 					pEnv->switchBackScope();
 					
 					return result;

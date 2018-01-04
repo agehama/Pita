@@ -5,9 +5,17 @@
 namespace cgl
 {
 	template<typename T>
-	std::string ToS(T str)
+	inline std::string ToS(T str)
 	{
 		return std::to_string(str);
+	}
+
+	template<typename T>
+	inline std::string ToS(T str, int precision)
+	{
+		std::ostringstream os;
+		os << std::setprecision(precision) << str;
+		return os.str();
 	}
 
 	class ValuePrinter : public boost::static_visitor<void>

@@ -729,9 +729,18 @@ namespace cgl
 		Accessor result;
 
 		//TODO: アクセッサはfree変数を持たない間、それ自身がfree変数指定されるまでのアドレスを畳み込む
-		bool dependsOnFreeVariables = false;
+		bool selfDependsOnFreeVariables = false;
+		bool childDependsOnFreeVariables = false;
+		{
+			HasFreeVariables searcher(pEnv, freeVariables);
+			const Expr headExpr = LRValue(headAddress);
+			selfDependsOnFreeVariables = boost::apply_visitor(searcher, headExpr);
+		}
+
 		for (const auto& access : node.accesses)
 		{
+			const Address lastHeadAddress = headAddress;
+
 			boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(headAddress);
 			if (!objOpt)
 			{
@@ -743,12 +752,14 @@ namespace cgl
 			if (IsType<ListAccess>(access))
 			{
 				const ListAccess& listAccess = As<ListAccess>(access);
-				
-				HasFreeVariables searcher(pEnv, freeVariables);
-				if (dependsOnFreeVariables || boost::apply_visitor(searcher, listAccess.index))
+
 				{
-					dependsOnFreeVariables = true;
-					
+					HasFreeVariables searcher(pEnv, freeVariables);
+					childDependsOnFreeVariables = childDependsOnFreeVariables || boost::apply_visitor(searcher, listAccess.index);
+				}
+
+				if (childDependsOnFreeVariables)
+				{
 					Expr accessIndex = boost::apply_visitor(*this, listAccess.index);
 					result.add(ListAccess(accessIndex));
 				}
@@ -777,7 +788,7 @@ namespace cgl
 			{
 				const RecordAccess& recordAccess = As<RecordAccess>(access);
 
-				if (dependsOnFreeVariables)
+				if (childDependsOnFreeVariables)
 				{
 					result.add(access);
 				}
@@ -801,16 +812,16 @@ namespace cgl
 			else
 			{
 				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
-				
+
 				{
 					HasFreeVariables searcher(pEnv, freeVariables);
 					for (const auto& arg : funcAccess.actualArguments)
 					{
-						dependsOnFreeVariables = dependsOnFreeVariables || boost::apply_visitor(searcher, arg);
+						childDependsOnFreeVariables = childDependsOnFreeVariables || boost::apply_visitor(searcher, arg);
 					}
 				}
 
-				if (dependsOnFreeVariables)
+				if (childDependsOnFreeVariables)
 				{
 					FunctionAccess resultAccess;
 					for (const auto& arg : funcAccess.actualArguments)
@@ -839,6 +850,43 @@ namespace cgl
 					headAddress = pEnv->makeTemporaryValue(returnedValue);
 				}
 			}
+
+			if(lastHeadAddress != headAddress && !selfDependsOnFreeVariables)
+			{
+				HasFreeVariables searcher(pEnv, freeVariables);
+				const Expr headExpr = LRValue(headAddress);
+				selfDependsOnFreeVariables = boost::apply_visitor(searcher, headExpr);
+			}
+		}
+
+		/*
+		selfDependsOnFreeVariablesとchildDependsOnFreeVariablesが両方true : エラー
+		selfDependsOnFreeVariablesがtrue  : アクセッサ本体がfree（アクセッサを評価すると必ず単一のdouble型になる）
+		childDependsOnFreeVariablesがtrue : アクセッサの引数がfree（リストインデックスか関数引数）
+		*/
+		if (selfDependsOnFreeVariables && childDependsOnFreeVariables)
+		{
+			CGL_Error("sat式中のアクセッサについて、本体と引数の両方をfree変数に指定することはできません");
+		}
+		else if (selfDependsOnFreeVariables)
+		{
+			if (!result.accesses.empty())
+			{
+				CGL_Error("ここは通らないはず");
+			}
+			
+			if (auto satRefOpt = addSatRef(headAddress))
+			{
+				return satRefOpt.value();
+			}
+			else
+			{
+				CGL_Error("ここは通らないはず");
+			}
+		}
+		else if (childDependsOnFreeVariables)
+		{
+			CGL_Error("TODO: アクセッサの引数のfree変数指定は未対応");
 		}
 
 		result.head = LRValue(headAddress);

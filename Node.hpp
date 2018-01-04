@@ -58,7 +58,7 @@ namespace cgl
 
 namespace std
 {
-	template<class T> class hash;
+	template<class T> struct hash;
 }
 
 namespace cgl
@@ -136,31 +136,31 @@ namespace cgl
 		Assign
 	};
 
-	/*
+	
 	inline std::string BinaryOpToStr(BinaryOp op)
 	{
-	switch (op)
-	{
-	case BinaryOp::And: return "BinaryOp::And";
-	case BinaryOp::Or:  return "BinaryOp::Or";
+		switch (op)
+		{
+		case BinaryOp::And: return "And";
+		case BinaryOp::Or:  return "Or";
 
-	case BinaryOp::Equal:        return "BinaryOp::Equal";
-	case BinaryOp::NotEqual:     return "BinaryOp::NotEqual";
-	case BinaryOp::LessThan:     return "BinaryOp::LessThan";
-	case BinaryOp::LessEqual:    return "BinaryOp::LessEqual";
-	case BinaryOp::GreaterThan:  return "BinaryOp::GreaterThan";
-	case BinaryOp::GreaterEqual: return "BinaryOp::GreaterEqual";
+		case BinaryOp::Equal:        return "Equal";
+		case BinaryOp::NotEqual:     return "NotEqual";
+		case BinaryOp::LessThan:     return "LessThan";
+		case BinaryOp::LessEqual:    return "LessEqual";
+		case BinaryOp::GreaterThan:  return "GreaterThan";
+		case BinaryOp::GreaterEqual: return "GreaterEqual";
 
-	case BinaryOp::Add: return "BinaryOp::Add";
-	case BinaryOp::Sub: return "BinaryOp::Sub";
-	case BinaryOp::Mul: return "BinaryOp::Mul";
-	case BinaryOp::Div: return "BinaryOp::Div";
+		case BinaryOp::Add: return "Add";
+		case BinaryOp::Sub: return "Sub";
+		case BinaryOp::Mul: return "Mul";
+		case BinaryOp::Div: return "Div";
 
-	case BinaryOp::Pow:    return "BinaryOp::Pow";
-	case BinaryOp::Assign: return "BinaryOp::Assign";
+		case BinaryOp::Pow:    return "Pow";
+		case BinaryOp::Assign: return "Assign";
+		}
 	}
-	}
-	*/
+	
 
 	struct DefFunc;
 
@@ -274,9 +274,25 @@ namespace cgl
 
 	struct Jump;
 
-	struct Reference
+	struct SatReference
 	{
-		Address address;
+		int refID;
+
+		SatReference() = default;
+
+		explicit SatReference(int refID)
+			:refID(refID)
+		{}
+
+		bool operator==(const SatReference& other)const
+		{
+			return refID == other.refID;
+		}
+
+		bool operator!=(const SatReference& other)const
+		{
+			return refID != other.refID;
+		}
 	};
 
 	using Evaluated = boost::variant<
@@ -297,6 +313,7 @@ namespace cgl
 	using Expr = boost::variant<
 		boost::recursive_wrapper<LRValue>,
 		Identifier,
+		SatReference,
 
 		boost::recursive_wrapper<UnaryExpr>,
 		boost::recursive_wrapper<BinaryExpr>,
@@ -407,17 +424,6 @@ namespace cgl
 	struct SatBinaryExpr;
 	struct SatLines;
 
-	struct SatReference
-	{
-		int refID;
-
-		SatReference() = default;
-
-		SatReference(int refID)
-			:refID(refID)
-		{}
-	};
-
 	struct SatFunctionReference;
 
 	using SatExpr = boost::variant<
@@ -435,7 +441,8 @@ namespace cgl
 	{
 		boost::optional<Expr> candidateExpr;
 
-		boost::optional<SatExpr> expr;
+		//boost::optional<SatExpr> expr;
+		boost::optional<Expr> expr;
 
 		//制約式に含まれる全ての参照にIDを振る(=参照ID)
 		//参照IDはdouble型の値に紐付けられる
@@ -456,7 +463,7 @@ namespace cgl
 			data[index] = x;
 		}
 
-		double eval();
+		double eval(std::shared_ptr<Environment> pEnv);
 	};
 
 	struct SatUnaryExpr
@@ -1001,10 +1008,15 @@ namespace cgl
 			}
 		}
 
-		ListConstractor& operator()(const Expr& expr)
+		ListConstractor& add(const Expr& expr)
 		{
 			data.push_back(expr);
 			return *this;
+		}
+
+		ListConstractor& operator()(const Expr& expr)
+		{
+			return add(expr);
 		}
 
 		static ListConstractor Make(const Expr& expr)
@@ -1144,6 +1156,12 @@ namespace cgl
 		std::vector<Expr> exprs;
 
 		RecordConstractor() = default;
+
+		RecordConstractor& add(const Expr& expr)
+		{
+			exprs.push_back(expr);
+			return *this;
+		}
 
 		static void AppendKeyExpr(RecordConstractor& rec, const KeyExpr& KeyExpr)
 		{

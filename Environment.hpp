@@ -137,7 +137,6 @@ namespace cgl
 		*/
 		void switchFrontScope()
 		{
-			//関数のスコープが同じ時の動作は未確認
 			m_localEnvStack.push(LocalEnvironment());
 		}
 		void switchBackScope()

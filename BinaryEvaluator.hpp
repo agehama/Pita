@@ -148,7 +148,7 @@ namespace cgl
 		return 0;
 	}
 
-	inline Evaluated Equal(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	inline bool Equal(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -181,11 +181,11 @@ namespace cgl
 			return As<bool>(lhs) == As<bool>(rhs);
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0;
+		CGL_Error("不正な式");
+		return false;
 	}
 
-	inline Evaluated NotEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	inline bool NotEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -218,11 +218,11 @@ namespace cgl
 			return As<bool>(lhs) != As<bool>(rhs);
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0;
+		CGL_Error("不正な式");
+		return false;
 	}
 
-	inline Evaluated LessThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	inline bool LessThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -250,11 +250,11 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0;
+		CGL_Error("不正な式");
+		return false;
 	}
 
-	inline Evaluated LessEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	inline bool LessEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -282,11 +282,11 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0;
+		CGL_Error("不正な式");
+		return false;
 	}
 
-	inline Evaluated GreaterThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	inline bool GreaterThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -314,11 +314,11 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0;
+		CGL_Error("不正な式");
+		return false;
 	}
 
-	inline Evaluated GreaterEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	inline bool GreaterEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -346,8 +346,8 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return 0;
+		CGL_Error("不正な式");
+		return false;
 	}
 
 	inline Evaluated Max(const Evaluated& lhs, const Evaluated& rhs, Environment& env)

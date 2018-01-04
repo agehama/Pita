@@ -253,6 +253,11 @@ namespace cgl
 			std::cout << indent() << "Identifier(" << static_cast<std::string>(node) << ")" << std::endl;
 		}
 
+		void operator()(const SatReference& node)const
+		{
+			std::cout << indent() << "SatReference(" << node.refID << ")" << std::endl;
+		}
+
 		void operator()(const UnaryExpr& node)const
 		{
 			std::cout << indent() << "Unary(" << std::endl;

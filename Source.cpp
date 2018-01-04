@@ -11,6 +11,7 @@
 
 namespace cgl
 {
+#ifdef commentout
 	SatExpr Expr2SatExpr::operator()(const LRValue& node)
 	{
 		if (node.isRValue())
@@ -60,6 +61,39 @@ namespace cgl
 		}
 
 		CGL_Error("不正な値");
+		return 0;
+	}
+#endif
+
+	Expr Expr2SatExpr::operator()(const LRValue& node)
+	{
+		if (node.isRValue())
+		{
+			return node;
+		}
+		else
+		{
+			const Address address = node.address();
+
+			if (!address.isValid())
+			{
+				CGL_Error("識別子が定義されていません");
+			}
+
+			//free変数にあった場合は制約用の参照値を返す
+			if (auto satRefOpt = addSatRef(address))
+			{
+				return satRefOpt.value();
+			}
+			//free変数になかった場合は評価した結果を返す
+			else
+			{
+				const Evaluated evaluated = pEnv->expand(address);
+				return LRValue(evaluated);
+			}
+		}
+
+		CGL_Error("ここは通らないはず");
 		return 0;
 	}
 
@@ -114,6 +148,7 @@ namespace cgl
 		return 0.0;
 	}
 	*/
+#ifdef commentout
 	SatExpr Expr2SatExpr::operator()(const Identifier& node)
 	{
 		Address address = pEnv->findAddress(node);
@@ -146,6 +181,32 @@ namespace cgl
 
 		CGL_Error("ここは通らないはず");
 		return 0.0;
+	}
+#endif
+
+	//ここにIdentifierが残っている時点でClosureMakerにローカル変数だと判定された変数のはず
+	Expr Expr2SatExpr::operator()(const Identifier& node)
+	{
+		Address address = pEnv->findAddress(node);
+		if (!address.isValid())
+		{
+			CGL_Error("識別子が定義されていません");
+		}
+
+		//free変数にあった場合は制約用の参照値を返す
+		if (auto satRefOpt = addSatRef(address))
+		{
+			return satRefOpt.value();
+		}
+		//free変数になかった場合は評価した結果を返す
+		else
+		{
+			const Evaluated evaluated = pEnv->expand(address);
+			return LRValue(evaluated);
+		}
+
+		CGL_Error("ここは通らないはず");
+		return LRValue(0);
 	}
 
 	/*inline bool HasFreeVariables::operator()(const RValue& node)
@@ -254,6 +315,7 @@ namespace cgl
 		return false;
 	}
 
+#ifdef commentout
 	inline boost::optional<SatFunctionReference> MakeSatFunctionReference(
 		//const FuncVal& head, 
 		//const std::string& head,
@@ -619,6 +681,169 @@ namespace cgl
 		}
 
 		return 0.0;
+	}
+#endif
+
+	Expr Expr2SatExpr::operator()(const Accessor& node)
+	{
+		Address headAddress;
+		const Expr& head = node.head;
+
+		//headがsat式中のローカル変数
+		if (IsType<Identifier>(head))
+		{
+			Address address = pEnv->findAddress(As<Identifier>(head));
+			if (!address.isValid())
+			{
+				CGL_Error("識別子が定義されていません");
+			}
+
+			//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。
+			//したがって、free変数にあるかどうかは考慮せず（free変数は冗長に指定できるのであったとしても別にエラーではない）、
+			//直接Evaluatedとして展開する
+			//result.head = LRValue(address);
+			headAddress = address;
+		}
+		//headがアドレス値
+		else if (IsType<LRValue>(head))
+		{
+			const LRValue& headAddressValue = As<LRValue>(head);
+			if (!headAddressValue.isLValue())
+			{
+				CGL_Error("sat式中のアクセッサの先頭部が不正な値です");
+			}
+
+			const Address address = headAddressValue.address();
+
+			//↑のIdentifierと同様に直接展開する
+			//result.head = LRValue(address);
+			headAddress = address;
+		}
+		else
+		{
+			CGL_Error("sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
+		}
+
+		Eval evaluator(pEnv);
+
+		Accessor result;
+
+		//TODO: アクセッサはfree変数を持たない間、それ自身がfree変数指定されるまでのアドレスを畳み込む
+		bool dependsOnFreeVariables = false;
+		for (const auto& access : node.accesses)
+		{
+			boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(headAddress);
+			if (!objOpt)
+			{
+				CGL_Error("参照エラー");
+			}
+
+			const Evaluated& objRef = objOpt.value();
+
+			if (IsType<ListAccess>(access))
+			{
+				const ListAccess& listAccess = As<ListAccess>(access);
+				
+				HasFreeVariables searcher(pEnv, freeVariables);
+				if (dependsOnFreeVariables || boost::apply_visitor(searcher, listAccess.index))
+				{
+					dependsOnFreeVariables = true;
+					
+					Expr accessIndex = boost::apply_visitor(*this, listAccess.index);
+					result.add(ListAccess(accessIndex));
+				}
+				else
+				{
+					Evaluated value = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
+
+					if (!IsType<List>(objRef))
+					{
+						CGL_Error("オブジェクトがリストでない");
+					}
+
+					const List& list = As<const List&>(objRef);
+
+					if (auto indexOpt = AsOpt<int>(value))
+					{
+						headAddress = list.get(indexOpt.value());
+					}
+					else
+					{
+						CGL_Error("list[index] の index が int 型でない");
+					}
+				}
+			}
+			else if (IsType<RecordAccess>(access))
+			{
+				const RecordAccess& recordAccess = As<RecordAccess>(access);
+
+				if (dependsOnFreeVariables)
+				{
+					result.add(access);
+				}
+				else
+				{
+					if (!IsType<Record>(objRef))
+					{
+						CGL_Error("オブジェクトがレコードでない");
+					}
+
+					const Record& record = As<const Record&>(objRef);
+					auto it = record.values.find(recordAccess.name);
+					if (it == record.values.end())
+					{
+						CGL_Error("指定された識別子がレコード中に存在しない");
+					}
+
+					headAddress = it->second;
+				}
+			}
+			else
+			{
+				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
+				
+				{
+					HasFreeVariables searcher(pEnv, freeVariables);
+					for (const auto& arg : funcAccess.actualArguments)
+					{
+						dependsOnFreeVariables = dependsOnFreeVariables || boost::apply_visitor(searcher, arg);
+					}
+				}
+
+				if (dependsOnFreeVariables)
+				{
+					FunctionAccess resultAccess;
+					for (const auto& arg : funcAccess.actualArguments)
+					{
+						resultAccess.add(boost::apply_visitor(*this, arg));
+					}
+					result.add(resultAccess);
+				}
+				else
+				{
+					if (!IsType<FuncVal>(objRef))
+					{
+						CGL_Error("オブジェクトが関数でない");
+					}
+
+					const FuncVal& function = As<const FuncVal&>(objRef);
+
+					std::vector<Evaluated> args;
+					for (const auto& expr : funcAccess.actualArguments)
+					{
+						args.push_back(pEnv->expand(boost::apply_visitor(evaluator, expr)));
+					}
+
+					Expr caller = FunctionCaller(function, args);
+					const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+					headAddress = pEnv->makeTemporaryValue(returnedValue);
+				}
+			}
+		}
+
+		result.head = LRValue(headAddress);
+
+		return result;
 	}
 
 	/*
@@ -1410,6 +1635,7 @@ namespace cgl
 		}
 	}
 
+	/*
 	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables)
 	{
 		if (!candidateExpr)
@@ -1430,6 +1656,46 @@ namespace cgl
 			boost::apply_visitor(printer, expr.value());
 			//std::cout << "\n";
 			CGL_DebugLog(ss.str());
+		}
+
+		//satに出てこないfreeVariablesの削除
+		for (int i = static_cast<int>(freeVariables.size()) - 1; 0 <= i; --i)
+		{
+			if (evaluator.usedInSat[i] == 0)
+			{
+				freeVariables.erase(freeVariables.begin() + i);
+			}
+		}
+	}
+	*/
+
+	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables)
+	{
+		if (!candidateExpr)
+		{
+			expr = boost::none;
+			return;
+		}
+
+		Expr2SatExpr evaluator(0, pEnv, freeVariables);
+		expr = boost::apply_visitor(evaluator, candidateExpr.value());
+		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
+
+		/*
+		{
+			CGL_DebugLog("Print:");
+			std::stringstream ss;
+			PrintSatExpr printer(data, ss);
+			boost::apply_visitor(printer, expr.value());
+			CGL_DebugLog(ss.str());
+		}
+		*/
+
+		{
+			CGL_DebugLog("Print:");
+			Printer printer;
+			boost::apply_visitor(printer, expr.value());
+			CGL_DebugLog("");
 		}
 
 		//satに出てこないfreeVariablesの削除
@@ -1475,15 +1741,28 @@ namespace cgl
 		return true;
 	}
 
-	double OptimizationProblemSat::eval()
+	double OptimizationProblemSat::eval(std::shared_ptr<Environment> pEnv)
 	{
 		if (!expr)
 		{
 			return 0.0;
 		}
 
-		EvalSatExpr evaluator(data);
-		return boost::apply_visitor(evaluator, expr.value());
+		if (data.empty())
+		{
+			CGL_WarnLog("free式に有効な変数が指定されていません。");
+			return 0.0;
+		}
+
+		EvalSatExpr evaluator(pEnv, data);
+		const Evaluated evaluated = boost::apply_visitor(evaluator, expr.value());
+		
+		if (!IsType<double>(evaluated))
+		{
+			CGL_Error("sat式の評価結果が不正");
+		}
+
+		return As<double>(evaluated);
 	}
 
 	void OptimizationProblemSat::debugPrint()
@@ -1493,10 +1772,13 @@ namespace cgl
 			return;
 		}
 
-		std::stringstream ss;
+		/*std::stringstream ss;
 		PrintSatExpr printer(data, ss);
 		boost::apply_visitor(printer, expr.value());
-		CGL_DebugLog(ss.str());
+		CGL_DebugLog(ss.str());*/
+
+		Printer printer;
+		boost::apply_visitor(printer, expr.value());
 	}
 }
 

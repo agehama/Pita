@@ -884,10 +884,10 @@ namespace cgl
 				CGL_Error("ここは通らないはず");
 			}
 		}
-		else if (childDependsOnFreeVariables)
+		/*else if (childDependsOnFreeVariables)
 		{
 			CGL_Error("TODO: アクセッサの引数のfree変数指定は未対応");
-		}
+		}*/
 
 		result.head = LRValue(headAddress);
 

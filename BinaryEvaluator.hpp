@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include "Node.hpp"
 
 namespace cgl
@@ -86,7 +87,7 @@ namespace cgl
 			return !As<bool>(lhs);
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -99,7 +100,7 @@ namespace cgl
 			return lhs;
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -116,7 +117,7 @@ namespace cgl
 			return -As<double>(lhs);
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -130,7 +131,7 @@ namespace cgl
 			return As<bool>(lhs) && As<bool>(rhs);
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -144,7 +145,7 @@ namespace cgl
 			return As<bool>(lhs) || As<bool>(rhs);
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -181,7 +182,7 @@ namespace cgl
 			return As<bool>(lhs) == As<bool>(rhs);
 		}
 
-		CGL_Error("不正な式");
+		CGL_Error("不正な式です");
 		return false;
 	}
 
@@ -218,7 +219,7 @@ namespace cgl
 			return As<bool>(lhs) != As<bool>(rhs);
 		}
 
-		CGL_Error("不正な式");
+		CGL_Error("不正な式です");
 		return false;
 	}
 
@@ -250,7 +251,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式");
+		CGL_Error("不正な式です");
 		return false;
 	}
 
@@ -282,7 +283,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式");
+		CGL_Error("不正な式です");
 		return false;
 	}
 
@@ -314,7 +315,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式");
+		CGL_Error("不正な式です");
 		return false;
 	}
 
@@ -346,7 +347,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式");
+		CGL_Error("不正な式です");
 		return false;
 	}
 
@@ -378,7 +379,7 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -410,7 +411,7 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -427,7 +428,37 @@ namespace cgl
 			return std::abs(As<double>(lhs));
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
+		return 0;
+	}
+
+	inline Evaluated Sin(const Evaluated& lhs)
+	{
+		if (IsType<int>(lhs))
+		{
+			return std::sin(As<int>(lhs));
+		}
+		else if (IsType<double>(lhs))
+		{
+			return std::sin(As<double>(lhs));
+		}
+
+		CGL_Error("不正な式です");
+		return 0;
+	}
+
+	inline Evaluated Cos(const Evaluated& lhs)
+	{
+		if (IsType<int>(lhs))
+		{
+			return std::cos(As<int>(lhs));
+		}
+		else if (IsType<double>(lhs))
+		{
+			return std::cos(As<double>(lhs));
+		}
+
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -459,7 +490,7 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -491,7 +522,7 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -523,7 +554,7 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -555,7 +586,7 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -587,7 +618,7 @@ namespace cgl
 			}
 		}
 
-		std::cerr << "Error(" << __LINE__ << ")\n";
+		CGL_Error("不正な式です");
 		return 0;
 	}
 
@@ -597,7 +628,7 @@ namespace cgl
 		if (!IsLValue(lhs))
 		{
 			//代入式の左辺が左辺値でない
-			std::cerr << "Error(" << __LINE__ << ")\n";
+			CGL_Error("不正な式です");
 			return 0;
 		}
 
@@ -694,7 +725,7 @@ namespace cgl
 		}
 		else
 		{
-			std::cerr << "Error(" << __LINE__ << "): Assign Error.\n";
+			CGL_Error("不正な式です");
 		}
 
 		return lhs;

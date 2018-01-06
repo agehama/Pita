@@ -595,6 +595,30 @@ namespace cgl
 			CGL_DebugLog("Function Environment:");
 			pEnv->printEnvironment();
 
+			/*
+			まだ参照をスコープ間で共有できるようにしていないため、引数に与えられたオブジェクトは全て展開して渡す。
+			そして、引数の評価時点ではまだ関数の中に入っていないので、スコープを変える前に展開を行う。
+			*/
+
+			/*
+			12/14
+			全ての値はIDで管理するようにする。
+			そしてスコープが変わると、変数のマッピングは変わるが、値は共通なのでどちらからも参照できる。
+			*/
+			std::vector<Address> expandedArguments(callFunc.actualArguments.size());
+			for (size_t i = 0; i < expandedArguments.size(); ++i)
+			{
+				//Evaluated型の値は、ObjectReferenceの中に識別子を持つことができる（これは ((a))=2 などの代入を正しく行うために必要なことである）
+				//ただし、これはスコープをまたぐ時には外すべきである（外さないと動的スコープみたいになる）
+				//したがってEvaluatedの中身をもう一度再帰的に評価し、IdentifierのみAddressに置き換えるという処理を行う
+				expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
+
+				//EliminateScopeDependency elim(pEnv);
+				//expandedArguments[i] = pEnv->makeTemporaryValue(boost::apply_visitor(elim, callFunc.actualArguments[i]));
+			}
+
+			CGL_DebugLog("");
+
 			FuncVal funcVal;
 
 			//if (IsType<FuncVal>(callFunc.funcRef))
@@ -625,21 +649,16 @@ namespace cgl
 					{
 						CGL_Error("ここは通らないはず");
 					}
-
-					/*if (IsType<FuncVal>(funcRef))
-					{
-					funcVal = As<FuncVal>(funcRef);
-					}
-					else
-					{
-					std::cerr << "Error(" << __LINE__ << "): variable \"" << As<Identifier>(callFunc.funcRef).name << "\" is not a function.\n";
-					return 0;
-					}*/
 				}
 				else
 				{
 					CGL_Error("指定された変数名に値が紐つけられていない");
 				}
+			}
+
+			if (funcVal.builtinFuncAddress)
+			{
+				return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.value(), expandedArguments));
 			}
 
 			CGL_DebugLog("");
@@ -649,35 +668,6 @@ namespace cgl
 			{
 				CGL_Error("仮引数の数と実引数の数が合っていない");
 			}
-
-			/*
-			まだ参照をスコープ間で共有できるようにしていないため、引数に与えられたオブジェクトは全て展開して渡す。
-			そして、引数の評価時点ではまだ関数の中に入っていないので、スコープを変える前に展開を行う。
-			*/
-			//std::vector<Evaluated> expandedArguments(funcVal.arguments.size());
-			//for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-			//{
-			//	expandedArguments[i] = pEnv->expandObject(callFunc.actualArguments[i]);
-			//}
-
-			/*
-			12/14
-			全ての値はIDで管理するようにする。
-			そしてスコープが変わると、変数のマッピングは変わるが、値は共通なのでどちらからも参照できる。
-			*/
-			std::vector<Address> expandedArguments(funcVal.arguments.size());
-			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-			{
-				//Evaluated型の値は、ObjectReferenceの中に識別子を持つことができる（これは ((a))=2 などの代入を正しく行うために必要なことである）
-				//ただし、これはスコープをまたぐ時には外すべきである（外さないと動的スコープみたいになる）
-				//したがってEvaluatedの中身をもう一度再帰的に評価し、IdentifierのみAddressに置き換えるという処理を行う
-				expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
-				
-				//EliminateScopeDependency elim(pEnv);
-				//expandedArguments[i] = pEnv->makeTemporaryValue(boost::apply_visitor(elim, callFunc.actualArguments[i]));
-			}
-
-			CGL_DebugLog("");
 
 			//関数の評価
 			//(1)ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える
@@ -2932,6 +2922,12 @@ return 0.0;
 			//CGL_DebugLog("Function Environment:");
 			//pEnv->printEnvironment();
 
+			std::vector<Address> expandedArguments(callFunc.actualArguments.size());
+			for (size_t i = 0; i < expandedArguments.size(); ++i)
+			{
+				expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
+			}
+
 			FuncVal funcVal;
 
 			if (auto opt = AsOpt<FuncVal>(callFunc.funcRef))
@@ -2965,35 +2961,34 @@ return 0.0;
 				}
 			}
 
-			CGL_DebugLog("");
+			if (funcVal.builtinFuncAddress)
+			{
+				return pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.value(), expandedArguments);
+			}
+
+			//CGL_DebugLog("");
 
 			if (funcVal.arguments.size() != callFunc.actualArguments.size())
 			{
 				CGL_Error("仮引数の数と実引数の数が合っていない");
 			}
 
-			std::vector<Address> expandedArguments(funcVal.arguments.size());
-			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-			{
-				expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
-			}
-
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			pEnv->switchFrontScope();
 			
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			pEnv->enterScope();
 
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
 				pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
 			}
 
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			//CGL_DebugLog("Function Definition:");
 			//boost::apply_visitor(Printer(), funcVal.expr);
@@ -3002,22 +2997,22 @@ return 0.0;
 			{
 				//関数も通常の関数ではなく、制約を表す関数であるはずなので、評価はEvalではなく*thisで行う
 				result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
-				CGL_DebugLog("Function Evaluated:");
-				printEvaluated(result, nullptr);
+				//CGL_DebugLog("Function Evaluated:");
+				//printEvaluated(result, nullptr);
 			}
 			//Evaluated result = pEnv->expandObject();
 
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			//(4)関数を抜ける時に、仮引数は全て解放される
 			pEnv->exitScope();
 
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
 			pEnv->switchBackScope();
 
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			return result;
 		}
@@ -3080,7 +3075,7 @@ return 0.0;
 				CGL_Error("ここは通らないはず");
 			}
 
-			const LRValue& headAddressValue = As<LRValue>(node.head);;
+			const LRValue& headAddressValue = As<LRValue>(node.head);
 			if (!headAddressValue.isLValue())
 			{
 				CGL_Error("ここは通らないはず");

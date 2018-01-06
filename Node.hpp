@@ -717,10 +717,15 @@ namespace cgl
 	{
 		std::vector<Identifier> arguments;
 		Expr expr;
+		boost::optional<Address> builtinFuncAddress;
 		//std::vector<std::set<std::string>> referenceableVariables;
 		//mutable int currentScopeDepth;
 
 		FuncVal() = default;
+
+		explicit FuncVal(Address builtinFuncAddress) :
+			builtinFuncAddress(builtinFuncAddress)
+		{}
 
 		FuncVal(
 			const std::vector<Identifier>& arguments,

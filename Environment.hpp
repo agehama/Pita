@@ -1,16 +1,18 @@
 #pragma once
 #include <stack>
 #include "Node.hpp"
+#include "BinaryEvaluator.hpp"
 
 namespace cgl
 {
+	template<class ValueType>
 	class Values
 	{
 	public:
 
-		using ValueList = std::unordered_map<Address, Evaluated>;
+		using ValueList = std::unordered_map<Address, ValueType>;
 
-		Address add(const Evaluated& value)
+		Address add(const ValueType& value)
 		{
 			m_values.insert({ newAddress(), value });
 
@@ -22,62 +24,47 @@ namespace cgl
 			return m_values.size();
 		}
 
-		Evaluated& operator[](Address key)
+		ValueType& operator[](Address key)
 		{
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
+				CGL_Error("参照エラー");
 			}
 			return it->second;
 		}
 
-		const Evaluated& operator[](Address key)const
+		const ValueType& operator[](Address key)const
 		{
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
+				CGL_Error("参照エラー");
 			}
 			return it->second;
 		}
 
-		/*boost::optional<const Evaluated&> at(Address key)const
-		{
-			auto it = m_values.find(key);
-			if (it == m_values.end())
-			{
-				return boost::none;
-			}
-			return it->second;
-		}*/
-
-		ValueList::iterator at(Address key)
+		typename ValueList::iterator at(Address key)
 		{
 			return m_values.find(key);
 		}
 
-		ValueList::const_iterator at(Address key)const
+		typename ValueList::const_iterator at(Address key)const
 		{
 			return m_values.find(key);
 		}
 
-		ValueList::const_iterator begin()const
+		typename ValueList::const_iterator begin()const
 		{
 			return m_values.cbegin();
 		}
 
-		ValueList::const_iterator end()const
+		typename ValueList::const_iterator end()const
 		{
 			return m_values.cend();
 		}
 
 	private:
-
-		/*unsigned nextID()
-		{
-			return ++m_ID;
-		}*/
 
 		Address newAddress()
 		{
@@ -97,6 +84,8 @@ namespace cgl
 		using Scope = std::unordered_map<std::string, Address>;
 
 		using LocalEnvironment = std::vector<Scope>;
+
+		using BuiltInFunction = std::function<Evaluated(std::shared_ptr<Environment>, const std::vector<Address>&)>;
 
 		//ObjectReference makeFuncVal(const std::vector<Identifier>& arguments, const Expr& expr);
 		Address makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
@@ -142,6 +131,34 @@ namespace cgl
 		void switchBackScope()
 		{
 			m_localEnvStack.pop();
+		}
+
+		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function)
+		{
+			//m_valuesにFuncVal追加
+			//m_functionsにfunction追加
+			//m_scopeにname->FuncVal追加
+			
+			const Address address1 = m_functions.add(function);
+			const Address address2 = m_values.add(FuncVal(address1));
+
+			if (address1 != address2)
+			{
+				CGL_Error("組み込み関数の追加に失敗");
+			}
+
+			bindValueID(name, address1);
+		}
+
+		Evaluated callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
+		{
+			if (std::shared_ptr<Environment> pEnv = m_weakThis.lock())
+			{
+				return m_functions[functionAddress](pEnv, arguments);
+			}
+			
+			CGL_Error("ここは通らないはず");
+			return 0;
 		}
 
 		/*
@@ -409,6 +426,8 @@ namespace cgl
 			auto p = std::make_shared<Environment>();
 			p->m_weakThis = p;
 			p->switchFrontScope();
+			p->enterScope();
+			p->initialize();
 			return p;
 		}
 
@@ -500,6 +519,35 @@ namespace cgl
 
 	private:
 
+		void initialize()
+		{
+			registerBuiltInFunction(
+				"sin",
+				[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			{
+				if (arguments.size() != 1)
+				{
+					CGL_Error("引数の数が正しくありません");
+				}
+
+				return Sin(pEnv->expand(arguments[0]));
+			}
+			);
+
+			registerBuiltInFunction(
+				"cos",
+				[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			{
+				if (arguments.size() != 1)
+				{
+					CGL_Error("引数の数が正しくありません");
+				}
+
+				return Cos(pEnv->expand(arguments[0]));
+			}
+			);
+		}
+
 		LocalEnvironment& localEnv()
 		{
 			return m_localEnvStack.top();
@@ -553,7 +601,9 @@ namespace cgl
 
 		void garbageCollect();
 
-		Values m_values;
+		Values<BuiltInFunction> m_functions;
+
+		Values<Evaluated> m_values;
 
 		//変数はスコープ単位で管理される
 		//スコープを抜けたらそのスコープで管理している変数を環境ごと削除する

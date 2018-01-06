@@ -501,26 +501,33 @@ namespace cgl
 
 	inline void ValuePrinter::operator()(const FuncVal& node)const
 	{
-		std::cout << indent() << "FuncVal(" << std::endl;
-
+		if (node.builtinFuncAddress)
 		{
-			const auto child = ValuePrinter(pEnv, m_indent + 1);
-			std::cout << child.indent();
-			for (size_t i = 0; i < node.arguments.size(); ++i)
-			{
-				std::cout << static_cast<std::string>(node.arguments[i]);
-				if (i + 1 != node.arguments.size())
-				{
-					std::cout << ", ";
-				}
-			}
-			std::cout << std::endl;
-
-			std::cout << child.indent() << "->";
-
-			boost::apply_visitor(Printer(m_indent + 1), node.expr);
+			std::cout << indent() << "Built-in function()" << std::endl;
 		}
+		else
+		{
+			std::cout << indent() << "FuncVal(" << std::endl;
 
-		std::cout << indent() << ")" << std::endl;
+			{
+				const auto child = ValuePrinter(pEnv, m_indent + 1);
+				std::cout << child.indent();
+				for (size_t i = 0; i < node.arguments.size(); ++i)
+				{
+					std::cout << static_cast<std::string>(node.arguments[i]);
+					if (i + 1 != node.arguments.size())
+					{
+						std::cout << ", ";
+					}
+				}
+				std::cout << std::endl;
+
+				std::cout << child.indent() << "->";
+
+				boost::apply_visitor(Printer(m_indent + 1), node.expr);
+			}
+
+			std::cout << indent() << ")" << std::endl;
+		}
 	}
 }

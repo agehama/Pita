@@ -2227,13 +2227,7 @@ namespace cgl
 
 		//free‚Éw’è‚³‚ê‚½•Ï”‘S‚Ä
 		std::vector<Address> freeVariables;
-
-		/*bool operator()(bool node) { return false; }
-
-		bool operator()(int node) { return false; }
-
-		bool operator()(double node) { return false; }*/
-
+		
 		bool operator()(const LRValue& node);
 
 		bool operator()(const Identifier& node);

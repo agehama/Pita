@@ -272,30 +272,12 @@ namespace cgl
 		return false;
 	}
 
-	//今は関数の引数中にfreeVariablesがあるかどうかを調べるということを目的にしているので、ただ評価するだけで済んでいる
-	//TODO: 本当はアクセッサの中のそれぞれの数についてみるべき
 	inline bool HasFreeVariables::operator()(const Accessor& node)
 	{
-		//AccessorとObjectReferenceを比較するにはとりあえず評価すれば行えるがこのEvalは正しいか？
 		Expr expr = node;
 		Eval evaluator(pEnv);
 		const LRValue value = boost::apply_visitor(evaluator, expr);
 
-		/*
-		//ここはObjectReferenceのみ考慮すればよい？
-		if (auto refOpt = AsOpt<Address>(evaluated))
-		{
-			for (const auto& freeVal : freeVariables)
-			{
-				if (refOpt.value() == freeVal)
-				{
-					return true;
-				}
-			}
-
-			return false;
-		}
-		*/
 		if (value.isLValue())
 		{
 			const Address address = value.address();
@@ -311,9 +293,9 @@ namespace cgl
 			return false;
 		}
 
-		//std::cerr << "Error(" << __LINE__ << "): invalid expression\n";
 		CGL_Error("invalid expression");
 		return false;
+		
 	}
 
 #ifdef commentout
@@ -815,6 +797,11 @@ namespace cgl
 				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
 
 				{
+					//TODO: HasFreeVariablesの実装は不完全で、アクセッサが関数呼び出しでさらにその引数がfree変数の場合に対応していない
+					//      一度式を評価して、その過程でfree変数で指定したアドレスへのアクセスが発生するかどうかで見るべき
+					//      AddressAppearanceCheckerのようなものを作る(Evalの簡易版)
+					//inline bool HasFreeVariables::operator()(const Accessor& node)
+
 					HasFreeVariables searcher(pEnv, freeVariables);
 					for (const auto& arg : funcAccess.actualArguments)
 					{
@@ -2929,29 +2916,6 @@ EOF
 	std::cerr<<"Test Wrong Count: " << eval_wrongs<<std::endl;
 	
 #endif
-	
-	
-	/*
-	やること
-
-	shape = {
-		pos: {x:0, y:0}
-		scale: {x:1, y:1}
-		angle: 0
-	}
-
-	square = shape{
-		vertex: [
-			{x: -1, y: -1}, {x: +1, y: -1}
-			{x: +1, y: +1}, {x: -1, y: +1}
-		]
-	}
-
-	twosquare = shape{
-		a: square{pos.x = 2, angle = 45}
-		b: square{pos.y = 5}
-	}
-	*/
 
 /*
 shape = {
@@ -2991,11 +2955,23 @@ shape = {
 	angle: 0
 }
 
-shape{
+stick = shape{
+	scale = {x:1, y:3}
 	vertex: [
-		{x: 100, y: 100}, {x: 300, y: 100}
-		{x: 300, y: 200}
+		{x: -1, y: -1}, {x: +1, y: -1}
+		{x: +1, y: +1}, {x: -1, y: +1}
 	]
+}
+
+plus = shape{
+	scale = {x:50, y:50}
+	a: stick{}
+	b: stick{angle = 90}
+}
+
+cross = shape{
+	pos = {x:256, y:256}
+	a: plus{angle = 45}
 }
 )");
 	}

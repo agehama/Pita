@@ -44,6 +44,9 @@ namespace cgl
 		std::regex regex("\n");
 		os << std::regex_replace(str, regex, "\n          |> ") << "\n";
 	}
+
+	const double pi = 3.1415926535;
+	const double deg2rad = pi / 180.0;
 }
 
 #define CGL_FileName (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)

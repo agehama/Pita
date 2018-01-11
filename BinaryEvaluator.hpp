@@ -436,11 +436,11 @@ namespace cgl
 	{
 		if (IsType<int>(lhs))
 		{
-			return std::sin(As<int>(lhs));
+			return std::sin(deg2rad*As<int>(lhs));
 		}
 		else if (IsType<double>(lhs))
 		{
-			return std::sin(As<double>(lhs));
+			return std::sin(deg2rad*As<double>(lhs));
 		}
 
 		CGL_Error("ïsê≥Ç»éÆÇ≈Ç∑");
@@ -451,11 +451,11 @@ namespace cgl
 	{
 		if (IsType<int>(lhs))
 		{
-			return std::cos(As<int>(lhs));
+			return std::cos(deg2rad*As<int>(lhs));
 		}
 		else if (IsType<double>(lhs))
 		{
-			return std::cos(As<double>(lhs));
+			return std::cos(deg2rad*As<double>(lhs));
 		}
 
 		CGL_Error("ïsê≥Ç»éÆÇ≈Ç∑");

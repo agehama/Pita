@@ -394,6 +394,12 @@ namespace cgl
 			localEnv().back()[name] = ID;
 		}
 
+		//bindValueID‚Ì•Ï”éŒ¾®—p
+		void makeVariable(const std::string& name, const Address ID)
+		{
+			localEnv().back()[name] = ID;
+		}
+
 		/*void push()
 		{
 			m_bindingNames.emplace_back(LocalEnvironment::Type::NormalScope);

@@ -879,7 +879,7 @@ namespace cgl
 
 			//std::cout << "LINES_H" << std::endl;
 			CGL_DebugLog("");
-			return RValue(result);
+			return LRValue(result);
 		}
 
 		LRValue operator()(const If& if_statement)
@@ -1173,6 +1173,7 @@ namespace cgl
 				++i;
 			}
 
+			pEnv->printEnvironment();
 			CGL_DebugLog("");
 
 			for (const auto& satExpr : innerSatClosures)
@@ -1347,6 +1348,8 @@ namespace cgl
 				record.append(key, pEnv->makeTemporaryValue(opt.value()));
 			}
 
+			pEnv->printEnvironment();
+
 			//std::cout << "RECORD_E" << std::endl;
 			CGL_DebugLog("");
 
@@ -1422,7 +1425,8 @@ namespace cgl
 			pEnv->enterScope();
 			for (auto& keyval : clone.values)
 			{
-				pEnv->bindObjectRef(keyval.first, keyval.second);
+				//pEnv->bindObjectRef(keyval.first, keyval.second);
+				pEnv->makeVariable(keyval.first, keyval.second);
 
 				CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 			}

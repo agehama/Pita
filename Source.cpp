@@ -4,6 +4,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 
+#include <Eigen/Core>
 #include "Node.hpp"
 #include "Evaluator.hpp"
 #include "Printer.hpp"
@@ -2169,6 +2170,233 @@ namespace cgl
 
 namespace cgl
 {
+	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Environment> environment)
+	{
+		const auto& values = record.values;
+		auto it = values.find(name);
+		if (it == values.end())
+		{
+			//CGL_DebugLog(__FUNCTION__);
+			return false;
+		}
+		auto opt = environment->expandOpt(it->second);
+		if (!opt)
+		{
+			//CGL_DebugLog(__FUNCTION__);
+			return false;
+		}
+		const Evaluated& value = opt.value();
+		if (!IsType<int>(value) && !IsType<double>(value))
+		{
+			//CGL_DebugLog(__FUNCTION__);
+			return false;
+		}
+		output = IsType<int>(value) ? static_cast<double>(As<int>(value)) : As<double>(value);
+		return true;
+	}
+
+	struct Transform
+	{
+		Transform()
+		{
+			init();
+		}
+
+		Transform(const Eigen::Matrix3d& mat) :mat(mat) {}
+
+		Transform(const Record& record, std::shared_ptr<Environment> pEnv)
+		{
+			double px = 0, py = 0;
+			double sx = 1, sy = 1;
+			double angle = 0;
+
+			for (const auto& member : record.values)
+			{
+				auto valOpt = AsOpt<Record>(pEnv->expand(member.second));
+
+				if (member.first == "pos" && valOpt)
+				{
+					ReadDouble(px, "x", valOpt.value(), pEnv);
+					ReadDouble(py, "y", valOpt.value(), pEnv);
+				}
+				else if (member.first == "scale" && valOpt)
+				{
+					ReadDouble(sx, "x", valOpt.value(), pEnv);
+					ReadDouble(sy, "y", valOpt.value(), pEnv);
+				}
+				else if (member.first == "angle")
+				{
+					ReadDouble(angle, "angle", record, pEnv);
+				}
+			}
+
+			init(px, py, sx, sy, angle);
+		}
+
+		void init(double px = 0, double py = 0, double sx = 1, double sy = 1, double angle = 0)
+		{
+			const double pi = 3.1415926535;
+			const double cosTheta = std::cos(pi*angle/180.0);
+			const double sinTheta = std::sin(pi*angle/180.0);
+
+			mat <<
+				sx*cosTheta, -sy*sinTheta, px,
+				sx*sinTheta, sy*cosTheta, py,
+				0, 0, 1;
+		}
+
+		Transform operator*(const Transform& other)const
+		{
+			return mat * other.mat;
+		}
+
+		Eigen::Vector2d product(const Eigen::Vector2d& v)const
+		{
+			Eigen::Vector3d xs;
+			xs << v.x(), v.y(), 1;
+			Eigen::Vector3d result = mat * xs;
+			Eigen::Vector2d result2d;
+			result2d << result.x(), result.y();
+			return result2d;
+		}
+
+		void printMat()const
+		{
+			std::cout << "Matrix(\n";
+			for (int y = 0; y < 3; ++y)
+			{
+				std::cout << "    ";
+				for (int x = 0; x < 3; ++x)
+				{
+					std::cout << mat(y, x) << " ";
+				}
+				std::cout << "\n";
+			}
+			std::cout << ")\n";
+		}
+
+	private:
+		Eigen::Matrix3d mat;
+	};
+
+	template<class T>
+	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
+
+	inline bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Environment> pEnv, const Transform& transform)
+	{
+		output.clear();
+
+		for (const Address vertex : vertices.data)
+		{
+			//CGL_DebugLog(__FUNCTION__);
+			const Evaluated value = pEnv->expand(vertex);
+
+			//CGL_DebugLog(__FUNCTION__);
+			if (IsType<Record>(value))
+			{
+				double x = 0, y = 0;
+				const Record& pos = As<Record>(value);
+				//CGL_DebugLog(__FUNCTION__);
+				if (!ReadDouble(x, "x", pos, pEnv) || !ReadDouble(y, "y", pos, pEnv))
+				{
+					//CGL_DebugLog(__FUNCTION__);
+					return false;
+				}
+				//CGL_DebugLog(__FUNCTION__);
+				Eigen::Vector2d v;
+				v << x, y;
+				//CGL_DebugLog(ToS(v.x()) + ", " + ToS(v.y()));
+				output.push_back(transform.product(v));
+				//CGL_DebugLog(__FUNCTION__);
+			}
+			else
+			{
+				//CGL_DebugLog(__FUNCTION__);
+				return false;
+			}
+		}
+
+		//CGL_DebugLog(__FUNCTION__);
+		return true;
+	}
+
+	inline void OutputShapeList(std::ostream& os, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
+
+	inline void OutputSVGImpl(std::ostream& os, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent = Transform())
+	{
+		const Transform current(record, pEnv);
+
+		const Transform transform = parent * current;
+
+		for (const auto& member : record.values)
+		{
+			const Evaluated value = pEnv->expand(member.second);
+
+			if (member.first == "vertex" && IsType<List>(value))
+			{
+				Vector<Eigen::Vector2d> polygon;
+				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
+				{
+					//CGL_DebugLog(__FUNCTION__);
+
+					os << "<polygon points=\"";
+					for (const auto& vertex : polygon)
+					{
+						os << vertex.x() << "," << vertex.y() << " ";
+					}
+					os << "\"/>\n";
+				}
+				else
+				{
+					//CGL_DebugLog(__FUNCTION__);
+				}
+					
+			}
+			else if (IsType<Record>(value))
+			{
+				OutputSVGImpl(os, As<Record>(value), pEnv, transform);
+			}
+			else if (IsType<List>(value))
+			{
+				OutputShapeList(os, As<List>(value), pEnv, transform);
+			}
+		}
+	}
+
+	inline void OutputShapeList(std::ostream& os, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform)
+	{
+		for (const Address member : list.data)
+		{
+			const Evaluated value = pEnv->expand(member);
+
+			if (IsType<Record>(value))
+			{
+				OutputSVGImpl(os, As<Record>(value), pEnv, transform);
+			}
+			else if (IsType<List>(value))
+			{
+				OutputShapeList(os, As<List>(value), pEnv, transform);
+			}
+		}
+	}
+
+	inline bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
+	{
+		if (IsType<Record>(value))
+		{
+			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">)" << "\n";
+
+			const Record& record = As<Record>(value);
+			OutputSVGImpl(os, record, pEnv);
+
+			os << "</svg>" << "\n";
+
+			return true;
+		}
+
+		return false;
+	}
+
 	class Program
 	{
 	public:
@@ -2213,6 +2441,17 @@ namespace cgl
 			return boost::none;
 		}
 
+		bool draw(const std::string& program)
+		{
+			if (auto exprOpt = parse(program))
+			{
+				const Evaluated result = pEnv->expand(boost::apply_visitor(evaluator, exprOpt.value()));
+				OutputSVG(std::cout, result, pEnv);
+			}
+
+			return false;
+		}
+
 		void clear()
 		{
 			pEnv = Environment::Make();
@@ -2242,7 +2481,6 @@ namespace cgl
 		Eval evaluator;
 	};
 }
-
 
 int main()
 {
@@ -2692,6 +2930,76 @@ EOF
 	
 #endif
 	
+	
+	/*
+	‚â‚é‚±‚Æ
+
+	shape = {
+		pos: {x:0, y:0}
+		scale: {x:1, y:1}
+		angle: 0
+	}
+
+	square = shape{
+		vertex: [
+			{x: -1, y: -1}, {x: +1, y: -1}
+			{x: +1, y: +1}, {x: -1, y: +1}
+		]
+	}
+
+	twosquare = shape{
+		a: square{pos.x = 2, angle = 45}
+		b: square{pos.y = 5}
+	}
+	*/
+
+/*
+shape = {
+	pos: {x:0, y:0}
+	scale: {x:1, y:1}
+	angle: 0
+}
+
+stick = shape{
+	scale = {x:1, y:3}
+	vertex: [
+		{x: -1, y: -1}, {x: +1, y: -1}
+		{x: +1, y: +1}, {x: -1, y: +1}
+	]
+}
+
+plus = shape{
+	scale = {x:50, y:50}
+	a: stick{}
+	b: stick{angle = 90}
+}
+
+cross = shape{
+	pos = {x:256, y:256}
+	a: plus{angle = 45}
+}
+
+EOF
+	*/
+
+	{
+		cgl::Program program;
+		program.draw(R"(
+shape = {
+	pos: {x:0, y:0}
+	scale: {x:1, y:1}
+	angle: 0
+}
+
+shape{
+	vertex: [
+		{x: 100, y: 100}, {x: 300, y: 100}
+		{x: 300, y: 200}
+	]
+}
+)");
+	}
+
 	while (true)
 	{
 		std::string source;
@@ -2711,31 +3019,14 @@ EOF
 			source.append(buffer + '\n');
 		}
 
-		std::cout << "input:\n";
-		std::cout << source << "\n\n";
-
-		std::cout << "parse:\n";
-
-		Lines lines;
-		const bool succeed = parse(source, lines);
-
-		if (!succeed)
+		Program program;
+		try
 		{
-			std::cerr << "Parse error!!\n";
+			program.draw(source);
 		}
-
-		printLines(lines);
-
-		if (succeed)
+		catch (const cgl::Exception& e)
 		{
-			try
-			{
-				Evaluated result = evalExpr(lines);
-			}
-			catch (const cgl::Exception& e)
-			{
-				std::cerr << "Exception: " << e.what() << std::endl;
-			}
+			std::cerr << "Exception: " << e.what() << std::endl;
 		}
 	}
 

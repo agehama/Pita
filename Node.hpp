@@ -139,7 +139,7 @@ namespace cgl
 		Assign
 	};
 
-	
+
 	inline std::string BinaryOpToStr(BinaryOp op)
 	{
 		switch (op)
@@ -163,7 +163,7 @@ namespace cgl
 		case BinaryOp::Assign: return "Assign";
 		}
 	}
-	
+
 
 	struct DefFunc;
 
@@ -202,7 +202,7 @@ namespace cgl
 	struct Address
 	{
 	public:
-		Address() :valueID(0){}
+		Address() :valueID(0) {}
 
 		explicit Address(unsigned valueID) :
 			valueID(valueID)
@@ -234,11 +234,27 @@ namespace cgl
 		}
 
 	private:
-		friend class std::hash<Address>;
+		friend struct std::hash<Address>;
 
 		unsigned valueID;
 	};
+}
 
+namespace std
+{
+	template <>
+	struct hash<cgl::Address>
+	{
+	public:
+		size_t operator()(const cgl::Address& address)const
+		{
+			return hash<size_t>()(static_cast<size_t>(address.valueID));
+		}
+	};
+}
+
+namespace cgl
+{
 	struct FuncVal;
 
 	struct UnaryExpr;
@@ -444,15 +460,16 @@ namespace cgl
 	{
 		boost::optional<Expr> candidateExpr;
 
-		//boost::optional<SatExpr> expr;
 		boost::optional<Expr> expr;
 
 		//制約式に含まれる全ての参照にIDを振る(=参照ID)
 		//参照IDはdouble型の値に紐付けられる
 		//std::unordered_map<int, int> refs;//参照ID -> dataのインデックス
-		std::vector<double> data;//Referenced Values
 
-		std::vector<Address> refs;//Referenced Values
+		std::vector<double> data;//参照ID->data
+		std::vector<Address> refs;//参照ID->Address
+
+		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
 		void debugPrint();
 
@@ -1850,19 +1867,6 @@ namespace cgl
 
 			std::cerr << "Error(" << __LINE__ << ")\n";
 			return false;
-		}
-	};
-}
-
-namespace std
-{
-	template <>
-	class hash<cgl::Address>
-	{
-	public:
-		size_t operator()(const cgl::Address& address)const
-		{
-			return hash<size_t>()(static_cast<size_t>(address.valueID));
 		}
 	};
 }

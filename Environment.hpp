@@ -410,7 +410,7 @@ namespace cgl
 			m_bindingNames.pop_back();
 		}*/
 
-		void printEnvironment()const;
+		void printEnvironment(bool flag = false)const;
 
 		//void assignToObject(const ObjectReference& objectRef, const Evaluated& newValue);
 		void assignToObject(Address address, const Evaluated& newValue)

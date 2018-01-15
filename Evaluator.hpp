@@ -1075,18 +1075,25 @@ namespace cgl
 			レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアスとして定義（スコープを抜けたら元に戻る≒遮蔽）
 			*/
 
-			Record record;
+			for (int i = 0; i < recordConsractor.exprs.size(); ++i)
+			{
+				CGL_DebugLog(std::string("RecordExpr(") + ToS(i) + "): ");
+				printExpr(recordConsractor.exprs[i]);
+			}
 
+			Record record;
+			currentRecords.push(std::ref(record));
 			int i = 0;
 
 			for (const auto& expr : recordConsractor.exprs)
 			{
-				CGL_DebugLog("Evaluate: ");
-				//std::cout << "Evaluate expression(" << i << ")" << std::endl;
-				printExpr(expr);
-				Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
-
 				CGL_DebugLog("");
+				//std::cout << "Evaluate expression(" << i << ")" << std::endl;	
+				Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
+				CGL_DebugLog("Evaluate: ");
+				printExpr(expr);
+				CGL_DebugLog("Result: ");
+				printEvaluated(value, pEnv);
 
 				//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
 				if (auto keyValOpt = AsOpt<KeyValue>(value))
@@ -1168,11 +1175,11 @@ namespace cgl
 			pEnv->printEnvironment();
 			CGL_DebugLog("");
 
-			for (const auto& satExpr : innerSatClosures)
+			/*for (const auto& satExpr : innerSatClosures)
 			{
 				record.problem.addConstraint(satExpr);
 			}
-			innerSatClosures.clear();
+			innerSatClosures.clear();*/
 
 			//std::cout << "RECORD_C" << std::endl;
 			CGL_DebugLog("");
@@ -1345,6 +1352,8 @@ namespace cgl
 			//std::cout << "RECORD_E" << std::endl;
 			CGL_DebugLog("");
 
+			currentRecords.pop();
+
 			//pEnv->pop();
 			pEnv->exitScope();
 
@@ -1483,11 +1492,22 @@ namespace cgl
 			//ここでクロージャを作る必要がある
 			ClosureMaker closureMaker(pEnv, {});
 			const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
-			innerSatClosures.push_back(closedSatExpr);
+			//innerSatClosures.push_back(closedSatExpr);
 
+			pEnv->enterScope();
 			//DeclSat自体は現在制約が満たされているかどうかを評価結果として返す
 			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, closedSatExpr));
+			pEnv->exitScope();
+
+			if (currentRecords.empty())
+			{
+				CGL_Error("sat宣言はレコードの中にしか書くことができません");
+			}
+
+			currentRecords.top().get().problem.addConstraint(closedSatExpr);
+
 			return RValue(result);
+			//return RValue(false);
 		}
 
 		LRValue operator()(const Accessor& accessor)
@@ -1701,7 +1721,8 @@ namespace cgl
 
 	private:
 		std::shared_ptr<Environment> pEnv;
-		std::vector<Expr> innerSatClosures;
+		//std::vector<Expr> innerSatClosures;
+		std::stack<std::reference_wrapper<Record>> currentRecords;
 	};
 
 	//Evaluated中のIdentifierを削除してスコープへの依存を無くす
@@ -2255,7 +2276,10 @@ namespace cgl
 			return result;
 		}
 
-		bool operator()(const KeyExpr& node) { return false; }
+		bool operator()(const KeyExpr& node)
+		{
+			return boost::apply_visitor(*this, node.expr);
+		}
 
 		bool operator()(const RecordConstractor& node)
 		{

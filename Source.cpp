@@ -92,7 +92,9 @@ namespace cgl
 		Address address = pEnv->findAddress(node);
 		if (!address.isValid())
 		{
-			CGL_Error("識別子が定義されていません");
+			//CGL_Error("識別子が定義されていません");
+			//この中で作られた変数だった場合、定義されていない可能性がある
+			return false;
 		}
 
 		//free変数にあった場合は制約用の参照値を追加する
@@ -666,8 +668,13 @@ namespace cgl
 	}
 	*/
 
-	void Environment::printEnvironment()const
+	void Environment::printEnvironment(bool flag)const
 	{
+		if (!flag)
+		{
+			return;
+		}
+
 		std::cout << "Print Environment Begin:\n";
 
 		std::cout << "Values:\n";
@@ -1439,6 +1446,13 @@ namespace cgl
 			CGL_DebugLog("");
 		}*/
 
+		
+		CGL_DebugLog("freeVariables:");
+		for (const auto& val : freeVariables)
+		{
+			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
+		}
+
 		SatVariableBinder binder(pEnv, freeVariables);
 		if (boost::apply_visitor(binder, candidateExpr.value()))
 		{
@@ -1458,6 +1472,16 @@ namespace cgl
 		else
 		{
 			expr = boost::none;
+		}
+
+		{
+			
+
+			CGL_DebugLog("env:");
+			pEnv->printEnvironment(true);
+
+			CGL_DebugLog("expr:");
+			printExpr(candidateExpr.value());
 		}
 	}
 
@@ -2188,6 +2212,7 @@ namespace cgl
 			{
 				try
 				{
+					printExpr(exprOpt.value());
 					const Evaluated result = pEnv->expand(boost::apply_visitor(evaluator, exprOpt.value()));
 					OutputSVG(std::cout, result, pEnv);
 				}

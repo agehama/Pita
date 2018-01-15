@@ -136,10 +136,7 @@ namespace cgl
 			std::cout << indent() << "DeclSat(" << ")" << std::endl;
 		}*/
 
-		void operator()(const DeclFree& node)const
-		{
-			std::cout << indent() << "DeclFree(" << ")" << std::endl;
-		}
+		void operator()(const DeclFree& node)const;
 	};
 
 	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, int indent = 0)
@@ -461,19 +458,28 @@ namespace cgl
 
 		void operator()(const RecordInheritor& record)const
 		{
-			std::cout << indent() << "RecordInheritor(" << ")" << std::endl;
+			std::cout << indent() << "RecordInheritor(" << std::endl;
+
+			const auto child = Printer(m_indent + 1);
+			Expr expr = record.adder;
+			boost::apply_visitor(child, record.original);
+			boost::apply_visitor(child, expr);
+
+			std::cout << indent() << ")" << std::endl;
 		}
 
 		void operator()(const DeclSat& node)const
 		{
-			std::cout << indent() << "DeclSat(" << ")" << std::endl;
+			std::cout << indent() << "DeclSat(" << std::endl;
+			boost::apply_visitor(Printer(m_indent + 1), node.expr);
+			std::cout << indent() << ")" << std::endl;
 		}
 
 		void operator()(const Accessor& accessor)const
 		{
 			std::cout << indent() << "Accessor(" << std::endl;
-
-			std::cout << indent() << ")" << std::endl;
+			boost::apply_visitor(Printer(m_indent + 1), accessor.head);
+			std::cout << indent() << " ...)" << std::endl;
 		}
 	};
 
@@ -530,4 +536,17 @@ namespace cgl
 			std::cout << indent() << ")" << std::endl;
 		}
 	}
+
+	inline void ValuePrinter::operator()(const DeclFree& node)const
+	{
+		std::cout << indent() << "DeclFree(" << std::endl;
+		for (int i = 0; i < node.accessors.size(); ++i)
+		{
+			Expr expr = node.accessors[i];
+			boost::apply_visitor(Printer(m_indent + 1), expr);
+		}
+		std::cout << indent() << ")" << std::endl;
+		//boost::apply_visitor(Printer(m_indent + 1), accessor.head);
+	}
+
 }

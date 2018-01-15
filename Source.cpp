@@ -10,6 +10,8 @@
 #include "Printer.hpp"
 #include "Environment.hpp"
 
+std::ofstream ofs;
+
 namespace cgl
 {
 	Expr Expr2SatExpr::operator()(const LRValue& node)
@@ -325,6 +327,7 @@ namespace cgl
 
 					const FuncVal& function = As<const FuncVal&>(objRef);
 
+					/*
 					std::vector<Evaluated> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
@@ -333,6 +336,23 @@ namespace cgl
 
 					Expr caller = FunctionCaller(function, args);
 					const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+					headAddress = pEnv->makeTemporaryValue(returnedValue);
+					*/
+					std::vector<Address> args;
+					for (const auto& expr : funcAccess.actualArguments)
+					{
+						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
+						if (lrvalue.isLValue())
+						{
+							args.push_back(lrvalue.address());
+						}
+						else
+						{
+							args.push_back(pEnv->makeTemporaryValue(lrvalue.evaluated()));
+						}
+					}
+
+					const Evaluated returnedValue = pEnv->expand(evaluator.callFunction(function, args));
 					headAddress = pEnv->makeTemporaryValue(returnedValue);
 				}
 			}
@@ -380,9 +400,10 @@ namespace cgl
 		return result;
 	}
 
-	bool SatVariableBinder::operator()(const FunctionCaller& node)
+	//bool SatVariableBinder::operator()(const FunctionCaller& node)
+	bool SatVariableBinder::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 	{
-		FuncVal funcVal;
+		/*FuncVal funcVal;
 
 		if (auto opt = AsOpt<FuncVal>(node.funcRef))
 		{
@@ -413,20 +434,20 @@ namespace cgl
 			{
 				CGL_Error("指定された変数名に値が紐つけられていない");
 			}
-		}
+		}*/
 
 		if (funcVal.builtinFuncAddress)
 		{
 			return false;
 		}
 
-		std::vector<Address> expandedArguments(node.actualArguments.size());
+		/*std::vector<Address> expandedArguments(node.actualArguments.size());
 		for (size_t i = 0; i < expandedArguments.size(); ++i)
 		{
 			expandedArguments[i] = pEnv->makeTemporaryValue(node.actualArguments[i]);
-		}
+		}*/
 
-		if (funcVal.arguments.size() != node.actualArguments.size())
+		if (funcVal.arguments.size() != expandedArguments.size())
 		{
 			CGL_Error("仮引数の数と実引数の数が合っていない");
 		}
@@ -578,6 +599,7 @@ namespace cgl
 					const FuncVal& function = As<const FuncVal&>(objRef);
 
 					//Case4,6への対応
+					/*
 					std::vector<Evaluated> arguments;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
@@ -586,11 +608,27 @@ namespace cgl
 					}
 					Expr caller = FunctionCaller(function, arguments);
 					isDeterministic = !boost::apply_visitor(*this, caller) && isDeterministic;
+					*/
+					std::vector<Address> arguments;
+					for (const auto& expr : funcAccess.actualArguments)
+					{
+						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
+						if (lrvalue.isLValue())
+						{
+							arguments.push_back(lrvalue.address());
+						}
+						else
+						{
+							arguments.push_back(pEnv->makeTemporaryValue(lrvalue.evaluated()));
+						}
+					}
+					isDeterministic = !callFunction(function, arguments) && isDeterministic;
 
 					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
 					if (isDeterministic)
 					{
-						const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+						//const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+						const Evaluated returnedValue = pEnv->expand(evaluator.callFunction(function, arguments));
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
 					}
 				}
@@ -681,31 +719,42 @@ namespace cgl
 			return;
 		}
 
-		std::cout << "Print Environment Begin:\n";
+		std::ostream& os = ofs;
 
-		std::cout << "Values:\n";
+		os << "Print Environment Begin:\n";
+
+		os << "Values:\n";
 		for (const auto& keyval : m_values)
 		{
 			const auto& val = keyval.second;
 
-			std::cout << keyval.first.toString() << " : ";
+			os << keyval.first.toString() << " : ";
 
-			printEvaluated(val, nullptr);
+			//printEvaluated(val, nullptr, os);
+			printEvaluated(val, m_weakThis.lock(), os);
 		}
 
-		std::cout << "References:\n";
+		os << "References:\n";
 		for (size_t d = 0; d < localEnv().size(); ++d)
 		{
-			std::cout << "Depth : " << d << "\n";
+			os << "Depth : " << d << "\n";
 			const auto& names = localEnv()[d];
 
 			for (const auto& keyval : names)
 			{
-				std::cout << keyval.first << " : " << keyval.second.toString() << "\n";
+				os << keyval.first << " : " << keyval.second.toString() << "\n";
 			}
 		}
 
-		std::cout << "Print Environment End:\n";
+		os << "Print Environment End:\n";
+	}
+
+	void Environment::bindNewValue(const std::string& name, const Evaluated& value)
+	{
+		CGL_DebugLog("");
+		const Address newAddress = m_values.add(value);
+		//Clone(m_weakThis.lock(), value);
+		bindValueID(name, newAddress);
 	}
 
 	Address Environment::makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr)
@@ -1478,11 +1527,12 @@ namespace cgl
 		else
 		{
 			expr = boost::none;
+			refs.clear();
+			invRefs.clear();
+			freeVariables.clear();
 		}
 
 		{
-			
-
 			CGL_DebugLog("env:");
 			pEnv->printEnvironment(true);
 
@@ -1590,8 +1640,7 @@ namespace cgl
 		boost::apply_visitor(printer, expr.value());
 		CGL_DebugLog(ss.str());*/
 
-		Printer printer;
-		boost::apply_visitor(printer, expr.value());
+		printExpr(expr.value());
 	}
 }
 
@@ -2219,8 +2268,13 @@ namespace cgl
 				try
 				{
 					printExpr(exprOpt.value());
-					const Evaluated result = pEnv->expand(boost::apply_visitor(evaluator, exprOpt.value()));
+					CGL_DebugLog("printExpr");
+					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
+					CGL_DebugLog("evaluate");
+					const Evaluated result = pEnv->expand(lrvalue);
+					CGL_DebugLog("expand");
 					OutputSVG(std::cout, result, pEnv);
+					CGL_DebugLog("outputSVG");
 				}
 				catch (const cgl::Exception& e)
 				{
@@ -2263,6 +2317,8 @@ namespace cgl
 
 int main()
 {
+	ofs = std::ofstream("log.txt");
+
 	using namespace cgl;
 
 	const auto parse = [](const std::string& str, Lines& lines)->bool
@@ -2432,7 +2488,8 @@ func2 = x, y -> x + y)",
 
 		if (succeed)
 		{
-			printLines(lines);
+			Expr expr = lines;
+			printExpr(expr);
 
 			std::cout << "eval:\n";
 			Evaluated result = evalExpr(lines);
@@ -2738,6 +2795,7 @@ cross = shape{
 EOF
 	*/
 
+	/*
 	{
 		cgl::Program program;
 		program.draw(R"(
@@ -2843,6 +2901,91 @@ main = shape{
 
 )");
 	}
+	*/
+
+	{
+		cgl::Program program;
+		program.draw(R"(
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+transform = (pos, scale, angle, vertex -> {
+	cosT:cos(angle)
+	sinT:sin(angle)
+	x:pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+	y:pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
+})
+
+shape = {
+	pos: {x:0, y:0}
+	scale: {x:1, y:1}
+	angle: 0
+}
+
+square = shape{
+	vertex: [
+		{x: -1, y: -1}, {x: +1, y: -1}
+		{x: +1, y: +1}, {x: -1, y: +1}
+	]
+	topLeft:     (->transform(pos, scale, angle, vertex[0]))
+	topRight:    (->transform(pos, scale, angle, vertex[1]))
+	bottomLeft:  (->transform(pos, scale, angle, vertex[2]))
+	bottomRight: (->transform(pos, scale, angle, vertex[3]))
+}
+
+contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
+
+main = shape{
+
+    a: square{scale: {x: 50, y: 50}}
+    b: square{scale: {x: 100, y: 50}}
+    c: b{}
+
+    sat( contact(a.topRight(), b.bottomLeft()) & contact(a.bottomRight(), c.topLeft()) )
+    sat( contact(b.bottomRight(), c.topRight()) )
+    free(b.pos, b.angle, c.pos, c.angle)
+}
+)");
+	}
+	
 
 	while (true)
 	{

@@ -329,13 +329,7 @@ namespace cgl
 			bindValueID(name, ref);
 		}
 
-		void bindNewValue(const std::string& name, const Evaluated& value)
-		{
-			CGL_DebugLog("");
-			//const Address newAddress = m_values.add(expandRef(value));
-			const Address newAddress = m_values.add(value);
-			bindValueID(name, newAddress);
-		}
+		void bindNewValue(const std::string& name, const Evaluated& value);
 
 		void bindReference(const std::string& nameLhs, const std::string& nameRhs)
 		{

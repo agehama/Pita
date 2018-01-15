@@ -49,6 +49,8 @@ namespace cgl
 	const double deg2rad = pi / 180.0;
 }
 
+extern std::ofstream ofs;
+
 #define CGL_FileName (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ") : ")
 #define CGL_TagError (std::string("[Error]   |> "))
@@ -56,7 +58,8 @@ namespace cgl
 #define CGL_TagDebug (std::string("[Debug]   |> "))
 #define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))
 #define CGL_WarnLog(message)  (cgl::Log(std::cerr, CGL_TagWarn  + CGL_FileDesc + message))
-#define CGL_DebugLog(message) (cgl::Log(std::cout, CGL_TagDebug + CGL_FileDesc + message))
+//#define CGL_DebugLog(message) (cgl::Log(std::cout, CGL_TagDebug + CGL_FileDesc + message))
+#define CGL_DebugLog(message) (cgl::Log(ofs, CGL_TagDebug + CGL_FileDesc + message))
 #define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
 
 namespace std
@@ -69,14 +72,12 @@ namespace cgl
 	template<class T1, class T2>
 	inline bool SameType(const T1& t1, const T2& t2)
 	{
-		//return std::string(t1.name()) == std::string(t2.name());
 		return t1 == t2;
 	}
 
 	template<class T1, class T2>
 	inline bool IsType(const T2& t2)
 	{
-		//return std::string(typeid(T1).name()) == std::string(t2.type().name());
 		return typeid(T1) == t2.type();
 	}
 
@@ -288,7 +289,7 @@ namespace cgl
 
 	struct Accessor;
 
-	struct FunctionCaller;
+	//struct FunctionCaller;
 
 	struct DeclSat;
 	struct DeclFree;
@@ -340,7 +341,7 @@ namespace cgl
 		boost::recursive_wrapper<BinaryExpr>,
 
 		boost::recursive_wrapper<DefFunc>,
-		boost::recursive_wrapper<FunctionCaller>,
+		//boost::recursive_wrapper<FunctionCaller>,
 		boost::recursive_wrapper<Range>,
 
 		boost::recursive_wrapper<Lines>,
@@ -855,6 +856,7 @@ namespace cgl
 		}
 	};
 
+	/*
 	struct FunctionCaller
 	{
 		boost::variant<FuncVal, Identifier> funcRef;
@@ -898,6 +900,7 @@ namespace cgl
 			return funcRef == other.funcRef;
 		}
 	};
+	*/
 
 	struct If
 	{

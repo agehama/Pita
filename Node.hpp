@@ -69,13 +69,15 @@ namespace cgl
 	template<class T1, class T2>
 	inline bool SameType(const T1& t1, const T2& t2)
 	{
-		return std::string(t1.name()) == std::string(t2.name());
+		//return std::string(t1.name()) == std::string(t2.name());
+		return t1 == t2;
 	}
 
 	template<class T1, class T2>
 	inline bool IsType(const T2& t2)
 	{
-		return std::string(typeid(T1).name()) == std::string(t2.type().name());
+		//return std::string(typeid(T1).name()) == std::string(t2.type().name());
+		return typeid(T1) == t2.type();
 	}
 
 	template<class T1, class T2>

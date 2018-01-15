@@ -234,8 +234,8 @@ namespace cgl
 				{
 					return it->second;
 				}
-
-				CGL_Error("reference error");
+				
+				CGL_Error(std::string("reference error: Address(") + lrvalue.address().toString() + ")");
 			}
 
 			return lrvalue.evaluated();
@@ -379,7 +379,7 @@ namespace cgl
 		}*/
 		void bindValueID(const std::string& name, const Address ID)
 		{
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 			{
 				auto valIt = scopeIt->find(name);
@@ -389,7 +389,7 @@ namespace cgl
 					return;
 				}
 			}
-			CGL_DebugLog("");
+			//CGL_DebugLog("");
 
 			localEnv().back()[name] = ID;
 		}

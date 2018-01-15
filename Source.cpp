@@ -2768,6 +2768,82 @@ cross = shape{
 )");
 	}
 
+	{
+		cgl::Program program;
+		program.draw(R"(
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+shape = {
+	pos: {x:0, y:0}
+	scale: {x:1, y:1}
+	angle: 0
+}
+
+transform = (t, p -> {
+	cosT:cos(t.angle)
+	sinT:sin(t.angle)
+	x:t.pos.x + cosT * t.scale.x * p.x - sinT * t.scale.y * p.y
+	y:t.pos.y + sinT* t.scale.x* p.x + cosT* t.scale.y*p.y
+})
+
+contact = (p, q -> p.x == q.x & p.y == q.y)
+
+square = shape{
+	vertex: [
+		{x: -1, y: -1}, {x: +1, y: -1}
+		{x: +1, y: +1}, {x: -1, y: +1}
+	]
+}
+
+main = shape{
+	a: square{scale: {x:10,y:30}}
+	b: square{scale: {x:20,y:10}}
+	sat(contact(transform(a, a.vertex[0]), transform(b, b.vertex[2])))
+	free(a.pos)
+}
+
+)");
+	}
+
 	while (true)
 	{
 		std::string source;

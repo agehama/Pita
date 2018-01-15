@@ -1294,7 +1294,7 @@ namespace cgl
 					}
 
 					//pEnv->switchFrontScope();
-					CGL_DebugLog("");
+					//CGL_DebugLog("");
 					double result = problem.eval(pEnv);
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
 					//pEnv->switchBackScope();
@@ -3302,6 +3302,7 @@ return 0.0;
 
 		Evaluated operator()(const LRValue& node)
 		{
+			//CGL_DebugLog("Evaluated operator()(const LRValue& node)");
 			if (node.isLValue())
 			{
 				if (auto opt = expandFreeOpt(node.address()))
@@ -3322,10 +3323,10 @@ return 0.0;
 
 		Evaluated operator()(const Identifier& node)
 		{
-			pEnv->printEnvironment();
-			//CGL_DebugLog(std::string("find: ") + std::string(node));
+			//CGL_DebugLog("Evaluated operator()(const Identifier& node)");
+			//pEnv->printEnvironment(true);
+			//CGL_DebugLog(std::string("find Identifier(") + std::string(node) + ")");
 			const Address address = pEnv->findAddress(node);
-			//CGL_DebugLog(std::string("address: ") + address.toString());
 			if (auto opt = expandFreeOpt(address))
 			{
 				return opt.value();
@@ -3335,6 +3336,7 @@ return 0.0;
 
 		Evaluated operator()(const UnaryExpr& node)
 		{
+			//CGL_DebugLog("Evaluated operator()(const UnaryExpr& node)");
 			if (node.op == UnaryOp::Not)
 			{
 				CGL_Error("TODO: sat宣言中の単項演算子は未対応です");
@@ -3345,6 +3347,7 @@ return 0.0;
 
 		Evaluated operator()(const BinaryExpr& node)
 		{
+			//CGL_DebugLog("Evaluated operator()(const BinaryExpr& node)");
 			const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
 			const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
 
@@ -3377,6 +3380,8 @@ return 0.0;
 
 		Evaluated operator()(const FunctionCaller& callFunc)
 		{
+			//CGL_DebugLog("Evaluated operator()(const FunctionCaller& callFunc)");
+
 			std::vector<Address> expandedArguments(callFunc.actualArguments.size());
 			for (size_t i = 0; i < expandedArguments.size(); ++i)
 			{
@@ -3439,6 +3444,7 @@ return 0.0;
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
 				pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
+				//CGL_DebugLog(std::string("bind: ") + std::string(funcVal.arguments[i]) + " -> Address(" + expandedArguments[i].toString() + ")");
 			}
 
 			//CGL_DebugLog("");
@@ -3449,6 +3455,7 @@ return 0.0;
 			Evaluated result;
 			{
 				//関数も通常の関数ではなく、制約を表す関数であるはずなので、評価はEvalではなく*thisで行う
+
 				result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
 				//CGL_DebugLog("Function Evaluated:");
 				//printEvaluated(result, nullptr);
@@ -3474,6 +3481,7 @@ return 0.0;
 
 		Evaluated operator()(const Lines& node)
 		{
+			//CGL_DebugLog("Evaluated operator()(const Lines& node)");
 			if (node.exprs.size() != 1)
 			{
 				CGL_Error("不正な式です"); return 0;
@@ -3484,6 +3492,7 @@ return 0.0;
 
 		Evaluated operator()(const If& if_statement)
 		{
+			//CGL_DebugLog("Evaluated operator()(const If& if_statement)");
 			Eval evaluator(pEnv);
 
 			//if式の条件式は制約が満たされているかどうかを評価するべき
@@ -3515,13 +3524,14 @@ return 0.0;
 
 		Evaluated operator()(const KeyExpr& node)
 		{
-			//const Evaluated value = pEnv->expand(boost::apply_visitor(*this, keyExpr.expr));
+			//CGL_DebugLog("Evaluated operator()(const KeyExpr& node)");
 			const Evaluated value = boost::apply_visitor(*this, node.expr);
 			return KeyValue(node.name, value);
 		}
 
 		Evaluated operator()(const RecordConstractor& recordConsractor)
 		{
+			//CGL_DebugLog("Evaluated operator()(const RecordConstractor& recordConsractor)");
 			pEnv->enterScope();
 			
 			std::vector<Identifier> keyList;
@@ -3532,10 +3542,6 @@ return 0.0;
 			for (const auto& expr : recordConsractor.exprs)
 			{
 				Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
-				//CGL_DebugLog("Evaluate: ");
-				//printExpr(expr);
-				//CGL_DebugLog("Result: ");
-				//printEvaluated(value, pEnv);
 
 				//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
 				if (auto keyValOpt = AsOpt<KeyValue>(value))
@@ -3543,62 +3549,34 @@ return 0.0;
 					const auto keyVal = keyValOpt.value();
 					keyList.push_back(keyVal.name);
 
-					//CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
-
-					//Assign(keyVal.name, keyVal.value, *pEnv);
-
 					//識別子はEvaluatedからはずしたので、識別子に対して直接代入を行うことはできなくなった
 					//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 
 					//したがって、一度代入式を作ってからそれを評価する
-					//Expr exprVal = RValue(keyVal.value);
-					Expr exprVal = LRValue(keyVal.value);
+					
+					/*Expr exprVal = LRValue(keyVal.value);
 					Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
-					boost::apply_visitor(*this, expr);
+					boost::apply_visitor(*this, expr);*/
 
-					//CGL_DebugLog("");
-					//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
+					{
+						Address tempVal = pEnv->makeTemporaryValue(keyVal.value);
+						pEnv->bindValueID(keyVal.name, tempVal);
+						//CGL_DebugLog(std::string("bind: ") + std::string(keyVal.name) + " -> Address(" + tempVal.toString() + ")");
+					}
 				}
 
 				++i;
 			}
 
-			//pEnv->printEnvironment();
-			//CGL_DebugLog("");
-
-			/*for (const auto& satExpr : innerSatClosures)
-			{
-			record.problem.addConstraint(satExpr);
-			}
-			innerSatClosures.clear();*/
-
-			//std::cout << "RECORD_C" << std::endl;
-			//CGL_DebugLog("");
-
 			for (const auto& key : keyList)
 			{
-				//record.append(key.name, pEnv->dereference(key));
-
-				//record.append(key.name, pEnv->makeTemporaryValue(pEnv->dereference(ObjectReference(key))));
-
+				//pEnv->printEnvironment(true);
 				Address address = pEnv->findAddress(key);
 				boost::optional<const Evaluated&> opt = pEnv->expandOpt(address);
 				record.append(key, pEnv->makeTemporaryValue(opt.value()));
 			}
 
-			//pEnv->printEnvironment();
-
-			//std::cout << "RECORD_E" << std::endl;
-			//CGL_DebugLog("");
-
-			//pEnv->pop();
 			pEnv->exitScope();
-
-			//CGL_DebugLog("--------------------------- Print Environment ---------------------------");
-			//pEnv->printEnvironment();
-			//CGL_DebugLog("-------------------------------------------------------------------------");
-			//std::cout << "RECORD_F" << std::endl;
-			//CGL_DebugLog("");
 
 			return record;
 		}
@@ -3608,23 +3586,15 @@ return 0.0;
 
 		Evaluated operator()(const Accessor& node)
 		{
-			//Expr2SatExprによりnode.headはアドレス値になっているはず
-			/*if (!IsType<LRValue>(node.head))
+			/*
+			CGL_DebugLog("Evaluated operator()(const Accessor& node)");
 			{
-				CGL_Error("ここは通らないはず");
+				CGL_DebugLog("Access to:");
+				Expr expr = node;
+				printExpr(expr);
 			}
-			
-			
-
-			const LRValue& headAddressValue = As<LRValue>(node.head);
-			if (!headAddressValue.isLValue())
-			{
-				CGL_Error("ここは通らないはず");
-			}
-
-			Address address = headAddressValue.address();
 			*/
-
+			
 			Address address;
 
 			LRValue headValue = boost::apply_visitor(*this, node.head);
@@ -3671,6 +3641,7 @@ return 0.0;
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
+					//CGL_DebugLog("if (auto listAccessOpt = AsOpt<ListAccess>(access))");
 					Evaluated value = boost::apply_visitor(*this, listAccessOpt.value().index);
 
 					if (!IsType<List>(objRef))
@@ -3697,6 +3668,7 @@ return 0.0;
 				}
 				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
 				{
+					//CGL_DebugLog("else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))");
 					if (!IsType<Record>(objRef))
 					{
 						CGL_Error("オブジェクトがレコードでない");
@@ -3713,6 +3685,7 @@ return 0.0;
 				}
 				else
 				{
+					//CGL_DebugLog("auto funcAccess = As<FunctionAccess>(access);");
 					auto funcAccess = As<FunctionAccess>(access);
 
 					if (!IsType<FuncVal>(objRef))

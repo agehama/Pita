@@ -448,6 +448,12 @@ namespace cgl
 
 	bool SatVariableBinder::operator()(const Accessor& node)
 	{
+		CGL_DebugLog("SatVariableBinder::operator()(const Accessor& node)");
+		{
+			Expr expr = node;
+			printExpr(expr);
+		}
+		
 		Address headAddress;
 		const Expr& head = node.head;
 
@@ -505,7 +511,7 @@ namespace cgl
 			{
 				const ListAccess& listAccess = As<ListAccess>(access);
 
-				isDeterministic = isDeterministic && !boost::apply_visitor(*this, listAccess.index);
+				isDeterministic = !boost::apply_visitor(*this, listAccess.index) && isDeterministic;
 
 				if (isDeterministic)
 				{
@@ -558,7 +564,7 @@ namespace cgl
 					//Case2(関数引数がfree)への対応
 					for (const auto& argument : funcAccess.actualArguments)
 					{
-						isDeterministic = isDeterministic && !boost::apply_visitor(*this, argument);
+						isDeterministic = !boost::apply_visitor(*this, argument) && isDeterministic;
 					}
 					
 					//呼ばれる関数の実体はその引数には依存しないため、ここでisDeterministicがfalseになっても問題ない
@@ -579,7 +585,7 @@ namespace cgl
 						arguments.push_back(pEnv->expand(boost::apply_visitor(evaluator, expr)));
 					}
 					Expr caller = FunctionCaller(function, arguments);
-					isDeterministic = isDeterministic && !boost::apply_visitor(*this, caller);
+					isDeterministic = !boost::apply_visitor(*this, caller) && isDeterministic;
 
 					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
 					if (isDeterministic)

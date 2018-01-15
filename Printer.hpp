@@ -478,8 +478,32 @@ namespace cgl
 		void operator()(const Accessor& accessor)const
 		{
 			std::cout << indent() << "Accessor(" << std::endl;
-			boost::apply_visitor(Printer(m_indent + 1), accessor.head);
-			std::cout << indent() << " ...)" << std::endl;
+
+			Printer child(m_indent + 1);
+			boost::apply_visitor(child, accessor.head);
+			for (const auto& access : accessor.accesses)
+			{
+				if (auto opt = AsOpt<ListAccess>(access))
+				{
+					std::cout << child.indent() << "[" << std::endl;
+					boost::apply_visitor(child, opt.value().index);
+					std::cout << child.indent() << "]" << std::endl;
+				}
+				else if (auto opt = AsOpt<RecordAccess>(access))
+				{
+					std::cout << child.indent() << "." << std::string(opt.value().name) << std::endl;
+				}
+				else if (auto opt = AsOpt<FunctionAccess>(access))
+				{
+					std::cout << child.indent() << "(" << std::endl;
+					for (const auto& arg : opt.value().actualArguments)
+					{
+						boost::apply_visitor(child, arg);
+					}
+					std::cout << child.indent() << ")" << std::endl;
+				}
+			}
+			std::cout << indent() << ")" << std::endl;
 		}
 	};
 

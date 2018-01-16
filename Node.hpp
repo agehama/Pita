@@ -27,6 +27,10 @@
 #pragma comment(lib,"Release/cmaes.lib")
 #endif
 
+#include <cppoptlib\meta.h>
+#include <cppoptlib\problem.h>
+#include <cppoptlib\solver\bfgssolver.h>
+
 namespace cgl
 {
 	class Exception : public std::exception

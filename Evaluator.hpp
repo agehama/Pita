@@ -2,6 +2,8 @@
 #pragma warning(disable:4996)
 #include <iomanip>
 #include <cmath>
+#include <functional>
+
 #include "Node.hpp"
 #include "Environment.hpp"
 #include "BinaryEvaluator.hpp"
@@ -706,6 +708,19 @@ namespace cgl
 			//TODO: 考察する（関数呼び出しの中でsat宣言をすることはあり得るか？）
 			CGL_Error("TODO: 考察する");
 			return LRValue(0);
+		}
+	};
+
+	class ConstraintProblem : public cppoptlib::Problem<double>
+	{
+	public:
+		using typename cppoptlib::Problem<double>::TVector;
+
+		std::function<double(const TVector&)> evaluator;
+
+		double value(const TVector &x)
+		{
+			return evaluator(x);
 		}
 	};
 
@@ -1568,7 +1583,38 @@ namespace cgl
 				}
 				//std::cout << "End Record MakeMap" << std::endl;
 				CGL_DebugLog("End Record MakeMap");
-				
+
+
+				ConstraintProblem constraintProblem;
+				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
+				{
+					for (int i = 0; i < v.size(); ++i)
+					{
+						problem.update(variable2Data[i], v[i]);
+					}
+
+					double result = problem.eval(pEnv);
+					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+					return result;
+				};
+
+				Eigen::VectorXd x0s(record.freeVariableRefs.size());
+				for (int i = 0; i < x0s.size(); ++i)
+				{
+					x0s[i] = problem.data[variable2Data[i]];
+					CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
+				}
+
+				cppoptlib::BfgsSolver<ConstraintProblem> solver;
+				solver.minimize(constraintProblem, x0s);
+
+				resultxs.resize(x0s.size());
+				for (int i = 0; i < x0s.size(); ++i)
+				{
+					resultxs[i] = x0s[i];
+				}
+
+				/*
 				libcmaes::FitFunc func = [&](const double *x, const int N)->double
 				{
 					for (int i = 0; i < N; ++i)
@@ -1607,6 +1653,7 @@ namespace cgl
 				CGL_DebugLog("");
 				resultxs = cmasols.best_candidate().get_x();
 				CGL_DebugLog("");
+				*/
 			}
 
 			//std::cout << "RECORD_D" << std::endl;

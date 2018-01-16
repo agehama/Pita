@@ -2,6 +2,8 @@
 #include "Node.hpp"
 #include "Environment.hpp"
 
+extern std::ofstream ofs;
+
 namespace cgl
 {
 	template<typename T>
@@ -547,7 +549,7 @@ namespace cgl
 	inline void ValuePrinter::operator()(const DeclFree& node)const
 	{
 		os << indent() << "DeclFree(" << std::endl;
-		for (int i = 0; i < node.accessors.size(); ++i)
+		for (size_t i = 0; i < node.accessors.size(); ++i)
 		{
 			Expr expr = node.accessors[i];
 			boost::apply_visitor(Printer(os, m_indent + 1), expr);
@@ -556,4 +558,43 @@ namespace cgl
 		//boost::apply_visitor(Printer(m_indent + 1), accessor.head);
 	}
 
+#ifdef CGL_EnableLogOutput
+	void Environment::printEnvironment(bool flag)const
+	{
+		if (!flag)
+		{
+			return;
+		}
+
+		std::ostream& os = ofs;
+
+		os << "Print Environment Begin:\n";
+
+		os << "Values:\n";
+		for (const auto& keyval : m_values)
+		{
+			const auto& val = keyval.second;
+
+			os << keyval.first.toString() << " : ";
+
+			printEvaluated(val, m_weakThis.lock(), os);
+		}
+
+		os << "References:\n";
+		for (size_t d = 0; d < localEnv().size(); ++d)
+		{
+			os << "Depth : " << d << "\n";
+			const auto& names = localEnv()[d];
+
+			for (const auto& keyval : names)
+			{
+				os << keyval.first << " : " << keyval.second.toString() << "\n";
+			}
+		}
+
+		os << "Print Environment End:\n";
+	}
+#else
+	void Environment::printEnvironment(bool flag)const {}
+#endif
 }

@@ -485,8 +485,6 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->éQè∆ID
 
-		void debugPrint();
-
 		void addConstraint(const Expr& logicExpr);
 		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables);
 

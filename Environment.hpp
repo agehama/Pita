@@ -259,12 +259,51 @@ namespace cgl
 
 		Address evalReference(const Accessor& access);
 
-		Expr expandFunction(const Expr& expr);
-
 		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
 		/*std::vector<ObjectReference> expandReferences(const ObjectReference& reference, std::vector<ObjectReference>& output);
 		std::vector<ObjectReference> expandReferences(const ObjectReference& reference)*/
-		std::vector<Address> expandReferences(Address reference);
+		std::vector<Address> expandReferences(Address address)
+		{
+			std::vector<Address> result;
+			if (auto sharedThis = m_weakThis.lock())
+			{
+				const auto addElementRec = [&](auto rec, Address address)->void
+				{
+					const Evaluated value = sharedThis->expand(address);
+
+					//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
+					if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
+					{
+						result.push_back(address);
+					}
+					else if (IsType<List>(value))
+					{
+						for (Address elemAddress : As<List>(value).data)
+						{
+							rec(rec, elemAddress);
+						}
+					}
+					else if (IsType<Record>(value))
+					{
+						for (const auto& elem : As<Record>(value).values)
+						{
+							rec(rec, elem.second);
+						}
+					}
+					//それ以外のデータは特に捕捉しない
+					//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
+				};
+
+				const auto addElement = [&](const Address address)
+				{
+					addElementRec(addElementRec, address);
+				};
+
+				addElement(address);
+			}
+
+			return result;
+		}
 
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
 		/*
@@ -329,7 +368,13 @@ namespace cgl
 			bindValueID(name, ref);
 		}
 
-		void bindNewValue(const std::string& name, const Evaluated& value);
+		void bindNewValue(const std::string& name, const Evaluated& value)
+		{
+			CGL_DebugLog("");
+			const Address newAddress = m_values.add(value);
+			//Clone(m_weakThis.lock(), value);
+			bindValueID(name, newAddress);
+		}
 
 		void bindReference(const std::string& nameLhs, const std::string& nameRhs)
 		{

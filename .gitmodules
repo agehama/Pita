@@ -1,0 +1,6 @@
+[submodule "external/Eigen"]
+	path = external/Eigen
+	url = https://github.com/eigenteam/eigen-git-mirror.git
+[submodule "external/CppNumericalSolvers"]
+	path = external/CppNumericalSolvers
+	url = https://github.com/PatWie/CppNumericalSolvers.git

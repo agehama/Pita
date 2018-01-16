@@ -18,7 +18,7 @@ std::ofstream ofs;
 
 int main()
 {
-	ofs = std::ofstream("log.txt");
+	ofs.open("log.txt");
 
 	using namespace cgl;
 

@@ -19,13 +19,13 @@
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
 
-#include <cmaes.h>
-
-#ifdef _DEBUG
-#pragma comment(lib,"Debug/cmaes.lib")
-#else
-#pragma comment(lib,"Release/cmaes.lib")
-#endif
+//#include <cmaes.h>
+//
+//#ifdef _DEBUG
+//#pragma comment(lib,"Debug/cmaes.lib")
+//#else
+//#pragma comment(lib,"Release/cmaes.lib")
+//#endif
 
 #include <cppoptlib\meta.h>
 #include <cppoptlib\problem.h>
@@ -153,7 +153,6 @@ namespace cgl
 		Assign
 	};
 
-
 	inline std::string BinaryOpToStr(BinaryOp op)
 	{
 		switch (op)
@@ -176,8 +175,9 @@ namespace cgl
 		case BinaryOp::Pow:    return "Pow";
 		case BinaryOp::Assign: return "Assign";
 		}
-	}
 
+		return "Unknown";
+	}
 
 	struct DefFunc;
 

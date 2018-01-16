@@ -39,12 +39,14 @@ namespace cgl
 
 	struct Transform
 	{
+		using Mat3x3 = Eigen::Matrix<double, 3, 3, 0, 3, 3>;
+
 		Transform()
 		{
 			init();
 		}
 
-		Transform(const Eigen::Matrix3d& mat) :mat(mat) {}
+		Transform(const Mat3x3& mat) :mat(mat) {}
 
 		Transform(const Record& record, std::shared_ptr<Environment> pEnv)
 		{
@@ -89,7 +91,7 @@ namespace cgl
 
 		Transform operator*(const Transform& other)const
 		{
-			return mat * other.mat;
+			return static_cast<Mat3x3>(mat * other.mat);
 		}
 
 		Eigen::Vector2d product(const Eigen::Vector2d& v)const
@@ -118,7 +120,7 @@ namespace cgl
 		}
 
 	private:
-		Eigen::Matrix3d mat;
+		Mat3x3 mat;
 	};
 
 	template<class T>
@@ -401,7 +403,8 @@ namespace cgl
 				return boost::none;
 			}
 
-			return lines;
+			Expr result = lines;
+			return result;
 		}
 
 		boost::optional<Evaluated> execute(const std::string& program)

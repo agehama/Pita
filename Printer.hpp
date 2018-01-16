@@ -147,10 +147,14 @@ namespace cgl
 		boost::apply_visitor(printer, evaluated);
 	}
 
+#ifdef CGL_EnableLogOutput
 	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, int indent = 0)
 	{
 		printEvaluated(evaluated, pEnv, ofs, indent);
 	}
+#else
+	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, int indent = 0) {}
+#endif
 
 	class PrintSatExpr : public boost::static_visitor<void>
 	{
@@ -499,10 +503,14 @@ namespace cgl
 		os << ") " << std::endl;
 	}
 
+#ifdef CGL_EnableLogOutput
 	inline void printExpr(const Expr& expr)
 	{
 		printExpr(expr, ofs);
 	}
+#else
+	inline void printExpr(const Expr& expr) {}
+#endif
 
 	inline void ValuePrinter::operator()(const FuncVal& node)const
 	{

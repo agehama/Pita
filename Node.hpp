@@ -56,11 +56,18 @@ extern std::ofstream ofs;
 #define CGL_TagError (std::string("[Error]   |> "))
 #define CGL_TagWarn  (std::string("[Warning] |> "))
 #define CGL_TagDebug (std::string("[Debug]   |> "))
+#define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
+
+#ifdef CGL_EnableLogOutput
 #define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))
 #define CGL_WarnLog(message)  (cgl::Log(std::cerr, CGL_TagWarn  + CGL_FileDesc + message))
 //#define CGL_DebugLog(message) (cgl::Log(std::cout, CGL_TagDebug + CGL_FileDesc + message))
 #define CGL_DebugLog(message) (cgl::Log(ofs, CGL_TagDebug + CGL_FileDesc + message))
-#define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
+#else
+#define CGL_ErrorLog(message) 
+#define CGL_WarnLog(message)  
+#define CGL_DebugLog(message) 
+#endif
 
 namespace std
 {

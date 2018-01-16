@@ -5,10 +5,13 @@
 #include <boost/spirit/include/phoenix.hpp>
 
 #include <Eigen/Core>
+
+//#define CGL_EnableLogOutput
 #include "Node.hpp"
-#include "Evaluator.hpp"
 #include "Printer.hpp"
 #include "Environment.hpp"
+
+#include "Evaluator.hpp"
 
 std::ofstream ofs;
 
@@ -712,6 +715,7 @@ namespace cgl
 	}
 	*/
 
+#ifdef CGL_EnableLogOutput
 	void Environment::printEnvironment(bool flag)const
 	{
 		if (!flag)
@@ -748,6 +752,9 @@ namespace cgl
 
 		os << "Print Environment End:\n";
 	}
+#else
+	void Environment::printEnvironment(bool flag)const {}
+#endif
 
 	void Environment::bindNewValue(const std::string& name, const Evaluated& value)
 	{
@@ -2193,11 +2200,143 @@ namespace cgl
 		}
 	}
 
-	inline bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
+	class BoundingRect
+	{
+	public:
+		void add(const Eigen::Vector2d& v)
+		{
+			if (v.x() < m_min.x())
+			{
+				m_min.x() = v.x();
+			}
+			if (v.y() < m_min.y())
+			{
+				m_min.y() = v.y();
+			}
+			if (m_max.x() < v.x())
+			{
+				m_max.x() = v.x();
+			}
+			if (m_max.y() < v.y())
+			{
+				m_max.y() = v.y();
+			}
+		}
+
+		bool intersects(const BoundingRect& other)const
+		{
+			return std::max(m_min.x(), other.m_min.x()) < std::min(m_max.x(), other.m_max.x())
+				&& std::max(m_min.y(), other.m_min.y()) < std::min(m_max.y(), other.m_max.y());
+		}
+
+		bool includes(const Eigen::Vector2d& point)const
+		{
+			return m_min.x() < point.x() && point.x() < m_max.x()
+				&& m_min.y() < point.y() && point.y() < m_max.y();
+		}
+
+		Eigen::Vector2d pos()const
+		{
+			return m_min;
+		}
+
+		Eigen::Vector2d center()const
+		{
+			return (m_min + m_max)*0.5;
+		}
+				
+		Eigen::Vector2d width()const
+		{
+			return m_max - m_min;
+		}
+
+	private:
+		Eigen::Vector2d m_min = Eigen::Vector2d(DBL_MAX, DBL_MAX);
+		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
+	};
+
+	inline void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
+
+	inline void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent = Transform())
+	{
+		const Transform current(record, pEnv);
+		const Transform transform = parent * current;
+
+		for (const auto& member : record.values)
+		{
+			const Evaluated value = pEnv->expand(member.second);
+
+			if (member.first == "vertex" && IsType<List>(value))
+			{
+				Vector<Eigen::Vector2d> polygon;
+				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
+				{
+					for (const auto& vertex : polygon)
+					{
+						output.add(vertex);
+					}
+				}
+
+			}
+			else if (IsType<Record>(value))
+			{
+				GetBoundingBoxImpl(output, As<Record>(value), pEnv, transform);
+			}
+			else if (IsType<List>(value))
+			{
+				GetBoundingBoxImpl(output, As<List>(value), pEnv, transform);
+			}
+		}
+	}
+
+	inline void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform)
+	{
+		for (const Address member : list.data)
+		{
+			const Evaluated value = pEnv->expand(member);
+
+			if (IsType<Record>(value))
+			{
+				GetBoundingBoxImpl(output, As<Record>(value), pEnv, transform);
+			}
+			else if (IsType<List>(value))
+			{
+				GetBoundingBoxImpl(output, As<List>(value), pEnv, transform);
+			}
+		}
+	}
+
+	inline boost::optional<BoundingRect> GetBoundingBox(const Evaluated& value, std::shared_ptr<Environment> pEnv)
 	{
 		if (IsType<Record>(value))
 		{
-			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">)" << "\n";
+			const Record& record = As<Record>(value);
+			BoundingRect rect;
+			GetBoundingBoxImpl(rect, record, pEnv);
+			return rect;
+		}
+
+		return boost::none;
+	}
+
+	inline bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
+	{
+		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
+		if (IsType<Record>(value) && boundingBoxOpt)
+		{
+			const BoundingRect& rect = boundingBoxOpt.value();
+
+			//const auto pos = rect.pos();
+			const auto widthXY = rect.width();
+			const auto center = rect.center();
+
+			const double width = std::max(widthXY.x(), widthXY.y());
+			const double halfWidth = width*0.5;
+
+			const Eigen::Vector2d pos = center - Eigen::Vector2d(halfWidth, halfWidth);
+
+			//os << R"(<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">)" << "\n";
+			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << width << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << R"(">)" << "\n";
 
 			const Record& record = As<Record>(value);
 			OutputSVGImpl(os, record, pEnv);
@@ -2263,18 +2402,22 @@ namespace cgl
 
 		bool draw(const std::string& program)
 		{
+			std::cout << "parse..." << std::endl;
 			if (auto exprOpt = parse(program))
 			{
 				try
 				{
+					std::cout << "parse succeeded" << std::endl;
 					printExpr(exprOpt.value());
-					CGL_DebugLog("printExpr");
+
+					std::cout << "execute..." << std::endl;
 					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
-					CGL_DebugLog("evaluate");
 					const Evaluated result = pEnv->expand(lrvalue);
-					CGL_DebugLog("expand");
+					std::cout << "execute succeeded" << std::endl;
+
+					std::cout << "output SVG..." << std::endl;
 					OutputSVG(std::cout, result, pEnv);
-					CGL_DebugLog("outputSVG");
+					std::cout << "output succeeded" << std::endl;
 				}
 				catch (const cgl::Exception& e)
 				{
@@ -2795,7 +2938,7 @@ cross = shape{
 EOF
 	*/
 
-	/*
+	
 	{
 		cgl::Program program;
 		program.draw(R"(
@@ -2830,46 +2973,6 @@ cross = shape{
 		cgl::Program program;
 		program.draw(R"(
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 shape = {
 	pos: {x:0, y:0}
 	scale: {x:1, y:1}
@@ -2901,51 +3004,11 @@ main = shape{
 
 )");
 	}
-	*/
+	
 
 	{
 		cgl::Program program;
 		program.draw(R"(
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 transform = (pos, scale, angle, vertex -> {
 	cosT:cos(angle)
@@ -2962,13 +3025,12 @@ shape = {
 
 square = shape{
 	vertex: [
-		{x: -1, y: -1}, {x: +1, y: -1}
-		{x: +1, y: +1}, {x: -1, y: +1}
+		{x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
 	]
 	topLeft:     (->transform(pos, scale, angle, vertex[0]))
 	topRight:    (->transform(pos, scale, angle, vertex[1]))
-	bottomLeft:  (->transform(pos, scale, angle, vertex[2]))
-	bottomRight: (->transform(pos, scale, angle, vertex[3]))
+	bottomRight: (->transform(pos, scale, angle, vertex[2]))
+	bottomLeft:  (->transform(pos, scale, angle, vertex[3]))
 }
 
 contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)

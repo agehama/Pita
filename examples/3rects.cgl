@@ -1,0 +1,34 @@
+transform = (pos, scale, angle, vertex -> {
+	cosT:cos(angle)
+	sinT:sin(angle)
+	x:pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+	y:pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
+})
+
+shape = {
+	pos: {x:0, y:0}
+	scale: {x:1, y:1}
+	angle: 0
+}
+
+square = shape{
+	vertex: [
+		{x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
+	]
+	topLeft:     (->transform(pos, scale, angle, vertex[0]))
+	topRight:    (->transform(pos, scale, angle, vertex[1]))
+	bottomRight: (->transform(pos, scale, angle, vertex[2]))
+	bottomLeft:  (->transform(pos, scale, angle, vertex[3]))
+}
+
+contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
+
+main = shape{
+    a: square{scale: {x: 50, y: 50}}
+    b: square{scale: {x: 100, y: 50}}
+    c: b{}
+
+    sat( contact(a.topRight(), b.bottomLeft()) & contact(a.bottomRight(), c.topLeft()) )
+    sat( contact(b.bottomRight(), c.topRight()) )
+    free(b.pos, b.angle, c.pos, c.angle)
+}

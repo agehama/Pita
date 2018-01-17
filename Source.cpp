@@ -1,6 +1,7 @@
 #include <Eigen/Core>
 
-#define CGL_EnableLogOutput
+//#define CGL_EnableLogOutput
+//#define CGL_DO_TEST
 
 #include "Node.hpp"
 #include "Printer.hpp"
@@ -13,9 +14,7 @@
 
 std::ofstream ofs;
 
-#define DO_TEST
-#define DO_TEST2
-
+#ifdef CGL_DO_TEST
 int main()
 {
 	ofs.open("log.txt");
@@ -641,3 +640,25 @@ main = shape{
 
 	return 0;
 }
+#else
+int main(int argc, char* argv[])
+{
+	if (argc != 2)
+	{
+		std::cout << "usage:\n";
+		std::cout << "./core source_file\n";
+		return 0;
+	}
+
+	ofs.open("log.txt");
+
+	const std::string filename(argv[1]);
+	std::ifstream ifs(filename);
+	std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+	cgl::Program program;
+	program.draw(sourceCode, false);
+
+	return 0;
+}
+#endif

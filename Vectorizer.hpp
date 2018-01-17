@@ -424,24 +424,28 @@ namespace cgl
 			return boost::none;
 		}
 
-		bool draw(const std::string& program)
+		bool draw(const std::string& program, bool logOutput = true)
 		{
-			std::cout << "parse..." << std::endl;
+			if (logOutput) std::cout << "parse..." << std::endl;
+			
 			if (auto exprOpt = parse(program))
 			{
 				try
 				{
-					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.value());
+					if (logOutput)
+					{
+						std::cout << "parse succeeded" << std::endl;
+						printExpr(exprOpt.value());
+					}
 
-					std::cout << "execute..." << std::endl;
+					if (logOutput) std::cout << "execute..." << std::endl;
 					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
 					const Evaluated result = pEnv->expand(lrvalue);
-					std::cout << "execute succeeded" << std::endl;
+					if (logOutput) std::cout << "execute succeeded" << std::endl;
 
-					std::cout << "output SVG..." << std::endl;
+					if (logOutput) std::cout << "output SVG..." << std::endl;
 					OutputSVG(std::cout, result, pEnv);
-					std::cout << "output succeeded" << std::endl;
+					if (logOutput) std::cout << "output succeeded" << std::endl;
 				}
 				catch (const cgl::Exception& e)
 				{

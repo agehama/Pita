@@ -1529,8 +1529,8 @@ namespace cgl
 		//std::unordered_map<std::string, Evaluated> values;
 		std::unordered_map<std::string, Address> values;
 		OptimizationProblemSat problem;
-		//std::vector<Accessor> freeVariables;
-		std::vector<Address> freeVariables;//var宣言で指定された変数のアドレス
+		std::vector<Accessor> freeVariables;
+		//std::vector<Address> freeVariables;//var宣言で指定された変数のアドレス
 		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
 
 		Record() = default;

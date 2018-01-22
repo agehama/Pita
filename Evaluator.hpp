@@ -343,6 +343,10 @@ namespace cgl
 				}
 			}
 
+			result.problem = node.problem;
+			result.freeVariables = node.freeVariables;
+			result.freeVariableRefs = node.freeVariableRefs;
+
 			return result;
 		}
 
@@ -404,6 +408,10 @@ namespace cgl
 				pEnv->assignToObject(value.second, boost::apply_visitor(*this, substance));
 			}
 
+			node.problem;
+			node.freeVariables;
+			node.freeVariableRefs;
+
 			return node;
 		}
 
@@ -429,6 +437,83 @@ namespace cgl
 		//Evaluated operator()(const DeclFree& node) { return node; }
 	};
 
+	class ValueCloner3 : public boost::static_visitor<void>
+	{
+	public:
+		ValueCloner3(std::shared_ptr<Environment> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
+			pEnv(pEnv),
+			replaceMap(replaceMap)
+		{}
+
+		std::shared_ptr<Environment> pEnv;
+		const std::unordered_map<Address, Address>& replaceMap;
+
+		boost::optional<Address> getOpt(Address address)const
+		{
+			auto it = replaceMap.find(address);
+			if (it != replaceMap.end())
+			{
+				return it->second;
+			}
+			return boost::none;
+		}
+
+		Address replaced(Address address)const
+		{
+			auto it = replaceMap.find(address);
+			if (it != replaceMap.end())
+			{
+				return it->second;
+			}
+			return address;
+		}
+
+		void operator()(bool& node) {}
+
+		void operator()(int& node) {}
+
+		void operator()(double& node) {}
+
+		void operator()(List& node) {}
+
+		void operator()(KeyValue& node) {}
+
+		void operator()(Record& node)
+		{
+			AddressReplacer replacer(replaceMap);
+
+			auto& problem = node.problem;
+			if (problem.candidateExpr)
+			{
+				problem.candidateExpr = boost::apply_visitor(replacer, problem.candidateExpr.value());
+			}
+
+			for (size_t i = 0; i < problem.refs.size(); ++i)
+			{
+				const Address oldAddress = problem.refs[i];
+				if (auto newAddressOpt = getOpt(oldAddress))
+				{
+					const Address newAddress = newAddressOpt.value();
+					problem.refs[i] = newAddress;
+					problem.invRefs[newAddress] = problem.invRefs[oldAddress];
+					problem.invRefs.erase(oldAddress);
+				}
+			}
+
+			for (auto& freeVariable : node.freeVariables)
+			{
+				Expr expr = freeVariable;
+				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
+			}
+		}
+
+		void operator()(FuncVal& node) {}
+
+		void operator()(Jump& node) {}
+
+		//Evaluated operator()(const DeclFree& node) { return node; }
+	};
+
 	inline Evaluated Clone(std::shared_ptr<Environment> pEnv, const Evaluated& value)
 	{
 		/*
@@ -439,7 +524,10 @@ namespace cgl
 		ValueCloner cloner(pEnv);
 		const Evaluated& evaluated = boost::apply_visitor(cloner, value);
 		ValueCloner2 cloner2(pEnv, cloner.replaceMap);
-		return boost::apply_visitor(cloner2, evaluated);
+		ValueCloner3 cloner3(pEnv, cloner.replaceMap);
+		Evaluated evaluated2 = boost::apply_visitor(cloner2, evaluated);
+		boost::apply_visitor(cloner3, evaluated2);
+		return evaluated2;
 	}
 
 	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
@@ -1494,8 +1582,20 @@ namespace cgl
 				printExpr(recordConsractor.exprs[i]);
 			}
 
-			Record record;
-			currentRecords.push(std::ref(record));
+			Record newRecord;
+
+			if (temporaryRecord)
+			{
+				currentRecords.push(temporaryRecord.value());
+				temporaryRecord = boost::none;
+			}
+			else
+			{
+				currentRecords.push(std::ref(newRecord));
+			}
+
+			Record& record = currentRecords.top();
+			
 			int i = 0;
 
 			for (const auto& expr : recordConsractor.exprs)
@@ -1609,8 +1709,8 @@ namespace cgl
 					freeVariableRefs.clear();
 					for (const auto& accessor : record.freeVariables)
 					{
-						//const Address refAddress = pEnv->evalReference(accessor);
-						const Address refAddress = accessor;
+						const Address refAddress = pEnv->evalReference(accessor);
+						//const Address refAddress = accessor;
 						//単一の値 or List or Record
 						if (refAddress.isValid())
 						{
@@ -1654,6 +1754,7 @@ namespace cgl
 
 					CGL_DebugLog(std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
 					CGL_DebugLog(std::string("Record SatExpr: "));
+					std::cout << (std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size())) << std::endl;
 					//problem.debugPrint();
 				}
 
@@ -1872,7 +1973,6 @@ namespace cgl
 			//(1)
 			//Record clone = recordOpt.value();
 			
-
 			pEnv->printEnvironment(true);
 			CGL_DebugLog("Original:");
 			printEvaluated(originalRecordVal, pEnv);
@@ -1881,8 +1981,30 @@ namespace cgl
 
 			CGL_DebugLog("Clone:");
 			printEvaluated(clone, pEnv);
+
+			if (temporaryRecord)
+			{
+				CGL_Error("レコード拡張に失敗");
+			}
+			temporaryRecord = clone;
+
+			pEnv->enterScope();
+			for (auto& keyval : clone.values)
+			{
+				pEnv->makeVariable(keyval.first, keyval.second);
+
+				CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
+			}
+
+			Expr expr = record.adder;
+			Evaluated recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
+
+			pEnv->exitScope();
+
+			return pEnv->makeTemporaryValue(recordValue);
+
+			/*
 			//(2)
-			//pEnv->pushRecord();
 			pEnv->enterScope();
 			for (auto& keyval : clone.values)
 			{
@@ -1903,17 +2025,6 @@ namespace cgl
 				CGL_DebugLog("");
 
 				//(4)
-				/*for (auto& keyval : recordOpt.value().values)
-				{
-					boost::optional<const Evaluated&> valOpt = pEnv->expandOpt(pEnv->findAddress(keyval.first));
-					if (!valOpt)
-					{
-						CGL_Error("評価して変数が消えることはないはず");
-					}
-
-					clone.values[keyval.first] = pEnv->makeTemporaryValue(valOpt.value());
-				}*/
-
 				for (auto& keyval : recordOpt.value().values)
 				{
 					clone.values[keyval.first] = pEnv->findAddress(keyval.first);
@@ -1941,6 +2052,7 @@ namespace cgl
 
 			//pEnv->pop();
 			pEnv->exitScope();
+			*/
 
 			//ここは通らないはず。{}で囲まれた式を評価した結果がレコードでなかった。
 			//std::cerr << "Error(" << __LINE__ << ")\n";
@@ -1950,6 +2062,8 @@ namespace cgl
 
 		LRValue operator()(const DeclSat& node)
 		{
+			std::cout << "DeclSat:" << std::endl;
+
 			//ここでクロージャを作る必要がある
 			ClosureMaker closureMaker(pEnv, {});
 			const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
@@ -1973,21 +2087,41 @@ namespace cgl
 
 		LRValue operator()(const DeclFree& node)
 		{
+			std::cout << "DeclFree:" << std::endl;
 			for (const auto& accessor : node.accessors)
 			{
+				std::cout << "  accessor:" << std::endl;
 				if (currentRecords.empty())
 				{
 					CGL_Error("var宣言はレコードの中にしか書くことができません");
 				}
 
-				const Expr expr = accessor;
-				const LRValue result = boost::apply_visitor(*this, expr);
+				ClosureMaker closureMaker(pEnv, {});
+				const Expr varExpr = accessor;
+				const Expr closedVarExpr = boost::apply_visitor(closureMaker, varExpr);
+
+				if (IsType<Accessor>(closedVarExpr))
+				{
+					std::cout << "    Free Expr:" << std::endl;
+					printExpr(closedVarExpr, std::cout);
+					currentRecords.top().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
+				}
+				else if (IsType<Identifier>(closedVarExpr))
+				{
+					Accessor result(closedVarExpr);
+					currentRecords.top().get().freeVariables.push_back(result);
+				}
+				else
+				{
+					CGL_Error("var宣言に指定された変数が無効です");
+				}
+				/*const LRValue result = boost::apply_visitor(*this, expr);
 				if (!result.isLValue())
 				{
 					CGL_Error("var宣言に指定された変数は無効です");
-				}
+				}*/
 
-				currentRecords.top().get().freeVariables.push_back(result.address());
+				//currentRecords.top().get().freeVariables.push_back(result.address());
 			}
 
 			return RValue(0);
@@ -2171,7 +2305,12 @@ namespace cgl
 
 	private:
 		std::shared_ptr<Environment> pEnv;
+		
+		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
 		std::stack<std::reference_wrapper<Record>> currentRecords;
+
+		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
+		boost::optional<Record&> temporaryRecord;
 	};
 
 	class HasFreeVariables : public boost::static_visitor<bool>

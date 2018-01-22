@@ -11,7 +11,7 @@ shape = {
     angle: 0
 }
 
-contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
+contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1 & (p.y - q.y)*(p.y - q.y) < 1)
 
 distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
 
@@ -23,7 +23,7 @@ kite = shape{
 	end:   (->transform(pos, scale, angle, vertex[2]))
 }
 
-skeleton = {
+skeleton = shape{
 	ss: [0, 1, 2, 3]
 	for i in 0:3 do(
 		ss[i] = kite{pos.x = 100*i}
@@ -32,7 +32,11 @@ skeleton = {
 	for i in 0:2 do(
 		sat( p = ss[i].begin(), contact(ss[i].end(), ss[i+1].begin()) )
 	)
+	begin: (->transform(pos, scale, angle, ss[0].begin()))
+	end:   (->transform(pos, scale, angle, ss[3].end()))
+}
 
-	sat(contact(ss[0].begin(), {x: 30, y:200}))
-	sat(contact(ss[3].end(), {x: 250, y:200}))
+main = skeleton{
+	sat(contact(begin(), {x: 30, y:200}))
+	sat(contact(end(), {x: 200, y:150}))
 }

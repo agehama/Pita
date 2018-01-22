@@ -611,4 +611,33 @@ namespace cgl
 #else
 	void Environment::printEnvironment(bool flag)const {}
 #endif
+
+	void Environment::printEnvironment(std::ostream& os)const
+	{
+		os << "Print Environment Begin:\n";
+
+		os << "Values:\n";
+		for (const auto& keyval : m_values)
+		{
+			const auto& val = keyval.second;
+
+			os << keyval.first.toString() << " : ";
+
+			printEvaluated(val, m_weakThis.lock(), os);
+		}
+
+		os << "References:\n";
+		for (size_t d = 0; d < localEnv().size(); ++d)
+		{
+			os << "Depth : " << d << "\n";
+			const auto& names = localEnv()[d];
+
+			for (const auto& keyval : names)
+			{
+				os << keyval.first << " : " << keyval.second.toString() << "\n";
+			}
+		}
+
+		os << "Print Environment End:\n";
+	}
 }

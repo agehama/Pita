@@ -737,6 +737,7 @@ namespace cgl
 			ClosureMaker child(pEnv, localVariables, false);
 			child.addLocalVariable(node.loopCounter);
 			result.doExpr = boost::apply_visitor(child, node.doExpr);
+			result.loopCounter = node.loopCounter;
 
 			return result;
 		}
@@ -875,16 +876,25 @@ namespace cgl
 		
 		Expr operator()(const DeclSat& node)
 		{
-			//TODO: 考察する（関数呼び出しの中でsat宣言をすることはあり得るか？）
-			CGL_Error("TODO: 考察する");
-			return LRValue(0);
+			DeclSat result;
+			result.expr = boost::apply_visitor(*this, node.expr);
+			return result;
 		}
 
 		Expr operator()(const DeclFree& node)
 		{
-			//TODO: 考察する（関数呼び出しの中でsat宣言をすることはあり得るか？）
-			CGL_Error("TODO: 考察する");
-			return LRValue(0);
+			DeclFree result;
+			for (const auto& accessor : node.accessors)
+			{
+				const Expr expr = accessor;
+				const Expr closedAccessor = boost::apply_visitor(*this, expr);
+				if (!IsType<Accessor>(closedAccessor))
+				{
+					CGL_Error("aaa");
+				}
+				result.accessors.push_back(As<Accessor>(closedAccessor));
+			}
+			return result;
 		}
 	};
 
@@ -1090,6 +1100,8 @@ namespace cgl
 		//LRValue operator()(const FunctionCaller& callFunc)
 		LRValue callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 		{
+			std::cout << "callFunction:" << std::endl;
+
 			CGL_DebugLog("Function Environment:");
 			pEnv->printEnvironment();
 
@@ -1181,11 +1193,6 @@ namespace cgl
 
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
-				//現在は値も変数も全て値渡し（コピー）をしているので、単純に bindNewValue を行えばよい
-				//本当は変数の場合は bindReference で参照情報だけ渡すべきなのかもしれない
-				//要考察
-				//pEnv->bindNewValue(funcVal.arguments[i].name, expandedArguments[i]);
-
 				/*
 				12/14
 				引数はスコープをまたぐ時に参照先が変わらないように全てIDで渡すことにする。
@@ -1223,39 +1230,7 @@ namespace cgl
 			pEnv->switchBackScope();
 
 			CGL_DebugLog("");
-			/*
-			//関数の評価
-			//(1)ここでのローカル変数は関数を呼び出した側ではなく、関数が定義された側のものを使うのでローカル変数を置き換える
-			pEnv = funcVal.environment;
-
-			//(2)関数の引数用にスコープを一つ追加する
-			pEnv->pushNormal();
-			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
-			{
-			//現在は値も変数も全て値渡し（コピー）をしているので、単純に bindNewValue を行えばよい
-			//本当は変数の場合は bindReference で参照情報だけ渡すべきなのかもしれない
-			//要考察
-			//pEnv->bindNewValue(funcVal.arguments[i].name, callFunc.actualArguments[i]);
-
-			pEnv->bindNewValue(funcVal.arguments[i].name, expandedArguments[i]);
-			}
-
-			std::cout << "Function Environment:\n";
-			pEnv->printEnvironment();
-
-			std::cout << "Function Definition:\n";
-			boost::apply_visitor(Printer(), funcVal.expr);
-
-			//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
-			Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
-
-			//(4)関数を抜ける時に、仮引数は全て解放される
-			pEnv->pop();
-
-			//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
-			pEnv = buckUp;
-			*/
-
+			
 			//評価結果がreturn式だった場合はreturnを外して中身を返す
 			//return以外のジャンプ命令は関数では効果を持たないのでそのまま上に返す
 			if (IsType<Jump>(result))
@@ -1405,6 +1380,8 @@ namespace cgl
 
 		LRValue operator()(const For& forExpression)
 		{
+			std::cout << "For:" << std::endl;
+
 			const Evaluated startVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeStart));
 			const Evaluated endVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeEnd));
 
@@ -1472,9 +1449,6 @@ namespace cgl
 				const Evaluated result = LessEqual(loopCount, endVal, *pEnv);
 				if (!IsType<bool>(result))
 				{
-					//ここを通ることはないはず
-					//std::cerr << "Error(" << __LINE__ << ")\n";
-					//return boost::none;
 					CGL_Error("ここを通ることはないはず");
 				}
 
@@ -1484,9 +1458,6 @@ namespace cgl
 			const auto stepOrder = calcStepValue(startVal, endVal);
 			if (!stepOrder)
 			{
-				//エラー：ループのレンジが不正
-				//std::cerr << "Error(" << __LINE__ << ")\n";
-				//return 0;
 				CGL_Error("ループのレンジが不正");
 			}
 
@@ -1497,7 +1468,6 @@ namespace cgl
 
 			Evaluated loopResult;
 
-			//pEnv->pushNormal();
 			pEnv->enterScope();
 
 			while (true)
@@ -1505,9 +1475,6 @@ namespace cgl
 				const auto isLoopContinuesOpt = loopContinues(loopCountValue, isInOrder);
 				if (!isLoopContinuesOpt)
 				{
-					//エラー：ここを通ることはないはず
-					//std::cerr << "Error(" << __LINE__ << ")\n";
-					//return 0;
 					CGL_Error("ここを通ることはないはず");
 				}
 
@@ -1525,7 +1492,6 @@ namespace cgl
 				loopCountValue = Add(loopCountValue, step, *pEnv);
 			}
 
-			//pEnv->pop();
 			pEnv->exitScope();
 
 			return RValue(loopResult);
@@ -1543,11 +1509,20 @@ namespace cgl
 			List list;
 			for (const auto& expr : listConstractor.data)
 			{
-				const Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
+				/*const Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 				CGL_DebugLog("");
 				printEvaluated(value, nullptr);
 
-				list.append(pEnv->makeTemporaryValue(value));
+				list.append(pEnv->makeTemporaryValue(value));*/
+				LRValue lrvalue = boost::apply_visitor(*this, expr);
+				if (lrvalue.isLValue())
+				{
+					list.append(lrvalue.address());
+				}
+				else
+				{
+					list.append(pEnv->makeTemporaryValue(lrvalue.evaluated()));
+				}
 			}
 
 			return RValue(list);
@@ -1562,12 +1537,10 @@ namespace cgl
 
 		LRValue operator()(const RecordConstractor& recordConsractor)
 		{
-			//pEnv->pushRecord();
+			std::cout << "RecordConstractor:" << std::endl;
 
-			//std::cout << "RECORD_A" << std::endl;
 			CGL_DebugLog("");
 			pEnv->enterScope();
-			//std::cout << "RECORD_B" << std::endl;
 			CGL_DebugLog("");
 
 			std::vector<Identifier> keyList;
@@ -1601,7 +1574,6 @@ namespace cgl
 			for (const auto& expr : recordConsractor.exprs)
 			{
 				CGL_DebugLog("");
-				//std::cout << "Evaluate expression(" << i << ")" << std::endl;	
 				Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 				CGL_DebugLog("Evaluate: ");
 				printExpr(expr);
@@ -1691,7 +1663,6 @@ namespace cgl
 			}
 			innerSatClosures.clear();*/
 
-			//std::cout << "RECORD_C" << std::endl;
 			CGL_DebugLog("");
 
 			std::vector<double> resultxs;
@@ -1749,16 +1720,11 @@ namespace cgl
 						return LRValue(0);
 					}
 
-					//std::cout << "Record FreeVariablesSize: " << record.freeVariableRefs.size() << std::endl;
-					//std::cout << "Record SatExpr: " << std::endl;
-
 					CGL_DebugLog(std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
 					CGL_DebugLog(std::string("Record SatExpr: "));
 					std::cout << (std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size())) << std::endl;
-					//problem.debugPrint();
 				}
 
-				//std::cout << "Begin Record MakeMap" << std::endl;
 				//DeclFreeに出現する参照について、そのインデックス -> Problemのデータのインデックスを取得するマップ
 				std::unordered_map<int, int> variable2Data;
 				for (size_t freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
@@ -1794,7 +1760,6 @@ namespace cgl
 						CGL_WarnLog("freeに指定された変数が無効です");
 					}
 				}
-				//std::cout << "End Record MakeMap" << std::endl;
 				CGL_DebugLog("End Record MakeMap");
 
 
@@ -1875,7 +1840,6 @@ namespace cgl
 				*/
 			}
 
-			//std::cout << "RECORD_D" << std::endl;
 			CGL_DebugLog("");
 			for (size_t i = 0; i < resultxs.size(); ++i)
 			{
@@ -1902,7 +1866,6 @@ namespace cgl
 
 			pEnv->printEnvironment();
 
-			//std::cout << "RECORD_E" << std::endl;
 			CGL_DebugLog("");
 
 			currentRecords.pop();
@@ -1913,8 +1876,6 @@ namespace cgl
 			CGL_DebugLog("--------------------------- Print Environment ---------------------------");
 			pEnv->printEnvironment();
 			CGL_DebugLog("-------------------------------------------------------------------------");
-			//std::cout << "RECORD_F" << std::endl;
-			//CGL_DebugLog("");
 
 			return RValue(record);
 		}
@@ -2062,7 +2023,7 @@ namespace cgl
 
 		LRValue operator()(const DeclSat& node)
 		{
-			std::cout << "DeclSat:" << std::endl;
+			//std::cout << "DeclSat:" << std::endl;
 
 			//ここでクロージャを作る必要がある
 			ClosureMaker closureMaker(pEnv, {});
@@ -2087,10 +2048,10 @@ namespace cgl
 
 		LRValue operator()(const DeclFree& node)
 		{
-			std::cout << "DeclFree:" << std::endl;
+			//std::cout << "DeclFree:" << std::endl;
 			for (const auto& accessor : node.accessors)
 			{
-				std::cout << "  accessor:" << std::endl;
+				//std::cout << "  accessor:" << std::endl;
 				if (currentRecords.empty())
 				{
 					CGL_Error("var宣言はレコードの中にしか書くことができません");
@@ -2102,8 +2063,8 @@ namespace cgl
 
 				if (IsType<Accessor>(closedVarExpr))
 				{
-					std::cout << "    Free Expr:" << std::endl;
-					printExpr(closedVarExpr, std::cout);
+					//std::cout << "    Free Expr:" << std::endl;
+					//printExpr(closedVarExpr, std::cout);
 					currentRecords.top().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
 				}
 				else if (IsType<Identifier>(closedVarExpr))

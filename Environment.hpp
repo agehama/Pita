@@ -368,12 +368,19 @@ namespace cgl
 			bindValueID(name, ref);
 		}
 
+		/*
 		void bindNewValue(const std::string& name, const Evaluated& value)
 		{
 			CGL_DebugLog("");
 			const Address newAddress = m_values.add(value);
 			//Clone(m_weakThis.lock(), value);
 			bindValueID(name, newAddress);
+		}
+		*/
+		void bindNewValue(const std::string& name, const Evaluated& value)
+		{
+			CGL_DebugLog("");
+			makeVariable(name, makeTemporaryValue(value));
 		}
 
 		void bindReference(const std::string& nameLhs, const std::string& nameRhs)
@@ -450,6 +457,7 @@ namespace cgl
 		}*/
 
 		void printEnvironment(bool flag = false)const;
+		void printEnvironment(std::ostream& os)const;
 
 		//void assignToObject(const ObjectReference& objectRef, const Evaluated& newValue);
 		void assignToObject(Address address, const Evaluated& newValue)

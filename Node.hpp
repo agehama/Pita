@@ -150,7 +150,9 @@ namespace cgl
 		Div,
 
 		Pow,
-		Assign
+		Assign,
+
+		Concat
 	};
 
 	inline std::string BinaryOpToStr(BinaryOp op)
@@ -174,6 +176,8 @@ namespace cgl
 
 		case BinaryOp::Pow:    return "Pow";
 		case BinaryOp::Assign: return "Assign";
+
+		case BinaryOp::Concat: return "Concat";
 		}
 
 		return "Unknown";
@@ -1129,6 +1133,18 @@ namespace cgl
 		{
 			data.push_back(address);
 			return *this;
+		}
+
+		List& concat(const List& tail)
+		{
+			data.insert(data.end(), tail.data.begin(), tail.data.end());
+			return *this;
+		}
+
+		static List Concat(const List& a, const List& b)
+		{
+			List result(a);
+			return result.concat(b);
 		}
 
 		/*std::vector<unsigned>::iterator get(int index)

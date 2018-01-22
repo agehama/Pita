@@ -212,8 +212,11 @@ namespace cgl
 			arith_expr = (basic_arith_expr[_val = _1] >> -(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)]));
 
 			basic_arith_expr = term[_val = _1] >>
-				*((s >> '+' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
-				(s >> '-' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]))
+				*(
+				(s >> '+' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
+				(s >> '-' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]) |
+				(s >> '@' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Concat)])
+					)
 				;
 
 			term = pow_term[_val = _1]

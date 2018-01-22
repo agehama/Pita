@@ -622,6 +622,17 @@ namespace cgl
 		return 0;
 	}
 
+	inline Evaluated Concat(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	{
+		if (!IsType<List>(lhs) || !IsType<List>(rhs))
+		{
+			CGL_Error("リスト結合演算子がリスト以外の式に使われています");
+			return 0;
+		}
+
+		return List::Concat(As<List>(lhs), As<List>(rhs));
+	}
+
 #ifdef commentout
 	inline Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
 	{

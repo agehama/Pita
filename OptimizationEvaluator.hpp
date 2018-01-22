@@ -554,7 +554,8 @@ namespace cgl
 				case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
 				case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
 
-				case BinaryOp::Pow: return Pow(lhs, rhs, *pEnv);
+				case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
+				case BinaryOp::Concat: return Concat(lhs, rhs, *pEnv);
 				}
 			}
 			else if (auto valOpt = AsOpt<LRValue>(node.lhs))

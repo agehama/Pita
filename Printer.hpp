@@ -221,6 +221,8 @@ namespace cgl
 			case BinaryOp::Div: os << " / "; break;
 
 			case BinaryOp::Pow: os << " ^ "; break;
+
+			case BinaryOp::Concat: os << " @ "; break;
 			}
 
 			boost::apply_visitor(*this, node.rhs);

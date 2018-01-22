@@ -899,6 +899,7 @@ namespace cgl
 			case BinaryOp::Div: return RValue(Div(lhs, rhs, *pEnv));
 
 			case BinaryOp::Pow:    return RValue(Pow(lhs, rhs, *pEnv));
+			case BinaryOp::Concat: return RValue(Concat(lhs, rhs, *pEnv));
 			case BinaryOp::Assign:
 			{
 				//return Assign(lhs, rhs, *pEnv);

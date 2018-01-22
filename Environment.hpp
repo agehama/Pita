@@ -483,6 +483,11 @@ namespace cgl
 			return p;
 		}
 
+		std::shared_ptr<Environment> clone()
+		{
+			return Make(*this);
+		}
+
 		//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
 		//式の評価途中でGCは走らないようにするべきか？
 		Address makeTemporaryValue(const Evaluated& value)

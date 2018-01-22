@@ -9,6 +9,7 @@
 #include "Parser.hpp"
 
 extern std::ofstream ofs;
+extern bool calculating;
 
 namespace cgl
 {
@@ -44,6 +45,11 @@ namespace cgl
 		Transform()
 		{
 			init();
+		}
+
+		Transform(double px, double py, double sx = 1, double sy = 1, double angle = 0)
+		{
+			init(px, py, sx, sy, angle);
 		}
 
 		Transform(const Mat3x3& mat) :mat(mat) {}
@@ -393,13 +399,15 @@ namespace cgl
 			std::string::const_iterator it = program.begin();
 			if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
 			{
-				std::cerr << "Syntax Error: parse failed\n";
+				//std::cerr << "Syntax Error: parse failed\n";
+				std::cout << "Syntax Error: parse failed\n";
 				return boost::none;
 			}
 
 			if (it != program.end())
 			{
-				std::cerr << "Syntax Error: ramains input\n" << std::string(it, program.end());
+				//std::cerr << "Syntax Error: ramains input\n" << std::string(it, program.end());
+				std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
 				return boost::none;
 			}
 
@@ -456,10 +464,59 @@ namespace cgl
 			return false;
 		}
 
+		void execute1(const std::string& program, bool logOutput = true)
+		{
+			clear();
+
+			if (logOutput)
+			{
+				std::cout << "parse..." << std::endl;
+				std::cout << program << std::endl;
+			}
+
+			if (auto exprOpt = parse(program))
+			{
+				try
+				{
+					if (logOutput)
+					{
+						std::cout << "parse succeeded" << std::endl;
+						printExpr(exprOpt.value(), std::cout);
+					}
+
+					if (logOutput) std::cout << "execute..." << std::endl;
+					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
+					evaluated = pEnv->expand(lrvalue);
+					if (logOutput)
+					{
+						std::cout << "execute succeeded" << std::endl;
+						printEvaluated(evaluated.value(), pEnv, std::cout, 0);
+					}
+
+					succeeded = true;
+				}
+				catch (const cgl::Exception& e)
+				{
+					//std::cerr << "Exception: " << e.what() << std::endl;
+					std::cout << "Exception: " << e.what() << std::endl;
+
+					succeeded = false;
+				}	
+			}
+			else
+			{
+				succeeded = false;
+			}
+
+			calculating = false;
+		}
+
 		void clear()
 		{
 			pEnv = Environment::Make();
+			evaluated = boost::none;
 			evaluator = Eval(pEnv);
+			succeeded = false;
 		}
 
 		bool test(const std::string& program, const Expr& expr)
@@ -479,9 +536,25 @@ namespace cgl
 			return false;
 		}
 
-	private:
+		std::shared_ptr<Environment> getEnvironment()
+		{
+			return pEnv;
+		}
 
+		boost::optional<Evaluated>& getEvaluated()
+		{
+			return evaluated;
+		}
+
+		bool isSucceeded()const
+		{
+			return succeeded;
+		}
+
+	private:
 		std::shared_ptr<Environment> pEnv;
 		Eval evaluator;
+		boost::optional<Evaluated> evaluated;
+		bool succeeded;
 	};
 }

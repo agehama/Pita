@@ -336,8 +336,8 @@ namespace cgl
 		boost::recursive_wrapper<KeyValue>,
 		boost::recursive_wrapper<Record>,
 		boost::recursive_wrapper<FuncVal>,
-		boost::recursive_wrapper<Jump>,
-		boost::recursive_wrapper<DeclFree>
+		boost::recursive_wrapper<Jump>/*,
+		boost::recursive_wrapper<DeclFree>*/
 	>;
 
 	struct RValue;
@@ -367,6 +367,7 @@ namespace cgl
 		boost::recursive_wrapper<RecordConstractor>,
 		boost::recursive_wrapper<RecordInheritor>,
 		boost::recursive_wrapper<DeclSat>,
+		boost::recursive_wrapper<DeclFree>,
 
 		boost::recursive_wrapper<Accessor>
 	>;
@@ -412,7 +413,7 @@ namespace cgl
 		static LRValue Int(int a) { return LRValue(a); }
 		static LRValue Double(double a) { return LRValue(a); }
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
-		static LRValue Free(const DeclFree& a) { return LRValue(a); }
+		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
 		bool isRValue()const
 		{
@@ -1460,6 +1461,11 @@ namespace cgl
 
 		DeclFree() = default;
 
+		void add(const Accessor& accessor)
+		{
+			accessors.push_back(accessor);
+		}
+
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
 		{
 			decl.accessors.push_back(accessor);
@@ -1507,10 +1513,9 @@ namespace cgl
 		//std::unordered_map<std::string, Evaluated> values;
 		std::unordered_map<std::string, Address> values;
 		OptimizationProblemSat problem;
-		//std::vector<DeclFree::Ref> freeVariables;
-		std::vector<Accessor> freeVariables;
-		//std::vector<ObjectReference> freeVariableRefs;
-		std::vector<Address> freeVariableRefs;
+		//std::vector<Accessor> freeVariables;
+		std::vector<Address> freeVariables;//var宣言で指定された変数のアドレス
+		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
 
 		Record() = default;
 		

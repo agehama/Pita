@@ -59,8 +59,12 @@ namespace cgl
 		keywords_t() {
 			add("for", qi::unused)
 				("in", qi::unused)
+				("do", qi::unused)
 				("sat", qi::unused)
-				("free", qi::unused);
+				("var", qi::unused)
+				("if", qi::unused)
+				("then", qi::unused)
+				("else", qi::unused);
 		}
 	} const keywords;
 
@@ -164,8 +168,8 @@ namespace cgl
 			def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
 			//def_func = arguments[_val = _1] >> lit("->") >> s >> general_expr[Call(applyFuncDef, _val, _1)];
 
-			//constraintはDNFの形で与えられるものとする
-			constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
+			//constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
+			constraints = lit("sat") >> '(' >> s >> statement[_val = Call(DeclSat::Make, _1)] >> s >> ')';
 
 			//freeValsがレコードへの参照とかを入れるのは少し大変だが、単一の値への参照なら難しくないはず
 			/*freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
@@ -175,7 +179,7 @@ namespace cgl
 				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, _1)])
 				) >> s >> ')';*/
 
-			freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >> *(
+			freeVals = lit("var") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >> *(
 				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
 				) >> s >> ')';
 
@@ -295,7 +299,8 @@ namespace cgl
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
 				//| constraints[_val = Call(LRValue::Sat, _1)]
 				| constraints[_val = _1]
-				| freeVals[_val = Call(LRValue::Free, _1)]
+				//| freeVals[_val = Call(LRValue::Free, _1)]
+				| freeVals[_val = _1]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]

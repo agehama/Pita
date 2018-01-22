@@ -141,7 +141,7 @@ namespace cgl
 			os << indent() << "DeclSat(" << ")" << std::endl;
 		}*/
 
-		void operator()(const DeclFree& node)const;
+		//void operator()(const DeclFree& node)const;
 	};
 
 	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, std::ostream& os, int indent = 0)
@@ -452,6 +452,17 @@ namespace cgl
 			os << indent() << ")" << std::endl;
 		}
 
+		void operator()(const DeclFree& node)const
+		{
+			os << indent() << "DeclFree(" << std::endl;
+			for (const auto& accessor : node.accessors)
+			{
+				Expr expr = accessor;
+				boost::apply_visitor(Printer(os, m_indent + 1), expr);
+			}
+			os << indent() << ")" << std::endl;
+		}
+
 		void operator()(const Accessor& accessor)const
 		{
 			os << indent() << "Accessor(" << std::endl;
@@ -547,17 +558,17 @@ namespace cgl
 		}
 	}
 
-	inline void ValuePrinter::operator()(const DeclFree& node)const
-	{
-		os << indent() << "DeclFree(" << std::endl;
-		for (size_t i = 0; i < node.accessors.size(); ++i)
-		{
-			Expr expr = node.accessors[i];
-			boost::apply_visitor(Printer(os, m_indent + 1), expr);
-		}
-		os << indent() << ")" << std::endl;
-		//boost::apply_visitor(Printer(m_indent + 1), accessor.head);
-	}
+	//inline void ValuePrinter::operator()(const DeclFree& node)const
+	//{
+	//	os << indent() << "DeclFree(" << std::endl;
+	//	for (size_t i = 0; i < node.accessors.size(); ++i)
+	//	{
+	//		Expr expr = node.accessors[i];
+	//		boost::apply_visitor(Printer(os, m_indent + 1), expr);
+	//	}
+	//	os << indent() << ")" << std::endl;
+	//	//boost::apply_visitor(Printer(m_indent + 1), accessor.head);
+	//}
 
 #ifdef CGL_EnableLogOutput
 	void Environment::printEnvironment(bool flag)const

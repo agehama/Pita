@@ -269,6 +269,7 @@ namespace cgl
 
 		bool operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
 
 		bool operator()(const Accessor& node)
 		{
@@ -519,7 +520,7 @@ namespace cgl
 		Evaluated operator()(const UnaryExpr& node)
 		{
 			//CGL_DebugLog("Evaluated operator()(const UnaryExpr& node)");
-			if (node.op == UnaryOp::Not)
+			//if (node.op == UnaryOp::Not)
 			{
 				CGL_Error("TODO: sat宣言中の単項演算子は未対応です");
 			}
@@ -530,31 +531,93 @@ namespace cgl
 		Evaluated operator()(const BinaryExpr& node)
 		{
 			//CGL_DebugLog("Evaluated operator()(const BinaryExpr& node)");
-			const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
+			
 			const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
-
-			switch (node.op)
+			if (node.op != BinaryOp::Assign)
 			{
-			case BinaryOp::And: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
+				const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
 
-			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
-			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? 1.0 : 0.0;
-			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterEqual: return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
+				switch (node.op)
+				{
+				case BinaryOp::And: return Add(lhs, rhs, *pEnv);
+				case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
 
-			case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
-			case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
-			case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+				case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
+				case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? 1.0 : 0.0;
+				case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
+				case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
+				case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
+				case BinaryOp::GreaterEqual: return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
 
-			case BinaryOp::Pow: return Pow(lhs, rhs, *pEnv);
+				case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
+				case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
+				case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
+				case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+
+				case BinaryOp::Pow: return Pow(lhs, rhs, *pEnv);
+				}
+			}
+			else if (auto valOpt = AsOpt<LRValue>(node.lhs))
+			{
+				const LRValue& val = valOpt.value();
+				if (val.isLValue())
+				{
+					if (val.address().isValid())
+					{
+						pEnv->assignToObject(val.address(), rhs);
+					}
+					else
+					{
+						CGL_Error("reference error");
+					}
+				}
+				else
+				{
+					CGL_Error("ここは通らないはず");
+				}
+			}
+			else if (auto valOpt = AsOpt<Identifier>(node.lhs))
+			{
+				const Identifier& identifier = valOpt.value();
+
+				const Address address = pEnv->findAddress(identifier);
+				//変数が存在する：代入式
+				if (address.isValid())
+				{
+					pEnv->assignToObject(address, rhs);
+				}
+				//変数が存在しない：変数宣言式
+				else
+				{
+					pEnv->bindNewValue(identifier, rhs);
+				}
+
+				return rhs;
+			}
+			else if (auto valOpt = AsOpt<Accessor>(node.lhs))
+			{
+				Eval evaluator(pEnv);
+				const LRValue lhs = boost::apply_visitor(evaluator, node.lhs);
+				if (lhs.isLValue())
+				{
+					Address address = lhs.address();
+					if (address.isValid())
+					{
+						pEnv->assignToObject(address, rhs);
+						return rhs;
+					}
+					else
+					{
+						CGL_Error("参照エラー");
+					}
+				}
+				else
+				{
+					CGL_Error("アクセッサの評価結果がアドレスでない");
+				}
 			}
 
-			CGL_Error(std::string("sat宣言の中では二項演算子") + "\"" + BinaryOpToStr(node.op) + "\"" + "は使用できません");
-
+			CGL_Error("ここは通らないはず");
 			return 0;
 		}
 
@@ -667,12 +730,24 @@ namespace cgl
 		Evaluated operator()(const Lines& node)
 		{
 			//CGL_DebugLog("Evaluated operator()(const Lines& node)");
-			if (node.exprs.size() != 1)
+			/*if (node.exprs.size() != 1)
 			{
 				CGL_Error("不正な式です"); return 0;
 			}
 
-			return boost::apply_visitor(*this, node.exprs.front());
+			return boost::apply_visitor(*this, node.exprs.front());*/
+
+			pEnv->enterScope();
+
+			Evaluated result;
+			for (const auto& expr : node.exprs)
+			{
+				result = boost::apply_visitor(*this, expr);
+			}
+
+			pEnv->exitScope();
+
+			return result;
 		}
 
 		Evaluated operator()(const If& if_statement)
@@ -768,6 +843,7 @@ namespace cgl
 
 		Evaluated operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return 0; }
 		Evaluated operator()(const DeclSat& node) { CGL_Error("invalid expression"); return 0; }
+		Evaluated operator()(const DeclFree& node) { CGL_Error("invalid expression"); return 0; }
 
 		Evaluated operator()(const Accessor& node)
 		{

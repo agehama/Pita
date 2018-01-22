@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <cmath>
 #include <functional>
+#include <thread>
+#include <mutex>
 
 #include "Node.hpp"
 #include "Environment.hpp"
@@ -11,6 +13,72 @@
 
 namespace cgl
 {
+	class ProgressStore
+	{
+	public:
+		static void TryWrite(std::shared_ptr<Environment> env, const Evaluated& value)
+		{
+			ProgressStore& i = Instance();
+			if (i.mtx.try_lock())
+			{
+				i.pEnv = env->clone();
+				i.evaluated = value;
+
+				i.mtx.unlock();
+			}
+		}
+
+		static bool TryLock()
+		{
+			ProgressStore& i = Instance();
+			return i.mtx.try_lock();
+		}
+
+		static void Unlock()
+		{
+			ProgressStore& i = Instance();
+			i.mtx.unlock();
+		}
+
+		static std::shared_ptr<Environment> GetEnvironment()
+		{
+			ProgressStore& i = Instance();
+			return i.pEnv;
+		}
+
+		static boost::optional<Evaluated>& GetEvaluated()
+		{
+			ProgressStore& i = Instance();
+			return i.evaluated;
+		}
+
+		static void Reset()
+		{
+			ProgressStore& i = Instance();
+			i.pEnv = nullptr;
+			i.evaluated = boost::none;
+		}
+
+		static bool HasValue()
+		{
+			ProgressStore& i = Instance();
+			return static_cast<bool>(i.evaluated);
+		}
+
+	private:
+		static ProgressStore& Instance()
+		{
+			static ProgressStore i;
+			return i;
+		}
+
+		std::shared_ptr<Environment> pEnv;
+		boost::optional<Evaluated> evaluated;
+
+		std::mutex mtx;
+	};
+
+
 	class AddressReplacer : public boost::static_visitor<Expr>
 	{
 	public:
@@ -189,6 +257,17 @@ namespace cgl
 		{
 			return DeclSat(boost::apply_visitor(*this, node.expr));
 		}
+
+		Expr operator()(const DeclFree& node)const
+		{
+			DeclFree result;
+			for (const auto& accessor : node.accessors)
+			{
+				Expr expr = accessor;
+				result.add(boost::apply_visitor(*this, expr));
+			}
+			return result;
+		}
 	};
 
 	//Evaluatedのアドレス値を再帰的に展開したクローンを作成する
@@ -271,7 +350,7 @@ namespace cgl
 
 		Evaluated operator()(const Jump& node) { return node; }
 
-		Evaluated operator()(const DeclFree& node) { return node; }
+		//Evaluated operator()(const DeclFree& node) { return node; }
 	};
 
 	class ValueCloner2 : public boost::static_visitor<Evaluated>
@@ -347,7 +426,7 @@ namespace cgl
 
 		Evaluated operator()(const Jump& node) { return node; }
 
-		Evaluated operator()(const DeclFree& node) { return node; }
+		//Evaluated operator()(const DeclFree& node) { return node; }
 	};
 
 	inline Evaluated Clone(std::shared_ptr<Environment> pEnv, const Evaluated& value)
@@ -438,11 +517,11 @@ namespace cgl
 
 		Expr operator()(const BinaryExpr& node)
 		{
-			const Expr lhs = boost::apply_visitor(*this, node.lhs);
 			const Expr rhs = boost::apply_visitor(*this, node.rhs);
 
 			if (node.op != BinaryOp::Assign)
 			{
+				const Expr lhs = boost::apply_visitor(*this, node.lhs);
 				return BinaryExpr(lhs, rhs, node.op);
 			}
 
@@ -478,7 +557,7 @@ namespace cgl
 				//ローカル変数にあれば、その場で解決できる識別子なので何もしない
 				if (isLocalVariable(identifier))
 				{
-					return BinaryExpr(lhs, rhs, node.op);
+					return BinaryExpr(node.lhs, rhs, node.op);
 				}
 				else
 				{
@@ -487,13 +566,14 @@ namespace cgl
 					//ローカル変数に無く、スコープにあれば、アドレスに置き換える
 					if (address.isValid())
 					{
+						//TODO: 制約式の場合は、ここではじく必要がある
 						return BinaryExpr(LRValue(address), rhs, node.op);
 					}
 					//スコープにも無い場合は新たなローカル変数の宣言なので、ローカル変数に追加しておく
 					else
 					{
 						addLocalVariable(identifier);
-						return BinaryExpr(lhs, rhs, node.op);
+						return BinaryExpr(node.lhs, rhs, node.op);
 					}
 				}
 			}
@@ -509,6 +589,8 @@ namespace cgl
 				～～～～～～～～～～～～～～～～～～～～～～～～～～～～～*/
 
 				//評価することにした
+				const Expr lhs = boost::apply_visitor(*this, node.lhs);
+
 				return BinaryExpr(lhs, rhs, node.op);
 			}
 
@@ -709,6 +791,13 @@ namespace cgl
 			CGL_Error("TODO: 考察する");
 			return LRValue(0);
 		}
+
+		Expr operator()(const DeclFree& node)
+		{
+			//TODO: 考察する（関数呼び出しの中でsat宣言をすることはあり得るか？）
+			CGL_Error("TODO: 考察する");
+			return LRValue(0);
+		}
 	};
 
 	class ConstraintProblem : public cppoptlib::Problem<double>
@@ -717,6 +806,30 @@ namespace cgl
 		using typename cppoptlib::Problem<double>::TVector;
 
 		std::function<double(const TVector&)> evaluator;
+		Record originalRecord;
+		std::vector<Identifier> keyList;
+		std::shared_ptr<Environment> pEnv;
+
+		bool callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar> &state, const TVector &x)override
+		{
+			Record tempRecord = originalRecord;
+			
+			for (size_t i = 0; i < x.size(); ++i)
+			{
+				Address address = originalRecord.freeVariableRefs[i];
+				pEnv->assignToObject(address, x[i]);
+			}
+
+			for (const auto& key : keyList)
+			{
+				Address address = pEnv->findAddress(key);
+				tempRecord.append(key, address);
+			}
+
+			ProgressStore::TryWrite(pEnv, tempRecord);
+
+			return true;
+		}
 
 		double value(const TVector &x)
 		{
@@ -1426,26 +1539,23 @@ namespace cgl
 					record.problem.addConstraint(closedSatExpr);
 				}
 				*/
+				/*
 				else if (auto declFreeOpt = AsOpt<DeclFree>(value))
 				{
-					/*const auto& refs = declFreeOpt.value().refs;
-					record.freeVariables.insert(record.freeVariables.end(), refs.begin(), refs.end());*/
-
 					for (const auto& accessor : declFreeOpt.value().accessors)
 					{
-						/*Expr accessExpr = accessor;
-						Evaluated access = boost::apply_visitor(*this, accessExpr);
-						if (!IsType<ObjectReference>(access))
+						ClosureMaker closureMaker(pEnv, {});
+						const Expr freeExpr = accessor;
+						const Expr closedFreeExpr = boost::apply_visitor(closureMaker, freeExpr);
+						if (!IsType<Accessor>(closedFreeExpr))
 						{
-						std::cerr << "Error(" << __LINE__ << ")\n";
-						return 0;
+							CGL_Error("ここは通らないはず");
 						}
 
-						record.freeVariables.push_back(As<ObjectReference>(access));*/
-
-						record.freeVariables.push_back(accessor);
+						record.freeVariables.push_back(As<Accessor>(closedFreeExpr));
 					}
 				}
+				*/
 
 				//valueは今は右辺値のみになっている
 				//TODO: もう一度考察する
@@ -1498,7 +1608,8 @@ namespace cgl
 					freeVariableRefs.clear();
 					for (const auto& accessor : record.freeVariables)
 					{
-						const Address refAddress = pEnv->evalReference(accessor);
+						//const Address refAddress = pEnv->evalReference(accessor);
+						const Address refAddress = accessor;
 						//単一の値 or List or Record
 						if (refAddress.isValid())
 						{
@@ -1593,10 +1704,16 @@ namespace cgl
 						problem.update(variable2Data[i], v[i]);
 					}
 
+					pEnv->switchFrontScope();
 					double result = problem.eval(pEnv);
+					pEnv->switchBackScope();
+
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
 					return result;
 				};
+				constraintProblem.originalRecord = record;
+				constraintProblem.keyList = keyList;
+				constraintProblem.pEnv = pEnv;
 
 				Eigen::VectorXd x0s(record.freeVariableRefs.size());
 				for (int i = 0; i < x0s.size(); ++i)
@@ -1851,6 +1968,28 @@ namespace cgl
 
 			return RValue(result);
 			//return RValue(false);
+		}
+
+		LRValue operator()(const DeclFree& node)
+		{
+			for (const auto& accessor : node.accessors)
+			{
+				if (currentRecords.empty())
+				{
+					CGL_Error("var宣言はレコードの中にしか書くことができません");
+				}
+
+				const Expr expr = accessor;
+				const LRValue result = boost::apply_visitor(*this, expr);
+				if (!result.isLValue())
+				{
+					CGL_Error("var宣言に指定された変数は無効です");
+				}
+
+				currentRecords.top().get().freeVariables.push_back(result.address());
+			}
+
+			return RValue(0);
 		}
 
 		LRValue operator()(const Accessor& accessor)
@@ -2119,6 +2258,7 @@ namespace cgl
 		bool operator()(const RecordConstractor& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
 
 		bool operator()(const Accessor& node)
 		{
@@ -2372,6 +2512,7 @@ namespace cgl
 
 		Expr operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return 0; }
 		Expr operator()(const DeclSat& node) { CGL_Error("invalid expression"); return 0; }
+		Expr operator()(const DeclFree& node) { CGL_Error("invalid expression"); return 0; }
 
 		Expr operator()(const Accessor& node)
 		{
@@ -2690,11 +2831,11 @@ namespace cgl
 		else if (IsType<Jump>(value1))
 		{
 			return As<Jump>(value1) == As<Jump>(value2);
-		}
-		else if (IsType<DeclFree>(value1))
+		};
+		/*else if (IsType<DeclFree>(value1))
 		{
 			return As<DeclFree>(value1) == As<DeclFree>(value2);
-		};
+		};*/
 
 		std::cerr << "IsEqualEvaluated: Type Error" << std::endl;
 		return false;
@@ -2815,6 +2956,10 @@ namespace cgl
 		else if (IsType<DeclSat>(value1))
 		{
 			return As<DeclSat>(value1) == As<DeclSat>(value2);
+		}
+		else if (IsType<DeclFree>(value1))
+		{
+			return As<DeclFree>(value1) == As<DeclFree>(value2);
 		}
 		else if (IsType<Accessor>(value1))
 		{

@@ -1,0 +1,44 @@
+transform = (s, vertex -> {
+    cosT:cos(s.angle)
+    sinT:sin(s.angle)
+    x:s.pos.x + cosT * s.scale.x * vertex.x - sinT * s.scale.y * vertex.y
+    y:s.pos.y + sinT* s.scale.x * vertex.x + cosT* s.scale.y * vertex.y
+})
+
+transformA = (pos, scale, angle, vertex -> {
+    cosT:cos(angle)
+    sinT:sin(angle)
+    x:pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+    y:pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
+})
+
+shape = {
+    pos: {x:0, y:0}
+    scale: {x:1, y:1}
+    angle: 0
+}
+
+contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
+
+distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
+
+regularTriangle = shape{
+	vertex: [
+		{x: 0, y: 0}, {x: 10, y: 10}, {x: 0, y: 10}
+	]
+	sat( distant(vertex[0], vertex[1], 100) & distant(vertex[1], vertex[2], 100) & distant(vertex[2], vertex[0], 100) )
+	var(vertex[1], vertex[2])
+}
+
+regularTriangleT = regularTriangle{
+	sat( transformA(pos,scale,angle,vertex[1]).y == transformA(pos,scale,angle,vertex[2]).y )
+	var(angle)
+}
+
+main = shape{
+	a: regularTriangleT{pos: {x:50, y:50}}
+	b: regularTriangleT{pos: {x:150, y:50}}
+	c: regularTriangleT{pos: {x:250, y:50}}
+	sat( contact(transform(a, a.vertex[2]), transform(b, b.vertex[0])) & contact(transform(a, a.vertex[1]), transform(c, c.vertex[0])))
+	var(b.pos, c.pos)
+}

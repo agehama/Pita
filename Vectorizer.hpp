@@ -1,15 +1,44 @@
 #pragma once
 #include <Eigen/Core>
 
-#include "Node.hpp"
-#include "Printer.hpp"
-#include "Environment.hpp"
-#include "Evaluator.hpp"
-#include "OptimizationEvaluator.hpp"
-#include "Parser.hpp"
+#include <geos/geom/Point.h>
+#include <geos/geom/Polygon.h>
+#include <geos/geom/LineString.h>
+#include <geos/geom/LinearRing.h>
+#include <geos/geom/LineSegment.h>
+#include <geos/geom/MultiLineString.h>
+#include <geos/geom/CoordinateSequenceFactory.h>
+#include <geos/geom/CoordinateArraySequence.h>
+#include <geos/geom/GeometryFactory.h>
+#include <geos/geom/Coordinate.h>
+#include <geos/geom/CoordinateFilter.h>
+#include <geos/index/quadtree/Quadtree.h>
+#include <geos/index/ItemVisitor.h>
+#include <geos/geom/IntersectionMatrix.h>
+#include <geos/geomgraph/PlanarGraph.h>
+#include <geos/operation/linemerge/LineMergeGraph.h>
+#include <geos/planargraph.h>
+#include <geos/planargraph/Edge.h>
+#include <geos/planargraph/Node.h>
+#include <geos/planargraph/DirectedEdge.h>
+#include <geos/operation/polygonize/Polygonizer.h>
+#include <geos/opBuffer.h>
+#include <geos/geom/PrecisionModel.h>
+#include <geos/operation/linemerge/LineMerger.h>
+#include <geos/opDistance.h>
+#include <geos/operation/predicate/RectangleContains.h>
+#include <geos/triangulate/VoronoiDiagramBuilder.h>
 
-extern std::ofstream ofs;
-extern bool calculating;
+#ifdef _DEBUG
+#pragma comment(lib, "geos_d.lib")
+#else
+#pragma comment(lib, "geos.lib")
+#endif
+
+#include "Node.hpp"
+#include "Environment.hpp"
+
+extern bool CGL_READ_VERTS_REV;
 
 namespace cgl
 {
@@ -182,14 +211,14 @@ namespace cgl
 		{
 			const Evaluated value = pEnv->expand(member.second);
 
-			if (member.first == "vertex" && IsType<List>(value))
+			if (member.first == "polygon" && IsType<List>(value))
 			{
 				Vector<Eigen::Vector2d> polygon;
 				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
 				{
 					//CGL_DebugLog(__FUNCTION__);
 
-					os << "<polygon points=\"";
+					os << "<polygon fill=\"black\" points=\"";
 					for (const auto& vertex : polygon)
 					{
 						os << vertex.x() << "," << vertex.y() << " ";
@@ -200,7 +229,63 @@ namespace cgl
 				{
 					//CGL_DebugLog(__FUNCTION__);
 				}
-					
+			}
+			else if (member.first == "hole" && IsType<List>(value))
+			{
+				Vector<Eigen::Vector2d> polygon;
+				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
+				{
+					//CGL_DebugLog(__FUNCTION__);
+
+					os << "<polygon fill=\"white\" points=\"";
+					for (const auto& vertex : polygon)
+					{
+						os << vertex.x() << "," << vertex.y() << " ";
+					}
+					os << "\"/>\n";
+				}
+				else
+				{
+					//CGL_DebugLog(__FUNCTION__);
+				}
+			}
+			else if (member.first == "polygons" && IsType<List>(value))
+			{
+				const List& polygons = As<List>(value);
+				for (const auto& polygonAddress : polygons.data)
+				{
+					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
+					{
+						os << "<polygon fill=\"black\" points=\"";
+						for (const auto& vertex : polygon)
+						{
+							os << vertex.x() << "," << vertex.y() << " ";
+						}
+						os << "\"/>\n";
+					}
+				}
+			}
+			else if (member.first == "holes" && IsType<List>(value))
+			{
+				const List& holes = As<List>(value);
+				for (const auto& holeAddress : holes.data)
+				{
+					const Evaluated& hole = pEnv->expand(holeAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(hole), pEnv, transform) && !polygon.empty())
+					{
+						os << "<polygon fill=\"white\" points=\"";
+						for (const auto& vertex : polygon)
+						{
+							os << vertex.x() << "," << vertex.y() << " ";
+						}
+						os << "\"/>\n";
+					}
+				}
 			}
 			else if (IsType<Record>(value))
 			{
@@ -379,182 +464,320 @@ namespace cgl
 		return false;
 	}
 
-	class Program
+
+
+	namespace gg = geos::geom;
+	namespace gob = geos::operation::buffer;
+	namespace god = geos::operation::distance;
+	namespace gt = geos::triangulate;
+
+	//struct CGLPolygon
+	//{
+	//	CGLPolygon() = default;
+	//	//explicit CGLGeometry(const Polygon& polygon) :polygon(polygon) {}
+
+	//	~CGLPolygon()
+	//	{
+	//		delete polygon;
+	//	}
+
+	//	explicit CGLPolygon(const Vector<Eigen::Vector2d>& exterior)
+	//	{
+	//		gg::CoordinateArraySequence pts;
+
+	//		for (int i = static_cast<int>(exterior.size()) - 1; 0 <= i; --i)
+	//		{
+	//			pts.add(gg::Coordinate(exterior[i].x, exterior[i].y));
+	//		}
+
+	//		if (!pts.empty())
+	//		{
+	//			pts.add(pts.front());
+	//		}
+
+	//		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+	//		polygon = factory->createPolygon(factory->createLinearRing(pts), {});
+	//	}
+
+	//	gg::Polygon* polygon;
+	//};
+
+	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior)
 	{
-	public:
-		Program() :
-			pEnv(Environment::Make()),
-			evaluator(pEnv)
-		{}
+		gg::CoordinateArraySequence pts;
 
-		boost::optional<Expr> parse(const std::string& program)
+		//for (int i = static_cast<int>(exterior.size()) - 1; 0 <= i; --i)
+		if (CGL_READ_VERTS_REV)
 		{
-			using namespace cgl;
-
-			Lines lines;
-
-			SpaceSkipper<IteratorT> skipper;
-			Parser<IteratorT, SpaceSkipperT> grammer;
-
-			std::string::const_iterator it = program.begin();
-			if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
+			//for (int i = 0; i < exterior.size(); ++i)
+			for (int i = static_cast<int>(exterior.size()) - 1; 0 <= i; --i)
 			{
-				//std::cerr << "Syntax Error: parse failed\n";
-				std::cout << "Syntax Error: parse failed\n";
-				return boost::none;
+				pts.add(gg::Coordinate(exterior[i].x(), exterior[i].y()));
 			}
-
-			if (it != program.end())
+		}
+		else
+		{
+			for (int i = 0; i < exterior.size(); ++i)
 			{
-				//std::cerr << "Syntax Error: ramains input\n" << std::string(it, program.end());
-				std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
-				return boost::none;
+				pts.add(gg::Coordinate(exterior[i].x(), exterior[i].y()));
 			}
-
-			Expr result = lines;
-			return result;
 		}
+		
 
-		boost::optional<Evaluated> execute(const std::string& program)
+		if (!pts.empty())
 		{
-			if (auto exprOpt = parse(program))
-			{
-				try
-				{
-					return pEnv->expand(boost::apply_visitor(evaluator, exprOpt.value()));
-				}
-				catch (const cgl::Exception& e)
-				{
-					std::cerr << "Exception: " << e.what() << std::endl;
-				}
-			}
-
-			return boost::none;
+			pts.add(pts.front());
 		}
 
-		bool draw(const std::string& program, bool logOutput = true)
+		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+		return factory->createPolygon(factory->createLinearRing(pts), {});
+	}
+
+	//using CGLPolygons = std::vector<CGLPolygon>;
+
+	inline void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail)
+	{
+		/*if (tail.empty())
 		{
-			if (logOutput) std::cout << "parse..." << std::endl;
-			
-			if (auto exprOpt = parse(program))
-			{
-				try
-				{
-					if (logOutput)
-					{
-						std::cout << "parse succeeded" << std::endl;
-						printExpr(exprOpt.value());
-					}
-
-					if (logOutput) std::cout << "execute..." << std::endl;
-					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
-					const Evaluated result = pEnv->expand(lrvalue);
-					if (logOutput) std::cout << "execute succeeded" << std::endl;
-
-					if (logOutput) std::cout << "output SVG..." << std::endl;
-					OutputSVG(std::cout, result, pEnv);
-					if (logOutput) std::cout << "output succeeded" << std::endl;
-				}
-				catch (const cgl::Exception& e)
-				{
-					std::cerr << "Exception: " << e.what() << std::endl;
-				}
-			}
-
-			return false;
+			return;
 		}
 
-		void execute1(const std::string& program, bool logOutput = true)
+		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+
+		gg::Geometry* pgeometry = factory->createEmptyGeometry();
+		for (int i = 0; i < tail.size(); ++i)
 		{
-			clear();
-
-			if (logOutput)
-			{
-				std::cout << "parse..." << std::endl;
-				std::cout << program << std::endl;
-			}
-
-			if (auto exprOpt = parse(program))
-			{
-				try
-				{
-					if (logOutput)
-					{
-						std::cout << "parse succeeded" << std::endl;
-						printExpr(exprOpt.value(), std::cout);
-					}
-
-					if (logOutput) std::cout << "execute..." << std::endl;
-					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
-					evaluated = pEnv->expand(lrvalue);
-					if (logOutput)
-					{
-						std::cout << "execute succeeded" << std::endl;
-						printEvaluated(evaluated.value(), pEnv, std::cout, 0);
-					}
-
-					succeeded = true;
-				}
-				catch (const cgl::Exception& e)
-				{
-					//std::cerr << "Exception: " << e.what() << std::endl;
-					std::cout << "Exception: " << e.what() << std::endl;
-
-					succeeded = false;
-				}	
-			}
-			else
-			{
-				succeeded = false;
-			}
-
-			calculating = false;
+			pgeometry = pgeometry->Union(tail[i]);
 		}
 
-		void clear()
+		for (int i = 0; i < head.size(); ++i)
 		{
-			pEnv = Environment::Make();
-			evaluated = boost::none;
-			evaluator = Eval(pEnv);
-			succeeded = false;
+			pgeometry = pgeometry->Union(head[i]);
 		}
 
-		bool test(const std::string& program, const Expr& expr)
-		{
-			clear();
-
-			if (auto result = execute(program))
-			{
-				std::shared_ptr<Environment> pEnv2 = Environment::Make();
-				Eval evaluator2(pEnv2);
-
-				const Evaluated answer = pEnv->expand(boost::apply_visitor(evaluator2, expr));
-
-				return IsEqualEvaluated(result.value(), answer);
-			}
-
-			return false;
-		}
-
-		std::shared_ptr<Environment> getEnvironment()
-		{
-			return pEnv;
-		}
-
-		boost::optional<Evaluated>& getEvaluated()
-		{
-			return evaluated;
-		}
-
-		bool isSucceeded()const
-		{
-			return succeeded;
-		}
-
-	private:
-		std::shared_ptr<Environment> pEnv;
-		Eval evaluator;
-		boost::optional<Evaluated> evaluated;
-		bool succeeded;
+		head.clear();
+		head.push_back(pgeometry);*/
+		head.insert(head.end(), tail.begin(), tail.end());
 	};
+
+	inline std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& transform);
+
+	inline std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& parent = cgl::Transform())
+	{
+		const cgl::Transform current(record, pEnv);
+
+		const cgl::Transform transform = parent * current;
+
+		std::vector<gg::Geometry*> currentPolygons;
+		std::vector<gg::Geometry*> currentHoles;
+
+		for (const auto& member : record.values)
+		{
+			const cgl::Evaluated value = pEnv->expand(member.second);
+
+			if (member.first == "polygon" && cgl::IsType<cgl::List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					//shapes.emplace_back(CGLPolygon(polygon));
+					currentPolygons.push_back(ToPolygon(polygon));
+				}
+			}
+			else if (member.first == "hole" && cgl::IsType<cgl::List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					//shapes.emplace_back(CGLPolygon(polygon));
+					currentHoles.push_back(ToPolygon(polygon));
+				}
+			}
+			else if (cgl::IsType<cgl::Record>(value))
+			{
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordImpl(cgl::As<cgl::Record>(value), pEnv, transform));
+			}
+			else if (cgl::IsType<cgl::List>(value))
+			{
+				GeosPolygonsConcat(currentPolygons, GeosFromList(cgl::As<cgl::List>(value), pEnv, transform));
+			}
+		}
+
+		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+
+		if (currentPolygons.empty())
+		{
+			return{};
+		}
+		else if (currentHoles.empty())
+		{
+			return currentPolygons;
+		}
+		else
+		{
+			for (int s = 0; s < currentPolygons.size(); ++s)
+			{
+				//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
+				gg::Geometry* erodeGeometry = currentPolygons[s];
+				
+				for (int d = 0; d < currentHoles.size(); ++d)
+				{
+					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+					//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
+
+					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
+					{
+					}
+					else if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					{
+						currentPolygons.erase(currentPolygons.begin() + s);
+
+						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+						for (int i = 0; i < polygons->getNumGeometries(); ++i)
+						{
+							currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
+						}
+
+						erodeGeometry = currentPolygons[s];
+					}
+					else
+					{
+						std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+					}
+				}
+				//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
+				currentPolygons[s] = erodeGeometry;
+			}
+
+			return currentPolygons;
+
+			/*gg::MultiPolygon* accumlatedPolygons = factory->createMultiPolygon(currentPolygons);
+			gg::MultiPolygon* accumlatedHoles = factory->createMultiPolygon(currentHoles);
+
+			return{ accumlatedPolygons->difference(accumlatedHoles) };*/
+		}
+	}
+
+	inline std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& transform)
+	{
+		std::vector<gg::Geometry*> currentPolygons;
+		for (const cgl::Address member : list.data)
+		{
+			const cgl::Evaluated value = pEnv->expand(member);
+
+			if (cgl::IsType<cgl::Record>(value))
+			{
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordImpl(cgl::As<cgl::Record>(value), pEnv, transform));
+			}
+			else if (cgl::IsType<cgl::List>(value))
+			{
+				GeosPolygonsConcat(currentPolygons, GeosFromList(cgl::As<cgl::List>(value), pEnv, transform));
+			}
+		}
+		return currentPolygons;
+	}
+
+	inline std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		if (cgl::IsType<cgl::Record>(value))
+		{
+			const cgl::Record& record = cgl::As<cgl::Record>(value);
+			return GeosFromRecordImpl(record, pEnv);
+		}
+
+		return{};
+	}
+
+	inline Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		const auto coord = [&](double x, double y)
+		{
+			Record record;
+			record.append("x", pEnv->makeTemporaryValue(x));
+			record.append("y", pEnv->makeTemporaryValue(y));
+			return record;
+		};
+
+		const auto appendCoord = [&](List& list, double x, double y)
+		{
+			list.append(pEnv->makeTemporaryValue(coord(x, y)));
+		};
+
+		Record result;
+
+		{
+			List polygonList;
+			const gg::LineString* outer = poly->getExteriorRing();
+			//for (int i = static_cast<int>(outer->getNumPoints()) - 1; 0 < i; --i)//始点と終点は同じ座標なので最後だけ飛ばす
+			for (int i = 1; i < static_cast<int>(outer->getNumPoints()); ++i)//始点と終点は同じ座標なので最後だけ飛ばす
+			{
+				const gg::Coordinate& p = outer->getCoordinateN(i);
+				appendCoord(polygonList, p.x, p.y);
+			}
+			result.append("polygon", pEnv->makeTemporaryValue(polygonList));
+		}
+		
+		{
+			List holeList;
+			for (size_t i = 0; i < poly->getNumInteriorRing(); ++i)
+			{
+				List holeVertexList;
+
+				const gg::LineString* hole = poly->getInteriorRingN(i);
+
+				for (int n = static_cast<int>(hole->getNumPoints()) - 1; 0 < n; --n)
+					//for (int n = 0; n < hole->getNumPoints(); ++n)
+				{
+					gg::Point* pp = hole->getPointN(n);
+					appendCoord(holeVertexList, pp->getX(), pp->getY());
+					//const gg::Coordinate& p = hole->getCoordinateN(n);
+					//holePoints.emplace_back(p.x, p.y);
+				}
+
+				holeList.append(pEnv->makeTemporaryValue(holeVertexList));
+			}
+			result.append("holes", pEnv->makeTemporaryValue(holeList));
+		}
+		
+		return result;
+	}
+
+	inline List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		List resultShapes;
+		
+		for (size_t i = 0; i < polygons.size(); ++i)
+		{
+			const gg::Geometry* shape = polygons[i];
+
+			gg::GeometryTypeId id;
+			switch (shape->getGeometryTypeId())
+			{
+			case geos::geom::GEOS_POINT:
+				break;
+			case geos::geom::GEOS_LINESTRING:
+				break;
+			case geos::geom::GEOS_LINEARRING:
+				break;
+			case geos::geom::GEOS_POLYGON:
+			{
+				const Record record = GetPolygon(dynamic_cast<const gg::Polygon*>(shape), pEnv);
+				resultShapes.append(pEnv->makeTemporaryValue(record));
+				break;
+			}
+			case geos::geom::GEOS_MULTIPOINT:
+				break;
+			case geos::geom::GEOS_MULTILINESTRING:
+				break;
+			case geos::geom::GEOS_MULTIPOLYGON:
+				break;
+			case geos::geom::GEOS_GEOMETRYCOLLECTION:
+				break;
+			default:
+				break;
+			}
+		}
+
+		return resultShapes;
+	}
 }

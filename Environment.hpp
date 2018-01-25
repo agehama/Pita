@@ -577,34 +577,7 @@ namespace cgl
 
 	private:
 
-		void initialize()
-		{
-			registerBuiltInFunction(
-				"sin",
-				[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
-			{
-				if (arguments.size() != 1)
-				{
-					CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
-				}
-
-				return Sin(pEnv->expand(arguments[0]));
-			}
-			);
-
-			registerBuiltInFunction(
-				"cos",
-				[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
-			{
-				if (arguments.size() != 1)
-				{
-					CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
-				}
-
-				return Cos(pEnv->expand(arguments[0]));
-			}
-			);
-		}
+		void initialize();
 
 		LocalEnvironment& localEnv()
 		{

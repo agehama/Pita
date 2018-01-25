@@ -4,3 +4,6 @@
 [submodule "external/CppNumericalSolvers"]
 	path = external/CppNumericalSolvers
 	url = https://github.com/PatWie/CppNumericalSolvers.git
+[submodule "external/geos"]
+	path = external/geos
+	url = https://github.com/OSGeo/geos.git

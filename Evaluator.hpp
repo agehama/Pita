@@ -10,6 +10,7 @@
 #include "Environment.hpp"
 #include "BinaryEvaluator.hpp"
 #include "Printer.hpp"
+#include "Geometry.hpp"
 
 namespace cgl
 {
@@ -3117,5 +3118,51 @@ namespace cgl
 
 		CGL_Error("shared this does not exist.");
 		return Address::Null();
+	}
+
+	void Environment::initialize()
+	{
+		registerBuiltInFunction(
+			"sin",
+			[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+			}
+
+			return Sin(pEnv->expand(arguments[0]));
+		}
+		);
+
+		registerBuiltInFunction(
+			"cos",
+			[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+			}
+
+			return Cos(pEnv->expand(arguments[0]));
+		}
+		);
+
+		registerBuiltInFunction(
+			"diff",
+			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
+
+			if (arguments.size() != 2)
+			{
+				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+			}
+
+			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
+
+			return ShapeDifference(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
+		}
+		);
 	}
 }

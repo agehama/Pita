@@ -83,17 +83,31 @@ namespace cgl
 						lhsPolygon.erase(lhsPolygon.begin() + s);
 
 						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+						std::cout << "erodeGeometry is MultiPolygon(size: " << polygons->getNumGeometries() << ")" << std::endl;
+
 						for (int i = 0; i < polygons->getNumGeometries(); ++i)
 						{
+							std::cout << "MultiPolygon[" << i << "]: " << polygons->getGeometryN(i)->getGeometryType() << std::endl;
 							lhsPolygon.insert(lhsPolygon.begin() + s, polygons->getGeometryN(i)->clone());
 						}
 
 						erodeGeometry = lhsPolygon[s];
-						std::cout << __LINE__ << lhsPolygon[s]->getGeometryType() << std::endl;
+						//std::cout << __LINE__ << lhsPolygon[s]->getGeometryType() << std::endl;
+					}
+					else if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
+					{
+						const gg::GeometryCollection* geometries = dynamic_cast<const gg::GeometryCollection*>(erodeGeometry);
+						std::cout << "erodeGeometry is GeometryCollection(size: " << geometries->getNumGeometries() << ")" << std::endl;
+						for (int i = 0; i < geometries->getNumGeometries(); ++i)
+						{
+							std::cout << "GeometryCollection[" << i << "]: " << geometries->getGeometryN(i)->getGeometryType() << std::endl;
+							//lhsPolygon.insert(lhsPolygon.begin() + s, polygons->getGeometryN(i)->clone());
+						}
 					}
 					else
 					{
-						std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+						//std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+						std::cout << " Differenceの結果が予期せぬデータ形式 : " << erodeGeometry->getGeometryType() << std::endl;
 					}
 				}
 				std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;

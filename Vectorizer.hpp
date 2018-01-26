@@ -371,7 +371,7 @@ namespace cgl
 					{
 						std::stringstream os;
 
-						os << "<polygon fill=\"white\" fill-opacity=\"0.1\" points=\"";
+						os << "<polygon fill=\"white\" points=\"";
 						for (const auto& vertex : polygon)
 						{
 							os << vertex.x() << "," << vertex.y() << " ";
@@ -421,7 +421,7 @@ namespace cgl
 		{
 			const Evaluated value = pEnv->expand(member.second);
 
-			if (member.first == "vertex" && IsType<List>(value))
+			if (member.first == "polygon" && IsType<List>(value))
 			{
 				Vector<Eigen::Vector2d> polygon;
 				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
@@ -431,7 +431,23 @@ namespace cgl
 						output.add(vertex);
 					}
 				}
+			}
+			else if (member.first == "polygons" && IsType<List>(value))
+			{
+				const List& polygons = As<List>(value);
+				for (const auto& polygonAddress : polygons.data)
+				{
+					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
 
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
+					{
+						for (const auto& vertex : polygon)
+						{
+							output.add(vertex);
+						}
+					}
+				}
 			}
 			else if (IsType<Record>(value))
 			{
@@ -637,6 +653,34 @@ namespace cgl
 				{
 					//shapes.emplace_back(CGLPolygon(polygon));
 					currentHoles.push_back(ToPolygon(polygon));
+				}
+			}
+			else if (member.first == "polygons" && IsType<List>(value))
+			{
+				const List& polygons = As<List>(value);
+				for (const auto& polygonAddress : polygons.data)
+				{
+					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
+					{
+						currentPolygons.push_back(ToPolygon(polygon));
+					}
+				}
+			}
+			else if (member.first == "holes" && IsType<List>(value))
+			{
+				const List& holes = As<List>(value);
+				for (const auto& holeAddress : holes.data)
+				{
+					const Evaluated& hole = pEnv->expand(holeAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(hole), pEnv, transform) && !polygon.empty())
+					{
+						currentHoles.push_back(ToPolygon(polygon));
+					}
 				}
 			}
 			else if (cgl::IsType<cgl::Record>(value))

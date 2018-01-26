@@ -1855,11 +1855,16 @@ namespace cgl
 
 		RecordInheritor() = default;
 
-		RecordInheritor(const Identifier& original) :
+		RecordInheritor(const Expr& original) :
 			original(original)
 		{}
 
-		static RecordInheritor Make(const Identifier& original)
+		static RecordInheritor MakeIdentifier(const Identifier& original)
+		{
+			return RecordInheritor(original);
+		}
+
+		static RecordInheritor MakeAccessor(const Accessor& original)
 		{
 			return RecordInheritor(original);
 		}

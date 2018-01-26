@@ -161,6 +161,83 @@ namespace cgl
 	template<class T>
 	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
 
+	class BoundingRect
+	{
+	public:
+
+		BoundingRect() = default;
+
+		BoundingRect(const Vector<Eigen::Vector2d>& vs)
+		{
+			add(vs);
+		}
+
+		void add(const Eigen::Vector2d& v)
+		{
+			if (v.x() < m_min.x())
+			{
+				m_min.x() = v.x();
+			}
+			if (v.y() < m_min.y())
+			{
+				m_min.y() = v.y();
+			}
+			if (m_max.x() < v.x())
+			{
+				m_max.x() = v.x();
+			}
+			if (m_max.y() < v.y())
+			{
+				m_max.y() = v.y();
+			}
+		}
+
+		void add(const Vector<Eigen::Vector2d>& vs)
+		{
+			for (const auto& v : vs)
+			{
+				add(v);
+			}
+		}
+
+		bool intersects(const BoundingRect& other)const
+		{
+			return std::max(m_min.x(), other.m_min.x()) < std::min(m_max.x(), other.m_max.x())
+				&& std::max(m_min.y(), other.m_min.y()) < std::min(m_max.y(), other.m_max.y());
+		}
+
+		bool includes(const Eigen::Vector2d& point)const
+		{
+			return m_min.x() < point.x() && point.x() < m_max.x()
+				&& m_min.y() < point.y() && point.y() < m_max.y();
+		}
+
+		Eigen::Vector2d pos()const
+		{
+			return m_min;
+		}
+
+		Eigen::Vector2d center()const
+		{
+			return (m_min + m_max)*0.5;
+		}
+
+		Eigen::Vector2d width()const
+		{
+			return m_max - m_min;
+		}
+
+		double area()const
+		{
+			const auto wh = width();
+			return wh.x()*wh.y();
+		}
+
+	private:
+		Eigen::Vector2d m_min = Eigen::Vector2d(DBL_MAX, DBL_MAX);
+		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
+	};
+
 	inline bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Environment> pEnv, const Transform& transform)
 	{
 		output.clear();
@@ -199,9 +276,11 @@ namespace cgl
 		return true;
 	}
 
-	inline void OutputShapeList(std::ostream& os, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
+	using PolygonsStream = std::map<double, std::string>;
 
-	inline void OutputSVGImpl(std::ostream& os, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent = Transform())
+	inline void OutputShapeList(PolygonsStream& ps, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
+
+	inline void OutputSVGImpl(PolygonsStream& ps, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent = Transform())
 	{
 		const Transform current(record, pEnv);
 
@@ -218,12 +297,16 @@ namespace cgl
 				{
 					//CGL_DebugLog(__FUNCTION__);
 
+					std::stringstream os;
+					
 					os << "<polygon fill=\"black\" points=\"";
 					for (const auto& vertex : polygon)
 					{
 						os << vertex.x() << "," << vertex.y() << " ";
 					}
 					os << "\"/>\n";
+
+					ps[BoundingRect(polygon).area()] = os.str();
 				}
 				else
 				{
@@ -237,12 +320,16 @@ namespace cgl
 				{
 					//CGL_DebugLog(__FUNCTION__);
 
-					os << "<polygon fill=\"white\" points=\"";
+					std::stringstream os;
+
+					os << "<polygon fill=\"white\" fill-opacity=\"0.1\" points=\"";
 					for (const auto& vertex : polygon)
 					{
 						os << vertex.x() << "," << vertex.y() << " ";
 					}
 					os << "\"/>\n";
+
+					ps[BoundingRect(polygon).area()] = os.str();
 				}
 				else
 				{
@@ -259,12 +346,16 @@ namespace cgl
 					Vector<Eigen::Vector2d> polygon;
 					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
 					{
+						std::stringstream os;
+
 						os << "<polygon fill=\"black\" points=\"";
 						for (const auto& vertex : polygon)
 						{
 							os << vertex.x() << "," << vertex.y() << " ";
 						}
 						os << "\"/>\n";
+
+						ps[BoundingRect(polygon).area()] = os.str();
 					}
 				}
 			}
@@ -278,27 +369,31 @@ namespace cgl
 					Vector<Eigen::Vector2d> polygon;
 					if (ReadPolygon(polygon, As<List>(hole), pEnv, transform) && !polygon.empty())
 					{
-						os << "<polygon fill=\"white\" points=\"";
+						std::stringstream os;
+
+						os << "<polygon fill=\"white\" fill-opacity=\"0.1\" points=\"";
 						for (const auto& vertex : polygon)
 						{
 							os << vertex.x() << "," << vertex.y() << " ";
 						}
 						os << "\"/>\n";
+
+						ps[BoundingRect(polygon).area()] = os.str();
 					}
 				}
 			}
 			else if (IsType<Record>(value))
 			{
-				OutputSVGImpl(os, As<Record>(value), pEnv, transform);
+				OutputSVGImpl(ps, As<Record>(value), pEnv, transform);
 			}
 			else if (IsType<List>(value))
 			{
-				OutputShapeList(os, As<List>(value), pEnv, transform);
+				OutputShapeList(ps, As<List>(value), pEnv, transform);
 			}
 		}
 	}
 
-	inline void OutputShapeList(std::ostream& os, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform)
+	inline void OutputShapeList(PolygonsStream& ps, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform)
 	{
 		for (const Address member : list.data)
 		{
@@ -306,69 +401,14 @@ namespace cgl
 
 			if (IsType<Record>(value))
 			{
-				OutputSVGImpl(os, As<Record>(value), pEnv, transform);
+				OutputSVGImpl(ps, As<Record>(value), pEnv, transform);
 			}
 			else if (IsType<List>(value))
 			{
-				OutputShapeList(os, As<List>(value), pEnv, transform);
+				OutputShapeList(ps, As<List>(value), pEnv, transform);
 			}
 		}
 	}
-
-	class BoundingRect
-	{
-	public:
-		void add(const Eigen::Vector2d& v)
-		{
-			if (v.x() < m_min.x())
-			{
-				m_min.x() = v.x();
-			}
-			if (v.y() < m_min.y())
-			{
-				m_min.y() = v.y();
-			}
-			if (m_max.x() < v.x())
-			{
-				m_max.x() = v.x();
-			}
-			if (m_max.y() < v.y())
-			{
-				m_max.y() = v.y();
-			}
-		}
-
-		bool intersects(const BoundingRect& other)const
-		{
-			return std::max(m_min.x(), other.m_min.x()) < std::min(m_max.x(), other.m_max.x())
-				&& std::max(m_min.y(), other.m_min.y()) < std::min(m_max.y(), other.m_max.y());
-		}
-
-		bool includes(const Eigen::Vector2d& point)const
-		{
-			return m_min.x() < point.x() && point.x() < m_max.x()
-				&& m_min.y() < point.y() && point.y() < m_max.y();
-		}
-
-		Eigen::Vector2d pos()const
-		{
-			return m_min;
-		}
-
-		Eigen::Vector2d center()const
-		{
-			return (m_min + m_max)*0.5;
-		}
-				
-		Eigen::Vector2d width()const
-		{
-			return m_max - m_min;
-		}
-
-	private:
-		Eigen::Vector2d m_min = Eigen::Vector2d(DBL_MAX, DBL_MAX);
-		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
-	};
 
 	inline void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
 
@@ -453,8 +493,14 @@ namespace cgl
 			//os << R"(<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">)" << "\n";
 			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << width << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << R"(">)" << "\n";
 
+			PolygonsStream ps;
 			const Record& record = As<Record>(value);
-			OutputSVGImpl(os, record, pEnv);
+			//OutputSVGImpl(os, record, pEnv);
+			OutputSVGImpl(ps, record, pEnv);
+			for (auto it = ps.rbegin(); it != ps.rend(); ++it)
+			{
+				os << it->second;
+			}
 
 			os << "</svg>" << "\n";
 

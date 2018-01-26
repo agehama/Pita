@@ -89,6 +89,7 @@ namespace cgl
 						}
 
 						erodeGeometry = lhsPolygon[s];
+						std::cout << __LINE__ << lhsPolygon[s]->getGeometryType() << std::endl;
 					}
 					else
 					{

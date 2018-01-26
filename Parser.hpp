@@ -231,7 +231,8 @@ namespace cgl
 			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
 			//record{} ‚ÌŠÔ‚É‚Í‰üs‚Í‹²‚ß‚È‚¢irecord,{}‚Æ‹æ•Ê‚Å‚«‚È‚­‚È‚é‚Ì‚Åj
-			record_inheritor = id[_val = Call(RecordInheritor::Make, _1)] >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
+			//record_inheritor = id[_val = Call(RecordInheritor::Make, _1)] >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
+			record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 
 			record_maker = (
 				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
@@ -303,12 +304,12 @@ namespace cgl
 				//| constraints[_val = Call(LRValue::Sat, _1)]
 				| constraints[_val = _1]
 				//| freeVals[_val = Call(LRValue::Free, _1)]
+				| record_inheritor[_val = _1]
 				| freeVals[_val = _1]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
-				| record_inheritor[_val = _1]
 				//| (id >> record_maker)[_val = Call(RecordInheritor::MakeRecord, _1,_2)]
 				| record_maker[_val = _1]
 				| id[_val = _1];

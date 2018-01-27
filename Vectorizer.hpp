@@ -38,8 +38,6 @@
 #include "Node.hpp"
 #include "Environment.hpp"
 
-extern bool CGL_READ_VERTS_REV;
-
 namespace cgl
 {
 	inline bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Environment> environment)
@@ -276,140 +274,6 @@ namespace cgl
 		return true;
 	}
 
-	using PolygonsStream = std::map<double, std::string>;
-
-	inline void OutputShapeList(PolygonsStream& ps, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
-
-	inline void OutputSVGImpl(PolygonsStream& ps, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent = Transform())
-	{
-		const Transform current(record, pEnv);
-
-		const Transform transform = parent * current;
-
-		for (const auto& member : record.values)
-		{
-			const Evaluated value = pEnv->expand(member.second);
-
-			if (member.first == "polygon" && IsType<List>(value))
-			{
-				Vector<Eigen::Vector2d> polygon;
-				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
-				{
-					//CGL_DebugLog(__FUNCTION__);
-
-					std::stringstream os;
-					
-					os << "<polygon fill=\"black\" points=\"";
-					for (const auto& vertex : polygon)
-					{
-						os << vertex.x() << "," << vertex.y() << " ";
-					}
-					os << "\"/>\n";
-
-					ps[BoundingRect(polygon).area()] = os.str();
-				}
-				else
-				{
-					//CGL_DebugLog(__FUNCTION__);
-				}
-			}
-			else if (member.first == "hole" && IsType<List>(value))
-			{
-				Vector<Eigen::Vector2d> polygon;
-				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
-				{
-					//CGL_DebugLog(__FUNCTION__);
-
-					std::stringstream os;
-
-					os << "<polygon fill=\"white\" fill-opacity=\"0.1\" points=\"";
-					for (const auto& vertex : polygon)
-					{
-						os << vertex.x() << "," << vertex.y() << " ";
-					}
-					os << "\"/>\n";
-
-					ps[BoundingRect(polygon).area()] = os.str();
-				}
-				else
-				{
-					//CGL_DebugLog(__FUNCTION__);
-				}
-			}
-			else if (member.first == "polygons" && IsType<List>(value))
-			{
-				const List& polygons = As<List>(value);
-				for (const auto& polygonAddress : polygons.data)
-				{
-					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
-
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
-					{
-						std::stringstream os;
-
-						os << "<polygon fill=\"black\" points=\"";
-						for (const auto& vertex : polygon)
-						{
-							os << vertex.x() << "," << vertex.y() << " ";
-						}
-						os << "\"/>\n";
-
-						ps[BoundingRect(polygon).area()] = os.str();
-					}
-				}
-			}
-			else if (member.first == "holes" && IsType<List>(value))
-			{
-				const List& holes = As<List>(value);
-				for (const auto& holeAddress : holes.data)
-				{
-					const Evaluated& hole = pEnv->expand(holeAddress);
-
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygon(polygon, As<List>(hole), pEnv, transform) && !polygon.empty())
-					{
-						std::stringstream os;
-
-						os << "<polygon fill=\"white\" points=\"";
-						for (const auto& vertex : polygon)
-						{
-							os << vertex.x() << "," << vertex.y() << " ";
-						}
-						os << "\"/>\n";
-
-						ps[BoundingRect(polygon).area()] = os.str();
-					}
-				}
-			}
-			else if (IsType<Record>(value))
-			{
-				OutputSVGImpl(ps, As<Record>(value), pEnv, transform);
-			}
-			else if (IsType<List>(value))
-			{
-				OutputShapeList(ps, As<List>(value), pEnv, transform);
-			}
-		}
-	}
-
-	inline void OutputShapeList(PolygonsStream& ps, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform)
-	{
-		for (const Address member : list.data)
-		{
-			const Evaluated value = pEnv->expand(member);
-
-			if (IsType<Record>(value))
-			{
-				OutputSVGImpl(ps, As<Record>(value), pEnv, transform);
-			}
-			else if (IsType<List>(value))
-			{
-				OutputShapeList(ps, As<List>(value), pEnv, transform);
-			}
-		}
-	}
-
 	inline void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
 
 	inline void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent = Transform())
@@ -490,101 +354,21 @@ namespace cgl
 		return boost::none;
 	}
 
-	inline bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
-	{
-		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
-		if (IsType<Record>(value) && boundingBoxOpt)
-		{
-			const BoundingRect& rect = boundingBoxOpt.value();
-
-			//const auto pos = rect.pos();
-			const auto widthXY = rect.width();
-			const auto center = rect.center();
-
-			const double width = std::max(widthXY.x(), widthXY.y());
-			const double halfWidth = width*0.5;
-
-			const Eigen::Vector2d pos = center - Eigen::Vector2d(halfWidth, halfWidth);
-
-			//os << R"(<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">)" << "\n";
-			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << width << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << R"(">)" << "\n";
-
-			PolygonsStream ps;
-			const Record& record = As<Record>(value);
-			//OutputSVGImpl(os, record, pEnv);
-			OutputSVGImpl(ps, record, pEnv);
-			for (auto it = ps.rbegin(); it != ps.rend(); ++it)
-			{
-				os << it->second;
-			}
-
-			os << "</svg>" << "\n";
-
-			return true;
-		}
-
-		return false;
-	}
-
-
-
+	using PolygonsStream = std::multimap<double, std::string>;
+	
 	namespace gg = geos::geom;
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
 	namespace gt = geos::triangulate;
 
-	//struct CGLPolygon
-	//{
-	//	CGLPolygon() = default;
-	//	//explicit CGLGeometry(const Polygon& polygon) :polygon(polygon) {}
-
-	//	~CGLPolygon()
-	//	{
-	//		delete polygon;
-	//	}
-
-	//	explicit CGLPolygon(const Vector<Eigen::Vector2d>& exterior)
-	//	{
-	//		gg::CoordinateArraySequence pts;
-
-	//		for (int i = static_cast<int>(exterior.size()) - 1; 0 <= i; --i)
-	//		{
-	//			pts.add(gg::Coordinate(exterior[i].x, exterior[i].y));
-	//		}
-
-	//		if (!pts.empty())
-	//		{
-	//			pts.add(pts.front());
-	//		}
-
-	//		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
-	//		polygon = factory->createPolygon(factory->createLinearRing(pts), {});
-	//	}
-
-	//	gg::Polygon* polygon;
-	//};
-
 	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior)
 	{
 		gg::CoordinateArraySequence pts;
 
-		//for (int i = static_cast<int>(exterior.size()) - 1; 0 <= i; --i)
-		if (CGL_READ_VERTS_REV)
+		for (int i = 0; i < exterior.size(); ++i)
 		{
-			//for (int i = 0; i < exterior.size(); ++i)
-			for (int i = static_cast<int>(exterior.size()) - 1; 0 <= i; --i)
-			{
-				pts.add(gg::Coordinate(exterior[i].x(), exterior[i].y()));
-			}
+			pts.add(gg::Coordinate(exterior[i].x(), exterior[i].y()));
 		}
-		else
-		{
-			for (int i = 0; i < exterior.size(); ++i)
-			{
-				pts.add(gg::Coordinate(exterior[i].x(), exterior[i].y()));
-			}
-		}
-		
 
 		if (!pts.empty())
 		{
@@ -594,8 +378,6 @@ namespace cgl
 		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
 		return factory->createPolygon(factory->createLinearRing(pts), {});
 	}
-
-	//using CGLPolygons = std::vector<CGLPolygon>;
 
 	inline void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail)
 	{
@@ -767,12 +549,12 @@ namespace cgl
 		return currentPolygons;
 	}
 
-	inline std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Environment> pEnv)
+	inline std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& transform = cgl::Transform())
 	{
 		if (cgl::IsType<cgl::Record>(value))
 		{
 			const cgl::Record& record = cgl::As<cgl::Record>(value);
-			return GeosFromRecordImpl(record, pEnv);
+			return GeosFromRecordImpl(record, pEnv, transform);
 		}
 
 		return{};
@@ -869,5 +651,97 @@ namespace cgl
 		}
 
 		return resultShapes;
+	}
+
+	inline void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon)
+	{
+		{
+			std::stringstream ss;
+
+			const gg::LineString* outer = polygon->getExteriorRing();
+			const double area = polygon->getEnvelope()->getArea();
+
+			ss << "<polygon fill=\"black\" points=\"";
+			for (int i = static_cast<int>(outer->getNumPoints()) - 1; 0 < i; --i)
+			{
+				const gg::Coordinate& p = outer->getCoordinateN(i);
+				ss << p.x << "," << p.y << " ";
+			}
+			ss << "\"/>\n";
+
+			ps.emplace(area, ss.str());
+		}
+
+		for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
+		{
+			std::stringstream ss;
+
+			const gg::LineString* hole = polygon->getInteriorRingN(i);
+			const double area = hole->getEnvelope()->getArea();
+
+			ss << "<polygon fill=\"white\" points=\"";
+			for (int n = static_cast<int>(hole->getNumPoints()) - 1; 0 < n; --n)
+				//for (int n = 0; n < hole->getNumPoints(); ++n)
+			{
+				gg::Point* p = hole->getPointN(n);
+				ss << p->getX() << "," << p->getY() << " ";
+			}
+			ss << "\"/>\n";
+
+			ps.emplace(area, ss.str());
+		}
+	}
+
+	inline bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
+	{
+		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
+		if (IsType<Record>(value) && boundingBoxOpt)
+		{
+			const BoundingRect& rect = boundingBoxOpt.value();
+
+			//const auto pos = rect.pos();
+			const auto widthXY = rect.width();
+			const auto center = rect.center();
+
+			const double width = std::max(widthXY.x(), widthXY.y());
+			const double halfWidth = width*0.5;
+
+			const Eigen::Vector2d pos = center - Eigen::Vector2d(halfWidth, halfWidth);
+
+			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << width << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << R"(">)" << "\n";
+
+			PolygonsStream ps;
+			std::vector<gg::Geometry*> geometries = GeosFromRecord(value, pEnv);
+			for (gg::Geometry* geometry : geometries)
+			{
+				if (geometry->getGeometryTypeId() == gg::GeometryTypeId::GEOS_POLYGON)
+				{
+					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+					OutputPolygonsStream(ps, polygon);
+				}
+				else if (geometry->getGeometryTypeId() == gg::GeometryTypeId::GEOS_MULTIPOLYGON)
+				{
+					const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(geometry);
+					for (int i = 0; i < polygons->getNumGeometries(); ++i)
+					{
+						const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(polygons->getGeometryN(i));
+						OutputPolygonsStream(ps, polygon);
+					}
+				}
+			}
+
+			//const Record& record = As<Record>(value);
+			//OutputSVGImpl(ps, record, pEnv);
+			for (auto it = ps.rbegin(); it != ps.rend(); ++it)
+			{
+				os << it->second;
+			}
+
+			os << "</svg>" << "\n";
+
+			return true;
+		}
+
+		return false;
 	}
 }

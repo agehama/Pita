@@ -8,37 +8,23 @@ namespace cgl
 {
 	inline List ShapeDifference(const Evaluated& lhs, const Evaluated& rhs, std::shared_ptr<cgl::Environment> pEnv)
 	{
-		std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 		if (!IsType<Record>(lhs) || !IsType<Record>(rhs))
 		{
 			CGL_Error("不正な式です");
 			return{};
 		}
 
-		std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
-
-		CGL_READ_VERTS_REV = false;
 		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecord(lhs, pEnv);
-		std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
-
-		//CGL_READ_VERTS_REV = true;
 		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecord(rhs, pEnv);
-		std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
-
-		CGL_READ_VERTS_REV = false;
 
 		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
 
-		std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
-
 		if (lhsPolygon.empty())
 		{
-			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 			return {};
 		}
 		else if (rhsPolygon.empty())
 		{
-			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 			return GetShapesFromGeos(lhsPolygon, pEnv);
 		}
 		else
@@ -48,10 +34,8 @@ namespace cgl
 			std::vector<gg::Geometry*> resultGeometries;
 			//gg::Geometry* resultGeometry = factory->createEmptyGeometry();
 
-			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 			for (int s = 0; s < lhsPolygon.size(); ++s)
 			{
-				//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 				gg::Geometry* erodeGeometry = lhsPolygon[s];
 				/*std::cout << "accumlatedPolygons : " << std::endl;
 				{
@@ -72,35 +56,33 @@ namespace cgl
 						}
 					}*/
 					erodeGeometry = erodeGeometry->difference(rhsPolygon[d]);
-					//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 
 					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 					{
-						std::cout << "ok" << std::endl;
+						//std::cout << "ok" << std::endl;
 					}
 					else if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 					{
 						lhsPolygon.erase(lhsPolygon.begin() + s);
 
 						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
-						std::cout << "erodeGeometry is MultiPolygon(size: " << polygons->getNumGeometries() << ")" << std::endl;
+						//std::cout << "erodeGeometry is MultiPolygon(size: " << polygons->getNumGeometries() << ")" << std::endl;
 
 						for (int i = 0; i < polygons->getNumGeometries(); ++i)
 						{
-							std::cout << "MultiPolygon[" << i << "]: " << polygons->getGeometryN(i)->getGeometryType() << std::endl;
+							//std::cout << "MultiPolygon[" << i << "]: " << polygons->getGeometryN(i)->getGeometryType() << std::endl;
 							lhsPolygon.insert(lhsPolygon.begin() + s, polygons->getGeometryN(i)->clone());
 						}
 
 						erodeGeometry = lhsPolygon[s];
-						//std::cout << __LINE__ << lhsPolygon[s]->getGeometryType() << std::endl;
 					}
 					else if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
 						const gg::GeometryCollection* geometries = dynamic_cast<const gg::GeometryCollection*>(erodeGeometry);
-						std::cout << "erodeGeometry is GeometryCollection(size: " << geometries->getNumGeometries() << ")" << std::endl;
+						//std::cout << "erodeGeometry is GeometryCollection(size: " << geometries->getNumGeometries() << ")" << std::endl;
 						for (int i = 0; i < geometries->getNumGeometries(); ++i)
 						{
-							std::cout << "GeometryCollection[" << i << "]: " << geometries->getGeometryN(i)->getGeometryType() << std::endl;
+							//std::cout << "GeometryCollection[" << i << "]: " << geometries->getGeometryN(i)->getGeometryType() << std::endl;
 							//lhsPolygon.insert(lhsPolygon.begin() + s, polygons->getGeometryN(i)->clone());
 						}
 					}
@@ -110,13 +92,11 @@ namespace cgl
 						std::cout << " Differenceの結果が予期せぬデータ形式 : " << erodeGeometry->getGeometryType() << std::endl;
 					}
 				}
-				std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 
 				resultGeometries.push_back(erodeGeometry);
 				//resultGeometry->Union(erodeGeometry);
 			}
 
-			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 			return GetShapesFromGeos(resultGeometries, pEnv);
 			/*
 			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;

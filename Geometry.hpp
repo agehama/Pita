@@ -8,7 +8,7 @@ namespace cgl
 {
 	inline List ShapeDifference(const Evaluated& lhs, const Evaluated& rhs, std::shared_ptr<cgl::Environment> pEnv)
 	{
-		if (!IsType<Record>(lhs) || !IsType<Record>(rhs))
+		if ((!IsType<Record>(lhs) && !IsType<List>(lhs)) || (!IsType<Record>(rhs) && !IsType<List>(rhs)))
 		{
 			CGL_Error("ïsê≥Ç»éÆÇ≈Ç∑");
 			return{};
@@ -134,6 +134,25 @@ namespace cgl
 			return GetShapesFromGeos(diffResult, pEnv);
 			*/
 		}
+	}
+
+	inline double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		if (!IsType<Record>(lhs) && !IsType<List>(lhs))
+		{
+			CGL_Error("ïsê≥Ç»éÆÇ≈Ç∑");
+			return{};
+		}
+
+		std::vector<gg::Geometry*> geometries = GeosFromRecord(lhs, pEnv);
+
+		double area = 0.0;
+		for (gg::Geometry* geometry : geometries)
+		{
+			area += geometry->getArea();
+		}
+
+		return area;
 	}
 }
 

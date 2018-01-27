@@ -556,6 +556,11 @@ namespace cgl
 			const cgl::Record& record = cgl::As<cgl::Record>(value);
 			return GeosFromRecordImpl(record, pEnv, transform);
 		}
+		if (cgl::IsType<cgl::List>(value))
+		{
+			const cgl::List& list = cgl::As<cgl::List>(value);
+			return GeosFromList(list, pEnv, transform);
+		}
 
 		return{};
 	}

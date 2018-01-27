@@ -1763,13 +1763,22 @@ namespace cgl
 				}
 				CGL_DebugLog("End Record MakeMap");
 
-
+				/*
 				ConstraintProblem constraintProblem;
 				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
 				{
+					//-1000 -> 1000
 					for (int i = 0; i < v.size(); ++i)
 					{
 						problem.update(variable2Data[i], v[i]);
+						//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
+					}
+
+					{
+						for (const auto& keyval : problem.invRefs)
+						{
+							pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+						}
 					}
 
 					pEnv->switchFrontScope();
@@ -1777,6 +1786,7 @@ namespace cgl
 					pEnv->switchBackScope();
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+					std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
 					return result;
 				};
 				constraintProblem.originalRecord = record;
@@ -1787,6 +1797,7 @@ namespace cgl
 				for (int i = 0; i < x0s.size(); ++i)
 				{
 					x0s[i] = problem.data[variable2Data[i]];
+					//x0s[i] = (problem.data[variable2Data[i]] / 2000.0) + 0.5;
 					CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
 				}
 
@@ -1798,21 +1809,28 @@ namespace cgl
 				{
 					resultxs[i] = x0s[i];
 				}
+				//*/
 
-				/*
+				//*
 				libcmaes::FitFunc func = [&](const double *x, const int N)->double
 				{
 					for (int i = 0; i < N; ++i)
 					{
-						//std::cout << "    x[" << i << "] -> " << x[i] << std::endl;
 						problem.update(variable2Data[i], x[i]);
 					}
 
-					//pEnv->switchFrontScope();
-					//CGL_DebugLog("");
+					{
+						for (const auto& keyval : problem.invRefs)
+						{
+							pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+						}
+					}
+
+					pEnv->switchFrontScope();
 					double result = problem.eval(pEnv);
+					pEnv->switchBackScope();
+
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
-					//pEnv->switchBackScope();
 					
 					return result;
 				};
@@ -1838,17 +1856,15 @@ namespace cgl
 				CGL_DebugLog("");
 				resultxs = cmasols.best_candidate().get_x();
 				CGL_DebugLog("");
-				*/
+				//*/
 			}
 
 			CGL_DebugLog("");
 			for (size_t i = 0; i < resultxs.size(); ++i)
 			{
-				//ObjectReference ref = record.freeVariableRefs[i];
-				//pEnv->assignToObject(ref, resultxs[i]);
-
 				Address address = record.freeVariableRefs[i];
 				pEnv->assignToObject(address, resultxs[i]);
+				//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
 			}
 
 			for (const auto& key : keyList)
@@ -3152,16 +3168,25 @@ namespace cgl
 			"diff",
 			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
-			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
-
 			if (arguments.size() != 2)
 			{
 				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
 			}
 
-			std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
-
 			return ShapeDifference(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
+		}
+		);
+
+		registerBuiltInFunction(
+			"area",
+			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+			}
+
+			return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
 		}
 		);
 	}

@@ -61,7 +61,7 @@ namespace cgl
 			auto refID_It = invRefs.find(reference);
 			if (refID_It != invRefs.end())
 			{
-				CGL_DebugLog("addSatRef: 登録済み");
+				//CGL_DebugLog("addSatRef: 登録済み");
 				return refID_It->second;
 			}
 
@@ -74,10 +74,10 @@ namespace cgl
 				refs.push_back(reference);
 
 				{
-					CGL_DebugLog("addSatRef: ＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠");
+					//CGL_DebugLog("addSatRef: ＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠");
 					pEnv->printEnvironment(true);
-					CGL_DebugLog(std::string("addSatRef: Evaluated: Address(") + reference.toString() + ")");
-					CGL_DebugLog("addSatRef: ：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：");
+					//CGL_DebugLog(std::string("addSatRef: Evaluated: Address(") + reference.toString() + ")");
+					//CGL_DebugLog("addSatRef: ：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：");
 				}
 				
 				return referenceID;
@@ -169,9 +169,19 @@ namespace cgl
 				}
 			}*/
 
+			//組み込み関数の場合は関数定義の中身と照らし合わせるという事ができないため、とりあえず引数から辿れる要素を全て見る
 			if (funcVal.builtinFuncAddress)
 			{
-				return false;
+				bool result = false;
+				for (Address argument : expandedArguments)
+				{
+					const auto addresses = pEnv->expandReferences(argument);
+					for (Address address : addresses)
+					{
+						result = static_cast<bool>(addSatRef(address)) || result;
+					}
+				}
+				return result;
 			}
 
 			/*std::vector<Address> expandedArguments(node.actualArguments.size());

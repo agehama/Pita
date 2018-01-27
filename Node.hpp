@@ -416,6 +416,7 @@ namespace cgl
 		static LRValue Bool(bool a) { return LRValue(a); }
 		static LRValue Int(int a) { return LRValue(a); }
 		static LRValue Double(double a) { return LRValue(a); }
+		static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
 		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 

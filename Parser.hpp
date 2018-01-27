@@ -112,6 +112,7 @@ namespace cgl
 		qi::rule<Iterator> s, s1;
 		qi::rule<Iterator> distinct_keyword;
 		qi::rule<Iterator, std::string(), Skipper> unchecked_identifier;
+		qi::rule<Iterator, std::string(), Skipper> float_value;
 		
 		Parser() : Parser::base_type(program)
 		{
@@ -295,7 +296,9 @@ namespace cgl
 			//	| id[_val = _1];
 			
 			factor = /*double_[_val = _1]
-					 | */int_[_val = Call(LRValue::Int, _1)]
+					 | */
+				float_value[_val = Call(LRValue::Float, _1)]
+				| int_[_val = Call(LRValue::Int, _1)]
 				| lit("true")[_val = Call(LRValue::Bool, true)]
 				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
@@ -322,6 +325,7 @@ namespace cgl
 			distinct_keyword = qi::lexeme[keywords >> !(qi::alnum | '_')];
 			unchecked_identifier = qi::lexeme[(qi::alpha | qi::char_('_')) >> *(qi::alnum | qi::char_('_'))];
 
+			float_value = qi::lexeme[+qi::char_('0', '9') >> qi::char_('.') >> +qi::char_('0', '9')];
 			/*auto const distinct_keyword = qi::lexeme[keywords >> !(qi::alnum | '_')];
 			auto const unchecked_identifier = qi::lexeme[(qi::alpha | qi::char_('_')) >> *(qi::alnum | qi::char_('_'))];
 			auto const identifier_def = unchecked_identifier - distinct_keyword;*/

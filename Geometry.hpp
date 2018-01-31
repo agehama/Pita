@@ -10,7 +10,7 @@ namespace cgl
 	{
 		if ((!IsType<Record>(lhs) && !IsType<List>(lhs)) || (!IsType<Record>(rhs) && !IsType<List>(rhs)))
 		{
-			CGL_Error("•s³‚È®‚Å‚·");
+			CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 			return{};
 		}
 
@@ -88,8 +88,8 @@ namespace cgl
 					}
 					else
 					{
-						//std::cout << __FUNCTION__ << " Difference‚ÌŒ‹‰Ê‚ª—\Šú‚¹‚Êƒf[ƒ^Œ`®" << __LINE__ << std::endl;
-						std::cout << " Difference‚ÌŒ‹‰Ê‚ª—\Šú‚¹‚Êƒf[ƒ^Œ`® : " << erodeGeometry->getGeometryType() << std::endl;
+						//std::cout << __FUNCTION__ << " Differenceã®çµæœãŒäºˆæœŸã›ã¬ãƒ‡ãƒ¼ã‚¿å½¢å¼" << __LINE__ << std::endl;
+						std::cout << " Differenceã®çµæœãŒäºˆæœŸã›ã¬ãƒ‡ãƒ¼ã‚¿å½¢å¼ : " << erodeGeometry->getGeometryType() << std::endl;
 					}
 				}
 
@@ -140,7 +140,7 @@ namespace cgl
 	{
 		if (!IsType<Record>(lhs) && !IsType<List>(lhs))
 		{
-			CGL_Error("•s³‚È®‚Å‚·");
+			CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 			return{};
 		}
 

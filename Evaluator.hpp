@@ -217,7 +217,7 @@ namespace cgl
 				return result;
 			}
 
-			CGL_Error("node.adder‚Ì’u‚«Š·‚¦Œ‹‰Ê‚ªRecordConstractor‚Å‚È‚¢");
+			CGL_Error("node.adderã®ç½®ãæ›ãˆçµæœãŒRecordConstractorã§ãªã„");
 			return LRValue(0);
 		}
 
@@ -271,7 +271,7 @@ namespace cgl
 		}
 	};
 
-	//Evaluated‚ÌƒAƒhƒŒƒX’l‚ğÄ‹A“I‚É“WŠJ‚µ‚½ƒNƒ[ƒ“‚ğì¬‚·‚é
+	//Evaluatedã®ã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã‚’å†å¸°çš„ã«å±•é–‹ã—ãŸã‚¯ãƒ­ãƒ¼ãƒ³ã‚’ä½œæˆã™ã‚‹
 	class ValueCloner : public boost::static_visitor<Evaluated>
 	{
 	public:
@@ -390,7 +390,7 @@ namespace cgl
 
 			for (size_t i = 0; i < data.size(); ++i)
 			{
-				//ValueCloner1‚ÅƒNƒ[ƒ“‚ÍŠù‚Éì‚Á‚½‚Ì‚ÅA‚»‚ÌƒNƒ[ƒ“‚ğ’¼Ú‘‚«Š·‚¦‚é
+				//ValueCloner1ã§ã‚¯ãƒ­ãƒ¼ãƒ³ã¯æ—¢ã«ä½œã£ãŸã®ã§ã€ãã®ã‚¯ãƒ­ãƒ¼ãƒ³ã‚’ç›´æ¥æ›¸ãæ›ãˆã‚‹
 				const Evaluated& substance = pEnv->expand(data[i]);
 				pEnv->assignToObject(data[i], boost::apply_visitor(*this, substance));
 			}
@@ -404,7 +404,7 @@ namespace cgl
 		{
 			for (const auto& value : node.values)
 			{
-				//ValueCloner1‚ÅƒNƒ[ƒ“‚ÍŠù‚Éì‚Á‚½‚Ì‚ÅA‚»‚ÌƒNƒ[ƒ“‚ğ’¼Ú‘‚«Š·‚¦‚é
+				//ValueCloner1ã§ã‚¯ãƒ­ãƒ¼ãƒ³ã¯æ—¢ã«ä½œã£ãŸã®ã§ã€ãã®ã‚¯ãƒ­ãƒ¼ãƒ³ã‚’ç›´æ¥æ›¸ãæ›ãˆã‚‹
 				const Evaluated& substance = pEnv->expand(value.second);
 				pEnv->assignToObject(value.second, boost::apply_visitor(*this, substance));
 			}
@@ -518,9 +518,9 @@ namespace cgl
 	inline Evaluated Clone(std::shared_ptr<Environment> pEnv, const Evaluated& value)
 	{
 		/*
-		ŠÖ”’l‚ªƒAƒhƒŒƒX‚ğ“à•”‚É‚Á‚Ä‚¢‚éAƒNƒ[ƒ“ì¬‚Ì‘OŒã‚Å‚»‚ÌˆË‘¶ŠÖŒW‚ğ•Û‘¶‚·‚é•K—v‚ª‚ ‚é‚Ì‚ÅAƒNƒ[ƒ“ì¬‚Í2ƒXƒeƒbƒv‚É•ª‚¯‚Äs‚¤B
-		1. ƒŠƒXƒgEƒŒƒR[ƒh‚ÌÄ‹A“I‚ÈƒRƒs[
-		2. ŠÖ”‚Ì‚ÂƒAƒhƒŒƒX‚ğV‚µ‚¢•û‚É•t‚¯‘Ö‚¦‚é		
+		é–¢æ•°å€¤ãŒã‚¢ãƒ‰ãƒ¬ã‚¹ã‚’å†…éƒ¨ã«æŒã£ã¦ã„ã‚‹æ™‚ã€ã‚¯ãƒ­ãƒ¼ãƒ³ä½œæˆã®å‰å¾Œã§ãã®ä¾å­˜é–¢ä¿‚ã‚’ä¿å­˜ã™ã‚‹å¿…è¦ãŒã‚ã‚‹ã®ã§ã€ã‚¯ãƒ­ãƒ¼ãƒ³ä½œæˆã¯2ã‚¹ãƒ†ãƒƒãƒ—ã«åˆ†ã‘ã¦è¡Œã†ã€‚
+		1. ãƒªã‚¹ãƒˆãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ã®å†å¸°çš„ãªã‚³ãƒ”ãƒ¼
+		2. é–¢æ•°ã®æŒã¤ã‚¢ãƒ‰ãƒ¬ã‚¹ã‚’æ–°ã—ã„æ–¹ã«ä»˜ã‘æ›¿ãˆã‚‹		
 		*/
 		ValueCloner cloner(pEnv);
 		const Evaluated& evaluated = boost::apply_visitor(cloner, value);
@@ -531,18 +531,18 @@ namespace cgl
 		return evaluated2;
 	}
 
-	//ŠÖ”®‚ğ\¬‚·‚é¯•Êq‚ªŠÖ”“à•”‚Å•Â‚¶‚Ä‚¢‚é‚à‚Ì‚©AŠO‘¤‚ÌƒXƒR[ƒv‚ÉˆË‘¶‚µ‚Ä‚¢‚é‚à‚Ì‚©‚ğ’²‚×
-	//ŠO‘¤‚ÌƒXƒR[ƒv‚ğQÆ‚·‚é¯•Êq‚ğƒAƒhƒŒƒX‚É’u‚«Š·‚¦‚½®‚ğ•Ô‚·
+	//é–¢æ•°å¼ã‚’æ§‹æˆã™ã‚‹è­˜åˆ¥å­ãŒé–¢æ•°å†…éƒ¨ã§é–‰ã˜ã¦ã„ã‚‹ã‚‚ã®ã‹ã€å¤–å´ã®ã‚¹ã‚³ãƒ¼ãƒ—ã«ä¾å­˜ã—ã¦ã„ã‚‹ã‚‚ã®ã‹ã‚’èª¿ã¹
+	//å¤–å´ã®ã‚¹ã‚³ãƒ¼ãƒ—ã‚’å‚ç…§ã™ã‚‹è­˜åˆ¥å­ã‚’ã‚¢ãƒ‰ãƒ¬ã‚¹ã«ç½®ãæ›ãˆãŸå¼ã‚’è¿”ã™
 	class ClosureMaker : public boost::static_visitor<Expr>
 	{
 	public:
 
-		//ŠÖ”“à•”‚Å•Â‚¶‚Ä‚¢‚éƒ[ƒJƒ‹•Ï”
+		//é–¢æ•°å†…éƒ¨ã§é–‰ã˜ã¦ã„ã‚‹ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°
 		std::set<std::string> localVariables;
 
 		std::shared_ptr<Environment> pEnv;
 
-		//ƒŒƒR[ƒhŒp³‚Ì\•¶‚ğˆµ‚¤‚½‚ß‚É•K—v•K—v
+		//ãƒ¬ã‚³ãƒ¼ãƒ‰ç¶™æ‰¿ã®æ§‹æ–‡ã‚’æ‰±ã†ãŸã‚ã«å¿…è¦å¿…è¦
 		bool isInnerRecord;
 
 		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
@@ -566,17 +566,17 @@ namespace cgl
 
 		Expr operator()(const Identifier& node)
 		{
-			//‚»‚ÌŠÖ”‚Ìƒ[ƒJƒ‹•Ï”‚Å‚ ‚ê‚ÎŠÖ”‚ÌÀs‚É•]‰¿‚·‚ê‚Î‚æ‚¢‚Ì‚ÅA–¼‘O‚ğc‚·
+			//ãã®é–¢æ•°ã®ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã§ã‚ã‚Œã°é–¢æ•°ã®å®Ÿè¡Œæ™‚ã«è©•ä¾¡ã™ã‚Œã°ã‚ˆã„ã®ã§ã€åå‰ã‚’æ®‹ã™
 			if (isLocalVariable(node))
 			{
 				return node;
 			}
-			//ƒ[ƒJƒ‹•Ï”‚É–³‚¯‚ê‚ÎƒAƒhƒŒƒX‚É’u‚«Š·‚¦‚é
+			//ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã«ç„¡ã‘ã‚Œã°ã‚¢ãƒ‰ãƒ¬ã‚¹ã«ç½®ãæ›ãˆã‚‹
 			const Address address = pEnv->findAddress(node);
 			if (address.isValid())
 			{
-				//Identifier RecordConstructor ‚ÌŒ`‚ğ‚µ‚½ƒŒƒR[ƒhŒp³‚Ì head •”•ª
-				//‚Æ‚è‚ ‚¦‚¸QÆæ‚ÌƒŒƒR[ƒh‚Ìƒƒ“ƒo‚Íƒ[ƒJƒ‹•Ï”‚Æ‚¨‚­
+				//Identifier RecordConstructor ã®å½¢ã‚’ã—ãŸãƒ¬ã‚³ãƒ¼ãƒ‰ç¶™æ‰¿ã® head éƒ¨åˆ†
+				//ã¨ã‚Šã‚ãˆãšå‚ç…§å…ˆã®ãƒ¬ã‚³ãƒ¼ãƒ‰ã®ãƒ¡ãƒ³ãƒã¯ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã¨ãŠã
 				if (isInnerRecord)
 				{
 					const Evaluated& evaluated = pEnv->expand(address);
@@ -593,7 +593,7 @@ namespace cgl
 				return LRValue(address);
 			}
 
-			CGL_Error("¯•Êq‚ª’è‹`‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+			CGL_Error("è­˜åˆ¥å­ãŒå®šç¾©ã•ã‚Œã¦ã„ã¾ã›ã‚“");
 			return LRValue(0);
 		}
 
@@ -614,10 +614,10 @@ namespace cgl
 				return BinaryExpr(lhs, rhs, node.op);
 			}
 
-			//Assign‚Ìê‡Alhs ‚Í Address or Identifier or Accessor ‚ÉŒÀ‚ç‚ê‚é
-			//‚Â‚Ü‚èŒ»“_‚Å‚ÍA(if cond then x else y) = true ‚Ì‚æ‚¤‚È®‚ğ‹–‰Â‚µ‚Ä‚¢‚È‚¢
-			//‚±‚±‚Å¶•Ó‚É’¼ÚƒAƒhƒŒƒX‚ª“ü‚Á‚Ä‚¢‚é‚±‚Æ‚Í—L‚è“¾‚éH
-			//a = b = 10@‚Ì‚æ‚¤‚È®‚Å‚àA‰EŒ‹‡‚Å‚ ‚è¶‘¤‚Íí‚É¯•Êq‚ªc‚Á‚Ä‚¢‚é‚Í‚¸‚È‚Ì‚ÅA‚ ‚è“¾‚È‚¢‚Æv‚¤
+			//Assignã®å ´åˆã€lhs ã¯ Address or Identifier or Accessor ã«é™ã‚‰ã‚Œã‚‹
+			//ã¤ã¾ã‚Šç¾æ™‚ç‚¹ã§ã¯ã€(if cond then x else y) = true ã®ã‚ˆã†ãªå¼ã‚’è¨±å¯ã—ã¦ã„ãªã„
+			//ã“ã“ã§å·¦è¾ºã«ç›´æ¥ã‚¢ãƒ‰ãƒ¬ã‚¹ãŒå…¥ã£ã¦ã„ã‚‹ã“ã¨ã¯æœ‰ã‚Šå¾—ã‚‹ï¼Ÿ
+			//a = b = 10ã€€ã®ã‚ˆã†ãªå¼ã§ã‚‚ã€å³çµåˆã§ã‚ã‚Šå·¦å´ã¯å¸¸ã«è­˜åˆ¥å­ãŒæ®‹ã£ã¦ã„ã‚‹ã¯ãšãªã®ã§ã€ã‚ã‚Šå¾—ãªã„ã¨æ€ã†
 			/*if (auto valOpt = AsOpt<Evaluated>(node.lhs))
 			{
 				const Evaluated& val = valOpt.value();
@@ -643,7 +643,7 @@ namespace cgl
 			{
 				const Identifier identifier = valOpt.value();
 
-				//ƒ[ƒJƒ‹•Ï”‚É‚ ‚ê‚ÎA‚»‚Ìê‚Å‰ğŒˆ‚Å‚«‚é¯•Êq‚È‚Ì‚Å‰½‚à‚µ‚È‚¢
+				//ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã«ã‚ã‚Œã°ã€ãã®å ´ã§è§£æ±ºã§ãã‚‹è­˜åˆ¥å­ãªã®ã§ä½•ã‚‚ã—ãªã„
 				if (isLocalVariable(identifier))
 				{
 					return BinaryExpr(node.lhs, rhs, node.op);
@@ -652,13 +652,13 @@ namespace cgl
 				{
 					const Address address = pEnv->findAddress(identifier);
 
-					//ƒ[ƒJƒ‹•Ï”‚É–³‚­AƒXƒR[ƒv‚É‚ ‚ê‚ÎAƒAƒhƒŒƒX‚É’u‚«Š·‚¦‚é
+					//ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã«ç„¡ãã€ã‚¹ã‚³ãƒ¼ãƒ—ã«ã‚ã‚Œã°ã€ã‚¢ãƒ‰ãƒ¬ã‚¹ã«ç½®ãæ›ãˆã‚‹
 					if (address.isValid())
 					{
-						//TODO: §–ñ®‚Ìê‡‚ÍA‚±‚±‚Å‚Í‚¶‚­•K—v‚ª‚ ‚é
+						//TODO: åˆ¶ç´„å¼ã®å ´åˆã¯ã€ã“ã“ã§ã¯ã˜ãå¿…è¦ãŒã‚ã‚‹
 						return BinaryExpr(LRValue(address), rhs, node.op);
 					}
-					//ƒXƒR[ƒv‚É‚à–³‚¢ê‡‚ÍV‚½‚Èƒ[ƒJƒ‹•Ï”‚ÌéŒ¾‚È‚Ì‚ÅAƒ[ƒJƒ‹•Ï”‚É’Ç‰Á‚µ‚Ä‚¨‚­
+					//ã‚¹ã‚³ãƒ¼ãƒ—ã«ã‚‚ç„¡ã„å ´åˆã¯æ–°ãŸãªãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã®å®£è¨€ãªã®ã§ã€ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã«è¿½åŠ ã—ã¦ãŠã
 					else
 					{
 						addLocalVariable(identifier);
@@ -668,22 +668,22 @@ namespace cgl
 			}
 			else if (auto valOpt = AsOpt<Accessor>(node.lhs))
 			{
-				//ƒAƒNƒZƒbƒT‚Ìê‡‚Í­‚È‚­‚Æ‚à•Ï”éŒ¾‚Å‚Í‚È‚¢
-				//ƒ[ƒJƒ‹•Ï” or ƒXƒR[ƒv
-				/*`````````````````````````````
-				Accessor‚Ìhead‚¾‚¯•]‰¿‚µ‚ÄƒAƒhƒŒƒX’l‚É•ÏŠ·‚µ‚½‚¢
-					head‚³‚¦•ª‚©‚ê‚Î‚ ‚Æ‚Í‚»‚±‚©‚ç’H‚ê‚é‚Ì‚Å
-					¡‚ÌÀ‘•‚Å‚Íhead‚Í®‚É‚È‚Á‚Ä‚¢‚é‚ªA‚±‚ê‚¾‚Æ—Ç‚­‚È‚¢
-					¡‚Í¶•Ó‚É‚Í‚»‚ñ‚È‚É•¡G‚È®‚Í‹–‰Â‚µ‚Ä‚¢‚È‚¢‚Ì‚ÅA‚±‚ê‚à¯•Êq‚­‚ç‚¢‚Ì’Pƒ‚ÈŒ`‚É§ŒÀ‚µ‚Ä‚æ‚¢‚Ì‚Å‚Í‚È‚¢‚©
-				`````````````````````````````*/
+				//ã‚¢ã‚¯ã‚»ãƒƒã‚µã®å ´åˆã¯å°‘ãªãã¨ã‚‚å¤‰æ•°å®£è¨€ã§ã¯ãªã„
+				//ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° or ã‚¹ã‚³ãƒ¼ãƒ—
+				/*ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½
+				Accessorã®headã ã‘è©•ä¾¡ã—ã¦ã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã«å¤‰æ›ã—ãŸã„
+					headã•ãˆåˆ†ã‹ã‚Œã°ã‚ã¨ã¯ãã“ã‹ã‚‰è¾¿ã‚Œã‚‹ã®ã§
+					ä»Šã®å®Ÿè£…ã§ã¯headã¯å¼ã«ãªã£ã¦ã„ã‚‹ãŒã€ã“ã‚Œã ã¨è‰¯ããªã„
+					ä»Šã¯å·¦è¾ºã«ã¯ãã‚“ãªã«è¤‡é›‘ãªå¼ã¯è¨±å¯ã—ã¦ã„ãªã„ã®ã§ã€ã“ã‚Œã‚‚è­˜åˆ¥å­ãã‚‰ã„ã®å˜ç´”ãªå½¢ã«åˆ¶é™ã—ã¦ã‚ˆã„ã®ã§ã¯ãªã„ã‹
+				ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½ï½*/
 
-				//•]‰¿‚·‚é‚±‚Æ‚É‚µ‚½
+				//è©•ä¾¡ã™ã‚‹ã“ã¨ã«ã—ãŸ
 				const Expr lhs = boost::apply_visitor(*this, node.lhs);
 
 				return BinaryExpr(lhs, rhs, node.op);
 			}
 
-			CGL_Error("“ñ€‰‰Zq\"=\"‚Ì¶•Ó‚Í’Pˆê‚Ì¶•Ó’l‚Å‚È‚¯‚ê‚Î‚È‚è‚Ü‚¹‚ñ");
+			CGL_Error("äºŒé …æ¼”ç®—å­\"=\"ã®å·¦è¾ºã¯å˜ä¸€ã®å·¦è¾ºå€¤ã§ãªã‘ã‚Œã°ãªã‚Šã¾ã›ã‚“");
 			return LRValue(0);
 		}
 
@@ -746,7 +746,7 @@ namespace cgl
 		Expr operator()(const Return& node)
 		{
 			return Return(boost::apply_visitor(*this, node.expr));
-			//‚±‚ê‚¾‚Æƒ_ƒ‚©‚à‚µ‚ê‚È‚¢H
+			//ã“ã‚Œã ã¨ãƒ€ãƒ¡ã‹ã‚‚ã—ã‚Œãªã„ï¼Ÿ
 			//return a = 6, a + 2
 		}
 
@@ -764,8 +764,8 @@ namespace cgl
 
 		Expr operator()(const KeyExpr& node)
 		{
-			//•Ï”éŒ¾®
-			//Ä‘ã“ü‚Ì‰Â”\«‚à‚ ‚é‚ª‚Ç‚Á‚¿‚É‚µ‚ë‚±‚êˆÈ~‚±‚Ì¯•Êq‚Íƒ[ƒJƒ‹•Ï”‚Æˆµ‚Á‚Ä‚æ‚¢
+			//å¤‰æ•°å®£è¨€å¼
+			//å†ä»£å…¥ã®å¯èƒ½æ€§ã‚‚ã‚ã‚‹ãŒã©ã£ã¡ã«ã—ã‚ã“ã‚Œä»¥é™ã“ã®è­˜åˆ¥å­ã¯ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã¨æ‰±ã£ã¦ã‚ˆã„
 			addLocalVariable(node.name);
 
 			KeyExpr result(node.name);
@@ -811,13 +811,13 @@ namespace cgl
 			return result;
 		}
 
-		//ƒŒƒR[ƒhŒp³\•¶‚É‚Â‚¢‚Ä‚Í“Áê‚ÅAadder‚ğ•]‰¿‚·‚é‚ÌƒXƒR[ƒv‚Íhead‚Æ“¯‚¶‚Å‚ ‚é•K—v‚ª‚ ‚éB
-		//‚Â‚Ü‚èAhead‚ğ•]‰¿‚·‚é‚É‚Í‚»‚Ì’†g‚ğAˆê’iŠK‚¾‚¯i”gŠ‡ŒÊˆê‚Â•ª‚¾‚¯j“WŠJ‚·‚é‚æ‚¤‚É‚µ‚Ä•]‰¿‚µ‚È‚¯‚ê‚Î‚È‚ç‚È‚¢B
+		//ãƒ¬ã‚³ãƒ¼ãƒ‰ç¶™æ‰¿æ§‹æ–‡ã«ã¤ã„ã¦ã¯ç‰¹æ®Šã§ã€adderã‚’è©•ä¾¡ã™ã‚‹æ™‚ã®ã‚¹ã‚³ãƒ¼ãƒ—ã¯headã¨åŒã˜ã§ã‚ã‚‹å¿…è¦ãŒã‚ã‚‹ã€‚
+		//ã¤ã¾ã‚Šã€headã‚’è©•ä¾¡ã™ã‚‹æ™‚ã«ã¯ãã®ä¸­èº«ã‚’ã€ä¸€æ®µéšã ã‘ï¼ˆæ³¢æ‹¬å¼§ä¸€ã¤åˆ†ã ã‘ï¼‰å±•é–‹ã™ã‚‹ã‚ˆã†ã«ã—ã¦è©•ä¾¡ã—ãªã‘ã‚Œã°ãªã‚‰ãªã„ã€‚
 		Expr operator()(const RecordInheritor& node)
 		{
 			RecordInheritor result;
 
-			//V‚½‚É’Ç‰Á
+			//æ–°ãŸã«è¿½åŠ 
 			ClosureMaker child(pEnv, localVariables, true);
 
 			//result.original = boost::apply_visitor(*this, node.original);
@@ -832,7 +832,7 @@ namespace cgl
 				return result;
 			}
 
-			CGL_Error("node.adder‚Ì’u‚«Š·‚¦Œ‹‰Ê‚ªRecordConstractor‚Å‚È‚¢");
+			CGL_Error("node.adderã®ç½®ãæ›ãˆçµæœãŒRecordConstractorã§ãªã„");
 			return LRValue(0);
 		}
 
@@ -841,11 +841,11 @@ namespace cgl
 			Accessor result;
 			
 			result.head = boost::apply_visitor(*this, node.head);
-			//DeclSat‚Ì•]‰¿Œã‚Å‚Ísat®’†‚ÌƒAƒNƒZƒbƒTi‚Ì“àsat®‚Ìƒ[ƒJƒ‹•Ï”‚Å‚È‚¢‚à‚Ìj‚Ìhead‚ÍƒAƒhƒŒƒX’l‚É•]‰¿‚³‚ê‚Ä‚¢‚é•K—v‚ª‚ ‚éB
-			//‚µ‚©‚µA‚±‚±‚Å‚Í*this‚ğg‚Á‚Ä‚¢‚é‚Ì‚ÅA”CˆÓ‚Ì®‚ªƒAƒhƒŒƒX’l‚É•]‰¿‚³‚ê‚é‚í‚¯‚Å‚Í‚È‚¢B
-			//—á‚¦‚ÎAŸ‚Ì® ([f1,f2] @ [f3])[0](x) ‚¾‚Æhead•”‚ÍƒŠƒXƒg‚ÌŒ‹‡®‚Å‚ ‚èAEval‚ğ’Ê‚³‚È‚¢‚ÆƒAƒhƒŒƒX’l‚É‚Å‚«‚È‚¢B
-			//‚µ‚©‚µA‚±‚±‚ÅEval‚Íg‚¢‚½‚­‚È‚¢iClosureMaker‚ª•›ì—p‚ğ‹N‚±‚·‚Ì‚Í—Ç‚­‚È‚¢j‚½‚ßAŒ»“_‚Å‚ÍƒAƒNƒZƒbƒT‚Ìhead•”‚Í’Pˆê‚Ì¯•Êq‚Ì‚İ‚Å\¬‚³‚ê‚é‚à‚Ì‚Æ‰¼’è‚µ‚Ä‚¢‚éB
-			//‚±‚¤‚·‚é‚±‚Æ‚É‚æ‚èA¯•Êq‚ªƒ[ƒJƒ‹•Ï”‚È‚ç‚»‚Ì‚Ü‚Üc‚èAŠO•”‚Ì•Ï”‚È‚çƒAƒhƒŒƒX’l‚É•ÏŠ·‚³‚ê‚é‚±‚Æ‚ª•ÛØ‚Å‚«‚éB
+			//DeclSatã®è©•ä¾¡å¾Œã§ã¯satå¼ä¸­ã®ã‚¢ã‚¯ã‚»ãƒƒã‚µï¼ˆã®å†…satå¼ã®ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã§ãªã„ã‚‚ã®ï¼‰ã®headã¯ã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã«è©•ä¾¡ã•ã‚Œã¦ã„ã‚‹å¿…è¦ãŒã‚ã‚‹ã€‚
+			//ã—ã‹ã—ã€ã“ã“ã§ã¯*thisã‚’ä½¿ã£ã¦ã„ã‚‹ã®ã§ã€ä»»æ„ã®å¼ãŒã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã«è©•ä¾¡ã•ã‚Œã‚‹ã‚ã‘ã§ã¯ãªã„ã€‚
+			//ä¾‹ãˆã°ã€æ¬¡ã®å¼ ([f1,f2] @ [f3])[0](x) ã ã¨headéƒ¨ã¯ãƒªã‚¹ãƒˆã®çµåˆå¼ã§ã‚ã‚Šã€Evalã‚’é€šã•ãªã„ã¨ã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã«ã§ããªã„ã€‚
+			//ã—ã‹ã—ã€ã“ã“ã§Evalã¯ä½¿ã„ãŸããªã„ï¼ˆClosureMakerãŒå‰¯ä½œç”¨ã‚’èµ·ã“ã™ã®ã¯è‰¯ããªã„ï¼‰ãŸã‚ã€ç¾æ™‚ç‚¹ã§ã¯ã‚¢ã‚¯ã‚»ãƒƒã‚µã®headéƒ¨ã¯å˜ä¸€ã®è­˜åˆ¥å­ã®ã¿ã§æ§‹æˆã•ã‚Œã‚‹ã‚‚ã®ã¨ä»®å®šã—ã¦ã„ã‚‹ã€‚
+			//ã“ã†ã™ã‚‹ã“ã¨ã«ã‚ˆã‚Šã€è­˜åˆ¥å­ãŒãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ãªã‚‰ãã®ã¾ã¾æ®‹ã‚Šã€å¤–éƒ¨ã®å¤‰æ•°ãªã‚‰ã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã«å¤‰æ›ã•ã‚Œã‚‹ã“ã¨ãŒä¿è¨¼ã§ãã‚‹ã€‚
 
 			for (const auto& access : node.accesses)
 			{
@@ -948,7 +948,7 @@ namespace cgl
 
 		LRValue operator()(const SatReference& node)
 		{
-			CGL_Error("•s³‚È®");
+			CGL_Error("ä¸æ­£ãªå¼");
 			return LRValue(0);
 		}
 
@@ -1003,10 +1003,10 @@ namespace cgl
 			{
 				//return Assign(lhs, rhs, *pEnv);
 
-				//Assign‚Ìê‡Alhs ‚Í Address or Identifier or Accessor ‚ÉŒÀ‚ç‚ê‚é
-				//‚Â‚Ü‚èŒ»“_‚Å‚ÍA(if cond then x else y) = true ‚Ì‚æ‚¤‚È®‚ğ‹–‰Â‚µ‚Ä‚¢‚È‚¢
-				//‚±‚±‚Å¶•Ó‚É’¼ÚƒAƒhƒŒƒX‚ª“ü‚Á‚Ä‚¢‚é‚±‚Æ‚Í—L‚è“¾‚éH
-				//a = b = 10@‚Ì‚æ‚¤‚È®‚Å‚àA‰EŒ‹‡‚Å‚ ‚è¶‘¤‚Íí‚É¯•Êq‚ªc‚Á‚Ä‚¢‚é‚Í‚¸‚È‚Ì‚ÅA‚ ‚è“¾‚È‚¢‚Æv‚¤
+				//Assignã®å ´åˆã€lhs ã¯ Address or Identifier or Accessor ã«é™ã‚‰ã‚Œã‚‹
+				//ã¤ã¾ã‚Šç¾æ™‚ç‚¹ã§ã¯ã€(if cond then x else y) = true ã®ã‚ˆã†ãªå¼ã‚’è¨±å¯ã—ã¦ã„ãªã„
+				//ã“ã“ã§å·¦è¾ºã«ç›´æ¥ã‚¢ãƒ‰ãƒ¬ã‚¹ãŒå…¥ã£ã¦ã„ã‚‹ã“ã¨ã¯æœ‰ã‚Šå¾—ã‚‹ï¼Ÿ
+				//a = b = 10ã€€ã®ã‚ˆã†ãªå¼ã§ã‚‚ã€å³çµåˆã§ã‚ã‚Šå·¦å´ã¯å¸¸ã«è­˜åˆ¥å­ãŒæ®‹ã£ã¦ã„ã‚‹ã¯ãšãªã®ã§ã€ã‚ã‚Šå¾—ãªã„ã¨æ€ã†
 				if (auto valOpt = AsOpt<LRValue>(node.lhs))
 				{
 					const LRValue& val = valOpt.value();
@@ -1050,16 +1050,16 @@ namespace cgl
 					const Identifier& identifier = valOpt.value();
 
 					const Address address = pEnv->findAddress(identifier);
-					//•Ï”‚ª‘¶İ‚·‚éF‘ã“ü®
+					//å¤‰æ•°ãŒå­˜åœ¨ã™ã‚‹ï¼šä»£å…¥å¼
 					if (address.isValid())
 					{
-						CGL_DebugLog("‘ã“ü®");
+						CGL_DebugLog("ä»£å…¥å¼");
 						pEnv->assignToObject(address, rhs);
 					}
-					//•Ï”‚ª‘¶İ‚µ‚È‚¢F•Ï”éŒ¾®
+					//å¤‰æ•°ãŒå­˜åœ¨ã—ãªã„ï¼šå¤‰æ•°å®£è¨€å¼
 					else
 					{
-						CGL_DebugLog("•Ï”éŒ¾®");
+						CGL_DebugLog("å¤‰æ•°å®£è¨€å¼");
 						pEnv->bindNewValue(identifier, rhs);
 						CGL_DebugLog("");
 					}
@@ -1078,12 +1078,12 @@ namespace cgl
 						}
 						else
 						{
-							CGL_Error("QÆƒGƒ‰[");
+							CGL_Error("å‚ç…§ã‚¨ãƒ©ãƒ¼");
 						}
 					}
 					else
 					{
-						CGL_Error("ƒAƒNƒZƒbƒT‚Ì•]‰¿Œ‹‰Ê‚ªƒAƒhƒŒƒX‚Å‚È‚¢");
+						CGL_Error("ã‚¢ã‚¯ã‚»ãƒƒã‚µã®è©•ä¾¡çµæœãŒã‚¢ãƒ‰ãƒ¬ã‚¹ã§ãªã„");
 					}
 				}
 			}
@@ -1107,14 +1107,14 @@ namespace cgl
 			pEnv->printEnvironment();
 
 			/*
-			‚Ü‚¾QÆ‚ğƒXƒR[ƒvŠÔ‚Å‹¤—L‚Å‚«‚é‚æ‚¤‚É‚µ‚Ä‚¢‚È‚¢‚½‚ßAˆø”‚É—^‚¦‚ç‚ê‚½ƒIƒuƒWƒFƒNƒg‚Í‘S‚Ä“WŠJ‚µ‚Ä“n‚·B
-			‚»‚µ‚ÄAˆø”‚Ì•]‰¿“_‚Å‚Í‚Ü‚¾ŠÖ”‚Ì’†‚É“ü‚Á‚Ä‚¢‚È‚¢‚Ì‚ÅAƒXƒR[ƒv‚ğ•Ï‚¦‚é‘O‚É“WŠJ‚ğs‚¤B
+			ã¾ã å‚ç…§ã‚’ã‚¹ã‚³ãƒ¼ãƒ—é–“ã§å…±æœ‰ã§ãã‚‹ã‚ˆã†ã«ã—ã¦ã„ãªã„ãŸã‚ã€å¼•æ•°ã«ä¸ãˆã‚‰ã‚ŒãŸã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã¯å…¨ã¦å±•é–‹ã—ã¦æ¸¡ã™ã€‚
+			ãã—ã¦ã€å¼•æ•°ã®è©•ä¾¡æ™‚ç‚¹ã§ã¯ã¾ã é–¢æ•°ã®ä¸­ã«å…¥ã£ã¦ã„ãªã„ã®ã§ã€ã‚¹ã‚³ãƒ¼ãƒ—ã‚’å¤‰ãˆã‚‹å‰ã«å±•é–‹ã‚’è¡Œã†ã€‚
 			*/
 
 			/*
 			12/14
-			‘S‚Ä‚Ì’l‚ÍID‚ÅŠÇ—‚·‚é‚æ‚¤‚É‚·‚éB
-			‚»‚µ‚ÄƒXƒR[ƒv‚ª•Ï‚í‚é‚ÆA•Ï”‚Ìƒ}ƒbƒsƒ“ƒO‚Í•Ï‚í‚é‚ªA’l‚Í‹¤’Ê‚È‚Ì‚Å‚Ç‚¿‚ç‚©‚ç‚àQÆ‚Å‚«‚éB
+			å…¨ã¦ã®å€¤ã¯IDã§ç®¡ç†ã™ã‚‹ã‚ˆã†ã«ã™ã‚‹ã€‚
+			ãã—ã¦ã‚¹ã‚³ãƒ¼ãƒ—ãŒå¤‰ã‚ã‚‹ã¨ã€å¤‰æ•°ã®ãƒãƒƒãƒ”ãƒ³ã‚°ã¯å¤‰ã‚ã‚‹ãŒã€å€¤ã¯å…±é€šãªã®ã§ã©ã¡ã‚‰ã‹ã‚‰ã‚‚å‚ç…§ã§ãã‚‹ã€‚
 			*/
 			/*
 			std::vector<Address> expandedArguments(callFunc.actualArguments.size());
@@ -1144,17 +1144,17 @@ namespace cgl
 						}
 						else
 						{
-							CGL_Error("w’è‚³‚ê‚½•Ï”–¼‚É•R‚Â‚¯‚ç‚ê‚½’l‚ªŠÖ”‚Å‚È‚¢");
+							CGL_Error("æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°åã«ç´ã¤ã‘ã‚‰ã‚ŒãŸå€¤ãŒé–¢æ•°ã§ãªã„");
 						}
 					}
 					else
 					{
-						CGL_Error("‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸");
+						CGL_Error("ã“ã“ã¯é€šã‚‰ãªã„ã¯ãš");
 					}
 				}
 				else
 				{
-					CGL_Error("w’è‚³‚ê‚½•Ï”–¼‚É’l‚ª•R‚Â‚¯‚ç‚ê‚Ä‚¢‚È‚¢");
+					CGL_Error("æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°åã«å€¤ãŒç´ã¤ã‘ã‚‰ã‚Œã¦ã„ãªã„");
 				}
 			}
 			*/
@@ -1173,21 +1173,21 @@ namespace cgl
 			//if (funcVal.arguments.size() != callFunc.actualArguments.size())
 			if (funcVal.arguments.size() != expandedArguments.size())
 			{
-				CGL_Error("‰¼ˆø”‚Ì”‚ÆÀˆø”‚Ì”‚ª‡‚Á‚Ä‚¢‚È‚¢");
+				CGL_Error("ä»®å¼•æ•°ã®æ•°ã¨å®Ÿå¼•æ•°ã®æ•°ãŒåˆã£ã¦ã„ãªã„");
 			}
 
-			//ŠÖ”‚Ì•]‰¿
-			//(1)‚±‚±‚Å‚Ìƒ[ƒJƒ‹•Ï”‚ÍŠÖ”‚ğŒÄ‚Ño‚µ‚½‘¤‚Å‚Í‚È‚­AŠÖ”‚ª’è‹`‚³‚ê‚½‘¤‚Ì‚à‚Ì‚ğg‚¤‚Ì‚Åƒ[ƒJƒ‹•Ï”‚ğ’u‚«Š·‚¦‚é
+			//é–¢æ•°ã®è©•ä¾¡
+			//(1)ã“ã“ã§ã®ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã¯é–¢æ•°ã‚’å‘¼ã³å‡ºã—ãŸå´ã§ã¯ãªãã€é–¢æ•°ãŒå®šç¾©ã•ã‚ŒãŸå´ã®ã‚‚ã®ã‚’ä½¿ã†ã®ã§ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã‚’ç½®ãæ›ãˆã‚‹
 
 			pEnv->switchFrontScope();
-			//¡‚ÌˆÓ–¡˜_‚Å‚ÍƒXƒR[ƒv‚Ö‚ÌQÆ‚Í‘S‚ÄƒAƒhƒŒƒX’l‚É•ÏŠ·‚µ‚Ä‚¢‚é
-			//‚±‚±‚ÅAŠÖ”“à‚©‚çƒOƒ[ƒoƒ‹•Ï”‚Ì‘‚«Š·‚¦‚ğs‚¨‚¤‚Æ‚·‚é‚ÆAƒAƒhƒŒƒX‚É•R‚Â‚¯‚ç‚ê‚½’l‚ğ’¼Ú•ÏX‚·‚é‚±‚Æ‚É‚È‚é
-			//TODO: ‚±‚ê‚ÍAˆÓ–¡˜_“I‚É³‚µ‚¢‚Ì‚©ˆê“xl‚¦‚é•K—v‚ª‚ ‚é
-			//‚Æ‚è‚ ‚¦‚¸ŠÖ”‚ªƒXƒR[ƒv‚ÉˆË‘¶‚·‚é‚±‚Æ‚Í‚È‚­‚È‚Á‚½‚Ì‚ÅA’Pƒ‚É•Ê‚ÌƒXƒR[ƒv‚ÉØ‚è‘Ö‚¦‚é‚¾‚¯‚Å—Ç‚¢
+			//ä»Šã®æ„å‘³è«–ã§ã¯ã‚¹ã‚³ãƒ¼ãƒ—ã¸ã®å‚ç…§ã¯å…¨ã¦ã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã«å¤‰æ›ã—ã¦ã„ã‚‹
+			//ã“ã“ã§ã€é–¢æ•°å†…ã‹ã‚‰ã‚°ãƒ­ãƒ¼ãƒãƒ«å¤‰æ•°ã®æ›¸ãæ›ãˆã‚’è¡ŒãŠã†ã¨ã™ã‚‹ã¨ã€ã‚¢ãƒ‰ãƒ¬ã‚¹ã«ç´ã¤ã‘ã‚‰ã‚ŒãŸå€¤ã‚’ç›´æ¥å¤‰æ›´ã™ã‚‹ã“ã¨ã«ãªã‚‹
+			//TODO: ã“ã‚Œã¯ã€æ„å‘³è«–çš„ã«æ­£ã—ã„ã®ã‹ä¸€åº¦è€ƒãˆã‚‹å¿…è¦ãŒã‚ã‚‹
+			//ã¨ã‚Šã‚ãˆãšé–¢æ•°ãŒã‚¹ã‚³ãƒ¼ãƒ—ã«ä¾å­˜ã™ã‚‹ã“ã¨ã¯ãªããªã£ãŸã®ã§ã€å˜ç´”ã«åˆ¥ã®ã‚¹ã‚³ãƒ¼ãƒ—ã«åˆ‡ã‚Šæ›¿ãˆã‚‹ã ã‘ã§è‰¯ã„
 
 			CGL_DebugLog("");
 
-			//(2)ŠÖ”‚Ìˆø”—p‚ÉƒXƒR[ƒv‚ğˆê‚Â’Ç‰Á‚·‚é
+			//(2)é–¢æ•°ã®å¼•æ•°ç”¨ã«ã‚¹ã‚³ãƒ¼ãƒ—ã‚’ä¸€ã¤è¿½åŠ ã™ã‚‹
 			pEnv->enterScope();
 
 			CGL_DebugLog("");
@@ -1196,7 +1196,7 @@ namespace cgl
 			{
 				/*
 				12/14
-				ˆø”‚ÍƒXƒR[ƒv‚ğ‚Ü‚½‚®‚ÉQÆæ‚ª•Ï‚í‚ç‚È‚¢‚æ‚¤‚É‘S‚ÄID‚Å“n‚·‚±‚Æ‚É‚·‚éB
+				å¼•æ•°ã¯ã‚¹ã‚³ãƒ¼ãƒ—ã‚’ã¾ãŸãæ™‚ã«å‚ç…§å…ˆãŒå¤‰ã‚ã‚‰ãªã„ã‚ˆã†ã«å…¨ã¦IDã§æ¸¡ã™ã“ã¨ã«ã™ã‚‹ã€‚
 				*/
 				pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
 			}
@@ -1204,7 +1204,7 @@ namespace cgl
 			CGL_DebugLog("Function Definition:");
 			printExpr(funcVal.expr);
 
-			//(3)ŠÖ”‚Ì–ß‚è’l‚ğŒ³‚ÌƒXƒR[ƒv‚É–ß‚·‚àAˆø”‚Æ“¯‚¶——R‚Å‘S‚Ä“WŠJ‚µ‚Ä“n‚·B
+			//(3)é–¢æ•°ã®æˆ»ã‚Šå€¤ã‚’å…ƒã®ã‚¹ã‚³ãƒ¼ãƒ—ã«æˆ»ã™æ™‚ã‚‚ã€å¼•æ•°ã¨åŒã˜ç†ç”±ã§å…¨ã¦å±•é–‹ã—ã¦æ¸¡ã™ã€‚
 			//Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
 			Evaluated result;
 			{
@@ -1222,18 +1222,18 @@ namespace cgl
 
 			CGL_DebugLog("");
 
-			//(4)ŠÖ”‚ğ”²‚¯‚é‚ÉA‰¼ˆø”‚Í‘S‚Ä‰ğ•ú‚³‚ê‚é
+			//(4)é–¢æ•°ã‚’æŠœã‘ã‚‹æ™‚ã«ã€ä»®å¼•æ•°ã¯å…¨ã¦è§£æ”¾ã•ã‚Œã‚‹
 			pEnv->exitScope();
 
 			CGL_DebugLog("");
 
-			//(5)ÅŒã‚Éƒ[ƒJƒ‹•Ï”‚ÌŠÂ‹«‚ğŠÖ”‚ÌÀs‘O‚Ì‚à‚Ì‚É–ß‚·B
+			//(5)æœ€å¾Œã«ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã®ç’°å¢ƒã‚’é–¢æ•°ã®å®Ÿè¡Œå‰ã®ã‚‚ã®ã«æˆ»ã™ã€‚
 			pEnv->switchBackScope();
 
 			CGL_DebugLog("");
 			
-			//•]‰¿Œ‹‰Ê‚ªreturn®‚¾‚Á‚½ê‡‚Íreturn‚ğŠO‚µ‚Ä’†g‚ğ•Ô‚·
-			//returnˆÈŠO‚ÌƒWƒƒƒ“ƒv–½—ß‚ÍŠÖ”‚Å‚ÍŒø‰Ê‚ğ‚½‚È‚¢‚Ì‚Å‚»‚Ì‚Ü‚Üã‚É•Ô‚·
+			//è©•ä¾¡çµæœãŒreturnå¼ã ã£ãŸå ´åˆã¯returnã‚’å¤–ã—ã¦ä¸­èº«ã‚’è¿”ã™
+			//returnä»¥å¤–ã®ã‚¸ãƒ£ãƒ³ãƒ—å‘½ä»¤ã¯é–¢æ•°ã§ã¯åŠ¹æœã‚’æŒãŸãªã„ã®ã§ãã®ã¾ã¾ä¸Šã«è¿”ã™
 			if (IsType<Jump>(result))
 			{
 				auto& jump = As<Jump>(result);
@@ -1245,7 +1245,7 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error("return®‚Ì’†g‚ª“ü‚Á‚Ä–³‚¢");
+						CGL_Error("returnå¼ã®ä¸­èº«ãŒå…¥ã£ã¦ç„¡ã„");
 					}
 				}
 			}
@@ -1279,8 +1279,8 @@ namespace cgl
 				//std::cout << "LINES_B" << std::endl;
 				CGL_DebugLog("");
 
-				//TODO: Œã‚Ål‚¦‚é
-				//®‚Ì•]‰¿Œ‹‰Ê‚ª¶•Ó’l‚Ìê‡‚Í’†g‚àŒ©‚ÄA‚»‚ê‚ªƒ}ƒNƒ‚Å‚ ‚ê‚Î’†g‚ğ“WŠJ‚µ‚½Œ‹‰Ê‚ğ®‚Ì•]‰¿Œ‹‰Ê‚Æ‚·‚é
+				//TODO: å¾Œã§è€ƒãˆã‚‹
+				//å¼ã®è©•ä¾¡çµæœãŒå·¦è¾ºå€¤ã®å ´åˆã¯ä¸­èº«ã‚‚è¦‹ã¦ã€ãã‚ŒãŒãƒã‚¯ãƒ­ã§ã‚ã‚Œã°ä¸­èº«ã‚’å±•é–‹ã—ãŸçµæœã‚’å¼ã®è©•ä¾¡çµæœã¨ã™ã‚‹
 				/*
 				if (IsLValue(result))
 				{
@@ -1296,7 +1296,7 @@ namespace cgl
 
 				//std::cout << "LINES_C" << std::endl;
 				CGL_DebugLog("");
-				//“r’†‚ÅƒWƒƒƒ“ƒv–½—ß‚ğ“Ç‚ñ‚¾‚ç‘¦À‚É•]‰¿‚ğI—¹‚·‚é
+				//é€”ä¸­ã§ã‚¸ãƒ£ãƒ³ãƒ—å‘½ä»¤ã‚’èª­ã‚“ã ã‚‰å³åº§ã«è©•ä¾¡ã‚’çµ‚äº†ã™ã‚‹
 				if (IsType<Jump>(result))
 				{
 					//std::cout << "LINES_D" << std::endl;
@@ -1313,7 +1313,7 @@ namespace cgl
 			//std::cout << "LINES_E" << std::endl;
 			CGL_DebugLog("");
 
-			//‚±‚ÌŒã‚·‚®‰ğ•ú‚³‚ê‚é‚Ì‚Å dereference ‚µ‚Ä‚¨‚­
+			//ã“ã®å¾Œã™ãè§£æ”¾ã•ã‚Œã‚‹ã®ã§ dereference ã—ã¦ãŠã
 			bool deref = true;
 			/*
 			if (auto refOpt = AsOpt<ObjectReference>(result))
@@ -1356,9 +1356,9 @@ namespace cgl
 			const Evaluated cond = pEnv->expand(boost::apply_visitor(*this, if_statement.cond_expr));
 			if (!IsType<bool>(cond))
 			{
-				//ğŒ‚Í•K‚¸ƒu[ƒ‹’l‚Å‚ ‚é•K—v‚ª‚ ‚é
+				//æ¡ä»¶ã¯å¿…ãšãƒ–ãƒ¼ãƒ«å€¤ã§ã‚ã‚‹å¿…è¦ãŒã‚ã‚‹
 				//std::cerr << "Error(" << __LINE__ << ")\n";
-				CGL_Error("ğŒ‚Í•K‚¸ƒu[ƒ‹’l‚Å‚ ‚é•K—v‚ª‚ ‚é");
+				CGL_Error("æ¡ä»¶ã¯å¿…ãšãƒ–ãƒ¼ãƒ«å€¤ã§ã‚ã‚‹å¿…è¦ãŒã‚ã‚‹");
 			}
 
 			if (As<bool>(cond))
@@ -1373,9 +1373,9 @@ namespace cgl
 				return RValue(result);
 			}
 
-			//else®‚ª–³‚¢ƒP[ƒX‚Å cond = False ‚Å‚ ‚Á‚½‚çˆê‰Œx‚ğo‚·
+			//elseå¼ãŒç„¡ã„ã‚±ãƒ¼ã‚¹ã§ cond = False ã§ã‚ã£ãŸã‚‰ä¸€å¿œè­¦å‘Šã‚’å‡ºã™
 			//std::cerr << "Warning(" << __LINE__ << ")\n";
-			CGL_WarnLog("else®‚ª–³‚¢ƒP[ƒX‚Å cond = False ‚Å‚ ‚Á‚½");
+			CGL_WarnLog("elseå¼ãŒç„¡ã„ã‚±ãƒ¼ã‚¹ã§ cond = False ã§ã‚ã£ãŸ");
 			return RValue(0);
 		}
 
@@ -1386,9 +1386,9 @@ namespace cgl
 			const Evaluated startVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeStart));
 			const Evaluated endVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeEnd));
 
-			//startVal <= endVal ‚È‚ç 1
-			//startVal > endVal ‚È‚ç -1
-			//‚ğ“KØ‚ÈŒ^‚É•ÏŠ·‚µ‚Ä•Ô‚·
+			//startVal <= endVal ãªã‚‰ 1
+			//startVal > endVal ãªã‚‰ -1
+			//ã‚’é©åˆ‡ãªå‹ã«å¤‰æ›ã—ã¦è¿”ã™
 			const auto calcStepValue = [&](const Evaluated& a, const Evaluated& b)->boost::optional<std::pair<Evaluated, bool>>
 			{
 				const bool a_IsInt = IsType<int>(a);
@@ -1399,22 +1399,22 @@ namespace cgl
 
 				if (!((a_IsInt || a_IsDouble) && (b_IsInt || b_IsDouble)))
 				{
-					//ƒGƒ‰[Fƒ‹[ƒv‚ÌƒŒƒ“ƒW‚ª•s³‚ÈŒ^i®”‚©À”‚É•]‰¿‚Å‚«‚é•K—v‚ª‚ ‚éj
+					//ã‚¨ãƒ©ãƒ¼ï¼šãƒ«ãƒ¼ãƒ—ã®ãƒ¬ãƒ³ã‚¸ãŒä¸æ­£ãªå‹ï¼ˆæ•´æ•°ã‹å®Ÿæ•°ã«è©•ä¾¡ã§ãã‚‹å¿…è¦ãŒã‚ã‚‹ï¼‰
 					//std::cerr << "Error(" << __LINE__ << ")\n";
 					//return boost::none;
-					CGL_Error("ƒ‹[ƒv‚ÌƒŒƒ“ƒW‚ª•s³‚ÈŒ^i®”‚©À”‚É•]‰¿‚Å‚«‚é•K—v‚ª‚ ‚éj");
+					CGL_Error("ãƒ«ãƒ¼ãƒ—ã®ãƒ¬ãƒ³ã‚¸ãŒä¸æ­£ãªå‹ï¼ˆæ•´æ•°ã‹å®Ÿæ•°ã«è©•ä¾¡ã§ãã‚‹å¿…è¦ãŒã‚ã‚‹ï¼‰");
 				}
 
 				const bool result_IsDouble = a_IsDouble || b_IsDouble;
 				//const auto lessEq = LessEqual(a, b, *pEnv);
 				//if (!IsType<bool>(lessEq))
 				//{
-				//	//ƒGƒ‰[Fa‚Æb‚Ì”äŠr‚É¸”s‚µ‚½
-				//	//ˆê‰Šm‚©‚ß‚Ä‚¢‚é‚¾‚¯‚Å‚±‚±‚ğ’Ê‚é‚±‚Æ‚Í‚È‚¢‚Í‚¸
-				//	//LessEqual‚ÌÀ‘•ƒ~ƒXH
+				//	//ã‚¨ãƒ©ãƒ¼ï¼šaã¨bã®æ¯”è¼ƒã«å¤±æ•—ã—ãŸ
+				//	//ä¸€å¿œç¢ºã‹ã‚ã¦ã„ã‚‹ã ã‘ã§ã“ã“ã‚’é€šã‚‹ã“ã¨ã¯ãªã„ã¯ãš
+				//	//LessEqualã®å®Ÿè£…ãƒŸã‚¹ï¼Ÿ
 				//	//std::cerr << "Error(" << __LINE__ << ")\n";
 				//	//return boost::none;
-				//	CGL_Error("LessEqual‚ÌÀ‘•ƒ~ƒXH");
+				//	CGL_Error("LessEqualã®å®Ÿè£…ãƒŸã‚¹ï¼Ÿ");
 				//}
 
 				//const bool isInOrder = As<bool>(lessEq);
@@ -1450,7 +1450,7 @@ namespace cgl
 				const Evaluated result = LessEqual(loopCount, endVal, *pEnv);
 				if (!IsType<bool>(result))
 				{
-					CGL_Error("‚±‚±‚ğ’Ê‚é‚±‚Æ‚Í‚È‚¢‚Í‚¸");
+					CGL_Error("ã“ã“ã‚’é€šã‚‹ã“ã¨ã¯ãªã„ã¯ãš");
 				}
 
 				return As<bool>(result) == isInOrder;
@@ -1459,7 +1459,7 @@ namespace cgl
 			const auto stepOrder = calcStepValue(startVal, endVal);
 			if (!stepOrder)
 			{
-				CGL_Error("ƒ‹[ƒv‚ÌƒŒƒ“ƒW‚ª•s³");
+				CGL_Error("ãƒ«ãƒ¼ãƒ—ã®ãƒ¬ãƒ³ã‚¸ãŒä¸æ­£");
 			}
 
 			const Evaluated step = stepOrder.value().first;
@@ -1476,10 +1476,10 @@ namespace cgl
 				const auto isLoopContinuesOpt = loopContinues(loopCountValue, isInOrder);
 				if (!isLoopContinuesOpt)
 				{
-					CGL_Error("‚±‚±‚ğ’Ê‚é‚±‚Æ‚Í‚È‚¢‚Í‚¸");
+					CGL_Error("ã“ã“ã‚’é€šã‚‹ã“ã¨ã¯ãªã„ã¯ãš");
 				}
 
-				//ƒ‹[ƒv‚ÌŒp‘±ğŒ‚ğ–‚½‚³‚È‚©‚Á‚½‚Ì‚Å”²‚¯‚é
+				//ãƒ«ãƒ¼ãƒ—ã®ç¶™ç¶šæ¡ä»¶ã‚’æº€ãŸã•ãªã‹ã£ãŸã®ã§æŠœã‘ã‚‹
 				if (!isLoopContinuesOpt.value())
 				{
 					break;
@@ -1489,7 +1489,7 @@ namespace cgl
 
 				loopResult = pEnv->expand(boost::apply_visitor(*this, forExpression.doExpr));
 
-				//ƒ‹[ƒvƒJƒEƒ“ƒ^‚ÌXV
+				//ãƒ«ãƒ¼ãƒ—ã‚«ã‚¦ãƒ³ã‚¿ã®æ›´æ–°
 				loopCountValue = Add(loopCountValue, step, *pEnv);
 			}
 
@@ -1546,8 +1546,8 @@ namespace cgl
 
 			std::vector<Identifier> keyList;
 			/*
-			ƒŒƒR[ƒh“à‚Ì:®@“¯‚¶ŠK‘w‚É“¯–¼‚Ì:®‚ª‚ ‚éê‡‚Í‚»‚ê‚Ö‚ÌÄ‘ã“üA–³‚¢ê‡‚ÍV‚½‚É’è‹`
-			ƒŒƒR[ƒh“à‚Ì=®@“¯‚¶ŠK‘w‚É“¯–¼‚Ì:®‚ª‚ ‚éê‡‚Í‚»‚ê‚Ö‚ÌÄ‘ã“üA–³‚¢ê‡‚Í‚»‚ÌƒXƒR[ƒv“à‚Å‚Ì‚İ—LŒø‚È’l‚ÌƒGƒCƒŠƒAƒX‚Æ‚µ‚Ä’è‹`iƒXƒR[ƒv‚ğ”²‚¯‚½‚çŒ³‚É–ß‚éàÕ•Áj
+			ãƒ¬ã‚³ãƒ¼ãƒ‰å†…ã®:å¼ã€€åŒã˜éšå±¤ã«åŒåã®:å¼ãŒã‚ã‚‹å ´åˆã¯ãã‚Œã¸ã®å†ä»£å…¥ã€ç„¡ã„å ´åˆã¯æ–°ãŸã«å®šç¾©
+			ãƒ¬ã‚³ãƒ¼ãƒ‰å†…ã®=å¼ã€€åŒã˜éšå±¤ã«åŒåã®:å¼ãŒã‚ã‚‹å ´åˆã¯ãã‚Œã¸ã®å†ä»£å…¥ã€ç„¡ã„å ´åˆã¯ãã®ã‚¹ã‚³ãƒ¼ãƒ—å†…ã§ã®ã¿æœ‰åŠ¹ãªå€¤ã®ã‚¨ã‚¤ãƒªã‚¢ã‚¹ã¨ã—ã¦å®šç¾©ï¼ˆã‚¹ã‚³ãƒ¼ãƒ—ã‚’æŠœã‘ãŸã‚‰å…ƒã«æˆ»ã‚‹â‰’é®è”½ï¼‰
 			*/
 
 			for (size_t i = 0; i < recordConsractor.exprs.size(); ++i)
@@ -1581,7 +1581,7 @@ namespace cgl
 				CGL_DebugLog("Result: ");
 				printEvaluated(value, pEnv);
 
-				//ƒL[‚É•R‚Ã‚¯‚ç‚ê‚é’l‚Í‚±‚ÌŒã‚Ìè‘±‚«‚ÅXV‚³‚ê‚é‚©‚à‚µ‚ê‚È‚¢‚Ì‚ÅA¡‚Í–¼‘O‚¾‚¯T‚¦‚Ä‚¨‚¢‚ÄŒã‚Å’l‚ğQÆ‚·‚é
+				//ã‚­ãƒ¼ã«ç´ã¥ã‘ã‚‰ã‚Œã‚‹å€¤ã¯ã“ã®å¾Œã®æ‰‹ç¶šãã§æ›´æ–°ã•ã‚Œã‚‹ã‹ã‚‚ã—ã‚Œãªã„ã®ã§ã€ä»Šã¯åå‰ã ã‘æ§ãˆã¦ãŠã„ã¦å¾Œã§å€¤ã‚’å‚ç…§ã™ã‚‹
 				if (auto keyValOpt = AsOpt<KeyValue>(value))
 				{
 					const auto keyVal = keyValOpt.value();
@@ -1591,10 +1591,10 @@ namespace cgl
 
 					//Assign(keyVal.name, keyVal.value, *pEnv);
 
-					//¯•Êq‚ÍEvaluated‚©‚ç‚Í‚¸‚µ‚½‚Ì‚ÅA¯•Êq‚É‘Î‚µ‚Ä’¼Ú‘ã“ü‚ğs‚¤‚±‚Æ‚Í‚Å‚«‚È‚­‚È‚Á‚½
+					//è­˜åˆ¥å­ã¯Evaluatedã‹ã‚‰ã¯ãšã—ãŸã®ã§ã€è­˜åˆ¥å­ã«å¯¾ã—ã¦ç›´æ¥ä»£å…¥ã‚’è¡Œã†ã“ã¨ã¯ã§ããªããªã£ãŸ
 					//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 
-					//‚µ‚½‚ª‚Á‚ÄAˆê“x‘ã“ü®‚ğì‚Á‚Ä‚©‚ç‚»‚ê‚ğ•]‰¿‚·‚é
+					//ã—ãŸãŒã£ã¦ã€ä¸€åº¦ä»£å…¥å¼ã‚’ä½œã£ã¦ã‹ã‚‰ãã‚Œã‚’è©•ä¾¡ã™ã‚‹
 					//Expr exprVal = RValue(keyVal.value);
 					Expr exprVal = LRValue(keyVal.value);
 					Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
@@ -1607,7 +1607,7 @@ namespace cgl
 				else if (auto declSatOpt = AsOpt<DeclSat>(value))
 				{
 					//record.problem.addConstraint(declSatOpt.value().expr);
-					//‚±‚±‚ÅƒNƒ[ƒWƒƒ‚ğì‚é•K—v‚ª‚ ‚é
+					//ã“ã“ã§ã‚¯ãƒ­ãƒ¼ã‚¸ãƒ£ã‚’ä½œã‚‹å¿…è¦ãŒã‚ã‚‹
 					ClosureMaker closureMaker(pEnv, {});
 					const Expr closedSatExpr = boost::apply_visitor(closureMaker, declSatOpt.value().expr);
 					record.problem.addConstraint(closedSatExpr);
@@ -1623,7 +1623,7 @@ namespace cgl
 						const Expr closedFreeExpr = boost::apply_visitor(closureMaker, freeExpr);
 						if (!IsType<Accessor>(closedFreeExpr))
 						{
-							CGL_Error("‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸");
+							CGL_Error("ã“ã“ã¯é€šã‚‰ãªã„ã¯ãš");
 						}
 
 						record.freeVariables.push_back(As<Accessor>(closedFreeExpr));
@@ -1631,10 +1631,10 @@ namespace cgl
 				}
 				*/
 
-				//value‚Í¡‚Í‰E•Ó’l‚Ì‚İ‚É‚È‚Á‚Ä‚¢‚é
-				//TODO: ‚à‚¤ˆê“xl@‚·‚é
+				//valueã¯ä»Šã¯å³è¾ºå€¤ã®ã¿ã«ãªã£ã¦ã„ã‚‹
+				//TODO: ã‚‚ã†ä¸€åº¦è€ƒå¯Ÿã™ã‚‹
 				/*
-				//®‚Ì•]‰¿Œ‹‰Ê‚ª¶•Ó’l‚Ìê‡‚Í’†g‚àŒ©‚ÄA‚»‚ê‚ªƒ}ƒNƒ‚Å‚ ‚ê‚Î’†g‚ğ“WŠJ‚µ‚½Œ‹‰Ê‚ğ®‚Ì•]‰¿Œ‹‰Ê‚Æ‚·‚é
+				//å¼ã®è©•ä¾¡çµæœãŒå·¦è¾ºå€¤ã®å ´åˆã¯ä¸­èº«ã‚‚è¦‹ã¦ã€ãã‚ŒãŒãƒã‚¯ãƒ­ã§ã‚ã‚Œã°ä¸­èº«ã‚’å±•é–‹ã—ãŸçµæœã‚’å¼ã®è©•ä¾¡çµæœã¨ã™ã‚‹
 				if (IsLValue(value))
 				{
 					const Evaluated resultValue = pEnv->expandRef(value);
@@ -1645,7 +1645,7 @@ namespace cgl
 					}
 				}
 
-				//“r’†‚ÅƒWƒƒƒ“ƒv–½—ß‚ğ“Ç‚ñ‚¾‚ç‘¦À‚É•]‰¿‚ğI—¹‚·‚é
+				//é€”ä¸­ã§ã‚¸ãƒ£ãƒ³ãƒ—å‘½ä»¤ã‚’èª­ã‚“ã ã‚‰å³åº§ã«è©•ä¾¡ã‚’çµ‚äº†ã™ã‚‹
 				if (IsType<Jump>(value))
 				{
 					break;
@@ -1676,14 +1676,14 @@ namespace cgl
 				const auto& freeVariables = record.freeVariables;
 
 				{
-					//record.freeVariables‚ğ‚à‚Æ‚Érecord.freeVariableRefs‚ğ\’z
-					//‘S‚Ä‚ÌƒAƒNƒZƒbƒT‚ğ“WŠJ‚µAŠe•Ï”‚ÌQÆƒŠƒXƒg‚ğì¬‚·‚é
+					//record.freeVariablesã‚’ã‚‚ã¨ã«record.freeVariableRefsã‚’æ§‹ç¯‰
+					//å…¨ã¦ã®ã‚¢ã‚¯ã‚»ãƒƒã‚µã‚’å±•é–‹ã—ã€å„å¤‰æ•°ã®å‚ç…§ãƒªã‚¹ãƒˆã‚’ä½œæˆã™ã‚‹
 					freeVariableRefs.clear();
 					for (const auto& accessor : record.freeVariables)
 					{
 						const Address refAddress = pEnv->evalReference(accessor);
 						//const Address refAddress = accessor;
-						//’Pˆê‚Ì’l or List or Record
+						//å˜ä¸€ã®å€¤ or List or Record
 						if (refAddress.isValid())
 						{
 							const auto addresses = pEnv->expandReferences(refAddress);
@@ -1697,25 +1697,25 @@ namespace cgl
 
 					CGL_DebugLog(std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
 
-					//ˆê“xsat®‚Ì’†g‚ğ“WŠJ‚µA
-					//Accessor‚ğ“WŠJ‚·‚évisitoriExpr -> Exprj‚ğì‚èAÀs‚·‚é
-					//‚»‚ÌŒãSat2Expr‚ÉŠ|‚¯‚é
-					//Expr2SatExpr‚Å‚Í’P€‰‰ZqE“ñ€‰‰Zq‚Ì•]‰¿‚ÌÛA’†g‚ğ‚İ‚Ä’è”‚Å‚ ‚Á‚½‚çô‚İ‚Şˆ—‚ğs‚¤
+					//ä¸€åº¦satå¼ã®ä¸­èº«ã‚’å±•é–‹ã—ã€
+					//Accessorã‚’å±•é–‹ã™ã‚‹visitorï¼ˆExpr -> Exprï¼‰ã‚’ä½œã‚Šã€å®Ÿè¡Œã™ã‚‹
+					//ãã®å¾ŒSat2Exprã«æ›ã‘ã‚‹
+					//Expr2SatExprã§ã¯å˜é …æ¼”ç®—å­ãƒ»äºŒé …æ¼”ç®—å­ã®è©•ä¾¡ã®éš›ã€ä¸­èº«ã‚’ã¿ã¦å®šæ•°ã§ã‚ã£ãŸã‚‰ç•³ã¿è¾¼ã‚€å‡¦ç†ã‚’è¡Œã†
 
-					//sat‚ÌŠÖ”ŒÄ‚Ño‚µ‚ğ‘S‚Ä®‚É“WŠJ‚·‚é
+					//satã®é–¢æ•°å‘¼ã³å‡ºã—ã‚’å…¨ã¦å¼ã«å±•é–‹ã™ã‚‹
 					//{
 					//	//problem.candidateExpr = pEnv->expandFunction(problem.candidateExpr.value());
 					//	Expr ee = pEnv->expandFunction(problem.candidateExpr.value());
 					//	problem.candidateExpr = ee;
 					//}
 
-					//“WŠJ‚³‚ê‚½®‚ğSatExpr‚É•ÏŠ·‚·‚é
-					//{sat‚Ì®‚ÉŠÜ‚Ü‚ê‚é•Ï”‚Ì“àAfreeVariableRefs‚É“ü‚Á‚Ä‚¢‚È‚¢‚à‚Ì‚Í‘¦‚É•]‰¿‚µ‚Äô‚İ‚Ş
-					//freeVariableRefs‚É“ü‚Á‚Ä‚¢‚é‚à‚Ì‚ÍÅ“K‰»‘ÎÛ‚Ì•Ï”‚Æ‚µ‚Ädata‚É’Ç‰Á‚µ‚Ä‚¢‚­
-					//{freeVariableRefs‚Ì•Ï”‚É‚Â‚¢‚Ä‚Ísat®‚ÉoŒ»‚µ‚½‚©‚Ç‚¤‚©‚ğ‹L˜^‚µíœ‚·‚é
+					//å±•é–‹ã•ã‚ŒãŸå¼ã‚’SatExprã«å¤‰æ›ã™ã‚‹
+					//ï¼‹satã®å¼ã«å«ã¾ã‚Œã‚‹å¤‰æ•°ã®å†…ã€freeVariableRefsã«å…¥ã£ã¦ã„ãªã„ã‚‚ã®ã¯å³æ™‚ã«è©•ä¾¡ã—ã¦ç•³ã¿è¾¼ã‚€
+					//freeVariableRefsã«å…¥ã£ã¦ã„ã‚‹ã‚‚ã®ã¯æœ€é©åŒ–å¯¾è±¡ã®å¤‰æ•°ã¨ã—ã¦dataã«è¿½åŠ ã—ã¦ã„ã
+					//ï¼‹freeVariableRefsã®å¤‰æ•°ã«ã¤ã„ã¦ã¯satå¼ã«å‡ºç¾ã—ãŸã‹ã©ã†ã‹ã‚’è¨˜éŒ²ã—å‰Šé™¤ã™ã‚‹
 					problem.constructConstraint(pEnv, record.freeVariableRefs);
 
-					//İ’è‚³‚ê‚½data‚ªQÆ‚µ‚Ä‚¢‚é’l‚ğŒ©‚Ä‰Šú’l‚ğİ’è‚·‚é
+					//è¨­å®šã•ã‚ŒãŸdataãŒå‚ç…§ã—ã¦ã„ã‚‹å€¤ã‚’è¦‹ã¦åˆæœŸå€¤ã‚’è¨­å®šã™ã‚‹
 					if (!problem.initializeData(pEnv))
 					{
 						return LRValue(0);
@@ -1726,7 +1726,7 @@ namespace cgl
 					std::cout << (std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size())) << std::endl;
 				}
 
-				//DeclFree‚ÉoŒ»‚·‚éQÆ‚É‚Â‚¢‚ÄA‚»‚ÌƒCƒ“ƒfƒbƒNƒX -> Problem‚Ìƒf[ƒ^‚ÌƒCƒ“ƒfƒbƒNƒX‚ğæ“¾‚·‚éƒ}ƒbƒv
+				//DeclFreeã«å‡ºç¾ã™ã‚‹å‚ç…§ã«ã¤ã„ã¦ã€ãã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ -> Problemã®ãƒ‡ãƒ¼ã‚¿ã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã‚’å–å¾—ã™ã‚‹ãƒãƒƒãƒ—
 				std::unordered_map<int, int> variable2Data;
 				for (size_t freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
 				{
@@ -1752,13 +1752,13 @@ namespace cgl
 						}
 					}
 
-					//DeclFree‚É‚ ‚Á‚ÄDeclSat‚É–³‚¢•Ï”‚ÍˆÓ–¡‚ª‚È‚¢B
-					//’P‚É–³‹‚µ‚Ä‚à—Ç‚¢‚ªA‹°‚ç‚­“ü—Í‚Ìƒ~ƒX‚Æv‚í‚ê‚é‚Ì‚ÅŒx‚ğo‚·
+					//DeclFreeã«ã‚ã£ã¦DeclSatã«ç„¡ã„å¤‰æ•°ã¯æ„å‘³ãŒãªã„ã€‚
+					//å˜ã«ç„¡è¦–ã—ã¦ã‚‚è‰¯ã„ãŒã€æã‚‰ãå…¥åŠ›ã®ãƒŸã‚¹ã¨æ€ã‚ã‚Œã‚‹ã®ã§è­¦å‘Šã‚’å‡ºã™
 					if (!found)
 					{
-						//std::cerr << "Error(" << __LINE__ << "):free‚Éw’è‚³‚ê‚½•Ï”‚ª–³Œø‚Å‚·B\n";
+						//std::cerr << "Error(" << __LINE__ << "):freeã«æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°ãŒç„¡åŠ¹ã§ã™ã€‚\n";
 						//return 0;
-						CGL_WarnLog("free‚Éw’è‚³‚ê‚½•Ï”‚ª–³Œø‚Å‚·");
+						CGL_WarnLog("freeã«æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°ãŒç„¡åŠ¹ã§ã™");
 					}
 				}
 				CGL_DebugLog("End Record MakeMap");
@@ -1908,7 +1908,7 @@ namespace cgl
 				boost::optional<const Evaluated&> originalOpt = pEnv->dereference(pEnv->findAddress(opt.value()));
 				if (!originalOpt)
 				{
-					//ƒGƒ‰[F–¢’è‹`‚ÌƒŒƒR[ƒh‚ğQÆ‚µ‚æ‚¤‚Æ‚µ‚½
+					//ã‚¨ãƒ©ãƒ¼ï¼šæœªå®šç¾©ã®ãƒ¬ã‚³ãƒ¼ãƒ‰ã‚’å‚ç…§ã—ã‚ˆã†ã¨ã—ãŸ
 					std::cerr << "Error(" << __LINE__ << ")\n";
 					return 0;
 				}
@@ -1916,7 +1916,7 @@ namespace cgl
 				recordOpt = AsOpt<Record>(originalOpt.value());
 				if (!recordOpt)
 				{
-					//ƒGƒ‰[F¯•Êq‚Ìw‚·ƒIƒuƒWƒFƒNƒg‚ªƒŒƒR[ƒhŒ^‚Å‚Í‚È‚¢
+					//ã‚¨ãƒ©ãƒ¼ï¼šè­˜åˆ¥å­ã®æŒ‡ã™ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒãƒ¬ã‚³ãƒ¼ãƒ‰å‹ã§ã¯ãªã„
 					std::cerr << "Error(" << __LINE__ << ")\n";
 					return 0;
 				}
@@ -1940,12 +1940,12 @@ namespace cgl
 			}
 
 			/*
-			a{}‚ğ•]‰¿‚·‚éè‡
-			(1) ƒIƒŠƒWƒiƒ‹‚ÌƒŒƒR[ƒha‚ÌƒNƒ[ƒ“(a')‚ğì‚é
-			(2) a'‚ÌŠeƒL[‚Æ’l‚É‘Î‚·‚éQÆ‚ğƒ[ƒJƒ‹ƒXƒR[ƒv‚É’Ç‰Á‚·‚é
-			(3) ’Ç‰Á‚·‚éƒŒƒR[ƒh‚Ì’†g‚ğ•]‰¿‚·‚é
-			(4) ƒ[ƒJƒ‹ƒXƒR[ƒv‚ÌQÆ’l‚ğ“Ç‚İƒŒƒR[ƒh‚Éã‘‚«‚·‚é //ƒŠƒXƒgƒAƒNƒZƒX‚È‚Ç‚Ì•ÏXˆ—
-			(5) ƒŒƒR[ƒh‚ğƒ}[ƒW‚·‚é //ƒ[ƒJƒ‹•Ï”‚È‚Ç‚Ì•ÏXˆ—
+			a{}ã‚’è©•ä¾¡ã™ã‚‹æ‰‹é †
+			(1) ã‚ªãƒªã‚¸ãƒŠãƒ«ã®ãƒ¬ã‚³ãƒ¼ãƒ‰aã®ã‚¯ãƒ­ãƒ¼ãƒ³(a')ã‚’ä½œã‚‹
+			(2) a'ã®å„ã‚­ãƒ¼ã¨å€¤ã«å¯¾ã™ã‚‹å‚ç…§ã‚’ãƒ­ãƒ¼ã‚«ãƒ«ã‚¹ã‚³ãƒ¼ãƒ—ã«è¿½åŠ ã™ã‚‹
+			(3) è¿½åŠ ã™ã‚‹ãƒ¬ã‚³ãƒ¼ãƒ‰ã®ä¸­èº«ã‚’è©•ä¾¡ã™ã‚‹
+			(4) ãƒ­ãƒ¼ã‚«ãƒ«ã‚¹ã‚³ãƒ¼ãƒ—ã®å‚ç…§å€¤ã‚’èª­ã¿ãƒ¬ã‚³ãƒ¼ãƒ‰ã«ä¸Šæ›¸ãã™ã‚‹ //ãƒªã‚¹ãƒˆã‚¢ã‚¯ã‚»ã‚¹ãªã©ã®å¤‰æ›´å‡¦ç†
+			(5) ãƒ¬ã‚³ãƒ¼ãƒ‰ã‚’ãƒãƒ¼ã‚¸ã™ã‚‹ //ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ãªã©ã®å¤‰æ›´å‡¦ç†
 			*/
 
 			//(1)
@@ -1962,7 +1962,7 @@ namespace cgl
 
 			if (temporaryRecord)
 			{
-				CGL_Error("ƒŒƒR[ƒhŠg’£‚É¸”s");
+				CGL_Error("ãƒ¬ã‚³ãƒ¼ãƒ‰æ‹¡å¼µã«å¤±æ•—");
 			}
 			temporaryRecord = clone;
 
@@ -2015,7 +2015,7 @@ namespace cgl
 
 				CGL_DebugLog("");
 
-				//TODO:‚±‚±‚Å§–ñˆ—‚ğs‚¤
+				//TODO:ã“ã“ã§åˆ¶ç´„å‡¦ç†ã‚’è¡Œã†
 
 				//pEnv->pop();
 				pEnv->exitScope();
@@ -2032,9 +2032,9 @@ namespace cgl
 			pEnv->exitScope();
 			*/
 
-			//‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸B{}‚ÅˆÍ‚Ü‚ê‚½®‚ğ•]‰¿‚µ‚½Œ‹‰Ê‚ªƒŒƒR[ƒh‚Å‚È‚©‚Á‚½B
+			//ã“ã“ã¯é€šã‚‰ãªã„ã¯ãšã€‚{}ã§å›²ã¾ã‚ŒãŸå¼ã‚’è©•ä¾¡ã—ãŸçµæœãŒãƒ¬ã‚³ãƒ¼ãƒ‰ã§ãªã‹ã£ãŸã€‚
 			//std::cerr << "Error(" << __LINE__ << ")\n";
-			CGL_Error("‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸");
+			CGL_Error("ã“ã“ã¯é€šã‚‰ãªã„ã¯ãš");
 			return RValue(0);
 		}
 
@@ -2042,19 +2042,19 @@ namespace cgl
 		{
 			//std::cout << "DeclSat:" << std::endl;
 
-			//‚±‚±‚ÅƒNƒ[ƒWƒƒ‚ğì‚é•K—v‚ª‚ ‚é
+			//ã“ã“ã§ã‚¯ãƒ­ãƒ¼ã‚¸ãƒ£ã‚’ä½œã‚‹å¿…è¦ãŒã‚ã‚‹
 			ClosureMaker closureMaker(pEnv, {});
 			const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
 			//innerSatClosures.push_back(closedSatExpr);
 
 			pEnv->enterScope();
-			//DeclSat©‘Ì‚ÍŒ»İ§–ñ‚ª–‚½‚³‚ê‚Ä‚¢‚é‚©‚Ç‚¤‚©‚ğ•]‰¿Œ‹‰Ê‚Æ‚µ‚Ä•Ô‚·
+			//DeclSatè‡ªä½“ã¯ç¾åœ¨åˆ¶ç´„ãŒæº€ãŸã•ã‚Œã¦ã„ã‚‹ã‹ã©ã†ã‹ã‚’è©•ä¾¡çµæœã¨ã—ã¦è¿”ã™
 			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, closedSatExpr));
 			pEnv->exitScope();
 
 			if (currentRecords.empty())
 			{
-				CGL_Error("satéŒ¾‚ÍƒŒƒR[ƒh‚Ì’†‚É‚µ‚©‘‚­‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ");
+				CGL_Error("satå®£è¨€ã¯ãƒ¬ã‚³ãƒ¼ãƒ‰ã®ä¸­ã«ã—ã‹æ›¸ãã“ã¨ãŒã§ãã¾ã›ã‚“");
 			}
 
 			currentRecords.top().get().problem.addConstraint(closedSatExpr);
@@ -2071,7 +2071,7 @@ namespace cgl
 				//std::cout << "  accessor:" << std::endl;
 				if (currentRecords.empty())
 				{
-					CGL_Error("varéŒ¾‚ÍƒŒƒR[ƒh‚Ì’†‚É‚µ‚©‘‚­‚±‚Æ‚ª‚Å‚«‚Ü‚¹‚ñ");
+					CGL_Error("varå®£è¨€ã¯ãƒ¬ã‚³ãƒ¼ãƒ‰ã®ä¸­ã«ã—ã‹æ›¸ãã“ã¨ãŒã§ãã¾ã›ã‚“");
 				}
 
 				ClosureMaker closureMaker(pEnv, {});
@@ -2091,12 +2091,12 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error("varéŒ¾‚Éw’è‚³‚ê‚½•Ï”‚ª–³Œø‚Å‚·");
+					CGL_Error("varå®£è¨€ã«æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°ãŒç„¡åŠ¹ã§ã™");
 				}
 				/*const LRValue result = boost::apply_visitor(*this, expr);
 				if (!result.isLValue())
 				{
-					CGL_Error("varéŒ¾‚Éw’è‚³‚ê‚½•Ï”‚Í–³Œø‚Å‚·");
+					CGL_Error("varå®£è¨€ã«æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°ã¯ç„¡åŠ¹ã§ã™");
 				}*/
 
 				//currentRecords.top().get().freeVariables.push_back(result.address());
@@ -2129,7 +2129,7 @@ namespace cgl
 			}
 			else
 			{
-				//ƒGƒ‰[F¯•Êq‚©ƒŠƒeƒ‰ƒ‹ˆÈŠOi•]‰¿Œ‹‰Ê‚Æ‚µ‚ÄƒIƒuƒWƒFƒNƒg‚ğ•Ô‚·‚æ‚¤‚È®j‚Ö‚ÌƒAƒNƒZƒX‚É‚Í–¢‘Î‰
+				//ã‚¨ãƒ©ãƒ¼ï¼šè­˜åˆ¥å­ã‹ãƒªãƒ†ãƒ©ãƒ«ä»¥å¤–ï¼ˆè©•ä¾¡çµæœã¨ã—ã¦ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’è¿”ã™ã‚ˆã†ãªå¼ï¼‰ã¸ã®ã‚¢ã‚¯ã‚»ã‚¹ã«ã¯æœªå¯¾å¿œ
 				std::cerr << "Error(" << __LINE__ << ")\n";
 				return 0;
 			}
@@ -2157,7 +2157,7 @@ namespace cgl
 			}
 			else
 			{
-				//ƒGƒ‰[F¯•Êq‚©ƒŠƒeƒ‰ƒ‹ˆÈŠOi•]‰¿Œ‹‰Ê‚Æ‚µ‚ÄƒIƒuƒWƒFƒNƒg‚ğ•Ô‚·‚æ‚¤‚È®j‚Ö‚ÌƒAƒNƒZƒX‚É‚Í–¢‘Î‰
+				//ã‚¨ãƒ©ãƒ¼ï¼šè­˜åˆ¥å­ã‹ãƒªãƒ†ãƒ©ãƒ«ä»¥å¤–ï¼ˆè©•ä¾¡çµæœã¨ã—ã¦ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’è¿”ã™ã‚ˆã†ãªå¼ï¼‰ã¸ã®ã‚¢ã‚¯ã‚»ã‚¹ã«ã¯æœªå¯¾å¿œ
 				std::cerr << "Error(" << __LINE__ << ")\n";
 				return 0;
 			}
@@ -2185,7 +2185,7 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error("ƒAƒNƒZƒbƒT‚Ìƒwƒbƒh‚Ì•]‰¿Œ‹‰Ê‚ª•s³");
+					CGL_Error("ã‚¢ã‚¯ã‚»ãƒƒã‚µã®ãƒ˜ãƒƒãƒ‰ã®è©•ä¾¡çµæœãŒä¸æ­£");
 				}
 			}
 
@@ -2194,7 +2194,7 @@ namespace cgl
 				boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(address);
 				if (!objOpt)
 				{
-					CGL_Error("QÆƒGƒ‰[");
+					CGL_Error("å‚ç…§ã‚¨ãƒ©ãƒ¼");
 				}
 
 				const Evaluated& objRef = objOpt.value();
@@ -2205,7 +2205,7 @@ namespace cgl
 
 					if (!IsType<List>(objRef))
 					{
-						CGL_Error("ƒIƒuƒWƒFƒNƒg‚ªƒŠƒXƒg‚Å‚È‚¢");
+						CGL_Error("ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒãƒªã‚¹ãƒˆã§ãªã„");
 					}
 
 					const List& list = As<const List&>(objRef);
@@ -2216,21 +2216,21 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error("list[index] ‚Ì index ‚ª int Œ^‚Å‚È‚¢");
+						CGL_Error("list[index] ã® index ãŒ int å‹ã§ãªã„");
 					}
 				}
 				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
 				{
 					if (!IsType<Record>(objRef))
 					{
-						CGL_Error("ƒIƒuƒWƒFƒNƒg‚ªƒŒƒR[ƒh‚Å‚È‚¢");
+						CGL_Error("ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒãƒ¬ã‚³ãƒ¼ãƒ‰ã§ãªã„");
 					}
 
 					const Record& record = As<const Record&>(objRef);
 					auto it = record.values.find(recordAccessOpt.value().name);
 					if (it == record.values.end())
 					{
-						CGL_Error("w’è‚³‚ê‚½¯•Êq‚ªƒŒƒR[ƒh’†‚É‘¶İ‚µ‚È‚¢");
+						CGL_Error("æŒ‡å®šã•ã‚ŒãŸè­˜åˆ¥å­ãŒãƒ¬ã‚³ãƒ¼ãƒ‰ä¸­ã«å­˜åœ¨ã—ãªã„");
 					}
 
 					address = it->second;
@@ -2241,7 +2241,7 @@ namespace cgl
 
 					if (!IsType<FuncVal>(objRef))
 					{
-						CGL_Error("ƒIƒuƒWƒFƒNƒg‚ªŠÖ”‚Å‚È‚¢");
+						CGL_Error("ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒé–¢æ•°ã§ãªã„");
 					}
 
 					const FuncVal& function = As<const FuncVal&>(objRef);
@@ -2284,10 +2284,10 @@ namespace cgl
 	private:
 		std::shared_ptr<Environment> pEnv;
 		
-		//sat/varéŒ¾‚ÍŒ»İ‚ÌêŠ‚©‚çŒ©‚ÄÅ‚à“à‘¤‚ÌƒŒƒR[ƒh‚É‘Î‚µ‚Ä“K—p‚³‚ê‚é‚×‚«‚È‚Ì‚ÅA‚»‚ÌŠK‘wî•ñ‚ğƒXƒ^ƒbƒN‚Å‚Á‚Ä‚¨‚­
+		//sat/varå®£è¨€ã¯ç¾åœ¨ã®å ´æ‰€ã‹ã‚‰è¦‹ã¦æœ€ã‚‚å†…å´ã®ãƒ¬ã‚³ãƒ¼ãƒ‰ã«å¯¾ã—ã¦é©ç”¨ã•ã‚Œã‚‹ã¹ããªã®ã§ã€ãã®éšå±¤æƒ…å ±ã‚’ã‚¹ã‚¿ãƒƒã‚¯ã§æŒã£ã¦ãŠã
 		std::stack<std::reference_wrapper<Record>> currentRecords;
 
-		//ƒŒƒR[ƒhŒp³‚ğs‚¤‚ÉAƒŒƒR[ƒh‚ğì‚Á‚Ä‚©‚ç‡¬‚·‚é‚Ì‚Í“ï‚µ‚¢‚Ì‚ÅAŒÃ‚¢ƒŒƒR[ƒh‚ğŠg’£‚·‚éŒ`‚Åì‚é‚±‚Æ‚É‚·‚é
+		//ãƒ¬ã‚³ãƒ¼ãƒ‰ç¶™æ‰¿ã‚’è¡Œã†æ™‚ã«ã€ãƒ¬ã‚³ãƒ¼ãƒ‰ã‚’ä½œã£ã¦ã‹ã‚‰åˆæˆã™ã‚‹ã®ã¯é›£ã—ã„ã®ã§ã€å¤ã„ãƒ¬ã‚³ãƒ¼ãƒ‰ã‚’æ‹¡å¼µã™ã‚‹å½¢ã§ä½œã‚‹ã“ã¨ã«ã™ã‚‹
 		boost::optional<Record&> temporaryRecord;
 	};
 
@@ -2300,10 +2300,10 @@ namespace cgl
 			freeVariables(freeVariables)
 		{}
 
-		//Accessor‚©‚çObjectReference‚É•ÏŠ·‚·‚é‚Ì‚É•K—v
+		//Accessorã‹ã‚‰ObjectReferenceã«å¤‰æ›ã™ã‚‹ã®ã«å¿…è¦
 		std::shared_ptr<Environment> pEnv;
 
-		//free‚Éw’è‚³‚ê‚½•Ï”‘S‚Ä
+		//freeã«æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°å…¨ã¦
 		std::vector<Address> freeVariables;
 
 		bool operator()(const LRValue& node)
@@ -2316,7 +2316,7 @@ namespace cgl
 					return false;
 				}
 
-				CGL_Error("•s³‚È’l");
+				CGL_Error("ä¸æ­£ãªå€¤");
 			}
 
 			Address address = node.address();
@@ -2410,19 +2410,19 @@ namespace cgl
 
 		int refID_Offset;
 
-		//Accessor‚©‚çObjectReference‚É•ÏŠ·‚·‚é‚Ì‚É•K—v
+		//Accessorã‹ã‚‰ObjectReferenceã«å¤‰æ›ã™ã‚‹ã®ã«å¿…è¦
 		std::shared_ptr<Environment> pEnv;
 
-		//free‚Éw’è‚³‚ê‚½•Ï”‘S‚Ä
+		//freeã«æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°å…¨ã¦
 		std::vector<Address> freeVariables;
 
-		//free‚Éw’è‚³‚ê‚½•Ï”‚ªÀÛ‚Ésat‚ÉŒ»‚ê‚½‚©‚Ç‚¤‚©
+		//freeã«æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°ãŒå®Ÿéš›ã«satã«ç¾ã‚ŒãŸã‹ã©ã†ã‹
 		std::vector<char> usedInSat;
 
 		//FreeVariables Index -> SatReference
 		std::map<int, SatReference> satRefs;
 
-		//TODO:vector->map‚É‘‚«Š·‚¦‚é
+		//TODO:vector->mapã«æ›¸ãæ›ãˆã‚‹
 		std::vector<Address> refs;
 
 		Expr2SatExpr(int refID_Offset, std::shared_ptr<Environment> pEnv, const std::vector<Address>& freeVariables) :
@@ -2463,13 +2463,13 @@ namespace cgl
 		{
 			if (auto indexOpt = freeVariableIndex(reference))
 			{
-				//ˆÈ‘O‚ÉoŒ»‚µ‚Ä“o˜^Ï‚İ‚Ìfree•Ï”‚Í‚»‚Ì‚Ü‚Ü•Ô‚·
+				//ä»¥å‰ã«å‡ºç¾ã—ã¦ç™»éŒ²æ¸ˆã¿ã®freeå¤‰æ•°ã¯ãã®ã¾ã¾è¿”ã™
 				if (auto satRefOpt = getSatRef(reference))
 				{
 					return satRefOpt;
 				}
 
-				//‰‚ß‚ÄoŒ»‚µ‚½free•Ï”‚Í“o˜^‚µ‚Ä‚©‚ç•Ô‚·
+				//åˆã‚ã¦å‡ºç¾ã—ãŸfreeå¤‰æ•°ã¯ç™»éŒ²ã—ã¦ã‹ã‚‰è¿”ã™
 				usedInSat[indexOpt.value()] = 1;
 				SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
 				refs.push_back(reference);
@@ -2491,15 +2491,15 @@ namespace cgl
 
 				if (!address.isValid())
 				{
-					CGL_Error("¯•Êq‚ª’è‹`‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+					CGL_Error("è­˜åˆ¥å­ãŒå®šç¾©ã•ã‚Œã¦ã„ã¾ã›ã‚“");
 				}
 
-				//free•Ï”‚É‚ ‚Á‚½ê‡‚Í§–ñ—p‚ÌQÆ’l‚ğ•Ô‚·
+				//freeå¤‰æ•°ã«ã‚ã£ãŸå ´åˆã¯åˆ¶ç´„ç”¨ã®å‚ç…§å€¤ã‚’è¿”ã™
 				if (auto satRefOpt = addSatRef(address))
 				{
 					return satRefOpt.value();
 				}
-				//free•Ï”‚É‚È‚©‚Á‚½ê‡‚Í•]‰¿‚µ‚½Œ‹‰Ê‚ğ•Ô‚·
+				//freeå¤‰æ•°ã«ãªã‹ã£ãŸå ´åˆã¯è©•ä¾¡ã—ãŸçµæœã‚’è¿”ã™
 				else
 				{
 					const Evaluated evaluated = pEnv->expand(address);
@@ -2507,32 +2507,32 @@ namespace cgl
 				}
 			}
 
-			CGL_Error("‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸");
+			CGL_Error("ã“ã“ã¯é€šã‚‰ãªã„ã¯ãš");
 			return 0;
 		}
 
-		//‚±‚±‚ÉIdentifier‚ªc‚Á‚Ä‚¢‚é“_‚ÅClosureMaker‚Éƒ[ƒJƒ‹•Ï”‚¾‚Æ”»’è‚³‚ê‚½•Ï”‚Ì‚Í‚¸
+		//ã“ã“ã«IdentifierãŒæ®‹ã£ã¦ã„ã‚‹æ™‚ç‚¹ã§ClosureMakerã«ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°ã ã¨åˆ¤å®šã•ã‚ŒãŸå¤‰æ•°ã®ã¯ãš
 		Expr operator()(const Identifier& node)
 		{
 			Address address = pEnv->findAddress(node);
 			if (!address.isValid())
 			{
-				CGL_Error("¯•Êq‚ª’è‹`‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+				CGL_Error("è­˜åˆ¥å­ãŒå®šç¾©ã•ã‚Œã¦ã„ã¾ã›ã‚“");
 			}
 
-			//free•Ï”‚É‚ ‚Á‚½ê‡‚Í§–ñ—p‚ÌQÆ’l‚ğ•Ô‚·
+			//freeå¤‰æ•°ã«ã‚ã£ãŸå ´åˆã¯åˆ¶ç´„ç”¨ã®å‚ç…§å€¤ã‚’è¿”ã™
 			if (auto satRefOpt = addSatRef(address))
 			{
 				return satRefOpt.value();
 			}
-			//free•Ï”‚É‚È‚©‚Á‚½ê‡‚Í•]‰¿‚µ‚½Œ‹‰Ê‚ğ•Ô‚·
+			//freeå¤‰æ•°ã«ãªã‹ã£ãŸå ´åˆã¯è©•ä¾¡ã—ãŸçµæœã‚’è¿”ã™
 			else
 			{
 				const Evaluated evaluated = pEnv->expand(address);
 				return LRValue(evaluated);
 			}
 
-			CGL_Error("‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸");
+			CGL_Error("ã“ã“ã¯é€šã‚‰ãªã„ã¯ãš");
 			return LRValue(0);
 		}
 
@@ -2637,46 +2637,46 @@ namespace cgl
 			Address headAddress;
 			const Expr& head = node.head;
 
-			//head‚ªsat®’†‚Ìƒ[ƒJƒ‹•Ï”
+			//headãŒsatå¼ä¸­ã®ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°
 			if (IsType<Identifier>(head))
 			{
 				Address address = pEnv->findAddress(As<Identifier>(head));
 				if (!address.isValid())
 				{
-					CGL_Error("¯•Êq‚ª’è‹`‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+					CGL_Error("è­˜åˆ¥å­ãŒå®šç¾©ã•ã‚Œã¦ã„ã¾ã›ã‚“");
 				}
 
-				//head‚Í•K‚¸ Record/List/FuncVal ‚Ì‚Ç‚ê‚©‚Å‚ ‚èAdoubleŒ^‚Å‚ ‚é‚±‚Æ‚Í‚ ‚è“¾‚È‚¢B
-				//‚µ‚½‚ª‚Á‚ÄAfree•Ï”‚É‚ ‚é‚©‚Ç‚¤‚©‚Íl—¶‚¹‚¸ifree•Ï”‚Íç’·‚Éw’è‚Å‚«‚é‚Ì‚Å‚ ‚Á‚½‚Æ‚µ‚Ä‚à•Ê‚ÉƒGƒ‰[‚Å‚Í‚È‚¢jA
-				//’¼ÚEvaluated‚Æ‚µ‚Ä“WŠJ‚·‚é
+				//headã¯å¿…ãš Record/List/FuncVal ã®ã©ã‚Œã‹ã§ã‚ã‚Šã€doubleå‹ã§ã‚ã‚‹ã“ã¨ã¯ã‚ã‚Šå¾—ãªã„ã€‚
+				//ã—ãŸãŒã£ã¦ã€freeå¤‰æ•°ã«ã‚ã‚‹ã‹ã©ã†ã‹ã¯è€ƒæ…®ã›ãšï¼ˆfreeå¤‰æ•°ã¯å†—é•·ã«æŒ‡å®šã§ãã‚‹ã®ã§ã‚ã£ãŸã¨ã—ã¦ã‚‚åˆ¥ã«ã‚¨ãƒ©ãƒ¼ã§ã¯ãªã„ï¼‰ã€
+				//ç›´æ¥Evaluatedã¨ã—ã¦å±•é–‹ã™ã‚‹
 				//result.head = LRValue(address);
 				headAddress = address;
 			}
-			//head‚ªƒAƒhƒŒƒX’l
+			//headãŒã‚¢ãƒ‰ãƒ¬ã‚¹å€¤
 			else if (IsType<LRValue>(head))
 			{
 				const LRValue& headAddressValue = As<LRValue>(head);
 				if (!headAddressValue.isLValue())
 				{
-					CGL_Error("sat®’†‚ÌƒAƒNƒZƒbƒT‚Ìæ“ª•”‚ª•s³‚È’l‚Å‚·");
+					CGL_Error("satå¼ä¸­ã®ã‚¢ã‚¯ã‚»ãƒƒã‚µã®å…ˆé ­éƒ¨ãŒä¸æ­£ãªå€¤ã§ã™");
 				}
 
 				const Address address = headAddressValue.address();
 
-				//ª‚ÌIdentifier‚Æ“¯—l‚É’¼Ú“WŠJ‚·‚é
+				//â†‘ã®Identifierã¨åŒæ§˜ã«ç›´æ¥å±•é–‹ã™ã‚‹
 				//result.head = LRValue(address);
 				headAddress = address;
 			}
 			else
 			{
-				CGL_Error("sat’†‚ÌƒAƒNƒZƒbƒT‚Ìæ“ª•”‚É’Pˆê‚Ì¯•ÊqˆÈŠO‚Ì®‚ğ—p‚¢‚é‚±‚Æ‚Í‚Å‚«‚Ü‚¹‚ñ");
+				CGL_Error("satä¸­ã®ã‚¢ã‚¯ã‚»ãƒƒã‚µã®å…ˆé ­éƒ¨ã«å˜ä¸€ã®è­˜åˆ¥å­ä»¥å¤–ã®å¼ã‚’ç”¨ã„ã‚‹ã“ã¨ã¯ã§ãã¾ã›ã‚“");
 			}
 
 			Eval evaluator(pEnv);
 
 			Accessor result;
 
-			//TODO: ƒAƒNƒZƒbƒT‚Ífree•Ï”‚ğ‚½‚È‚¢ŠÔA‚»‚ê©g‚ªfree•Ï”w’è‚³‚ê‚é‚Ü‚Å‚ÌƒAƒhƒŒƒX‚ğô‚İ‚Ş
+			//TODO: ã‚¢ã‚¯ã‚»ãƒƒã‚µã¯freeå¤‰æ•°ã‚’æŒãŸãªã„é–“ã€ãã‚Œè‡ªèº«ãŒfreeå¤‰æ•°æŒ‡å®šã•ã‚Œã‚‹ã¾ã§ã®ã‚¢ãƒ‰ãƒ¬ã‚¹ã‚’ç•³ã¿è¾¼ã‚€
 			bool selfDependsOnFreeVariables = false;
 			bool childDependsOnFreeVariables = false;
 			{
@@ -2692,7 +2692,7 @@ namespace cgl
 				boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(headAddress);
 				if (!objOpt)
 				{
-					CGL_Error("QÆƒGƒ‰[");
+					CGL_Error("å‚ç…§ã‚¨ãƒ©ãƒ¼");
 				}
 
 				const Evaluated& objRef = objOpt.value();
@@ -2717,7 +2717,7 @@ namespace cgl
 
 						if (!IsType<List>(objRef))
 						{
-							CGL_Error("ƒIƒuƒWƒFƒNƒg‚ªƒŠƒXƒg‚Å‚È‚¢");
+							CGL_Error("ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒãƒªã‚¹ãƒˆã§ãªã„");
 						}
 
 						const List& list = As<const List&>(objRef);
@@ -2728,7 +2728,7 @@ namespace cgl
 						}
 						else
 						{
-							CGL_Error("list[index] ‚Ì index ‚ª int Œ^‚Å‚È‚¢");
+							CGL_Error("list[index] ã® index ãŒ int å‹ã§ãªã„");
 						}
 					}
 				}
@@ -2744,14 +2744,14 @@ namespace cgl
 					{
 						if (!IsType<Record>(objRef))
 						{
-							CGL_Error("ƒIƒuƒWƒFƒNƒg‚ªƒŒƒR[ƒh‚Å‚È‚¢");
+							CGL_Error("ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒãƒ¬ã‚³ãƒ¼ãƒ‰ã§ãªã„");
 						}
 
 						const Record& record = As<const Record&>(objRef);
 						auto it = record.values.find(recordAccess.name);
 						if (it == record.values.end())
 						{
-							CGL_Error("w’è‚³‚ê‚½¯•Êq‚ªƒŒƒR[ƒh’†‚É‘¶İ‚µ‚È‚¢");
+							CGL_Error("æŒ‡å®šã•ã‚ŒãŸè­˜åˆ¥å­ãŒãƒ¬ã‚³ãƒ¼ãƒ‰ä¸­ã«å­˜åœ¨ã—ãªã„");
 						}
 
 						headAddress = it->second;
@@ -2762,9 +2762,9 @@ namespace cgl
 					const FunctionAccess& funcAccess = As<FunctionAccess>(access);
 
 					{
-						//TODO: HasFreeVariables‚ÌÀ‘•‚Í•sŠ®‘S‚ÅAƒAƒNƒZƒbƒT‚ªŠÖ”ŒÄ‚Ño‚µ‚Å‚³‚ç‚É‚»‚Ìˆø”‚ªfree•Ï”‚Ìê‡‚É‘Î‰‚µ‚Ä‚¢‚È‚¢
-						//      ˆê“x®‚ğ•]‰¿‚µ‚ÄA‚»‚Ì‰ß’ö‚Åfree•Ï”‚Åw’è‚µ‚½ƒAƒhƒŒƒX‚Ö‚ÌƒAƒNƒZƒX‚ª”­¶‚·‚é‚©‚Ç‚¤‚©‚ÅŒ©‚é‚×‚«
-						//      AddressAppearanceChecker‚Ì‚æ‚¤‚È‚à‚Ì‚ğì‚é(Eval‚ÌŠÈˆÕ”Å)
+						//TODO: HasFreeVariablesã®å®Ÿè£…ã¯ä¸å®Œå…¨ã§ã€ã‚¢ã‚¯ã‚»ãƒƒã‚µãŒé–¢æ•°å‘¼ã³å‡ºã—ã§ã•ã‚‰ã«ãã®å¼•æ•°ãŒfreeå¤‰æ•°ã®å ´åˆã«å¯¾å¿œã—ã¦ã„ãªã„
+						//      ä¸€åº¦å¼ã‚’è©•ä¾¡ã—ã¦ã€ãã®éç¨‹ã§freeå¤‰æ•°ã§æŒ‡å®šã—ãŸã‚¢ãƒ‰ãƒ¬ã‚¹ã¸ã®ã‚¢ã‚¯ã‚»ã‚¹ãŒç™ºç”Ÿã™ã‚‹ã‹ã©ã†ã‹ã§è¦‹ã‚‹ã¹ã
+						//      AddressAppearanceCheckerã®ã‚ˆã†ãªã‚‚ã®ã‚’ä½œã‚‹(Evalã®ç°¡æ˜“ç‰ˆ)
 						//inline bool HasFreeVariables::operator()(const Accessor& node)
 
 						HasFreeVariables searcher(pEnv, freeVariables);
@@ -2787,7 +2787,7 @@ namespace cgl
 					{
 						if (!IsType<FuncVal>(objRef))
 						{
-							CGL_Error("ƒIƒuƒWƒFƒNƒg‚ªŠÖ”‚Å‚È‚¢");
+							CGL_Error("ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒé–¢æ•°ã§ãªã„");
 						}
 
 						const FuncVal& function = As<const FuncVal&>(objRef);
@@ -2831,19 +2831,19 @@ namespace cgl
 			}
 
 			/*
-			selfDependsOnFreeVariables‚ÆchildDependsOnFreeVariables‚ª—¼•ûtrue : ƒGƒ‰[
-			selfDependsOnFreeVariables‚ªtrue  : ƒAƒNƒZƒbƒT–{‘Ì‚ªfreeiƒAƒNƒZƒbƒT‚ğ•]‰¿‚·‚é‚Æ•K‚¸’Pˆê‚ÌdoubleŒ^‚É‚È‚éj
-			childDependsOnFreeVariables‚ªtrue : ƒAƒNƒZƒbƒT‚Ìˆø”‚ªfreeiƒŠƒXƒgƒCƒ“ƒfƒbƒNƒX‚©ŠÖ”ˆø”j
+			selfDependsOnFreeVariablesã¨childDependsOnFreeVariablesãŒä¸¡æ–¹true : ã‚¨ãƒ©ãƒ¼
+			selfDependsOnFreeVariablesãŒtrue  : ã‚¢ã‚¯ã‚»ãƒƒã‚µæœ¬ä½“ãŒfreeï¼ˆã‚¢ã‚¯ã‚»ãƒƒã‚µã‚’è©•ä¾¡ã™ã‚‹ã¨å¿…ãšå˜ä¸€ã®doubleå‹ã«ãªã‚‹ï¼‰
+			childDependsOnFreeVariablesãŒtrue : ã‚¢ã‚¯ã‚»ãƒƒã‚µã®å¼•æ•°ãŒfreeï¼ˆãƒªã‚¹ãƒˆã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã‹é–¢æ•°å¼•æ•°ï¼‰
 			*/
 			if (selfDependsOnFreeVariables && childDependsOnFreeVariables)
 			{
-				CGL_Error("sat®’†‚ÌƒAƒNƒZƒbƒT‚É‚Â‚¢‚ÄA–{‘Ì‚Æˆø”‚Ì—¼•û‚ğfree•Ï”‚Éw’è‚·‚é‚±‚Æ‚Í‚Å‚«‚Ü‚¹‚ñ");
+				CGL_Error("satå¼ä¸­ã®ã‚¢ã‚¯ã‚»ãƒƒã‚µã«ã¤ã„ã¦ã€æœ¬ä½“ã¨å¼•æ•°ã®ä¸¡æ–¹ã‚’freeå¤‰æ•°ã«æŒ‡å®šã™ã‚‹ã“ã¨ã¯ã§ãã¾ã›ã‚“");
 			}
 			else if (selfDependsOnFreeVariables)
 			{
 				if (!result.accesses.empty())
 				{
-					CGL_Error("‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸");
+					CGL_Error("ã“ã“ã¯é€šã‚‰ãªã„ã¯ãš");
 				}
 
 				if (auto satRefOpt = addSatRef(headAddress))
@@ -2852,12 +2852,12 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error("‚±‚±‚Í’Ê‚ç‚È‚¢‚Í‚¸");
+					CGL_Error("ã“ã“ã¯é€šã‚‰ãªã„ã¯ãš");
 				}
 			}
 			/*else if (childDependsOnFreeVariables)
 			{
-			CGL_Error("TODO: ƒAƒNƒZƒbƒT‚Ìˆø”‚Ìfree•Ï”w’è‚Í–¢‘Î‰");
+			CGL_Error("TODO: ã‚¢ã‚¯ã‚»ãƒƒã‚µã®å¼•æ•°ã®freeå¤‰æ•°æŒ‡å®šã¯æœªå¯¾å¿œ");
 			}*/
 
 			result.head = LRValue(headAddress);
@@ -3129,7 +3129,7 @@ namespace cgl
 				return refVal.address();
 			}
 
-			CGL_Error("ƒAƒNƒZƒbƒT‚Ì•]‰¿Œ‹‰Ê‚ªƒAƒhƒŒƒX’l‚Å‚È‚¢");
+			CGL_Error("ã‚¢ã‚¯ã‚»ãƒƒã‚µã®è©•ä¾¡çµæœãŒã‚¢ãƒ‰ãƒ¬ã‚¹å€¤ã§ãªã„");
 		}
 
 		CGL_Error("shared this does not exist.");
@@ -3144,7 +3144,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+				CGL_Error("å¼•æ•°ã®æ•°ãŒæ­£ã—ãã‚ã‚Šã¾ã›ã‚“");
 			}
 
 			return Sin(pEnv->expand(arguments[0]));
@@ -3157,7 +3157,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+				CGL_Error("å¼•æ•°ã®æ•°ãŒæ­£ã—ãã‚ã‚Šã¾ã›ã‚“");
 			}
 
 			return Cos(pEnv->expand(arguments[0]));
@@ -3170,7 +3170,7 @@ namespace cgl
 		{
 			if (arguments.size() != 2)
 			{
-				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+				CGL_Error("å¼•æ•°ã®æ•°ãŒæ­£ã—ãã‚ã‚Šã¾ã›ã‚“");
 			}
 
 			return ShapeDifference(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
@@ -3183,7 +3183,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("ˆø”‚Ì”‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ");
+				CGL_Error("å¼•æ•°ã®æ•°ãŒæ­£ã—ãã‚ã‚Šã¾ã›ã‚“");
 			}
 
 			return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());

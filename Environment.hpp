@@ -29,7 +29,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("�Q�ƃG���[");
+				CGL_Error("参照エラー");
 			}
 			return it->second;
 		}
@@ -39,7 +39,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("�Q�ƃG���[");
+				CGL_Error("参照エラー");
 			}
 			return it->second;
 		}
@@ -90,7 +90,7 @@ namespace cgl
 		//ObjectReference makeFuncVal(const std::vector<Identifier>& arguments, const Expr& expr);
 		Address makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
 
-		//�X�R�[�v�̓����ɓ���/�o��
+		//スコープの内側に入る/出る
 		void enterScope()
 		{
 			//m_variables.emplace_back();
@@ -102,11 +102,11 @@ namespace cgl
 			localEnv().pop_back();
 		}
 
-		//�֐��Ăяo���ȂǕʂ̃X�R�[�v�ɐ؂�ւ���/�߂�
+		//関数呼び出しなど別のスコープに切り替える/戻す
 		/*
 		void switchFrontScope(int switchDepth)
 		{
-			//�֐��̃X�R�[�v���������̓���͖��m�F
+			//関数のスコープが同じ時の動作は未確認
 
 			std::cout << "FuncScope:" << switchDepth << std::endl;
 			std::cout << "Variables:" << m_variables.size() << std::endl;
@@ -135,16 +135,16 @@ namespace cgl
 
 		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function)
 		{
-			//m_values��FuncVal�ǉ�
-			//m_functions��function�ǉ�
-			//m_scope��name->FuncVal�ǉ�
+			//m_valuesにFuncVal追加
+			//m_functionsにfunction追加
+			//m_scopeにname->FuncVal追加
 			
 			const Address address1 = m_functions.add(function);
 			const Address address2 = m_values.add(FuncVal(address1));
 
 			if (address1 != address2)
 			{
-				CGL_Error("�g�ݍ��݊֐��̒ǉ��Ɏ��s");
+				CGL_Error("組み込み関数の追加に失敗");
 			}
 
 			bindValueID(name, address1);
@@ -157,7 +157,7 @@ namespace cgl
 				return m_functions[functionAddress](pEnv, arguments);
 			}
 			
-			CGL_Error("�����͒ʂ�Ȃ��͂�");
+			CGL_Error("ここは通らないはず");
 			return 0;
 		}
 
@@ -259,7 +259,7 @@ namespace cgl
 
 		Address evalReference(const Accessor& access);
 
-		//reference�Ŏw�����I�u�W�F�N�g�̒��ɂ���S�Ă̒l�ւ̎Q�Ƃ����X�g�Ŏ擾����
+		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
 		/*std::vector<ObjectReference> expandReferences(const ObjectReference& reference, std::vector<ObjectReference>& output);
 		std::vector<ObjectReference> expandReferences(const ObjectReference& reference)*/
 		std::vector<Address> expandReferences(Address address)
@@ -271,8 +271,8 @@ namespace cgl
 				{
 					const Evaluated value = sharedThis->expand(address);
 
-					//�ǐՑΏۂ̕ϐ��ɂ��ǂ蒅�����炻����Q�Ƃ���A�h���X���o�͂ɒǉ�
-					if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:bool�͏����I�ɑΉ�
+					//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
+					if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
 					{
 						result.push_back(address);
 					}
@@ -290,8 +290,8 @@ namespace cgl
 							rec(rec, elem.second);
 						}
 					}
-					//����ȊO�̃f�[�^�͓��ɕߑ����Ȃ�
-					//TODO:�ŏI�I�� int �� double �ȊO�̃f�[�^�ւ̎Q�Ƃ͎����Ƃɂ��邩�H
+					//それ以外のデータは特に捕捉しない
+					//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
 				};
 
 				const auto addElement = [&](const Address address)
@@ -323,8 +323,8 @@ namespace cgl
 		}
 		*/
 		
-		//���[�J���ϐ���S�ēW�J����
-		//�֐��̖߂�l�ȂǃX�R�[�v���ς�鎞�ɂ͎Q�Ƃ������p���Ȃ��̂ň�x�S�ēW�J����K�v������
+		//ローカル変数を全て展開する
+		//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
 		/*
 		Evaluated expandObject(const Evaluated& reference)
 		{
@@ -398,12 +398,12 @@ namespace cgl
 		/*
 		void bindValueID(const std::string& name, unsigned valueID)
 		{
-			//���R�[�h
-			//���R�[�h����:���@�����K�w�ɓ�����:��������ꍇ�͂���ւ̍đ���A�����ꍇ�͐V���ɒ�`
-			//���R�[�h����=���@�����K�w�ɓ�����:��������ꍇ�͂���ւ̍đ���A�����ꍇ�͂��̃X�R�[�v���ł̂ݗL���Ȓl�̃G�C���A�X�i�X�R�[�v�𔲂����猳�ɖ߂���Օ��j
+			//レコード
+			//レコード内の:式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合は新たに定義
+			//レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアス（スコープを抜けたら元に戻る≒遮蔽）
 
-			//���݂̊��ɕϐ������݂��Ȃ���΁A
-			//�����X�g�̖����i���ł������̃X�R�[�v�j�ɕϐ���ǉ�����
+			//現在の環境に変数が存在しなければ、
+			//環境リストの末尾（＝最も内側のスコープ）に変数を追加する
 			m_bindingNames.back().bind(name, valueID);
 		}
 		*/
@@ -440,7 +440,7 @@ namespace cgl
 			localEnv().back()[name] = ID;
 		}
 
-		//bindValueID�̕ϐ��錾���p
+		//bindValueIDの変数宣言式用
 		void makeVariable(const std::string& name, const Address ID)
 		{
 			localEnv().back()[name] = ID;
@@ -467,7 +467,7 @@ namespace cgl
 			//m_values[address] = expandRef(newValue);
 		}
 
-		//����Ő������H
+		//これで正しい？
 		void assignAddress(Address addressTo, Address addressFrom)
 		{
 			m_values[addressTo] = m_values[addressFrom];
@@ -496,13 +496,13 @@ namespace cgl
 			return Make(*this);
 		}
 
-		//�l������ĕԂ��i�ϐ��ő�������Ȃ����̂�GC���������瑦���ɏ������j
-		//���̕]���r����GC�͑���Ȃ��悤�ɂ���ׂ����H
+		//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
+		//式の評価途中でGCは走らないようにするべきか？
 		Address makeTemporaryValue(const Evaluated& value)
 		{
 			const Address address = m_values.add(value);
 
-			//�֐��̓X�R�[�v�𔲂��鎞�ɒ�`�����̕ϐ����������Ȃ����Ď�����K�v������̂�ID��ۑ����Ă���
+			//関数はスコープを抜ける時に定義式中の変数が解放されないか監視する必要があるのでIDを保存しておく
 			/*if (IsType<FuncVal>(value))
 			{
 				m_funcValIDs.push_back(address);
@@ -514,24 +514,24 @@ namespace cgl
 		Environment() = default;
 
 /*
-�����Ɍ��꓾�鎯�ʎq�͎���3��ނɕ�������B
+式中に現れ得る識別子は次の3種類に分けられる。
 
-1. �R�����̍����ɏo�Ă��鎯�ʎq�F
-�@�@�ł������̃X�R�[�v�ɂ��̕ϐ����L��΂��̕ϐ��ւ̎Q��
-�@�@�@�@�@�@�@�@�@�@�@�@�@�@�@�@�@������ΐV����������ϐ��ւ̑���
+1. コロンの左側に出てくる識別子：
+　　最も内側のスコープにその変数が有ればその変数への参照
+　　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
 
-2. �C�R�[���̍����ɏo�Ă��鎯�ʎq�F
-�@�@�X�R�[�v�̂ǂ����ɂ��̕ϐ����L��΂��̕ϐ��ւ̎Q��
-�@�@�@�@�@�@�@�@�@�@�@�@�@�@�@�@������ΐV����������ϐ��ւ̑���
+2. イコールの左側に出てくる識別子：
+　　スコープのどこかにその変数が有ればその変数への参照
+　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
 
-3. ����ȊO�̏ꏊ�ɏo�Ă��鎯�ʎq�F
-�@�@�X�R�[�v�̂ǂ����ɂ��̕ϐ����L��΂��̕ϐ��ւ̎Q��
-�@�@�@�@�@�@�@�@�@�@�@�@�@�@�@�@������Ζ����ȎQ�Ɓi�G���[�j
+3. それ以外の場所に出てくる識別子：
+　　スコープのどこかにその変数が有ればその変数への参照
+　　　　　　　　　　　　　　　　無ければ無効な参照（エラー）
 
-�����ŁA1�̗p�@��2,3�̗p�@�𗼗����邱�Ƃ͓���i���ʎq�����������ł͉���Ԃ���������ł��Ȃ��̂Łj�B
-�������A1�̗p�@�͂��Ȃ����ł��邽�߁A�P�ɓ��ʈ������Ă��悢�C������B
-�܂�A�R�����̍����ɏo�Ă����̂͒P��̎��ʎq�݂̂Ƃ���i���G�Ȃ��̂������Ă�����قǃ����b�g���Ȃ��f�o�b�O����ςɂȂ邾���j�B
-����ɂ��A�R���������������ɒ��̎��ʎq���ꏏ�Ɍ���΍ςނ̂ŁA��L�̗p�@�𗼗��ł���B
+ここで、1の用法と2,3の用法を両立することは難しい（識別子を見ただけでは何を返すかが決定できないので）。
+しかし、1の用法はかなり特殊であるため、単に特別扱いしてもよい気がする。
+つまり、コロンの左側に出てこれるのは単一の識別子のみとする（複雑なものを書けてもそれほどメリットがなくデバッグが大変になるだけ）。
+これにより、コロン式を見た時に中の識別子も一緒に見れば済むので、上記の用法を両立できる。
 */
 		/*boost::optional<Address> findValueID(const std::string& name)const
 		{
@@ -594,7 +594,7 @@ namespace cgl
 			return static_cast<int>(m_variables.size()) - 1;
 		}*/
 
-		//���ݎQ�Ɖ\�ȕϐ����̃��X�g�̃��X�g��Ԃ�
+		//現在参照可能な変数名のリストのリストを返す
 		/*
 		std::vector<std::set<std::string>> currentReferenceableVariables()const
 		{
@@ -613,7 +613,7 @@ namespace cgl
 		}
 		*/
 
-		//�����̃X�R�[�v���珇�Ԃɕϐ���T���ĕԂ�
+		//内側のスコープから順番に変数を探して返す
 		/*boost::optional<unsigned> findValueID(const std::string& name)const
 		{
 			boost::optional<unsigned> valueIDOpt;
@@ -636,10 +636,10 @@ namespace cgl
 
 		Values<Evaluated> m_values;
 
-		//�ϐ��̓X�R�[�v�P�ʂŊǗ������
-		//�X�R�[�v�𔲂����炻�̃X�R�[�v�ŊǗ����Ă���ϐ��������ƍ폜����
-		//���������Ċ��̓l�X�g�̐󂢏��Ƀ��X�g�ŊǗ����邱�Ƃ��ł���i�����[���̊�������݂��邱�Ƃ͂Ȃ��j
-		//���X�g�̍ŏ��̗v�f�̓O���[�o���ϐ��Ƃ���Ƃ���
+		//変数はスコープ単位で管理される
+		//スコープを抜けたらそのスコープで管理している変数を環境ごと削除する
+		//したがって環境はネストの浅い順にリストで管理することができる（同じ深さの環境が二つ存在することはない）
+		//リストの最初の要素はグローバル変数とするとする
 		//std::vector<LocalEnvironment> m_bindingNames;
 
 		/*std::vector<Scope> m_variables;

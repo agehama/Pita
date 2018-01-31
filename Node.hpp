@@ -482,14 +482,14 @@ namespace cgl
 
 		boost::optional<Expr> expr;
 
-		//§–ñ®‚ÉŠÜ‚Ü‚ê‚é‘S‚Ä‚ÌQÆ‚ÉID‚ğU‚é(=QÆID)
-		//QÆID‚ÍdoubleŒ^‚Ì’l‚É•R•t‚¯‚ç‚ê‚é
-		//std::unordered_map<int, int> refs;//QÆID -> data‚ÌƒCƒ“ƒfƒbƒNƒX
+		//åˆ¶ç´„å¼ã«å«ã¾ã‚Œã‚‹å…¨ã¦ã®å‚ç…§ã«IDã‚’æŒ¯ã‚‹(=å‚ç…§ID)
+		//å‚ç…§IDã¯doubleå‹ã®å€¤ã«ç´ä»˜ã‘ã‚‰ã‚Œã‚‹
+		//std::unordered_map<int, int> refs;//å‚ç…§ID -> dataã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹
 
-		std::vector<double> data;//QÆID->data
-		std::vector<Address> refs;//QÆID->Address
+		std::vector<double> data;//å‚ç…§ID->data
+		std::vector<Address> refs;//å‚ç…§ID->Address
 
-		std::unordered_map<Address, int> invRefs;//Address->QÆID
+		std::unordered_map<Address, int> invRefs;//Address->å‚ç…§ID
 
 		void addConstraint(const Expr& logicExpr);
 		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables);
@@ -1168,7 +1168,7 @@ namespace cgl
 			{
 				//if (!IsEqual(data[i], other.data[i]))
 
-				//TODO: ƒAƒhƒŒƒX”äŠr‚Å‚Í‚È‚­’l‚Ì”äŠr‚É‚·‚×‚«(ƒŠƒXƒg‚ªŠÂ‹«‚ÌQÆ‚ğ‚ÂH)
+				//TODO: ã‚¢ãƒ‰ãƒ¬ã‚¹æ¯”è¼ƒã§ã¯ãªãå€¤ã®æ¯”è¼ƒã«ã™ã¹ã(ãƒªã‚¹ãƒˆãŒç’°å¢ƒã®å‚ç…§ã‚’æŒã¤ï¼Ÿ)
 				//if (data[i].valueID == other.data[i].valueID)
 				if (data[i] == other.data[i])
 				{
@@ -1388,7 +1388,7 @@ namespace cgl
 		//ObjectT headValue;
 
 		//std::string funcName;
-		Address headAddress; //funcName -> headAddress ‚É•ÏX
+		Address headAddress; //funcName -> headAddress ã«å¤‰æ›´
 
 		std::vector<Ref> references;
 
@@ -1531,8 +1531,8 @@ namespace cgl
 		std::unordered_map<std::string, Address> values;
 		OptimizationProblemSat problem;
 		std::vector<Accessor> freeVariables;
-		//std::vector<Address> freeVariables;//varéŒ¾‚Åw’è‚³‚ê‚½•Ï”‚ÌƒAƒhƒŒƒX
-		std::vector<Address> freeVariableRefs;//varéŒ¾‚Åw’è‚³‚ê‚½•Ï”‚©‚ç’H‚ê‚é‘S‚Ä‚ÌƒAƒhƒŒƒX
+		//std::vector<Address> freeVariables;//varå®£è¨€ã§æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°ã®ã‚¢ãƒ‰ãƒ¬ã‚¹
+		std::vector<Address> freeVariableRefs;//varå®£è¨€ã§æŒ‡å®šã•ã‚ŒãŸå¤‰æ•°ã‹ã‚‰è¾¿ã‚Œã‚‹å…¨ã¦ã®ã‚¢ãƒ‰ãƒ¬ã‚¹
 
 		Record() = default;
 		
@@ -1699,7 +1699,7 @@ namespace cgl
 
 	struct Accessor
 	{
-		//æ“ª‚ÌƒIƒuƒWƒFƒNƒg(¯•Êq‚©‚à‚µ‚­‚ÍŠÖ”EƒŠƒXƒgEƒŒƒR[ƒh‚ÌƒŠƒeƒ‰ƒ‹)
+		//å…ˆé ­ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ(è­˜åˆ¥å­ã‹ã‚‚ã—ãã¯é–¢æ•°ãƒ»ãƒªã‚¹ãƒˆãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ã®ãƒªãƒ†ãƒ©ãƒ«)
 		Expr head;
 
 		std::vector<Access> accesses;
@@ -1847,8 +1847,8 @@ namespace cgl
 	{
 		//using OriginalRecord = boost::variant<Identifier, boost::recursive_wrapper<Record>>;
 		//OriginalRecord original;
-		//OriginalRecord‚ªRecord‚É‚È‚é‚Ì‚Í‚ ‚è“¾‚È‚­‚È‚¢H
-		//‚»‚ê‚æ‚è‚àŠÖ”‚Ì•Ô‚è’l‚ªƒŒƒR[ƒh‚Ìê‡‚à‚ ‚é‚Ì‚Åoriginal‚É‚Íˆê”Ê‚Ì®‚ğæ‚é‚×‚«‚¾‚Æv‚¤
+		//OriginalRecordãŒRecordã«ãªã‚‹ã®ã¯ã‚ã‚Šå¾—ãªããªã„ï¼Ÿ
+		//ãã‚Œã‚ˆã‚Šã‚‚é–¢æ•°ã®è¿”ã‚Šå€¤ãŒãƒ¬ã‚³ãƒ¼ãƒ‰ã®å ´åˆã‚‚ã‚ã‚‹ã®ã§originalã«ã¯ä¸€èˆ¬ã®å¼ã‚’å–ã‚‹ã¹ãã ã¨æ€ã†
 
 		Expr original;
 		//std::vector<Expr> exprs;

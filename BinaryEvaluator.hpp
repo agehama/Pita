@@ -19,7 +19,7 @@ namespace cgl
 			}
 		}
 		
-		//TODO:d•¡‚µ‚½§–ñ‚È‚Ç‚ğl—¶‚·‚é‚×‚«
+		//TODO:é‡è¤‡ã—ãŸåˆ¶ç´„ãªã©ã‚’è€ƒæ…®ã™ã‚‹ã¹ã
 
 		{
 			
@@ -58,7 +58,7 @@ namespace cgl
 			}
 		}
 
-		//TODO:d•¡‚µ‚½§–ñ‚È‚Ç‚ğl—¶‚·‚é‚×‚«
+		//TODO:é‡è¤‡ã—ãŸåˆ¶ç´„ãªã©ã‚’è€ƒæ…®ã™ã‚‹ã¹ã
 		/*{
 			auto& constraint = result.constraint;
 
@@ -87,7 +87,7 @@ namespace cgl
 			return !As<bool>(lhs);
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -100,7 +100,7 @@ namespace cgl
 			return lhs;
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -117,7 +117,7 @@ namespace cgl
 			return -As<double>(lhs);
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -131,7 +131,7 @@ namespace cgl
 			return As<bool>(lhs) && As<bool>(rhs);
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -145,7 +145,7 @@ namespace cgl
 			return As<bool>(lhs) || As<bool>(rhs);
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -182,7 +182,7 @@ namespace cgl
 			return As<bool>(lhs) == As<bool>(rhs);
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return false;
 	}
 
@@ -219,7 +219,7 @@ namespace cgl
 			return As<bool>(lhs) != As<bool>(rhs);
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return false;
 	}
 
@@ -251,7 +251,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return false;
 	}
 
@@ -283,7 +283,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return false;
 	}
 
@@ -315,7 +315,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return false;
 	}
 
@@ -347,7 +347,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return false;
 	}
 
@@ -379,7 +379,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -411,7 +411,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -428,7 +428,7 @@ namespace cgl
 			return std::abs(As<double>(lhs));
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -443,7 +443,7 @@ namespace cgl
 			return std::sin(deg2rad*As<double>(lhs));
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -458,7 +458,7 @@ namespace cgl
 			return std::cos(deg2rad*As<double>(lhs));
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -490,7 +490,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -522,7 +522,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -554,7 +554,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -586,7 +586,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -618,7 +618,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("•s³‚È®‚Å‚·");
+		CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		return 0;
 	}
 
@@ -626,7 +626,7 @@ namespace cgl
 	{
 		if (!IsType<List>(lhs) || !IsType<List>(rhs))
 		{
-			CGL_Error("ƒŠƒXƒgŒ‹‡‰‰Zq‚ªƒŠƒXƒgˆÈŠO‚Ì®‚Ég‚í‚ê‚Ä‚¢‚Ü‚·");
+			CGL_Error("ãƒªã‚¹ãƒˆçµåˆæ¼”ç®—å­ãŒãƒªã‚¹ãƒˆä»¥å¤–ã®å¼ã«ä½¿ã‚ã‚Œã¦ã„ã¾ã™");
 			return 0;
 		}
 
@@ -639,18 +639,18 @@ namespace cgl
 	{
 		if (!IsLValue(lhs))
 		{
-			//‘ã“ü®‚Ì¶•Ó‚ª¶•Ó’l‚Å‚È‚¢
-			CGL_Error("•s³‚È®‚Å‚·");
+			//ä»£å…¥å¼ã®å·¦è¾ºãŒå·¦è¾ºå€¤ã§ãªã„
+			CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 			return 0;
 		}
 
 		/*
-		‘ã“ü®‚ÍA¶•Ó‚Æ‰E•Ó‚ÌŒ`‚Ì‘g‚İ‡‚í‚¹‚É‚æ‚è4ƒpƒ^[ƒ“‚Ì‹““®‚ª‹N‚±‚è“¾‚éB
+		ä»£å…¥å¼ã¯ã€å·¦è¾ºã¨å³è¾ºã®å½¢ã®çµ„ã¿åˆã‚ã›ã«ã‚ˆã‚Š4ãƒ‘ã‚¿ãƒ¼ãƒ³ã®æŒ™å‹•ãŒèµ·ã“ã‚Šå¾—ã‚‹ã€‚
 
-		®‚Ì¶•ÓFŒ»İ‚ÌŠÂ‹«‚É‚·‚Å‚É‘¶İ‚·‚é¯•Êq‚©AV‚½‚É‘©”›‚ğs‚¤¯•Êq‚©
-		®‚Ì‰E•ÓF¶•Ó’l‚Å‚ ‚é‚©A‰E•Ó’l‚Å‚ ‚é‚©
+		å¼ã®å·¦è¾ºï¼šç¾åœ¨ã®ç’°å¢ƒã«ã™ã§ã«å­˜åœ¨ã™ã‚‹è­˜åˆ¥å­ã‹ã€æ–°ãŸã«æŸç¸›ã‚’è¡Œã†è­˜åˆ¥å­ã‹
+		å¼ã®å³è¾ºï¼šå·¦è¾ºå€¤ã§ã‚ã‚‹ã‹ã€å³è¾ºå€¤ã§ã‚ã‚‹ã‹
 
-		¶•Ó’l‚Ìê‡‚ÍA‚»‚ÌQÆæ‚ğæ“¾‚µV‚½‚É
+		å·¦è¾ºå€¤ã®å ´åˆã¯ã€ãã®å‚ç…§å…ˆã‚’å–å¾—ã—æ–°ãŸã«
 		*/
 
 		/*
@@ -737,7 +737,7 @@ namespace cgl
 		}
 		else
 		{
-			CGL_Error("•s³‚È®‚Å‚·");
+			CGL_Error("ä¸æ­£ãªå¼ã§ã™");
 		}
 
 		return lhs;

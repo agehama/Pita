@@ -172,7 +172,7 @@ namespace cgl
 			//constraints = lit("sat") >> '(' >> s >> logic_expr[_val = Call(DeclSat::Make, _1)] >> s >> ')';
 			constraints = lit("sat") >> '(' >> s >> statement[_val = Call(DeclSat::Make, _1)] >> s >> ')';
 
-			//freeVals‚ªƒŒƒR[ƒh‚Ö‚ÌŽQÆ‚Æ‚©‚ð“ü‚ê‚é‚Ì‚Í­‚µ‘å•Ï‚¾‚ªA’Pˆê‚Ì’l‚Ö‚ÌŽQÆ‚È‚ç“ï‚µ‚­‚È‚¢‚Í‚¸
+			//freeValsãŒãƒ¬ã‚³ãƒ¼ãƒ‰ã¸ã®å‚ç…§ã¨ã‹ã‚’å…¥ã‚Œã‚‹ã®ã¯å°‘ã—å¤§å¤‰ã ãŒã€å˜ä¸€ã®å€¤ã¸ã®å‚ç…§ãªã‚‰é›£ã—ããªã„ã¯ãš
 			/*freeVals = lit("free") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)]) >> *(
 				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddIdentifier, _val, _1)])
 				) >> s >> ')';*/
@@ -208,7 +208,7 @@ namespace cgl
 				)
 				;
 
-			//= ^ -> ‚Í‰EŒ‹‡
+			//= ^ -> ã¯å³çµåˆ
 
 			arith_expr = (basic_arith_expr[_val = _1] >> -(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)]));
 
@@ -227,11 +227,11 @@ namespace cgl
 					)
 				;
 			
-			//Å’á‚Å‚à1‚Â‚ÍŽó‚¯Žæ‚é‚æ‚¤‚É‚µ‚È‚¢‚ÆA’Pˆê‚Ìfactor‚ðŽó—‚Å‚«‚Ä‚µ‚Ü‚¤‚Ì‚ÅMul,Div‚Ì•û‚És‚Á‚Ä‚­‚ê‚È‚¢
+			//æœ€ä½Žã§ã‚‚1ã¤ã¯å—ã‘å–ã‚‹ã‚ˆã†ã«ã—ãªã„ã¨ã€å˜ä¸€ã®factorã‚’å—ç†ã§ãã¦ã—ã¾ã†ã®ã§Mul,Divã®æ–¹ã«è¡Œã£ã¦ãã‚Œãªã„
 			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
 			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
-			//record{} ‚ÌŠÔ‚É‚Í‰üs‚Í‹²‚ß‚È‚¢irecord,{}‚Æ‹æ•Ê‚Å‚«‚È‚­‚È‚é‚Ì‚Åj
+			//record{} ã®é–“ã«ã¯æ”¹è¡Œã¯æŒŸã‚ãªã„ï¼ˆrecord,{}ã¨åŒºåˆ¥ã§ããªããªã‚‹ã®ã§ï¼‰
 			//record_inheritor = id[_val = Call(RecordInheritor::Make, _1)] >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 			record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 
@@ -245,7 +245,7 @@ namespace cgl
 				)
 				| (char_('{') >> s >> char_('}'));
 
-			//ƒŒƒR[ƒh‚Ì name:val ‚Ì name ‚Æ : ‚ÌŠÔ‚É‰üs‚ð‹–‚·‚×‚«‚©H -> ‹–‚µ‚Ä‚à‰ðÍã‹°‚ç‚­–â‘è‚Í‚È‚¢‚ªAˆÓ–¡‚ª‚ ‚Ü‚è‚È‚³‚»‚¤
+			//ãƒ¬ã‚³ãƒ¼ãƒ‰ã® name:val ã® name ã¨ : ã®é–“ã«æ”¹è¡Œã‚’è¨±ã™ã¹ãã‹ï¼Ÿ -> è¨±ã—ã¦ã‚‚è§£æžä¸Šæã‚‰ãå•é¡Œã¯ãªã„ãŒã€æ„å‘³ãŒã‚ã¾ã‚Šãªã•ãã†
 			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
 			/*list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
@@ -317,7 +317,7 @@ namespace cgl
 				| record_maker[_val = _1]
 				| id[_val = _1];
 
-			//id‚Ì“r’†‚É‚Í‹ó”’‚ðŠÜ‚ß‚È‚¢
+			//idã®é€”ä¸­ã«ã¯ç©ºç™½ã‚’å«ã‚ãªã„
 			//id = lexeme[ascii::alpha[_val = _1] >> *(ascii::alnum[Call(addCharacter, _val, _1)])];
 			//id = identifier_def[_val = _1];
 			id = unchecked_identifier[_val = _1] - distinct_keyword;
@@ -334,7 +334,7 @@ namespace cgl
 			/*s = -(ascii::space) >> -(s1);
 			s1 = ascii::space >> -(s1);*/
 
-			//double_ ‚¾‚Æ 1. ‚Æ‚©‚àƒp[ƒX‚Å‚«‚Ä‚µ‚Ü‚¤‚¹‚¢‚ÅƒŒƒ“ƒW‚Ìƒp[ƒX‚ÉŽxá‚ªo‚é‚Ì‚Å•Ê‚É’è‹`‚·‚é
+			//double_ ã ã¨ 1. ã¨ã‹ã‚‚ãƒ‘ãƒ¼ã‚¹ã§ãã¦ã—ã¾ã†ã›ã„ã§ãƒ¬ãƒ³ã‚¸ã®ãƒ‘ãƒ¼ã‚¹ã«æ”¯éšœãŒå‡ºã‚‹ã®ã§åˆ¥ã«å®šç¾©ã™ã‚‹
 			//double_value = lexeme[qi::char_('1', '9') >> *(ascii::digit) >> lit(".") >> +(ascii::digit)  [_val = Call(makeDouble, _1)]];
 			/*double_value = lexeme[qi::char_('1', '9')[_val = Call(makeString, _1)] >> *(ascii::digit[Call(appendString, _val, _1)])
 				>> lit(".")[Call(appendString, _val, _1)] >> +(ascii::digit[Call(appendString, _val, _1)])];*/

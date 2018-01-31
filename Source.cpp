@@ -361,7 +361,7 @@ vec2(vec2(3))
 )", Record("x", Record("x", 3).append("y", 3)).append("y", Record("x", 3).append("y", 3)));
 
 
-//���̃v���O�����ɂ��āALINES_A���o�͂����LINES_B���o�͂����O�ɗ�����o�O�L��
+//このプログラムについて、LINES_Aが出力されてLINES_Bが出力される前に落ちるバグ有り
 testEval(R"(
 
 vec3 = (v -> {

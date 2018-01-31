@@ -514,7 +514,7 @@ namespace cgl
 					}
 					else
 					{
-						std::cout << __FUNCTION__ << " Difference‚ÌŒ‹‰Ê‚ª—\Šú‚¹‚Êƒf[ƒ^Œ`®" << __LINE__ << std::endl;
+						std::cout << __FUNCTION__ << " Differenceã®çµæœãŒäºˆæœŸã›ã¬ãƒ‡ãƒ¼ã‚¿å½¢å¼" << __LINE__ << std::endl;
 					}
 				}
 				//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
@@ -585,8 +585,8 @@ namespace cgl
 		{
 			List polygonList;
 			const gg::LineString* outer = poly->getExteriorRing();
-			//for (int i = static_cast<int>(outer->getNumPoints()) - 1; 0 < i; --i)//n“_‚ÆI“_‚Í“¯‚¶À•W‚È‚Ì‚ÅÅŒã‚¾‚¯”ò‚Î‚·
-			for (int i = 1; i < static_cast<int>(outer->getNumPoints()); ++i)//n“_‚ÆI“_‚Í“¯‚¶À•W‚È‚Ì‚ÅÅŒã‚¾‚¯”ò‚Î‚·
+			//for (int i = static_cast<int>(outer->getNumPoints()) - 1; 0 < i; --i)//å§‹ç‚¹ã¨çµ‚ç‚¹ã¯åŒã˜åº§æ¨™ãªã®ã§æœ€å¾Œã ã‘é£›ã°ã™
+			for (int i = 1; i < static_cast<int>(outer->getNumPoints()); ++i)//å§‹ç‚¹ã¨çµ‚ç‚¹ã¯åŒã˜åº§æ¨™ãªã®ã§æœ€å¾Œã ã‘é£›ã°ã™
 			{
 				const gg::Coordinate& p = outer->getCoordinateN(i);
 				appendCoord(polygonList, p.x, p.y);

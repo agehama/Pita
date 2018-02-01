@@ -164,7 +164,7 @@ namespace cgl
 		}
 
 		cgl::FontBuilder builder("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
-		const auto result = builder.makePolygon(static_cast<int>(str.front()), 3);
+		const auto result = builder.textToPolygon(str, 3);
 		return GetShapesFromGeos(result, pEnv);
 	}
 }

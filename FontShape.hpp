@@ -12,9 +12,9 @@
 
 namespace cgl
 {
-	unsigned char current_buffer[1 << 25];
+	static unsigned char current_buffer[1 << 25];
 
-	bool IsClockWise(const Vector<Eigen::Vector2d>& closedPath)
+	inline bool IsClockWise(const Vector<Eigen::Vector2d>& closedPath)
 	{
 		double sum = 0;
 
@@ -30,7 +30,7 @@ namespace cgl
 	}
 
 	//最後の点は含めない
-	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n)
+	inline void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n)
 	{
 		for (int i = 0; i < n; ++i)
 		{
@@ -48,11 +48,12 @@ namespace cgl
 			stbtt_InitFont(&fontInfo, current_buffer, stbtt_GetFontOffsetForIndex(current_buffer, 0));
 		}
 
-		std::vector<gg::Geometry*> makePolygon(int character, int quality = 1)
+		std::vector<gg::Geometry*> makePolygon(int glyphIndex, int quality = 1, int offsetX = 0, short offsetY = 0)
 		{
-			const auto vec2 = [](short x, short y) {return Eigen::Vector2d(0.1*x, -0.1*y); };
-
-			const int glyphIndex = stbtt_FindGlyphIndex(&fontInfo, character);
+			const auto vec2 = [&](short x, short y)
+			{
+				return Eigen::Vector2d(0.1*(offsetX + x), 0.1*(offsetY - y));
+			};
 
 			stbtt_vertex* pv;
 			const int verticesNum = stbtt_GetGlyphShape(&fontInfo, glyphIndex, &pv);
@@ -70,9 +71,6 @@ namespace cgl
 				const int currentPolygonLastIndex = nextPolygonFirstIndex - 1;
 
 				stbtt_vertex* vertex = pv + polygonBeginIndex;
-
-				const auto vec2 = [](short x, short y) {return Eigen::Vector2d(0.1*x, -0.1*y); };
-				const auto isEq = [](const stbtt_vertex& p1, const stbtt_vertex& p2) {return p1.x == p2.x && p1.y == p2.y; };
 
 				Vector<Eigen::Vector2d> points;
 
@@ -128,7 +126,7 @@ namespace cgl
 					for (int d = 0; d < currentHoles.size(); ++d)
 					{
 						erodeGeometry = erodeGeometry->difference(currentHoles[d]);
-						
+
 						if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 						{
 							currentPolygons.erase(currentPolygons.begin() + s);
@@ -148,6 +146,22 @@ namespace cgl
 
 				return currentPolygons;
 			}
+		}
+
+		std::vector<gg::Geometry*> textToPolygon(const std::string& str, int quality = 1)
+		{
+			std::vector<gg::Geometry*> result;
+			int offsetX = 0;
+			for (int i = 0; i < str.size(); ++i)
+			{
+				const int glyphIndex = stbtt_FindGlyphIndex(&fontInfo, static_cast<int>(str[i]));
+				int x0, x1, y0, y1;
+				stbtt_GetGlyphBox(&fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
+				const auto characterPolygon = makePolygon(glyphIndex, quality, offsetX, 0);
+				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
+				offsetX += (x1 - x0);
+			}
+			return result;
 		}
 
 	private:

@@ -3,6 +3,7 @@
 #include "Node.hpp"
 #include "Environment.hpp"
 #include "Vectorizer.hpp"
+#include "FontShape.hpp"
 
 namespace cgl
 {
@@ -154,5 +155,16 @@ namespace cgl
 
 		return area;
 	}
-}
 
+	inline List GetDefaultFontString(const std::string& str, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		if (str.empty() || str.front() == ' ')
+		{
+			return{};
+		}
+
+		cgl::FontBuilder builder("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
+		const auto result = builder.makePolygon(static_cast<int>(str.front()), 3);
+		return GetShapesFromGeos(result, pEnv);
+	}
+}

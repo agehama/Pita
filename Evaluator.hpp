@@ -3211,9 +3211,11 @@ namespace cgl
 				CGL_Error("不正な式です");
 			}
 
-			std::cout << "Fontの取得：" << static_cast<std::string>(As<Identifier>(expr)) << "\n";
+			//std::cout << "Fontの取得：" << static_cast<std::string>(As<Identifier>(expr)) << "\n";
+
+			return GetDefaultFontString(static_cast<std::string>(As<Identifier>(expr)), m_weakThis.lock());
 			//return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
-			return 0;
+			//return 0;
 		}
 		);
 	}

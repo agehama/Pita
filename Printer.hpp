@@ -8,13 +8,13 @@ extern std::ofstream ofs;
 namespace cgl
 {
 	template<typename T>
-	inline std::string ToS(T str)
+	inline std::wstring ToS(T str)
 	{
 		return std::to_string(str);
 	}
 
 	template<typename T>
-	inline std::string ToS(T str, int precision)
+	inline std::wstring ToS(T str, int precision)
 	{
 		std::ostringstream os;
 		os << std::setprecision(precision) << str;
@@ -24,7 +24,7 @@ namespace cgl
 	class ValuePrinter : public boost::static_visitor<void>
 	{
 	public:
-		ValuePrinter(std::shared_ptr<Environment> pEnv, std::ostream& os, int indent, const std::string& header = "") :
+		ValuePrinter(std::shared_ptr<Environment> pEnv, std::ostream& os, int indent, const std::wstring& header = "") :
 			pEnv(pEnv),
 			os(os),
 			m_indent(indent),
@@ -34,12 +34,12 @@ namespace cgl
 		std::shared_ptr<Environment> pEnv;
 		int m_indent;
 		std::ostream& os;
-		mutable std::string m_header;
+		mutable std::wstring m_header;
 		
-		std::string indent()const
+		std::wstring indent()const
 		{
 			const int tabSize = 4;
-			std::string str;
+			std::wstring str;
 			for (int i = 0; i < m_indent*tabSize; ++i)
 			{
 				str += ' ';
@@ -71,13 +71,13 @@ namespace cgl
 
 			for (size_t i = 0; i < data.size(); ++i)
 			{
-				/*const std::string header = std::string("(") + std::to_string(i) + "): ";
+				/*const std::wstring header = std::wstring("(") + std::to_string(i) + "): ";
 				const auto child = ValuePrinter(m_indent + 1, header);
 				const Evaluated currentData = data[i];
 				boost::apply_visitor(child, currentData);*/
 
-				//const std::string header = std::string("(") + std::to_string(i) + "): ";
-				const std::string header = std::string("Address(") + data[i].toString() + "): ";
+				//const std::wstring header = std::wstring("(") + std::to_string(i) + "): ";
+				const std::wstring header = std::wstring("Address(") + data[i].toString() + "): ";
 				const auto child = ValuePrinter(pEnv, os, m_indent + 1, header);
 				//os << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
 
@@ -97,7 +97,7 @@ namespace cgl
 
 		void operator()(const KeyValue& node)const
 		{
-			const std::string header = static_cast<std::string>(node.name) + ": ";
+			const std::wstring header = static_cast<std::wstring>(node.name) + ": ";
 			{
 				const auto child = ValuePrinter(pEnv, os, m_indent, header);
 				boost::apply_visitor(child, node.value);
@@ -110,8 +110,8 @@ namespace cgl
 
 			for (const auto& value : node.values)
 			{
-				//const std::string header = value.first + ": ";
-				const std::string header = value.first + std::string("(") + value.second.toString() + "): ";
+				//const std::wstring header = value.first + ": ";
+				const std::wstring header = value.first + std::wstring("(") + value.second.toString() + "): ";
 
 				const auto child = ValuePrinter(pEnv, os, m_indent + 1, header);
 
@@ -245,10 +245,10 @@ namespace cgl
 		std::ostream& os;
 		int m_indent;
 
-		std::string indent()const
+		std::wstring indent()const
 		{
 			const int tabSize = 4;
-			std::string str;
+			std::wstring str;
 			for (int i = 0; i < m_indent*tabSize; ++i)
 			{
 				str += ' ';
@@ -273,7 +273,7 @@ namespace cgl
 
 		void operator()(const Identifier& node)const
 		{
-			os << indent() << "Identifier(" << static_cast<std::string>(node) << ")" << std::endl;
+			os << indent() << "Identifier(" << static_cast<std::wstring>(node) << ")" << std::endl;
 		}
 
 		void operator()(const SatReference& node)const
@@ -311,7 +311,7 @@ namespace cgl
 					const auto& args = defFunc.arguments;
 					for (size_t i = 0; i < args.size(); ++i)
 					{
-						os << grandChild.indent() << static_cast<std::string>(args[i]) << (i + 1 == args.size() ? "\n" : ",\n");
+						os << grandChild.indent() << static_cast<std::wstring>(args[i]) << (i + 1 == args.size() ? "\n" : ",\n");
 					}
 				}
 				os << child.indent() << ")" << std::endl;
@@ -416,7 +416,7 @@ namespace cgl
 
 			const auto child = Printer(os, m_indent + 1);
 
-			os << child.indent() << static_cast<std::string>(keyExpr.name) << std::endl;
+			os << child.indent() << static_cast<std::wstring>(keyExpr.name) << std::endl;
 			boost::apply_visitor(Printer(os, m_indent + 1), keyExpr.expr);
 			os << indent() << ")" << std::endl;
 		}
@@ -481,7 +481,7 @@ namespace cgl
 				}
 				else if (auto opt = AsOpt<RecordAccess>(access))
 				{
-					os << child.indent() << "." << std::string(opt.value().name) << std::endl;
+					os << child.indent() << "." << std::wstring(opt.value().name) << std::endl;
 				}
 				else if (auto opt = AsOpt<FunctionAccess>(access))
 				{
@@ -543,7 +543,7 @@ namespace cgl
 				os << child.indent();
 				for (size_t i = 0; i < node.arguments.size(); ++i)
 				{
-					os << static_cast<std::string>(node.arguments[i]);
+					os << static_cast<std::wstring>(node.arguments[i]);
 					if (i + 1 != node.arguments.size())
 					{
 						os << ", ";

@@ -68,14 +68,14 @@ int main()
 
 	using namespace cgl;
 
-	const auto parse = [](const std::string& str, Lines& lines)->bool
+	const auto parse = [](const std::wstring& str, Lines& lines)->bool
 	{
 		using namespace cgl;
 
 		SpaceSkipper<IteratorT> skipper;
 		Parser<IteratorT, SpaceSkipperT> grammer;
 
-		std::string::const_iterator it = str.begin();
+		std::wstring::const_iterator it = str.begin();
 		if (!boost::spirit::qi::phrase_parse(it, str.end(), grammer, skipper, lines))
 		{
 			std::cerr << "error: parse failed\n";
@@ -84,7 +84,7 @@ int main()
 
 		if (it != str.end())
 		{
-			std::cerr << "error: ramains input\n" << std::string(it, str.end());
+			std::cerr << "error: ramains input\n" << std::wstring(it, str.end());
 			return false;
 		}
 
@@ -93,7 +93,7 @@ int main()
 
 #ifdef DO_TEST
 
-	std::vector<std::string> test_ok({
+	std::vector<std::wstring> test_ok({
 		"(1*2 + -3*-(4 + 5/6))",
 		"1/(3+4)^6^7",
 		"1 + 2, 3 + 4",
@@ -133,7 +133,7 @@ func2 = x, y -> x + y)",
 "x = 10, g = (f = ->x + 1, f), g()"
 	});
 	
-	std::vector<std::string> test_ng({
+	std::vector<std::wstring> test_ng({
 		", 3*4",
 		"1 + 1 , , 2 + 3",
 		"1 + 2, 3 + 4,",
@@ -222,7 +222,7 @@ func2 = x, y -> x + y)",
 
 	int eval_wrongs = 0;
 
-	const auto testEval1 = [&](const std::string& source, std::function<bool(const Evaluated&)> pred)
+	const auto testEval1 = [&](const std::wstring& source, std::function<bool(const Evaluated&)> pred)
 	{
 		std::cout << "----------------------------------------------------------\n";
 		std::cout << "input:\n";
@@ -265,7 +265,7 @@ func2 = x, y -> x + y)",
 		}
 	};
 
-	const auto testEval = [&](const std::string& source, const Evaluated& answer)
+	const auto testEval = [&](const std::wstring& source, const Evaluated& answer)
 	{
 		testEval1(source, [&](const Evaluated& result) {return IsEqualEvaluated(result, answer); });
 	};
@@ -655,9 +655,9 @@ main = shape{
 
 	while (true)
 	{
-		std::string source;
+		std::wstring source;
 
-		std::string buffer;
+		std::wstring buffer;
 		while (std::cout << ">> ", std::getline(std::cin, buffer))
 		{
 			if (buffer == "quit()")
@@ -702,9 +702,9 @@ int main(int argc, char* argv[])
 
 	ofs.open("log.txt");
 
-	const std::string filename(argv[1]);
+	const std::wstring filename(argv[1]);
 	std::ifstream ifs(filename);
-	std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+	std::wstring sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
 	cgl::Program program;
 	program.draw(sourceCode, false);

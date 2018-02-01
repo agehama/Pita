@@ -22,7 +22,7 @@ namespace cgl
 			evaluator(pEnv)
 		{}
 
-		boost::optional<Expr> parse(const std::string& program)
+		boost::optional<Expr> parse(const std::wstring& program)
 		{
 			using namespace cgl;
 
@@ -31,18 +31,18 @@ namespace cgl
 			SpaceSkipper<IteratorT> skipper;
 			Parser<IteratorT, SpaceSkipperT> grammer;
 
-			std::string::const_iterator it = program.begin();
+			std::wstring::const_iterator it = program.begin();
 			if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
 			{
-				//std::cerr << "Syntax Error: parse failed\n";
-				std::cout << "Syntax Error: parse failed\n";
+				//std::cerr << L"Syntax Error: parse failed\n";
+				std::cout << L"Syntax Error: parse failed\n";
 				return boost::none;
 			}
 
 			if (it != program.end())
 			{
-				//std::cerr << "Syntax Error: ramains input\n" << std::string(it, program.end());
-				std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
+				//std::cerr << L"Syntax Error: ramains input\n" << std::wstring(it, program.end());
+				std::cout << L"Syntax Error: ramains input\n" << std::wstring(it, program.end());
 				return boost::none;
 			}
 
@@ -50,7 +50,7 @@ namespace cgl
 			return result;
 		}
 
-		boost::optional<Evaluated> execute(const std::string& program)
+		boost::optional<Evaluated> execute(const std::wstring& program)
 		{
 			if (auto exprOpt = parse(program))
 			{
@@ -60,16 +60,16 @@ namespace cgl
 				}
 				catch (const cgl::Exception& e)
 				{
-					std::cerr << "Exception: " << e.what() << std::endl;
+					std::cerr << L"Exception: " << e.what() << std::endl;
 				}
 			}
 
 			return boost::none;
 		}
 
-		bool draw(const std::string& program, bool logOutput = true)
+		bool draw(const std::wstring& program, bool logOutput = true)
 		{
-			if (logOutput) std::cout << "parse..." << std::endl;
+			if (logOutput) std::cout << L"parse..." << std::endl;
 			
 			if (auto exprOpt = parse(program))
 			{
@@ -77,35 +77,35 @@ namespace cgl
 				{
 					if (logOutput)
 					{
-						std::cout << "parse succeeded" << std::endl;
+						std::cout << L"parse succeeded" << std::endl;
 						printExpr(exprOpt.value());
 					}
 
-					if (logOutput) std::cout << "execute..." << std::endl;
+					if (logOutput) std::cout << L"execute..." << std::endl;
 					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
 					const Evaluated result = pEnv->expand(lrvalue);
-					if (logOutput) std::cout << "execute succeeded" << std::endl;
+					if (logOutput) std::cout << L"execute succeeded" << std::endl;
 
-					if (logOutput) std::cout << "output SVG..." << std::endl;
+					if (logOutput) std::cout << L"output SVG..." << std::endl;
 					OutputSVG(std::cout, result, pEnv);
-					if (logOutput) std::cout << "output succeeded" << std::endl;
+					if (logOutput) std::cout << L"output succeeded" << std::endl;
 				}
 				catch (const cgl::Exception& e)
 				{
-					std::cerr << "Exception: " << e.what() << std::endl;
+					std::cerr << L"Exception: " << e.what() << std::endl;
 				}
 			}
 
 			return false;
 		}
 
-		void execute1(const std::string& program, bool logOutput = true)
+		void execute1(const std::wstring& program, bool logOutput = true)
 		{
 			clear();
 
 			if (logOutput)
 			{
-				std::cout << "parse..." << std::endl;
+				std::cout << L"parse..." << std::endl;
 				std::cout << program << std::endl;
 			}
 
@@ -115,31 +115,31 @@ namespace cgl
 				{
 					if (logOutput)
 					{
-						std::cout << "parse succeeded" << std::endl;
+						std::cout << L"parse succeeded" << std::endl;
 						printExpr(exprOpt.value(), std::cout);
 					}
 
-					if (logOutput) std::cout << "execute..." << std::endl;
+					if (logOutput) std::cout << L"execute..." << std::endl;
 					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
 					evaluated = pEnv->expand(lrvalue);
 					if (logOutput)
 					{
-						std::cout << "execute succeeded" << std::endl;
+						std::cout << L"execute succeeded" << std::endl;
 						printEvaluated(evaluated.value(), pEnv, std::cout, 0);
 
-						std::cout << "output SVG..." << std::endl;
-						std::ofstream file("result.svg");
+						std::cout << L"output SVG..." << std::endl;
+						std::ofstream file(L"result.svg");
 						OutputSVG(file, evaluated.value(), pEnv);
 						file.close();
-						std::cout << "completed" << std::endl;
+						std::cout << L"completed" << std::endl;
 					}
 
 					succeeded = true;
 				}
 				catch (const cgl::Exception& e)
 				{
-					//std::cerr << "Exception: " << e.what() << std::endl;
-					std::cout << "Exception: " << e.what() << std::endl;
+					//std::cerr << L"Exception: " << e.what() << std::endl;
+					std::cout << L"Exception: " << e.what() << std::endl;
 
 					succeeded = false;
 				}	
@@ -160,7 +160,7 @@ namespace cgl
 			succeeded = false;
 		}
 
-		bool test(const std::string& program, const Expr& expr)
+		bool test(const std::wstring& program, const Expr& expr)
 		{
 			clear();
 

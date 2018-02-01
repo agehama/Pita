@@ -68,7 +68,7 @@ namespace cgl
 		}
 	} const keywords;
 
-	using IteratorT = std::string::const_iterator;
+	using IteratorT = std::wstring::const_iterator;
 	using SpaceSkipperT = SpaceSkipper<IteratorT>;
 	using LineSkipperT = LineSkipper<IteratorT>;
 
@@ -102,18 +102,18 @@ namespace cgl
 		qi::rule<Iterator, DefFunc(), Skipper> def_func;
 		qi::rule<Iterator, Arguments(), Skipper> arguments;
 		qi::rule<Iterator, Identifier(), Skipper> id;
-		qi::rule<Iterator, std::string(), Skipper> char_string;
+		qi::rule<Iterator, std::wstring(), Skipper> char_string;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
 		qi::rule<Iterator, Lines(), Skipper> expr_seq, statement;
 		qi::rule<Iterator, Lines(), Skipper> program;
 
-		//qi::rule<Iterator, std::string(), Skipper> double_value;
+		//qi::rule<Iterator, std::wstring(), Skipper> double_value;
 		//qi::rule<Iterator, Identifier(), Skipper> double_value, double_value2;
 
 		qi::rule<Iterator> s, s1;
 		qi::rule<Iterator> distinct_keyword;
-		qi::rule<Iterator, std::string(), Skipper> unchecked_identifier;
-		qi::rule<Iterator, std::string(), Skipper> float_value;
+		qi::rule<Iterator, std::wstring(), Skipper> unchecked_identifier;
+		qi::rule<Iterator, std::wstring(), Skipper> float_value;
 		
 		Parser() : Parser::base_type(program)
 		{
@@ -130,7 +130,7 @@ namespace cgl
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
 
 			//auto makeDouble = [](const Identifier& str) { return std::stod(str.name); };
-			//auto makeString = [](char c) { return Identifier(std::string({ c })); };
+			//auto makeString = [](char c) { return Identifier(std::wstring({ c })); };
 			//auto appendString = [](Identifier& str, char c) { str.name.push_back(c); };
 			//auto appendString2 = [](Identifier& str, const Identifier& str2) { str.name.append(str2.name); };
 
@@ -322,7 +322,7 @@ namespace cgl
 			//id = identifier_def[_val = _1];
 			id = unchecked_identifier[_val = _1] - distinct_keyword;
 
-			char_string = qi::lexeme[*qi::alnum];
+			char_string = qi::lexeme[*(qi::char_ - qi::char_('\"'))];
 
 			distinct_keyword = qi::lexeme[keywords >> !(qi::alnum | '_')];
 			unchecked_identifier = qi::lexeme[(qi::alpha | qi::char_('_')) >> *(qi::alnum | qi::char_('_'))];

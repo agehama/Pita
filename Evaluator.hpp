@@ -538,26 +538,26 @@ namespace cgl
 	public:
 
 		//関数内部で閉じているローカル変数
-		std::set<std::string> localVariables;
+		std::set<std::wstring> localVariables;
 
 		std::shared_ptr<Environment> pEnv;
 
 		//レコード継承の構文を扱うために必要必要
 		bool isInnerRecord;
 
-		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
+		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::wstring>& functionArguments, bool isInnerRecord = false) :
 			pEnv(pEnv),
 			localVariables(functionArguments),
 			isInnerRecord(isInnerRecord)
 		{}
 
-		ClosureMaker& addLocalVariable(const std::string& name)
+		ClosureMaker& addLocalVariable(const std::wstring& name)
 		{
 			localVariables.insert(name);
 			return *this;
 		}
 
-		bool isLocalVariable(const std::string& name)const
+		bool isLocalVariable(const std::wstring& name)const
 		{
 			return localVariables.find(name) != localVariables.end();
 		}
@@ -1552,7 +1552,7 @@ namespace cgl
 
 			for (size_t i = 0; i < recordConsractor.exprs.size(); ++i)
 			{
-				CGL_DebugLog(std::string("RecordExpr(") + ToS(i) + "): ");
+				CGL_DebugLog(std::wstring("RecordExpr(") + ToS(i) + "): ");
 				printExpr(recordConsractor.exprs[i]);
 			}
 
@@ -1587,7 +1587,7 @@ namespace cgl
 					const auto keyVal = keyValOpt.value();
 					keyList.push_back(keyVal.name);
 
-					CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
+					CGL_DebugLog(std::wstring("assign to ") + static_cast<std::wstring>(keyVal.name));
 
 					//Assign(keyVal.name, keyVal.value, *pEnv);
 
@@ -1695,7 +1695,7 @@ namespace cgl
 						}
 					}
 
-					CGL_DebugLog(std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
+					CGL_DebugLog(std::wstring("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
 
 					//一度sat式の中身を展開し、
 					//Accessorを展開するvisitor（Expr -> Expr）を作り、実行する
@@ -1721,9 +1721,9 @@ namespace cgl
 						return LRValue(0);
 					}
 
-					CGL_DebugLog(std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
-					CGL_DebugLog(std::string("Record SatExpr: "));
-					std::cout << (std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size())) << std::endl;
+					CGL_DebugLog(std::wstring("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
+					CGL_DebugLog(std::wstring("Record SatExpr: "));
+					std::cout << (std::wstring("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size())) << std::endl;
 				}
 
 				//DeclFreeに出現する参照について、そのインデックス -> Problemのデータのインデックスを取得するマップ
@@ -1731,14 +1731,14 @@ namespace cgl
 				for (size_t freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
 				{
 					CGL_DebugLog(ToS(freeIndex));
-					CGL_DebugLog(std::string("Address(") + record.freeVariableRefs[freeIndex].toString() + ")");
+					CGL_DebugLog(std::wstring("Address(") + record.freeVariableRefs[freeIndex].toString() + ")");
 					const auto& ref1 = record.freeVariableRefs[freeIndex];
 
 					bool found = false;
 					for (size_t dataIndex = 0; dataIndex < problemRefs.size(); ++dataIndex)
 					{
 						CGL_DebugLog(ToS(dataIndex));
-						CGL_DebugLog(std::string("Address(") + problemRefs[dataIndex].toString() + ")");
+						CGL_DebugLog(std::wstring("Address(") + problemRefs[dataIndex].toString() + ")");
 
 						const auto& ref2 = problemRefs[dataIndex];
 
@@ -1785,8 +1785,8 @@ namespace cgl
 					double result = problem.eval(pEnv);
 					pEnv->switchBackScope();
 
-					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
-					std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
+					CGL_DebugLog(std::wstring("cost: ") + ToS(result, 17));
+					std::cout << std::wstring("cost: ") << ToS(result, 17) << "\n";
 					return result;
 				};
 				constraintProblem.originalRecord = record;
@@ -1830,7 +1830,7 @@ namespace cgl
 					double result = problem.eval(pEnv);
 					pEnv->switchBackScope();
 
-					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+					CGL_DebugLog(std::wstring("cost: ") + ToS(result, 17));
 					
 					return result;
 				};
@@ -1971,7 +1971,7 @@ namespace cgl
 			{
 				pEnv->makeVariable(keyval.first, keyval.second);
 
-				CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
+				CGL_DebugLog(std::wstring("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 			}
 
 			Expr expr = record.adder;
@@ -1989,7 +1989,7 @@ namespace cgl
 				//pEnv->bindObjectRef(keyval.first, keyval.second);
 				pEnv->makeVariable(keyval.first, keyval.second);
 
-				CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
+				CGL_DebugLog(std::wstring("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 			}
 
 			CGL_DebugLog("");
@@ -3090,7 +3090,7 @@ namespace cgl
 
 	Address Environment::makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr)
 	{
-		std::set<std::string> functionArguments;
+		std::set<std::wstring> functionArguments;
 		for (const auto& arg : arguments)
 		{
 			functionArguments.insert(arg);
@@ -3211,9 +3211,9 @@ namespace cgl
 				CGL_Error("不正な式です");
 			}
 
-			//std::cout << "Fontの取得：" << static_cast<std::string>(As<Identifier>(expr)) << "\n";
+			std::cout << "Fontの取得：" << static_cast<std::wstring>(As<Identifier>(expr)) << "\n";
 
-			return GetDefaultFontString(static_cast<std::string>(As<Identifier>(expr)), m_weakThis.lock());
+			return GetDefaultFontString(static_cast<std::wstring>(As<Identifier>(expr)), m_weakThis.lock());
 			//return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
 			//return 0;
 		}

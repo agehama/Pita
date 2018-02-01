@@ -40,7 +40,7 @@
 
 namespace cgl
 {
-	inline bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Environment> environment)
+	inline bool ReadDouble(double& output, const std::wstring& name, const Record& record, std::shared_ptr<Environment> environment)
 	{
 		const auto& values = record.values;
 		auto it = values.find(name);
@@ -354,7 +354,7 @@ namespace cgl
 		return boost::none;
 	}
 
-	using PolygonsStream = std::multimap<double, std::string>;
+	using PolygonsStream = std::multimap<double, std::wstring>;
 	
 	namespace gg = geos::geom;
 	namespace gob = geos::operation::buffer;
@@ -661,7 +661,7 @@ namespace cgl
 	inline void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon)
 	{
 		{
-			std::stringstream ss;
+			std::wstringstream ss;
 
 			const gg::LineString* outer = polygon->getExteriorRing();
 			const double area = polygon->getEnvelope()->getArea();
@@ -679,7 +679,7 @@ namespace cgl
 
 		for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
 		{
-			std::stringstream ss;
+			std::wstringstream ss;
 
 			const gg::LineString* hole = polygon->getInteriorRingN(i);
 			const double area = hole->getEnvelope()->getArea();

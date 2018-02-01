@@ -76,7 +76,7 @@ namespace cgl
 				{
 					//CGL_DebugLog("addSatRef: ＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠");
 					pEnv->printEnvironment(true);
-					//CGL_DebugLog(std::string("addSatRef: Evaluated: Address(") + reference.toString() + ")");
+					//CGL_DebugLog(std::wstring("addSatRef: Evaluated: Address(") + reference.toString() + ")");
 					//CGL_DebugLog("addSatRef: ：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：：");
 				}
 				
@@ -270,7 +270,7 @@ namespace cgl
 			for (size_t i = 0; i < node.exprs.size(); ++i)
 			{
 				const auto& expr = node.exprs[i];
-				//CGL_DebugLog(std::string("BindRecordExpr(") + ToS(i) + ")");
+				//CGL_DebugLog(std::wstring("BindRecordExpr(") + ToS(i) + ")");
 				//printExpr(expr);
 				result = boost::apply_visitor(*this, expr) || result;
 			}
@@ -502,7 +502,7 @@ namespace cgl
 				{
 					return opt.value();
 				}
-				//CGL_DebugLog(std::string("address: ") + node.address().toString());
+				//CGL_DebugLog(std::wstring("address: ") + node.address().toString());
 				return pEnv->expand(node.address());
 			}
 			return node.evaluated();
@@ -518,7 +518,7 @@ namespace cgl
 		{
 			//CGL_DebugLog("Evaluated operator()(const Identifier& node)");
 			//pEnv->printEnvironment(true);
-			//CGL_DebugLog(std::string("find Identifier(") + std::string(node) + ")");
+			//CGL_DebugLog(std::wstring("find Identifier(") + std::wstring(node) + ")");
 			const Address address = pEnv->findAddress(node);
 			if (auto opt = expandFreeOpt(address))
 			{
@@ -703,7 +703,7 @@ namespace cgl
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
 				pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
-				//CGL_DebugLog(std::string("bind: ") + std::string(funcVal.arguments[i]) + " -> Address(" + expandedArguments[i].toString() + ")");
+				//CGL_DebugLog(std::wstring("bind: ") + std::wstring(funcVal.arguments[i]) + " -> Address(" + expandedArguments[i].toString() + ")");
 			}
 
 			//CGL_DebugLog("");
@@ -831,7 +831,7 @@ namespace cgl
 					{
 						Address tempVal = pEnv->makeTemporaryValue(keyVal.value);
 						pEnv->bindValueID(keyVal.name, tempVal);
-						//CGL_DebugLog(std::string("bind: ") + std::string(keyVal.name) + " -> Address(" + tempVal.toString() + ")");
+						//CGL_DebugLog(std::wstring("bind: ") + std::wstring(keyVal.name) + " -> Address(" + tempVal.toString() + ")");
 					}
 				}
 
@@ -1030,7 +1030,7 @@ namespace cgl
 		CGL_DebugLog("freeVariables:");
 		for (const auto& val : freeVariables)
 		{
-			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
+			CGL_DebugLog(std::wstring("  Address(") + val.toString() + ")");
 		}
 
 		SatVariableBinder binder(pEnv, freeVariables);
@@ -1116,19 +1116,19 @@ namespace cgl
 			CGL_DebugLog("data:");
 			for(int i=0;i<data.size();++i)
 			{
-				CGL_DebugLog(std::string("  ID(") + ToS(i) + ") -> " + ToS(data[i]));
+				CGL_DebugLog(std::wstring("  ID(") + ToS(i) + ") -> " + ToS(data[i]));
 			}
 
 			CGL_DebugLog("refs:");
 			for (int i = 0; i<refs.size(); ++i)
 			{
-				CGL_DebugLog(std::string("  ID(") + ToS(i) + ") -> Address(" + refs[i].toString() + ")");
+				CGL_DebugLog(std::wstring("  ID(") + ToS(i) + ") -> Address(" + refs[i].toString() + ")");
 			}
 
 			CGL_DebugLog("invRefs:");
 			for(const auto& keyval : invRefs)
 			{
-				CGL_DebugLog(std::string("  Address(") + keyval.first.toString() + ") -> ID(" + ToS(keyval.second) + ")");
+				CGL_DebugLog(std::wstring("  Address(") + keyval.first.toString() + ") -> ID(" + ToS(keyval.second) + ")");
 			}
 
 			CGL_DebugLog("env:");

@@ -156,7 +156,7 @@ namespace cgl
 		return area;
 	}
 
-	inline List GetDefaultFontString(const std::string& str, std::shared_ptr<cgl::Environment> pEnv)
+	inline List GetDefaultFontString(const std::wstring& str, std::shared_ptr<cgl::Environment> pEnv)
 	{
 		if (str.empty() || str.front() == ' ')
 		{

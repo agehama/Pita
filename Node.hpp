@@ -36,17 +36,17 @@ namespace cgl
 	class Exception : public std::exception
 	{
 	public:
-		explicit Exception(const std::string& message) :message(message) {}
-		const char* what() const noexcept override { return message.c_str(); }
+		explicit Exception(const std::wstring& message) :message(message) {}
+		const wchar_t* what() const noexcept override { return message.c_str(); }
 
 	private:
-		std::string message;
+		std::wstring message;
 	};
 
-	inline void Log(std::ostream& os, const std::string& str)
+	inline void Log(std::ostream& os, const std::wstring& str)
 	{
-		std::regex regex("\n");
-		os << std::regex_replace(str, regex, "\n          |> ") << "\n";
+		std::wregex regex(L"\n");
+		os << std::wregex_replace(str, regex, L"\n          |> ") << L"\n";
 	}
 
 	const double pi = 3.1415926535;
@@ -56,10 +56,10 @@ namespace cgl
 extern std::ofstream ofs;
 
 #define CGL_FileName (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
-#define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ") : ")
-#define CGL_TagError (std::string("[Error]   |> "))
-#define CGL_TagWarn  (std::string("[Warning] |> "))
-#define CGL_TagDebug (std::string("[Debug]   |> "))
+#define CGL_FileDesc (std::wstring(CGL_FileName) + L"(" + std::to_string(__LINE__) + L") : ")
+#define CGL_TagError (std::wstring(L"[Error]   |> "))
+#define CGL_TagWarn  (std::wstring(L"[Warning] |> "))
+#define CGL_TagDebug (std::wstring(L"[Debug]   |> "))
 #define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
 
 #ifdef CGL_EnableLogOutput
@@ -155,32 +155,32 @@ namespace cgl
 		Concat
 	};
 
-	inline std::string BinaryOpToStr(BinaryOp op)
+	inline std::wstring BinaryOpToStr(BinaryOp op)
 	{
 		switch (op)
 		{
-		case BinaryOp::And: return "And";
-		case BinaryOp::Or:  return "Or";
+		case BinaryOp::And: return L"And";
+		case BinaryOp::Or:  return L"Or";
 
-		case BinaryOp::Equal:        return "Equal";
-		case BinaryOp::NotEqual:     return "NotEqual";
-		case BinaryOp::LessThan:     return "LessThan";
-		case BinaryOp::LessEqual:    return "LessEqual";
-		case BinaryOp::GreaterThan:  return "GreaterThan";
-		case BinaryOp::GreaterEqual: return "GreaterEqual";
+		case BinaryOp::Equal:        return L"Equal";
+		case BinaryOp::NotEqual:     return L"NotEqual";
+		case BinaryOp::LessThan:     return L"LessThan";
+		case BinaryOp::LessEqual:    return L"LessEqual";
+		case BinaryOp::GreaterThan:  return L"GreaterThan";
+		case BinaryOp::GreaterEqual: return L"GreaterEqual";
 
-		case BinaryOp::Add: return "Add";
-		case BinaryOp::Sub: return "Sub";
-		case BinaryOp::Mul: return "Mul";
-		case BinaryOp::Div: return "Div";
+		case BinaryOp::Add: return L"Add";
+		case BinaryOp::Sub: return L"Sub";
+		case BinaryOp::Mul: return L"Mul";
+		case BinaryOp::Div: return L"Div";
 
-		case BinaryOp::Pow:    return "Pow";
-		case BinaryOp::Assign: return "Assign";
+		case BinaryOp::Pow:    return L"Pow";
+		case BinaryOp::Assign: return L"Assign";
 
-		case BinaryOp::Concat: return "Concat";
+		case BinaryOp::Concat: return L"Concat";
 		}
 
-		return "Unknown";
+		return L"Unknown";
 	}
 
 	struct DefFunc;
@@ -190,7 +190,7 @@ namespace cgl
 	public:
 		Identifier() = default;
 
-		Identifier(const std::string& name_) :
+		Identifier(const std::wstring& name_) :
 			name(name_)
 		{}
 
@@ -208,13 +208,13 @@ namespace cgl
 			return !(*this == other);
 		}
 
-		operator const std::string&()const
+		operator const std::wstring&()const
 		{
 			return name;
 		}
 
 	private:
-		std::string name;
+		std::wstring name;
 	};
 
 	struct Address
@@ -246,7 +246,7 @@ namespace cgl
 			return Address();
 		}
 
-		std::string toString()const
+		std::wstring toString()const
 		{
 			return std::to_string(valueID);
 		}
@@ -416,7 +416,7 @@ namespace cgl
 		static LRValue Bool(bool a) { return LRValue(a); }
 		static LRValue Int(int a) { return LRValue(a); }
 		static LRValue Double(double a) { return LRValue(a); }
-		static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
+		static LRValue Float(const std::wstring& str) { return LRValue(std::stod(str)); }
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
 		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
@@ -756,7 +756,7 @@ namespace cgl
 		std::vector<Identifier> arguments;
 		Expr expr;
 		boost::optional<Address> builtinFuncAddress;
-		//std::vector<std::set<std::string>> referenceableVariables;
+		//std::vector<std::set<std::wstring>> referenceableVariables;
 		//mutable int currentScopeDepth;
 
 		FuncVal() = default;
@@ -768,7 +768,7 @@ namespace cgl
 		FuncVal(
 			const std::vector<Identifier>& arguments,
 			const Expr& expr/*,
-			const std::vector<std::set<std::string>>& referenceableVariables,
+			const std::vector<std::set<std::wstring>>& referenceableVariables,
 			int currentScopeDepth*/) :
 			arguments(arguments),
 			expr(expr)/*,
@@ -793,7 +793,7 @@ namespace cgl
 
 			//environment;
 			//expr;
-			std::cerr << "Warning: IsEqual<FuncVal>() don't care about environment and expr" << std::endl;
+			std::cerr << L"Warning: IsEqual<FuncVal>() don't care about environment and expr" << std::endl;
 
 			return true;
 		}
@@ -1289,7 +1289,7 @@ namespace cgl
 
 		bool operator==(const DeclSat& other)const
 		{
-			std::cerr << "Warning: IsEqual<DeclSat>() don't care about expr" << std::endl;
+			std::cerr << L"Warning: IsEqual<DeclSat>() don't care about expr" << std::endl;
 			return true;
 		}
 	};
@@ -1308,27 +1308,27 @@ namespace cgl
 				return index == other.index;
 			}
 
-			std::string asString()const
+			std::wstring asString()const
 			{
-				return std::string("[") + std::to_string(index) + "]";
+				return std::wstring(L"[") + std::to_string(index) + L"]";
 			}
 		};
 
 		struct RecordRef
 		{
-			std::string key;
+			std::wstring key;
 
 			RecordRef() = default;
-			RecordRef(const std::string& key) :key(key) {}
+			RecordRef(const std::wstring& key) :key(key) {}
 
 			bool operator==(const RecordRef& other)const
 			{
 				return key == other.key;
 			}
 
-			std::string asString()const
+			std::wstring asString()const
 			{
-				return std::string(".") + key;
+				return std::wstring(L".") + key;
 			}
 		};
 
@@ -1358,9 +1358,9 @@ namespace cgl
 				return true;
 			}
 
-			std::string asString()const
+			std::wstring asString()const
 			{
-				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
+				return std::wstring(L"( ") + std::to_string(args.size()) + L"args" + L" )";
 			}
 
 			/*
@@ -1387,7 +1387,7 @@ namespace cgl
 
 		//ObjectT headValue;
 
-		//std::string funcName;
+		//std::wstring funcName;
 		Address headAddress; //funcName -> headAddress に変更
 
 		std::vector<Ref> references;
@@ -1403,7 +1403,7 @@ namespace cgl
 			references.push_back(ListRef(index));
 		}
 
-		void appendRecordRef(const std::string& key)
+		void appendRecordRef(const std::wstring& key)
 		{
 			references.push_back(RecordRef(key));
 		}
@@ -1443,9 +1443,9 @@ namespace cgl
 			return true;
 		}
 
-		std::string asString()const
+		std::wstring asString()const
 		{
-			std::string str = "objName";
+			std::wstring str = L"objName";
 
 			for (const auto& r : references)
 			{
@@ -1518,7 +1518,7 @@ namespace cgl
 				}
 			}*/
 
-			std::cerr << "Warning: IsEqual<DeclFree>() don't care about accessors" << std::endl;
+			std::cerr << L"Warning: IsEqual<DeclFree>() don't care about accessors" << std::endl;
 			//accessors;
 
 			return true;
@@ -1527,8 +1527,8 @@ namespace cgl
 
 	struct Record
 	{
-		//std::unordered_map<std::string, Evaluated> values;
-		std::unordered_map<std::string, Address> values;
+		//std::unordered_map<std::wstring, Evaluated> values;
+		std::unordered_map<std::wstring, Address> values;
 		OptimizationProblemSat problem;
 		std::vector<Accessor> freeVariables;
 		//std::vector<Address> freeVariables;//var宣言で指定された変数のアドレス
@@ -1537,12 +1537,12 @@ namespace cgl
 		Record() = default;
 		
 		/*
-		Record(const std::string& name, const Evaluated& value)
+		Record(const std::wstring& name, const Evaluated& value)
 		{
 			append(name, value);
 		}
 
-		Record& append(const std::string& name, const Evaluated& value)
+		Record& append(const std::wstring& name, const Evaluated& value)
 		{
 			values[name] = value;
 			return *this;
@@ -1571,19 +1571,19 @@ namespace cgl
 				}
 			}
 
-			std::cerr << "Warning: IsEqual<Record>() don't care about constraint" << std::endl;
+			std::cerr << L"Warning: IsEqual<Record>() don't care about constraint" << std::endl;
 			//constraint;
 			//freeVariables;
 			return true;
 		}
 		*/
 
-		Record(const std::string& name, const Address& address)
+		Record(const std::wstring& name, const Address& address)
 		{
 			append(name, address);
 		}
 
-		Record& append(const std::string& name, const Address& address)
+		Record& append(const std::wstring& name, const Address& address)
 		{
 			values[name] = address;
 			return *this;
@@ -1613,7 +1613,7 @@ namespace cgl
 				}
 			}
 
-			std::cerr << "Warning: IsEqual<Record>() don't care about constraint" << std::endl;
+			std::cerr << L"Warning: IsEqual<Record>() don't care about constraint" << std::endl;
 			//constraint;
 			//freeVariables;
 			return true;
@@ -1907,17 +1907,17 @@ namespace cgl
 
 			return IsEqual(original, other.original) && adder == other.adder;
 
-			std::cerr << "Error(" << __LINE__ << ")\n";
+			std::cerr << L"Error(" << __LINE__ << L")\n";
 			return false;
 		}
 	};
 
-	inline Expr BuildString(const std::string& str)
+	inline Expr BuildString(const std::wstring& str)
 	{
 		Expr expr;
 		FuncVal funcval;
 		funcval.expr = Identifier(str);
-		expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
+		expr = Accessor(Identifier(L"DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
 		return expr;
 	}
 }

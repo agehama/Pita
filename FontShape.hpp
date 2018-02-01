@@ -42,7 +42,7 @@ namespace cgl
 	class FontBuilder
 	{
 	public:
-		FontBuilder(const std::string& fontPath)
+		FontBuilder(const std::wstring& fontPath)
 		{
 			fread(current_buffer, 1, 1 << 25, fopen(fontPath.c_str(), "rb"));
 			stbtt_InitFont(&fontInfo, current_buffer, stbtt_GetFontOffsetForIndex(current_buffer, 0));
@@ -148,7 +148,7 @@ namespace cgl
 			}
 		}
 
-		std::vector<gg::Geometry*> textToPolygon(const std::string& str, int quality = 1)
+		std::vector<gg::Geometry*> textToPolygon(const std::wstring& str, int quality = 1)
 		{
 			std::vector<gg::Geometry*> result;
 			int offsetX = 0;

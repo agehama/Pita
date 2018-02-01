@@ -12,6 +12,7 @@
 #include <set>
 #include <map>
 #include <unordered_map>
+#include <wchar.h>
 
 #include <boost/fusion/include/vector.hpp>
 
@@ -37,26 +38,27 @@ namespace cgl
 	{
 	public:
 		explicit Exception(const std::wstring& message) :message(message) {}
-		const wchar_t* what() const noexcept override { return message.c_str(); }
+		//const wchar_t* what() const noexcept override { return message.c_str(); }
+		const wchar_t* what_() const noexcept { return message.c_str(); }
 
 	private:
 		std::wstring message;
 	};
 
-	inline void Log(std::ostream& os, const std::wstring& str)
+	inline void Log(std::wostream& os, const std::wstring& str)
 	{
 		std::wregex regex(L"\n");
-		os << std::wregex_replace(str, regex, L"\n          |> ") << L"\n";
+		os << std::regex_replace(str, regex, L"\n          |> ") << L"\n";
 	}
 
 	const double pi = 3.1415926535;
 	const double deg2rad = pi / 180.0;
 }
 
-extern std::ofstream ofs;
+extern std::wofstream ofs;
 
-#define CGL_FileName (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
-#define CGL_FileDesc (std::wstring(CGL_FileName) + L"(" + std::to_string(__LINE__) + L") : ")
+#define CGL_FileName (wcsrchr(__FILEW__, L'\\') ? wcsrchr(__FILEW__, L'\\') + 1 : __FILEW__)
+#define CGL_FileDesc (std::wstring(CGL_FileName) + L"(" + std::to_wstring(__LINE__) + L") : ")
 #define CGL_TagError (std::wstring(L"[Error]   |> "))
 #define CGL_TagWarn  (std::wstring(L"[Warning] |> "))
 #define CGL_TagDebug (std::wstring(L"[Debug]   |> "))
@@ -65,7 +67,7 @@ extern std::ofstream ofs;
 #ifdef CGL_EnableLogOutput
 #define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))
 #define CGL_WarnLog(message)  (cgl::Log(std::cerr, CGL_TagWarn  + CGL_FileDesc + message))
-//#define CGL_DebugLog(message) (cgl::Log(std::cout, CGL_TagDebug + CGL_FileDesc + message))
+//#define CGL_DebugLog(message) (cgl::Log(std::wcout, CGL_TagDebug + CGL_FileDesc + message))
 #define CGL_DebugLog(message) (cgl::Log(ofs, CGL_TagDebug + CGL_FileDesc + message))
 #else
 #define CGL_ErrorLog(message) 
@@ -194,9 +196,9 @@ namespace cgl
 			name(name_)
 		{}
 
-		Identifier(char name_) :
+		/*Identifier(char name_) :
 			name({ name_ })
-		{}
+		{}*/
 
 		bool operator==(const Identifier& other)const
 		{
@@ -248,7 +250,7 @@ namespace cgl
 
 		std::wstring toString()const
 		{
-			return std::to_string(valueID);
+			return std::to_wstring(valueID);
 		}
 
 	private:
@@ -1044,14 +1046,14 @@ namespace cgl
 			data({ expr })
 		{}
 
-		ListConstractor(const std::vector<int>& vs) :
+		/*ListConstractor(const std::vector<int>& vs) :
 			data(vs.size())
 		{
 			for (size_t i = 0; i < data.size(); ++i)
 			{
 				data[i] = vs[i];
 			}
-		}
+		}*/
 
 		ListConstractor& add(const Expr& expr)
 		{
@@ -1310,7 +1312,7 @@ namespace cgl
 
 			std::wstring asString()const
 			{
-				return std::wstring(L"[") + std::to_string(index) + L"]";
+				return std::wstring(L"[") + std::to_wstring(index) + L"]";
 			}
 		};
 
@@ -1360,7 +1362,7 @@ namespace cgl
 
 			std::wstring asString()const
 			{
-				return std::wstring(L"( ") + std::to_string(args.size()) + L"args" + L" )";
+				return std::wstring(L"( ") + std::to_wstring(args.size()) + L"args" + L" )";
 			}
 
 			/*

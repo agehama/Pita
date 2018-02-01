@@ -42,7 +42,7 @@ namespace cgl
 	class FontBuilder
 	{
 	public:
-		FontBuilder(const std::wstring& fontPath)
+		FontBuilder(const std::string& fontPath)
 		{
 			fread(current_buffer, 1, 1 << 25, fopen(fontPath.c_str(), "rb"));
 			stbtt_InitFont(&fontInfo, current_buffer, stbtt_GetFontOffsetForIndex(current_buffer, 0));

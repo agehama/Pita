@@ -29,7 +29,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("参照エラー");
+				CGL_Error(L"参照エラー");
 			}
 			return it->second;
 		}
@@ -39,7 +39,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("参照エラー");
+				CGL_Error(L"参照エラー");
 			}
 			return it->second;
 		}
@@ -108,8 +108,8 @@ namespace cgl
 		{
 			//関数のスコープが同じ時の動作は未確認
 
-			std::cout << "FuncScope:" << switchDepth << std::endl;
-			std::cout << "Variables:" << m_variables.size() << std::endl;
+			std::wcout << L"FuncScope:" << switchDepth << std::endl;
+			std::wcout << L"Variables:" << m_variables.size() << std::endl;
 
 			m_diffScopes.push({ switchDepth,std::vector<Scope>(m_variables.begin() + switchDepth + 1, m_variables.end()) });
 			m_variables.erase(m_variables.begin() + switchDepth + 1, m_variables.end());
@@ -144,7 +144,7 @@ namespace cgl
 
 			if (address1 != address2)
 			{
-				CGL_Error("組み込み関数の追加に失敗");
+				CGL_Error(L"組み込み関数の追加に失敗");
 			}
 
 			bindValueID(name, address1);
@@ -157,7 +157,7 @@ namespace cgl
 				return m_functions[functionAddress](pEnv, arguments);
 			}
 			
-			CGL_Error("ここは通らないはず");
+			CGL_Error(L"ここは通らないはず");
 			return 0;
 		}
 
@@ -167,7 +167,7 @@ namespace cgl
 			const auto valueIDOpt = findAddress(name);
 			if (!valueIDOpt)
 			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
+				std::cerr << L"Error(" << __LINE__ << L")\n";
 				return boost::none;
 			}
 
@@ -216,12 +216,12 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error("reference error");
+					CGL_Error(L"reference error");
 					return 0;
 				}
 			}
 
-			CGL_Error("reference error");
+			CGL_Error(L"reference error");
 			return 0;
 		}*/
 
@@ -235,7 +235,7 @@ namespace cgl
 					return it->second;
 				}
 				
-				CGL_Error(std::wstring("reference error: Address(") + lrvalue.address().toString() + ")");
+				CGL_Error(std::wstring(L"reference error: Address(") + lrvalue.address().toString() + L")");
 			}
 
 			return lrvalue.evaluated();
@@ -371,7 +371,7 @@ namespace cgl
 		/*
 		void bindNewValue(const std::wstring& name, const Evaluated& value)
 		{
-			CGL_DebugLog("");
+			CGL_DebugLog(L"");
 			const Address newAddress = m_values.add(value);
 			//Clone(m_weakThis.lock(), value);
 			bindValueID(name, newAddress);
@@ -379,7 +379,7 @@ namespace cgl
 		*/
 		void bindNewValue(const std::wstring& name, const Evaluated& value)
 		{
-			CGL_DebugLog("");
+			CGL_DebugLog(L"");
 			makeVariable(name, makeTemporaryValue(value));
 		}
 
@@ -388,7 +388,7 @@ namespace cgl
 			const Address address = findAddress(nameRhs);
 			if (!address.isValid())
 			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
+				std::cerr << L"Error(" << __LINE__ << L")\n";
 				return;
 			}
 
@@ -425,7 +425,7 @@ namespace cgl
 		}*/
 		void bindValueID(const std::wstring& name, const Address ID)
 		{
-			//CGL_DebugLog("");
+			//CGL_DebugLog(L"");
 			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 			{
 				auto valIt = scopeIt->find(name);
@@ -435,7 +435,7 @@ namespace cgl
 					return;
 				}
 			}
-			//CGL_DebugLog("");
+			//CGL_DebugLog(L"");
 
 			localEnv().back()[name] = ID;
 		}
@@ -457,7 +457,7 @@ namespace cgl
 		}*/
 
 		void printEnvironment(bool flag = false)const;
-		void printEnvironment(std::ostream& os)const;
+		void printEnvironment(std::wostream& os)const;
 
 		//void assignToObject(const ObjectReference& objectRef, const Evaluated& newValue);
 		void assignToObject(Address address, const Evaluated& newValue)

@@ -87,7 +87,7 @@ namespace cgl
 			return !As<bool>(lhs);
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -100,7 +100,7 @@ namespace cgl
 			return lhs;
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -117,7 +117,7 @@ namespace cgl
 			return -As<double>(lhs);
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -131,7 +131,7 @@ namespace cgl
 			return As<bool>(lhs) && As<bool>(rhs);
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -145,7 +145,7 @@ namespace cgl
 			return As<bool>(lhs) || As<bool>(rhs);
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -182,7 +182,7 @@ namespace cgl
 			return As<bool>(lhs) == As<bool>(rhs);
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return false;
 	}
 
@@ -219,7 +219,7 @@ namespace cgl
 			return As<bool>(lhs) != As<bool>(rhs);
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return false;
 	}
 
@@ -251,7 +251,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return false;
 	}
 
@@ -283,7 +283,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return false;
 	}
 
@@ -315,7 +315,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return false;
 	}
 
@@ -347,7 +347,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return false;
 	}
 
@@ -379,7 +379,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -411,7 +411,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -428,7 +428,7 @@ namespace cgl
 			return std::abs(As<double>(lhs));
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -443,7 +443,7 @@ namespace cgl
 			return std::sin(deg2rad*As<double>(lhs));
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -458,7 +458,7 @@ namespace cgl
 			return std::cos(deg2rad*As<double>(lhs));
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -490,7 +490,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -522,7 +522,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -554,7 +554,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -586,7 +586,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -618,7 +618,7 @@ namespace cgl
 			}
 		}
 
-		CGL_Error("不正な式です");
+		CGL_Error(L"不正な式です");
 		return 0;
 	}
 
@@ -626,7 +626,7 @@ namespace cgl
 	{
 		if (!IsType<List>(lhs) || !IsType<List>(rhs))
 		{
-			CGL_Error("リスト結合演算子がリスト以外の式に使われています");
+			CGL_Error(L"リスト結合演算子がリスト以外の式に使われています");
 			return 0;
 		}
 
@@ -640,7 +640,7 @@ namespace cgl
 		if (!IsLValue(lhs))
 		{
 			//代入式の左辺が左辺値でない
-			CGL_Error("不正な式です");
+			CGL_Error(L"不正な式です");
 			return 0;
 		}
 
@@ -737,7 +737,7 @@ namespace cgl
 		}
 		else
 		{
-			CGL_Error("不正な式です");
+			CGL_Error(L"不正な式です");
 		}
 
 		return lhs;

@@ -783,7 +783,6 @@ namespace cgl
 				return pEnv->expand(boost::apply_visitor(*this, if_statement.else_expr.value()));
 			}
 
-			CGL_Error("if式にelseが無い");
 			return 0;
 		}
 

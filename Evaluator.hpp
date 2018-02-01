@@ -3189,5 +3189,32 @@ namespace cgl
 			return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
 		}
 		);
+
+		registerBuiltInFunction(
+			"DefaultFontString",
+			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Evaluated evaluated = pEnv->expand(arguments[0]);
+			if (!IsType<FuncVal>(evaluated))
+			{
+				CGL_Error("不正な式です");
+			}
+
+			const Expr expr = As<FuncVal>(evaluated).expr;
+			if (!IsType<Identifier>(expr))
+			{
+				CGL_Error("不正な式です");
+			}
+
+			std::cout << "Fontの取得：" << static_cast<std::string>(As<Identifier>(expr)) << "\n";
+			//return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
+			return 0;
+		}
+		);
 	}
 }

@@ -1666,9 +1666,10 @@ namespace cgl
 
 		FunctionAccess() = default;
 
-		void add(const Expr& argument)
+		FunctionAccess& add(const Expr& argument)
 		{
 			actualArguments.push_back(argument);
+			return *this;
 		}
 
 		static void Append(FunctionAccess& obj, const Expr& argument)
@@ -1910,4 +1911,13 @@ namespace cgl
 			return false;
 		}
 	};
+
+	inline Expr BuildString(const std::string& str)
+	{
+		Expr expr;
+		FuncVal funcval;
+		funcval.expr = Identifier(str);
+		expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
+		return expr;
+	}
 }

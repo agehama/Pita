@@ -102,6 +102,7 @@ namespace cgl
 		qi::rule<Iterator, DefFunc(), Skipper> def_func;
 		qi::rule<Iterator, Arguments(), Skipper> arguments;
 		qi::rule<Iterator, Identifier(), Skipper> id;
+		qi::rule<Iterator, std::string(), Skipper> char_string;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
 		qi::rule<Iterator, Lines(), Skipper> expr_seq, statement;
 		qi::rule<Iterator, Lines(), Skipper> program;
@@ -295,13 +296,12 @@ namespace cgl
 			//	| record_maker[_val = _1]
 			//	| id[_val = _1];
 			
-			factor = /*double_[_val = _1]
-					 | */
-				float_value[_val = Call(LRValue::Float, _1)]
+			factor = float_value[_val = Call(LRValue::Float, _1)]
 				| int_[_val = Call(LRValue::Int, _1)]
 				| lit("true")[_val = Call(LRValue::Bool, true)]
 				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
+				| '\"' >> char_string[_val = Call(BuildString, _1)] >> '\"'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
 				//| constraints[_val = Call(LRValue::Sat, _1)]
@@ -321,6 +321,8 @@ namespace cgl
 			//id = lexeme[ascii::alpha[_val = _1] >> *(ascii::alnum[Call(addCharacter, _val, _1)])];
 			//id = identifier_def[_val = _1];
 			id = unchecked_identifier[_val = _1] - distinct_keyword;
+
+			char_string = qi::lexeme[*qi::alnum];
 
 			distinct_keyword = qi::lexeme[keywords >> !(qi::alnum | '_')];
 			unchecked_identifier = qi::lexeme[(qi::alpha | qi::char_('_')) >> *(qi::alnum | qi::char_('_'))];

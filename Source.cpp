@@ -8,6 +8,7 @@
 #include "Environment.hpp"
 #include "Evaluator.hpp"
 #include "OptimizationEvaluator.hpp"
+#include "Program.hpp"
 
 #include <geos/geom/Point.h>
 #include <geos/geom/Polygon.h>
@@ -59,7 +60,7 @@ inline double area(const gg::Geometry& poly)
 #include "Parser.hpp"
 #include "Vectorizer.hpp"
 
-std::ofstream ofs;
+std::wofstream ofs;
 
 #ifdef CGL_DO_TEST
 int main()
@@ -702,9 +703,9 @@ int main(int argc, char* argv[])
 
 	ofs.open("log.txt");
 
-	const std::wstring filename(argv[1]);
-	std::ifstream ifs(filename);
-	std::wstring sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+	const std::string filename(argv[1]);
+	std::wifstream ifs(filename);
+	std::wstring sourceCode((std::istreambuf_iterator<wchar_t>(ifs)), std::istreambuf_iterator<wchar_t>());
 
 	cgl::Program program;
 	program.draw(sourceCode, false);

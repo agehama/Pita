@@ -392,7 +392,8 @@ namespace cgl
 			pts.add(pts.front());
 		}
 
-		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+		//gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+		auto factory = gg::GeometryFactory::create();
 		return factory->createPolygon(factory->createLinearRing(pts), {});
 	}
 
@@ -492,7 +493,8 @@ namespace cgl
 			}
 		}
 
-		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+		//gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+		auto factory = gg::GeometryFactory::create();
 
 		if (currentPolygons.empty())
 		{

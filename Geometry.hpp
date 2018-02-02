@@ -18,7 +18,7 @@ namespace cgl
 		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecord(lhs, pEnv);
 		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecord(rhs, pEnv);
 
-		gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+		auto factory = gg::GeometryFactory::create();
 
 		if (lhsPolygon.empty())
 		{
@@ -30,7 +30,7 @@ namespace cgl
 		}
 		else
 		{
-			gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+			auto factory = gg::GeometryFactory::create();
 
 			std::vector<gg::Geometry*> resultGeometries;
 			//gg::Geometry* resultGeometry = factory->createEmptyGeometry();

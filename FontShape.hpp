@@ -107,7 +107,7 @@ namespace cgl
 				polygonBeginIndex = nextPolygonFirstIndex;
 			}
 
-			gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+			auto factory = gg::GeometryFactory::create();
 
 			if (currentPolygons.empty())
 			{

@@ -6,7 +6,7 @@ shape = {
 
 stick = shape{
     scale = {x:1, y:3}
-    vertex: [
+    polygon: [
         {x: -1, y: -1}, {x: +1, y: -1}
         {x: +1, y: +1}, {x: -1, y: +1}
     ]

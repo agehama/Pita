@@ -128,7 +128,7 @@ namespace cgl
 						printEvaluated(evaluated.value(), pEnv, std::wcout, 0);
 
 						std::wcout << L"output SVG..." << std::endl;
-						std::wofstream file(L"result.svg");
+						std::wofstream file("result.svg");
 						OutputSVG(file, evaluated.value(), pEnv);
 						file.close();
 						std::wcout << L"completed" << std::endl;

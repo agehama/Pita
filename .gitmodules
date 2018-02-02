@@ -7,3 +7,9 @@
 [submodule "external/geos"]
 	path = external/geos
 	url = https://github.com/OSGeo/geos.git
+[submodule "external/libcmaes"]
+	path = external/libcmaes
+	url = https://github.com/beniz/libcmaes.git
+[submodule "external/stb"]
+	path = external/stb
+	url = https://github.com/nothings/stb.git

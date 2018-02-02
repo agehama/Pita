@@ -32,6 +32,10 @@
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>
 
+#define WIDE2(x) L##x
+#define WIDE1(x) WIDE2(x)
+#define WFILE WIDE1(__FILE__)
+
 namespace cgl
 {
 	class Exception : public std::exception
@@ -47,8 +51,9 @@ namespace cgl
 
 	inline void Log(std::wostream& os, const std::wstring& str)
 	{
-		std::wregex regex(L"\n");
-		os << std::regex_replace(str, regex, L"\n          |> ") << L"\n";
+		//std::wregex regex(L"\n");
+		//os << std::regex_replace(str, regex, L"\n          |> ") << L"\n";
+		os << str << L"\n";
 	}
 
 	const double pi = 3.1415926535;
@@ -57,7 +62,7 @@ namespace cgl
 
 extern std::wofstream ofs;
 
-#define CGL_FileName (wcsrchr(__FILEW__, L'\\') ? wcsrchr(__FILEW__, L'\\') + 1 : __FILEW__)
+#define CGL_FileName (wcsrchr(WFILE, L'\\') ? wcsrchr(WFILE, L'\\') + 1 : WFILE)
 #define CGL_FileDesc (std::wstring(CGL_FileName) + L"(" + std::to_wstring(__LINE__) + L") : ")
 #define CGL_TagError (std::wstring(L"[Error]   |> "))
 #define CGL_TagWarn  (std::wstring(L"[Warning] |> "))

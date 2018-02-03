@@ -61,6 +61,7 @@ inline double area(const gg::Geometry& poly)
 #include "Vectorizer.hpp"
 
 std::wofstream ofs;
+bool calculating;
 
 #ifdef CGL_DO_TEST
 int main()
@@ -698,17 +699,20 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	gg::Polygon* g;
-	std::cout << area(*g);
+	//gg::Polygon* g;
+	//std::cout << area(*g);
 
 	ofs.open("log.txt");
 
-	const std::string filename(argv[1]);
-	std::wifstream ifs(filename);
-	std::wstring sourceCode((std::istreambuf_iterator<wchar_t>(ifs)), std::istreambuf_iterator<wchar_t>());
-
+	//const std::string filename(argv[1]);
+	//std::wifstream ifs(filename);
+	//std::wstring sourceCode((std::istreambuf_iterator<wchar_t>(ifs)), std::istreambuf_iterator<wchar_t>());
+	
+	std::wstring sourceCode = LR"(a = {t: "図"})";
+	calculating = true;
 	cgl::Program program;
-	program.draw(sourceCode, false);
+	//program.draw(sourceCode, false);
+	program.execute1(sourceCode);
 
 	return 0;
 }

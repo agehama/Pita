@@ -1,8 +1,8 @@
 transform = (pos, scale, angle, vertex -> {
-    cosT:cos(angle)
-    sinT:sin(angle)
-    x:pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y:pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
+    cosT: cos(angle)
+    sinT: sin(angle)
+    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
 })
 
 shape = {
@@ -16,7 +16,7 @@ contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1 & (p.y - q.y)*(p.y - q.y) < 1)
 distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
 
 kite = shape{
-    vertex: [
+    polygon: [
         {x: 0, y: 0}, {x: 20, y: -20}, {x: 80, y: 0}, {x: 20, y: +20}
     ]
     begin: (->transform(pos, scale, angle, vertex[0]))

@@ -19,8 +19,8 @@ kite = shape{
     polygon: [
         {x: 0, y: 0}, {x: 20, y: -20}, {x: 80, y: 0}, {x: 20, y: +20}
     ]
-    begin: (->transform(pos, scale, angle, vertex[0]))
-    end:   (->transform(pos, scale, angle, vertex[2]))
+    begin: (->transform(pos, scale, angle, polygon[0]))
+    end:   (->transform(pos, scale, angle, polygon[2]))
 }
 
 skeleton = (num -> shape{

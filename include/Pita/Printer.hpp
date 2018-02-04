@@ -16,7 +16,7 @@ namespace cgl
 	template<typename T>
 	inline std::string ToS(T str, int precision)
 	{
-		std::wostringstream os;
+		std::ostringstream os;
 		os << std::setprecision(precision) << str;
 		return os.str();
 	}

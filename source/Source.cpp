@@ -6,7 +6,7 @@
 #include <Pita/Program.hpp>
 #include <Unicode.hpp>
 
-std::wofstream ofs;
+std::ofstream ofs;
 bool calculating;
 
 #ifdef CGL_DO_TEST
@@ -650,7 +650,7 @@ int main(int argc, char* argv[])
 	const std::string filename(argv[1]);
 	std::ifstream ifs(filename);
 	std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-	//std::cout << sourceCode << std::endl;
+	std::cout << sourceCode << std::endl;
 	
 	calculating = true;
 	cgl::Program program;

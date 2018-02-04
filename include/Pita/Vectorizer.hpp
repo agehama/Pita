@@ -732,7 +732,7 @@ namespace cgl
 
 			const Eigen::Vector2d pos = center - Eigen::Vector2d(halfWidth, halfWidth);
 
-			os << LR"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << LR"(" height=")" << width << LR"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << LR"(">)" << "\n";
+			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << width << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << R"(">)" << "\n";
 
 			PolygonsStream ps;
 			std::vector<gg::Geometry*> geometries = GeosFromRecord(value, pEnv);

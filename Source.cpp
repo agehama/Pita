@@ -3,6 +3,8 @@
 //#define CGL_EnableLogOutput
 //#define CGL_DO_TEST
 
+#include <Unicode.hpp>
+
 #include "Node.hpp"
 #include "Printer.hpp"
 #include "Environment.hpp"
@@ -708,11 +710,15 @@ int main(int argc, char* argv[])
 	//std::wifstream ifs(filename);
 	//std::wstring sourceCode((std::istreambuf_iterator<wchar_t>(ifs)), std::istreambuf_iterator<wchar_t>());
 	
-	std::wstring sourceCode = LR"(a = {t: "図"})";
+	std::u32string sourceCode = UR"({t: "図"})";
+	std::cout << cgl::Unicode::UTF32ToUTF8(sourceCode) << std::endl;
+
+	return 0;
+
 	calculating = true;
 	cgl::Program program;
 	//program.draw(sourceCode, false);
-	program.execute1(sourceCode);
+	//program.execute1(sourceCode);
 
 	return 0;
 }

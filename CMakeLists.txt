@@ -5,6 +5,7 @@ cmake_policy(SET CMP0024 OLD)
 project(parserTest2)
 
 set(CMAKE_CXX_STANDARD 14)
+#set(CMAKE_CXX_STANDARD 17)
 
 set(Boost_USE_STATIC_LIBS ON)
 set(GEOS_ENABLE_TESTS OFF CACHE BOOL "Disable geos tests" FORCE)
@@ -29,6 +30,8 @@ include_directories(external/geos/capi)
 include_directories(external/geos)
 
 include_directories(external/libcmaes/src)
+
+include_directories(external/Siv3D)
 
 #message("${PROJECT_BINARY_DIR}/lib-geos/lib")
 link_directories(${PROJECT_BINARY_DIR}/lib-geos/lib)

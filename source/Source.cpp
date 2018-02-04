@@ -1,6 +1,8 @@
 //#define CGL_EnableLogOutput
 //#define CGL_DO_TEST
 
+#include <iostream>
+#include <fstream>
 #include <Pita/Program.hpp>
 #include <Unicode.hpp>
 
@@ -646,16 +648,14 @@ int main(int argc, char* argv[])
 	ofs.open("log.txt");
 
 	const std::string filename(argv[1]);
-	std::basic_ifstream<char32_t> ifs(filename);
-	std::u32string sourceCode((std::istreambuf_iterator<char32_t>(ifs)), std::istreambuf_iterator<char32_t>());
-	std::cout << cgl::Unicode::UTF32ToUTF8(sourceCode) << std::endl;
-
-	return 0;
-
+	std::ifstream ifs(filename);
+	std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+	//std::cout << sourceCode << std::endl;
+	
 	calculating = true;
 	cgl::Program program;
 	//program.draw(sourceCode, false);
-	//program.execute1(sourceCode);
+	program.execute1(sourceCode);
 
 	return 0;
 }

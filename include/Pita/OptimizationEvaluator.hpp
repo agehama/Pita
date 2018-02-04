@@ -61,7 +61,7 @@ namespace cgl
 			auto refID_It = invRefs.find(reference);
 			if (refID_It != invRefs.end())
 			{
-				//CGL_DebugLog(L"addSatRef: 登録済み");
+				//CGL_DebugLog("addSatRef: 登録済み");
 				return refID_It->second;
 			}
 
@@ -91,7 +91,7 @@ namespace cgl
 
 				if (!address.isValid())
 				{
-					CGL_Error(L"識別子が定義されていません");
+					CGL_Error("識別子が定義されていません");
 				}
 
 				//free変数にあった場合は制約用の参照値を追加する
@@ -106,7 +106,7 @@ namespace cgl
 			Address address = pEnv->findAddress(node);
 			if (!address.isValid())
 			{
-				//CGL_Error(L"識別子が定義されていません");
+				//CGL_Error("識別子が定義されていません");
 				//この中で作られた変数だった場合、定義されていない可能性がある
 				return false;
 			}
@@ -129,7 +129,7 @@ namespace cgl
 			return a || b;
 		}
 
-		bool operator()(const DefFunc& node) { CGL_Error(L"invalid expression"); return false; }
+		bool operator()(const DefFunc& node) { CGL_Error("invalid expression"); return false; }
 		
 		bool callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 		{
@@ -152,17 +152,17 @@ namespace cgl
 						}
 						else
 						{
-							CGL_Error(L"指定された変数名に紐つけられた値が関数でない");
+							CGL_Error("指定された変数名に紐つけられた値が関数でない");
 						}
 					}
 					else
 					{
-						CGL_Error(L"ここは通らないはず");
+						CGL_Error("ここは通らないはず");
 					}
 				}
 				else
 				{
-					CGL_Error(L"指定された変数名に値が紐つけられていない");
+					CGL_Error("指定された変数名に値が紐つけられていない");
 				}
 			}*/
 
@@ -189,7 +189,7 @@ namespace cgl
 
 			if (funcVal.arguments.size() != expandedArguments.size())
 			{
-				CGL_Error(L"仮引数の数と実引数の数が合っていない");
+				CGL_Error("仮引数の数と実引数の数が合っていない");
 			}
 
 			pEnv->switchFrontScope();
@@ -207,7 +207,7 @@ namespace cgl
 			return result;
 		}
 
-		bool operator()(const Range& node) { CGL_Error(L"invalid expression"); return false; }
+		bool operator()(const Range& node) { CGL_Error("invalid expression"); return false; }
 
 		bool operator()(const Lines& node)
 		{
@@ -243,7 +243,7 @@ namespace cgl
 			return result;
 		}
 
-		bool operator()(const Return& node) { CGL_Error(L"invalid expression"); return false; }
+		bool operator()(const Return& node) { CGL_Error("invalid expression"); return false; }
 
 		bool operator()(const ListConstractor& node)
 		{
@@ -267,20 +267,20 @@ namespace cgl
 			for (size_t i = 0; i < node.exprs.size(); ++i)
 			{
 				const auto& expr = node.exprs[i];
-				//CGL_DebugLog(std::wstring(L"BindRecordExpr(") + ToS(i) + L")");
+				//CGL_DebugLog(std::string("BindRecordExpr(") + ToS(i) + ")");
 				//printExpr(expr);
 				result = boost::apply_visitor(*this, expr) || result;
 			}
 			return result;
 		}
 
-		bool operator()(const RecordInheritor& node) { CGL_Error(L"invalid expression"); return false; }
-		bool operator()(const DeclSat& node) { CGL_Error(L"invalid expression"); return false; }
-		bool operator()(const DeclFree& node) { CGL_Error(L"invalid expression"); return false; }
+		bool operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
 
 		bool operator()(const Accessor& node)
 		{
-			CGL_DebugLog(L"SatVariableBinder::operator()(const Accessor& node)");
+			CGL_DebugLog("SatVariableBinder::operator()(const Accessor& node)");
 			{
 				Expr expr = node;
 				printExpr(expr);
@@ -295,7 +295,7 @@ namespace cgl
 				Address address = pEnv->findAddress(As<Identifier>(head));
 				if (!address.isValid())
 				{
-					CGL_Error(L"識別子が定義されていません");
+					CGL_Error("識別子が定義されていません");
 				}
 
 				//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。
@@ -309,14 +309,14 @@ namespace cgl
 				const LRValue& headAddressValue = As<LRValue>(head);
 				if (!headAddressValue.isLValue())
 				{
-					CGL_Error(L"sat式中のアクセッサの先頭部が不正な値です");
+					CGL_Error("sat式中のアクセッサの先頭部が不正な値です");
 				}
 
 				headAddress = headAddressValue.address();
 			}
 			else
 			{
-				CGL_Error(L"sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
+				CGL_Error("sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
 			}
 
 			Eval evaluator(pEnv);
@@ -335,7 +335,7 @@ namespace cgl
 					objOpt = pEnv->expandOpt(headAddress);
 					if (!objOpt)
 					{
-						CGL_Error(L"参照エラー");
+						CGL_Error("参照エラー");
 					}
 				}
 
@@ -350,7 +350,7 @@ namespace cgl
 						const Evaluated& objRef = objOpt.value();
 						if (!IsType<List>(objRef))
 						{
-							CGL_Error(L"オブジェクトがリストでない");
+							CGL_Error("オブジェクトがリストでない");
 						}
 						const List& list = As<const List&>(objRef);
 
@@ -361,7 +361,7 @@ namespace cgl
 						}
 						else
 						{
-							CGL_Error(L"list[index] の index が int 型でない");
+							CGL_Error("list[index] の index が int 型でない");
 						}
 					}
 				}
@@ -374,14 +374,14 @@ namespace cgl
 						const Evaluated& objRef = objOpt.value();
 						if (!IsType<Record>(objRef))
 						{
-							CGL_Error(L"オブジェクトがレコードでない");
+							CGL_Error("オブジェクトがレコードでない");
 						}
 						const Record& record = As<const Record&>(objRef);
 
 						auto it = record.values.find(recordAccess.name);
 						if (it == record.values.end())
 						{
-							CGL_Error(L"指定された識別子がレコード中に存在しない");
+							CGL_Error("指定された識別子がレコード中に存在しない");
 						}
 
 						headAddress = it->second;
@@ -405,7 +405,7 @@ namespace cgl
 						const Evaluated& objRef = objOpt.value();
 						if (!IsType<FuncVal>(objRef))
 						{
-							CGL_Error(L"オブジェクトが関数でない");
+							CGL_Error("オブジェクトが関数でない");
 						}
 						const FuncVal& function = As<const FuncVal&>(objRef);
 
@@ -492,14 +492,14 @@ namespace cgl
 
 		Evaluated operator()(const LRValue& node)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const LRValue& node)");
+			//CGL_DebugLog("Evaluated operator()(const LRValue& node)");
 			if (node.isLValue())
 			{
 				if (auto opt = expandFreeOpt(node.address()))
 				{
 					return opt.value();
 				}
-				//CGL_DebugLog(std::wstring(L"address: ") + node.address().toString());
+				//CGL_DebugLog(std::string("address: ") + node.address().toString());
 				return pEnv->expand(node.address());
 			}
 			return node.evaluated();
@@ -507,15 +507,15 @@ namespace cgl
 
 		Evaluated operator()(const SatReference& node)
 		{
-			CGL_Error(L"不正な式");
+			CGL_Error("不正な式");
 			return 0;
 		}
 
 		Evaluated operator()(const Identifier& node)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const Identifier& node)");
+			//CGL_DebugLog("Evaluated operator()(const Identifier& node)");
 			//pEnv->printEnvironment(true);
-			//CGL_DebugLog(std::wstring(L"find Identifier(") + std::wstring(node) + L")");
+			//CGL_DebugLog(std::string("find Identifier(") + std::string(node) + ")");
 			const Address address = pEnv->findAddress(node);
 			if (auto opt = expandFreeOpt(address))
 			{
@@ -526,10 +526,10 @@ namespace cgl
 
 		Evaluated operator()(const UnaryExpr& node)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const UnaryExpr& node)");
+			//CGL_DebugLog("Evaluated operator()(const UnaryExpr& node)");
 			//if (node.op == UnaryOp::Not)
 			{
-				CGL_Error(L"TODO: sat宣言中の単項演算子は未対応です");
+				CGL_Error("TODO: sat宣言中の単項演算子は未対応です");
 			}
 
 			return 0;
@@ -537,7 +537,7 @@ namespace cgl
 
 		Evaluated operator()(const BinaryExpr& node)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const BinaryExpr& node)");
+			//CGL_DebugLog("Evaluated operator()(const BinaryExpr& node)");
 			
 			const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
 			if (node.op != BinaryOp::Assign)
@@ -576,12 +576,12 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error(L"reference error");
+						CGL_Error("reference error");
 					}
 				}
 				else
 				{
-					CGL_Error(L"ここは通らないはず");
+					CGL_Error("ここは通らないはず");
 				}
 			}
 			else if (auto valOpt = AsOpt<Identifier>(node.lhs))
@@ -616,25 +616,25 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error(L"参照エラー");
+						CGL_Error("参照エラー");
 					}
 				}
 				else
 				{
-					CGL_Error(L"アクセッサの評価結果がアドレスでない");
+					CGL_Error("アクセッサの評価結果がアドレスでない");
 				}
 			}
 
-			CGL_Error(L"ここは通らないはず");
+			CGL_Error("ここは通らないはず");
 			return 0;
 		}
 
-		Evaluated operator()(const DefFunc& node) { CGL_Error(L"不正な式です"); return 0; }
+		Evaluated operator()(const DefFunc& node) { CGL_Error("不正な式です"); return 0; }
 
 		//Evaluated operator()(const FunctionCaller& callFunc)
 		Evaluated callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const FunctionCaller& callFunc)");
+			//CGL_DebugLog("Evaluated operator()(const FunctionCaller& callFunc)");
 
 			/*
 			std::vector<Address> expandedArguments(callFunc.actualArguments.size());
@@ -662,17 +662,17 @@ namespace cgl
 						}
 						else
 						{
-							CGL_Error(L"指定された変数名に紐つけられた値が関数でない");
+							CGL_Error("指定された変数名に紐つけられた値が関数でない");
 						}
 					}
 					else
 					{
-						CGL_Error(L"ここは通らないはず");
+						CGL_Error("ここは通らないはず");
 					}
 				}
 				else
 				{
-					CGL_Error(L"指定された変数名に値が紐つけられていない");
+					CGL_Error("指定された変数名に値が紐つけられていない");
 				}
 			}
 			*/
@@ -684,28 +684,28 @@ namespace cgl
 
 			if (funcVal.arguments.size() != expandedArguments.size())
 			{
-				CGL_Error(L"仮引数の数と実引数の数が合っていない");
+				CGL_Error("仮引数の数と実引数の数が合っていない");
 			}
 
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
 			pEnv->switchFrontScope();
 
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
 			pEnv->enterScope();
 
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
 			for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 			{
 				pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
-				//CGL_DebugLog(std::wstring(L"bind: ") + std::wstring(funcVal.arguments[i]) + L" -> Address(" + expandedArguments[i].toString() + L")");
+				//CGL_DebugLog(std::string("bind: ") + std::string(funcVal.arguments[i]) + " -> Address(" + expandedArguments[i].toString() + ")");
 			}
 
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
-			//CGL_DebugLog(L"Function Definition:");
+			//CGL_DebugLog("Function Definition:");
 			//boost::apply_visitor(Printer(), funcVal.expr);
 
 			Evaluated result;
@@ -713,34 +713,34 @@ namespace cgl
 				//関数も通常の関数ではなく、制約を表す関数であるはずなので、評価はEvalではなく*thisで行う
 
 				result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
-				//CGL_DebugLog(L"Function Evaluated:");
+				//CGL_DebugLog("Function Evaluated:");
 				//printEvaluated(result, nullptr);
 			}
 			//Evaluated result = pEnv->expandObject();
 
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
 			//(4)関数を抜ける時に、仮引数は全て解放される
 			pEnv->exitScope();
 
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
 			//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
 			pEnv->switchBackScope();
 
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
 			return result;
 		}
 
-		Evaluated operator()(const Range& node) { CGL_Error(L"不正な式です"); return 0; }
+		Evaluated operator()(const Range& node) { CGL_Error("不正な式です"); return 0; }
 
 		Evaluated operator()(const Lines& node)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const Lines& node)");
+			//CGL_DebugLog("Evaluated operator()(const Lines& node)");
 			/*if (node.exprs.size() != 1)
 			{
-				CGL_Error(L"不正な式です"); return 0;
+				CGL_Error("不正な式です"); return 0;
 			}
 
 			return boost::apply_visitor(*this, node.exprs.front());*/
@@ -760,14 +760,14 @@ namespace cgl
 
 		Evaluated operator()(const If& if_statement)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const If& if_statement)");
+			//CGL_DebugLog("Evaluated operator()(const If& if_statement)");
 			Eval evaluator(pEnv);
 
 			//if式の条件式は制約が満たされているかどうかを評価するべき
 			const Evaluated cond = pEnv->expand(boost::apply_visitor(evaluator, if_statement.cond_expr));
 			if (!IsType<bool>(cond))
 			{
-				CGL_Error(L"条件は必ずブール値である必要がある");
+				CGL_Error("条件は必ずブール値である必要がある");
 			}
 
 			//thenとelseは制約が満たされるまでの距離を計算する
@@ -783,22 +783,22 @@ namespace cgl
 			return 0;
 		}
 
-		Evaluated operator()(const For& node) { CGL_Error(L"invalid expression"); return 0; }
+		Evaluated operator()(const For& node) { CGL_Error("invalid expression"); return 0; }
 
-		Evaluated operator()(const Return& node) { CGL_Error(L"invalid expression"); return 0; }
+		Evaluated operator()(const Return& node) { CGL_Error("invalid expression"); return 0; }
 
-		Evaluated operator()(const ListConstractor& node) { CGL_Error(L"invalid expression"); return 0; }
+		Evaluated operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return 0; }
 
 		Evaluated operator()(const KeyExpr& node)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const KeyExpr& node)");
+			//CGL_DebugLog("Evaluated operator()(const KeyExpr& node)");
 			const Evaluated value = boost::apply_visitor(*this, node.expr);
 			return KeyValue(node.name, value);
 		}
 
 		Evaluated operator()(const RecordConstractor& recordConsractor)
 		{
-			//CGL_DebugLog(L"Evaluated operator()(const RecordConstractor& recordConsractor)");
+			//CGL_DebugLog("Evaluated operator()(const RecordConstractor& recordConsractor)");
 			pEnv->enterScope();
 			
 			std::vector<Identifier> keyList;
@@ -828,7 +828,7 @@ namespace cgl
 					{
 						Address tempVal = pEnv->makeTemporaryValue(keyVal.value);
 						pEnv->bindValueID(keyVal.name, tempVal);
-						//CGL_DebugLog(std::wstring(L"bind: ") + std::wstring(keyVal.name) + L" -> Address(" + tempVal.toString() + L")");
+						//CGL_DebugLog(std::string("bind: ") + std::string(keyVal.name) + " -> Address(" + tempVal.toString() + ")");
 					}
 				}
 
@@ -848,16 +848,16 @@ namespace cgl
 			return record;
 		}
 
-		Evaluated operator()(const RecordInheritor& node) { CGL_Error(L"invalid expression"); return 0; }
-		Evaluated operator()(const DeclSat& node) { CGL_Error(L"invalid expression"); return 0; }
-		Evaluated operator()(const DeclFree& node) { CGL_Error(L"invalid expression"); return 0; }
+		Evaluated operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return 0; }
+		Evaluated operator()(const DeclSat& node) { CGL_Error("invalid expression"); return 0; }
+		Evaluated operator()(const DeclFree& node) { CGL_Error("invalid expression"); return 0; }
 
 		Evaluated operator()(const Accessor& node)
 		{
 			/*
-			CGL_DebugLog(L"Evaluated operator()(const Accessor& node)");
+			CGL_DebugLog("Evaluated operator()(const Accessor& node)");
 			{
-				CGL_DebugLog(L"Access to:");
+				CGL_DebugLog("Access to:");
 				Expr expr = node;
 				printExpr(expr);
 			}
@@ -887,7 +887,7 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error(L"アクセッサのヘッドの評価結果が不正");
+					CGL_Error("アクセッサのヘッドの評価結果が不正");
 				}
 			}
 
@@ -902,19 +902,19 @@ namespace cgl
 				boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(address);
 				if (!objOpt)
 				{
-					CGL_Error(L"参照エラー");
+					CGL_Error("参照エラー");
 				}
 
 				const Evaluated& objRef = objOpt.value();
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
-					//CGL_DebugLog(L"if (auto listAccessOpt = AsOpt<ListAccess>(access))");
+					//CGL_DebugLog("if (auto listAccessOpt = AsOpt<ListAccess>(access))");
 					Evaluated value = boost::apply_visitor(*this, listAccessOpt.value().index);
 
 					if (!IsType<List>(objRef))
 					{
-						CGL_Error(L"オブジェクトがリストでない");
+						CGL_Error("オブジェクトがリストでない");
 					}
 
 					const List& list = As<const List&>(objRef);
@@ -931,34 +931,34 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error(L"list[index] の index が数値型でない");
+						CGL_Error("list[index] の index が数値型でない");
 					}
 				}
 				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
 				{
-					//CGL_DebugLog(L"else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))");
+					//CGL_DebugLog("else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))");
 					if (!IsType<Record>(objRef))
 					{
-						CGL_Error(L"オブジェクトがレコードでない");
+						CGL_Error("オブジェクトがレコードでない");
 					}
 
 					const Record& record = As<const Record&>(objRef);
 					auto it = record.values.find(recordAccessOpt.value().name);
 					if (it == record.values.end())
 					{
-						CGL_Error(L"指定された識別子がレコード中に存在しない");
+						CGL_Error("指定された識別子がレコード中に存在しない");
 					}
 
 					address = it->second;
 				}
 				else
 				{
-					//CGL_DebugLog(L"auto funcAccess = As<FunctionAccess>(access);");
+					//CGL_DebugLog("auto funcAccess = As<FunctionAccess>(access);");
 					auto funcAccess = As<FunctionAccess>(access);
 
 					if (!IsType<FuncVal>(objRef))
 					{
-						CGL_Error(L"オブジェクトが関数でない");
+						CGL_Error("オブジェクトが関数でない");
 					}
 
 					const FuncVal& function = As<const FuncVal&>(objRef);
@@ -1017,17 +1017,17 @@ namespace cgl
 		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
 
 		{
-			CGL_DebugLog(L"Print:");
+			CGL_DebugLog("Print:");
 			Printer printer;
 			boost::apply_visitor(printer, expr.value());
-			CGL_DebugLog(L"");
+			CGL_DebugLog("");
 		}*/
 
 		
-		CGL_DebugLog(L"freeVariables:");
+		CGL_DebugLog("freeVariables:");
 		for (const auto& val : freeVariables)
 		{
-			CGL_DebugLog(std::wstring(L"  Address(") + val.toString() + L")");
+			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
 		}
 
 		SatVariableBinder binder(pEnv, freeVariables);
@@ -1055,17 +1055,17 @@ namespace cgl
 		}
 
 		{
-			CGL_DebugLog(L"env:");
+			CGL_DebugLog("env:");
 			pEnv->printEnvironment(true);
 
-			CGL_DebugLog(L"expr:");
+			CGL_DebugLog("expr:");
 			printExpr(candidateExpr.value());
 		}
 	}
 
 	inline bool OptimizationProblemSat::initializeData(std::shared_ptr<Environment> pEnv)
 	{
-		//std::wcout << L"Begin OptimizationProblemSat::initializeData" << std::endl;
+		//std::cout << "Begin OptimizationProblemSat::initializeData" << std::endl;
 
 		data.resize(refs.size());
 
@@ -1075,24 +1075,24 @@ namespace cgl
 			const Evaluated val = pEnv->expand(refs[i]);
 			if (auto opt = AsOpt<double>(val))
 			{
-				CGL_DebugLog(ToS(i) + L" : " + ToS(opt.value()));
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
 				data[i] = opt.value();
 			}
 			else if (auto opt = AsOpt<int>(val))
 			{
-				CGL_DebugLog(ToS(i) + L" : " + ToS(opt.value()));
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
 				data[i] = opt.value();
 			}
 			else
 			{
 				//存在しない参照をsatに指定した
-				/*std::cerr << L"Error(" << __LINE__ << L"): reference does not exist.\n";
+				/*std::cerr << "Error(" << __LINE__ << "): reference does not exist.\n";
 				return false;*/
-				CGL_Error(L"存在しない参照をsatに指定した");
+				CGL_Error("存在しない参照をsatに指定した");
 			}
 		}
 
-		//std::wcout << L"End OptimizationProblemSat::initializeData" << std::endl;
+		//std::cout << "End OptimizationProblemSat::initializeData" << std::endl;
 		return true;
 	}
 
@@ -1105,33 +1105,33 @@ namespace cgl
 
 		if (data.empty())
 		{
-			CGL_WarnLog(L"free式に有効な変数が指定されていません。");
+			CGL_WarnLog("free式に有効な変数が指定されていません。");
 			return 0.0;
 		}
 
 		/*{
-			CGL_DebugLog(L"data:");
+			CGL_DebugLog("data:");
 			for(int i=0;i<data.size();++i)
 			{
-				CGL_DebugLog(std::wstring(L"  ID(") + ToS(i) + L") -> " + ToS(data[i]));
+				CGL_DebugLog(std::string("  ID(") + ToS(i) + ") -> " + ToS(data[i]));
 			}
 
-			CGL_DebugLog(L"refs:");
+			CGL_DebugLog("refs:");
 			for (int i = 0; i<refs.size(); ++i)
 			{
-				CGL_DebugLog(std::wstring(L"  ID(") + ToS(i) + L") -> Address(" + refs[i].toString() + L")");
+				CGL_DebugLog(std::string("  ID(") + ToS(i) + ") -> Address(" + refs[i].toString() + ")");
 			}
 
-			CGL_DebugLog(L"invRefs:");
+			CGL_DebugLog("invRefs:");
 			for(const auto& keyval : invRefs)
 			{
-				CGL_DebugLog(std::wstring(L"  Address(") + keyval.first.toString() + L") -> ID(" + ToS(keyval.second) + L")");
+				CGL_DebugLog(std::string("  Address(") + keyval.first.toString() + ") -> ID(" + ToS(keyval.second) + ")");
 			}
 
-			CGL_DebugLog(L"env:");
+			CGL_DebugLog("env:");
 			pEnv->printEnvironment();
 
-			CGL_DebugLog(L"expr:");
+			CGL_DebugLog("expr:");
 			printExpr(expr.value());
 		}*/
 		
@@ -1147,6 +1147,6 @@ namespace cgl
 			return As<int>(evaluated);
 		}
 
-		CGL_Error(L"sat式の評価結果が不正");
+		CGL_Error("sat式の評価結果が不正");
 	}
 }

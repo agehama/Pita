@@ -29,7 +29,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error(L"参照エラー");
+				CGL_Error("参照エラー");
 			}
 			return it->second;
 		}
@@ -39,7 +39,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error(L"参照エラー");
+				CGL_Error("参照エラー");
 			}
 			return it->second;
 		}
@@ -80,8 +80,8 @@ namespace cgl
 	{
 	public:
 
-		//using Scope = std::unordered_map<std::wstring, unsigned>;
-		using Scope = std::unordered_map<std::wstring, Address>;
+		//using Scope = std::unordered_map<std::string, unsigned>;
+		using Scope = std::unordered_map<std::string, Address>;
 
 		using LocalEnvironment = std::vector<Scope>;
 
@@ -108,8 +108,8 @@ namespace cgl
 		{
 			//関数のスコープが同じ時の動作は未確認
 
-			std::wcout << L"FuncScope:" << switchDepth << std::endl;
-			std::wcout << L"Variables:" << m_variables.size() << std::endl;
+			std::cout << "FuncScope:" << switchDepth << std::endl;
+			std::cout << "Variables:" << m_variables.size() << std::endl;
 
 			m_diffScopes.push({ switchDepth,std::vector<Scope>(m_variables.begin() + switchDepth + 1, m_variables.end()) });
 			m_variables.erase(m_variables.begin() + switchDepth + 1, m_variables.end());
@@ -133,7 +133,7 @@ namespace cgl
 			m_localEnvStack.pop();
 		}
 
-		void registerBuiltInFunction(const std::wstring& name, const BuiltInFunction& function)
+		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function)
 		{
 			//m_valuesにFuncVal追加
 			//m_functionsにfunction追加
@@ -144,7 +144,7 @@ namespace cgl
 
 			if (address1 != address2)
 			{
-				CGL_Error(L"組み込み関数の追加に失敗");
+				CGL_Error("組み込み関数の追加に失敗");
 			}
 
 			bindValueID(name, address1);
@@ -157,17 +157,17 @@ namespace cgl
 				return m_functions[functionAddress](pEnv, arguments);
 			}
 			
-			CGL_Error(L"ここは通らないはず");
+			CGL_Error("ここは通らないはず");
 			return 0;
 		}
 
 		/*
-		boost::optional<Address> find(const std::wstring& name)const
+		boost::optional<Address> find(const std::string& name)const
 		{
 			const auto valueIDOpt = findAddress(name);
 			if (!valueIDOpt)
 			{
-				std::cerr << L"Error(" << __LINE__ << L")\n";
+				std::cerr << "Error(" << __LINE__ << ")\n";
 				return boost::none;
 			}
 
@@ -216,12 +216,12 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error(L"reference error");
+					CGL_Error("reference error");
 					return 0;
 				}
 			}
 
-			CGL_Error(L"reference error");
+			CGL_Error("reference error");
 			return 0;
 		}*/
 
@@ -235,7 +235,7 @@ namespace cgl
 					return it->second;
 				}
 				
-				CGL_Error(std::wstring(L"reference error: Address(") + lrvalue.address().toString() + L")");
+				CGL_Error(std::string("reference error: Address(") + lrvalue.address().toString() + ")");
 			}
 
 			return lrvalue.evaluated();
@@ -351,7 +351,7 @@ namespace cgl
 		}
 		*/
 
-		/*void bindObjectRef(const std::wstring& name, const ObjectReference& ref)
+		/*void bindObjectRef(const std::string& name, const ObjectReference& ref)
 		{
 			if (auto valueIDOpt = AsOpt<unsigned>(ref.headValue))
 			{
@@ -363,32 +363,32 @@ namespace cgl
 				bindNewValue(name, valueRhs);
 			}
 		}*/
-		void bindObjectRef(const std::wstring& name, Address ref)
+		void bindObjectRef(const std::string& name, Address ref)
 		{
 			bindValueID(name, ref);
 		}
 
 		/*
-		void bindNewValue(const std::wstring& name, const Evaluated& value)
+		void bindNewValue(const std::string& name, const Evaluated& value)
 		{
-			CGL_DebugLog(L"");
+			CGL_DebugLog("");
 			const Address newAddress = m_values.add(value);
 			//Clone(m_weakThis.lock(), value);
 			bindValueID(name, newAddress);
 		}
 		*/
-		void bindNewValue(const std::wstring& name, const Evaluated& value)
+		void bindNewValue(const std::string& name, const Evaluated& value)
 		{
-			CGL_DebugLog(L"");
+			CGL_DebugLog("");
 			makeVariable(name, makeTemporaryValue(value));
 		}
 
-		void bindReference(const std::wstring& nameLhs, const std::wstring& nameRhs)
+		void bindReference(const std::string& nameLhs, const std::string& nameRhs)
 		{
 			const Address address = findAddress(nameRhs);
 			if (!address.isValid())
 			{
-				std::cerr << L"Error(" << __LINE__ << L")\n";
+				std::cerr << "Error(" << __LINE__ << ")\n";
 				return;
 			}
 
@@ -396,7 +396,7 @@ namespace cgl
 		}
 
 		/*
-		void bindValueID(const std::wstring& name, unsigned valueID)
+		void bindValueID(const std::string& name, unsigned valueID)
 		{
 			//レコード
 			//レコード内の:式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合は新たに定義
@@ -408,8 +408,8 @@ namespace cgl
 		}
 		*/
 
-		//void bindValueID(const std::wstring& name, unsigned ID)
-		/*void bindValueID(const std::wstring& name, const Address ID)
+		//void bindValueID(const std::string& name, unsigned ID)
+		/*void bindValueID(const std::string& name, const Address ID)
 		{
 			for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
 			{
@@ -423,9 +423,9 @@ namespace cgl
 
 			m_variables.back()[name] = ID;
 		}*/
-		void bindValueID(const std::wstring& name, const Address ID)
+		void bindValueID(const std::string& name, const Address ID)
 		{
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 			{
 				auto valIt = scopeIt->find(name);
@@ -435,13 +435,13 @@ namespace cgl
 					return;
 				}
 			}
-			//CGL_DebugLog(L"");
+			//CGL_DebugLog("");
 
 			localEnv().back()[name] = ID;
 		}
 
 		//bindValueIDの変数宣言式用
-		void makeVariable(const std::wstring& name, const Address ID)
+		void makeVariable(const std::string& name, const Address ID)
 		{
 			localEnv().back()[name] = ID;
 		}
@@ -457,7 +457,7 @@ namespace cgl
 		}*/
 
 		void printEnvironment(bool flag = false)const;
-		void printEnvironment(std::wostream& os)const;
+		void printEnvironment(std::ostream& os)const;
 
 		//void assignToObject(const ObjectReference& objectRef, const Evaluated& newValue);
 		void assignToObject(Address address, const Evaluated& newValue)
@@ -533,7 +533,7 @@ namespace cgl
 つまり、コロンの左側に出てこれるのは単一の識別子のみとする（複雑なものを書けてもそれほどメリットがなくデバッグが大変になるだけ）。
 これにより、コロン式を見た時に中の識別子も一緒に見れば済むので、上記の用法を両立できる。
 */
-		/*boost::optional<Address> findValueID(const std::wstring& name)const
+		/*boost::optional<Address> findValueID(const std::string& name)const
 		{
 			for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
 			{
@@ -548,7 +548,7 @@ namespace cgl
 		}*/
 
 		
-		/*Address findAddress(const std::wstring& name)const
+		/*Address findAddress(const std::string& name)const
 		{
 			for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
 			{
@@ -561,7 +561,7 @@ namespace cgl
 
 			return Address::Null();
 		}*/
-		Address findAddress(const std::wstring& name)const
+		Address findAddress(const std::string& name)const
 		{
 			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 			{
@@ -596,9 +596,9 @@ namespace cgl
 
 		//現在参照可能な変数名のリストのリストを返す
 		/*
-		std::vector<std::set<std::wstring>> currentReferenceableVariables()const
+		std::vector<std::set<std::string>> currentReferenceableVariables()const
 		{
-			std::vector<std::set<std::wstring>> result;
+			std::vector<std::set<std::string>> result;
 			for (const auto& scope : m_variables)
 			{
 				result.emplace_back();
@@ -614,7 +614,7 @@ namespace cgl
 		*/
 
 		//内側のスコープから順番に変数を探して返す
-		/*boost::optional<unsigned> findValueID(const std::wstring& name)const
+		/*boost::optional<unsigned> findValueID(const std::string& name)const
 		{
 			boost::optional<unsigned> valueIDOpt;
 

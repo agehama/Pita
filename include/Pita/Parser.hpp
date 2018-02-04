@@ -51,31 +51,32 @@ namespace cgl
 
 		LineSkipper() :LineSkipper::base_type(skip)
 		{
-			skip = standard_wide::space;
+			skip = standard_space;
 		}
 	};
 
-	struct keywords_t : qi::symbols<wchar_t, qi::unused_type> {
+	struct keywords_t : qi::symbols<char, qi::unused_type> {
 		keywords_t() {
-			add(L"for", qi::unused)
-				(L"in", qi::unused)
-				(L"do", qi::unused)
-				(L"sat", qi::unused)
-				(L"var", qi::unused)
-				(L"if", qi::unused)
-				(L"then", qi::unused)
-				(L"else", qi::unused);
+			add("for", qi::unused)
+				("in", qi::unused)
+				("do", qi::unused)
+				("sat", qi::unused)
+				("var", qi::unused)
+				("if", qi::unused)
+				("then", qi::unused)
+				("else", qi::unused);
 		}
 	} const keywords;
 
-	using IteratorT = std::wstring::const_iterator;
+	using IteratorT = std::string::const_iterator;
 	using SpaceSkipperT = SpaceSkipper<IteratorT>;
 	using LineSkipperT = LineSkipper<IteratorT>;
 
 	static SpaceSkipperT spaceSkipper;
 	static LineSkipperT lineSkipper;
 
-	namespace wide = qi::standard_wide;
+	//namespace wide = qi::standard_wide;
+	using namespace qi;
 	
 	template<typename Iterator, typename Skipper>
 	struct Parser
@@ -102,15 +103,15 @@ namespace cgl
 		qi::rule<Iterator, DefFunc(), Skipper> def_func;
 		qi::rule<Iterator, Arguments(), Skipper> arguments;
 		qi::rule<Iterator, Identifier(), Skipper> id;
-		qi::rule<Iterator, std::wstring(), Skipper> char_string;
+		qi::rule<Iterator, std::string(), Skipper> char_string;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
 		qi::rule<Iterator, Lines(), Skipper> expr_seq, statement;
 		qi::rule<Iterator, Lines(), Skipper> program;
 
 		qi::rule<Iterator> s, s1;
 		qi::rule<Iterator> distinct_keyword;
-		qi::rule<Iterator, std::wstring(), Skipper> unchecked_identifier;
-		qi::rule<Iterator, std::wstring(), Skipper> float_value;
+		qi::rule<Iterator, std::string(), Skipper> unchecked_identifier;
+		qi::rule<Iterator, std::string(), Skipper> float_value;
 		
 		Parser() : Parser::base_type(program)
 		{
@@ -133,24 +134,24 @@ namespace cgl
 				| return_expr[_val = _1]
 				| logic_expr[_val = _1];
 
-			if_expr = lit(L"if") >> s >> general_expr[_val = Call(If::Make, _1)]
-				>> s >> lit(L"then") >> s >> general_expr[Call(If::SetThen, _val, _1)]
-				>> -(s >> lit(L"else") >> s >> general_expr[Call(If::SetElse, _val, _1)])
+			if_expr = lit("if") >> s >> general_expr[_val = Call(If::Make, _1)]
+				>> s >> lit("then") >> s >> general_expr[Call(If::SetThen, _val, _1)]
+				>> -(s >> lit("else") >> s >> general_expr[Call(If::SetElse, _val, _1)])
 				;
 
-			for_expr = lit(L"for") >> s >> id[_val = Call(For::Make, _1)] >> s >> lit(L"in")
-				>> s >> general_expr[Call(For::SetRangeStart, _val, _1)] >> s >> lit(L":")
-				>> s >> general_expr[Call(For::SetRangeEnd, _val, _1)] >> s >> lit(L"do")
+			for_expr = lit("for") >> s >> id[_val = Call(For::Make, _1)] >> s >> lit("in")
+				>> s >> general_expr[Call(For::SetRangeStart, _val, _1)] >> s >> lit(":")
+				>> s >> general_expr[Call(For::SetRangeEnd, _val, _1)] >> s >> lit("do")
 				>> s >> general_expr[Call(For::SetDo, _val, _1)];
 
-			return_expr = lit(L"return") >> s >> general_expr[_val = Call(Return::Make, _1)];
+			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
-			def_func = arguments[_val = _1] >> lit(L"->") >> s >> statement[Call(applyFuncDef, _val, _1)];
+			def_func = arguments[_val = _1] >> lit("->") >> s >> statement[Call(applyFuncDef, _val, _1)];
 
-			constraints = lit(L"sat") >> '(' >> s >> statement[_val = Call(DeclSat::Make, _1)] >> s >> ')';
+			constraints = lit("sat") >> '(' >> s >> statement[_val = Call(DeclSat::Make, _1)] >> s >> ')';
 
-			freeVals = lit(L"var") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >> *(
-				s >> L", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
+			freeVals = lit("var") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >> *(
+				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
 				) >> s >> ')';
 
 			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));
@@ -164,12 +165,12 @@ namespace cgl
 				;
 
 			compare_expr = arith_expr[_val = _1] >> *(
-				(s >> lit(L"==") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Equal)])
-				| (s >> lit(L"!=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::NotEqual)])
-				| (s >> lit(L"<") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessThan)])
-				| (s >> lit(L"<=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessEqual)])
-				| (s >> lit(L">") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterThan)])
-				| (s >> lit(L">=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterEqual)])
+				(s >> lit("==") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Equal)])
+				| (s >> lit("!=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::NotEqual)])
+				| (s >> lit("<") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessThan)])
+				| (s >> lit("<=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessEqual)])
+				| (s >> lit(">") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterThan)])
+				| (s >> lit(">=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterEqual)])
 				)
 				;
 
@@ -200,25 +201,25 @@ namespace cgl
 			record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 
 			record_maker = (
-				wide::char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
+				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
 				*(
 				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-					| (+(wide::char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					)
-				>> s >> wide::char_('}')
+				>> s >> char_('}')
 				)
-				| (wide::char_('{') >> s >> wide::char_('}'));
+				| (char_('{') >> s >> char_('}'));
 
 			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
-			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> wide::char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
+			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
-			list_maker = (wide::char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
+			list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
 				*(
-					(s >> wide::char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					| (+(wide::char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					) >> s >> wide::char_(']')
+					(s >> char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					| (+(char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					) >> s >> char_(']')
 				)
-				| (wide::char_('[') >> s >> wide::char_(']'));
+				| (char_('[') >> s >> char_(']'));
 			
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
@@ -228,18 +229,18 @@ namespace cgl
 				| listAccess[_val = Cast<ListAccess, Access>()]
 				| recordAccess[_val = Cast<RecordAccess, Access>()];
 
-			recordAccess = wide::char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
+			recordAccess = char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
 
-			listAccess = wide::char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> wide::char_(']');
+			listAccess = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']');
 
-			functionAccess = wide::char_('(')
+			functionAccess = char_('(')
 				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
-				>> *(s >> wide::char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> wide::char_(')');
+				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
 
 			factor = float_value[_val = Call(LRValue::Float, _1)]
 				| int_[_val = Call(LRValue::Int, _1)]
-				| lit(L"true")[_val = Call(LRValue::Bool, true)]
-				| lit(L"false")[_val = Call(LRValue::Bool, false)]
+				| lit("true")[_val = Call(LRValue::Bool, true)]
+				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '\"' >> char_string[_val = Call(BuildString, _1)] >> '\"'
 				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
@@ -256,14 +257,14 @@ namespace cgl
 
 			id = unchecked_identifier[_val = _1] - distinct_keyword;
 
-			char_string = lexeme[*(wide::char_ - wide::char_('\"'))];
+			char_string = lexeme[*(char_ - char_('\"'))];
 
-			distinct_keyword = lexeme[keywords >> !(wide::alnum | '_')];
-			unchecked_identifier = lexeme[(wide::alpha | wide::char_('_')) >> *(wide::alnum | wide::char_('_'))];
+			distinct_keyword = lexeme[keywords >> !(alnum | '_')];
+			unchecked_identifier = lexeme[(alpha | char_('_')) >> *(alnum | char_('_'))];
 
-			float_value = lexeme[+wide::char_('0', '9') >> wide::char_('.') >> +wide::char_('0', '9')];
+			float_value = lexeme[+char_('0', '9') >> char_('.') >> +char_('0', '9')];
 			
-			s = *(wide::space);
+			s = *(space);
 		}
 	};
 }

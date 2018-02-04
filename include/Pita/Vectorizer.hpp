@@ -29,18 +29,18 @@
 #include <geos/operation/predicate/RectangleContains.h>
 #include <geos/triangulate/VoronoiDiagramBuilder.h>
 
-#ifdef _DEBUG
-#pragma comment(lib, "geos_d.lib")
-#else
-#pragma comment(lib, "geos.lib")
-#endif
+//#ifdef _DEBUG
+//#pragma comment(lib, "geos_d.lib")
+//#else
+//#pragma comment(lib, "geos.lib")
+//#endif
 
 #include "Node.hpp"
 #include "Environment.hpp"
 
 namespace cgl
 {
-	inline bool ReadDouble(double& output, const std::wstring& name, const Record& record, std::shared_ptr<Environment> environment)
+	inline bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Environment> environment)
 	{
 		const auto& values = record.values;
 		auto it = values.find(name);
@@ -91,19 +91,19 @@ namespace cgl
 			{
 				auto valOpt = AsOpt<Record>(pEnv->expand(member.second));
 
-				if (member.first == L"pos" && valOpt)
+				if (member.first == "pos" && valOpt)
 				{
-					ReadDouble(px, L"x", valOpt.value(), pEnv);
-					ReadDouble(py, L"y", valOpt.value(), pEnv);
+					ReadDouble(px, "x", valOpt.value(), pEnv);
+					ReadDouble(py, "y", valOpt.value(), pEnv);
 				}
-				else if (member.first == L"scale" && valOpt)
+				else if (member.first == "scale" && valOpt)
 				{
-					ReadDouble(sx, L"x", valOpt.value(), pEnv);
-					ReadDouble(sy, L"y", valOpt.value(), pEnv);
+					ReadDouble(sx, "x", valOpt.value(), pEnv);
+					ReadDouble(sy, "y", valOpt.value(), pEnv);
 				}
-				else if (member.first == L"angle")
+				else if (member.first == "angle")
 				{
-					ReadDouble(angle, L"angle", record, pEnv);
+					ReadDouble(angle, "angle", record, pEnv);
 				}
 			}
 
@@ -139,17 +139,17 @@ namespace cgl
 
 		void printMat()const
 		{
-			std::wcout << L"Matrix(\n";
+			std::cout << "Matrix(\n";
 			for (int y = 0; y < 3; ++y)
 			{
-				std::wcout << L"    ";
+				std::cout << "    ";
 				for (int x = 0; x < 3; ++x)
 				{
-					std::wcout << mat(y, x) << L" ";
+					std::cout << mat(y, x) << " ";
 				}
-				std::wcout << L"\n";
+				std::cout << "\n";
 			}
-			std::wcout << L")\n";
+			std::cout << ")\n";
 		}
 
 	private:
@@ -251,7 +251,7 @@ namespace cgl
 				double x = 0, y = 0;
 				const Record& pos = As<Record>(value);
 				//CGL_DebugLog(__FUNCTION__);
-				if (!ReadDouble(x, L"x", pos, pEnv) || !ReadDouble(y, L"y", pos, pEnv))
+				if (!ReadDouble(x, "x", pos, pEnv) || !ReadDouble(y, "y", pos, pEnv))
 				{
 					//CGL_DebugLog(__FUNCTION__);
 					return false;
@@ -259,7 +259,7 @@ namespace cgl
 				//CGL_DebugLog(__FUNCTION__);
 				Eigen::Vector2d v;
 				v << x, y;
-				//CGL_DebugLog(ToS(v.x()) + L", " + ToS(v.y()));
+				//CGL_DebugLog(ToS(v.x()) + ", " + ToS(v.y()));
 				output.push_back(transform.product(v));
 				//CGL_DebugLog(__FUNCTION__);
 			}
@@ -285,7 +285,7 @@ namespace cgl
 		{
 			const Evaluated value = pEnv->expand(member.second);
 
-			if (member.first == L"polygon" && IsType<List>(value))
+			if (member.first == "polygon" && IsType<List>(value))
 			{
 				Vector<Eigen::Vector2d> polygon;
 				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
@@ -296,7 +296,7 @@ namespace cgl
 					}
 				}
 			}
-			else if (member.first == L"polygons" && IsType<List>(value))
+			else if (member.first == "polygons" && IsType<List>(value))
 			{
 				const List& polygons = As<List>(value);
 				for (const auto& polygonAddress : polygons.data)
@@ -354,28 +354,28 @@ namespace cgl
 		return boost::none;
 	}
 
-	using PolygonsStream = std::multimap<double, std::wstring>;
+	using PolygonsStream = std::multimap<double, std::string>;
 	
 	namespace gg = geos::geom;
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
 	namespace gt = geos::triangulate;
 
-	inline std::wstring GetGeometryType(gg::Geometry* geometry)
+	inline std::string GetGeometryType(gg::Geometry* geometry)
 	{
 		switch (geometry->getGeometryTypeId())
 		{
-		case geos::geom::GEOS_POINT:              return L"Point";
-		case geos::geom::GEOS_LINESTRING:         return L"LineString";
-		case geos::geom::GEOS_LINEARRING:         return L"LinearRing";
-		case geos::geom::GEOS_POLYGON:            return L"Polygon";
-		case geos::geom::GEOS_MULTIPOINT:         return L"MultiPoint";
-		case geos::geom::GEOS_MULTILINESTRING:    return L"MultiLineString";
-		case geos::geom::GEOS_MULTIPOLYGON:       return L"MultiPolygon";
-		case geos::geom::GEOS_GEOMETRYCOLLECTION: return L"GeometryCollection";
+		case geos::geom::GEOS_POINT:              return "Point";
+		case geos::geom::GEOS_LINESTRING:         return "LineString";
+		case geos::geom::GEOS_LINEARRING:         return "LinearRing";
+		case geos::geom::GEOS_POLYGON:            return "Polygon";
+		case geos::geom::GEOS_MULTIPOINT:         return "MultiPoint";
+		case geos::geom::GEOS_MULTILINESTRING:    return "MultiLineString";
+		case geos::geom::GEOS_MULTIPOLYGON:       return "MultiPolygon";
+		case geos::geom::GEOS_GEOMETRYCOLLECTION: return "GeometryCollection";
 		}
 
-		return L"Unknown";
+		return "Unknown";
 	}
 
 	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior)
@@ -437,7 +437,7 @@ namespace cgl
 		{
 			const cgl::Evaluated value = pEnv->expand(member.second);
 
-			if (member.first == L"polygon" && cgl::IsType<cgl::List>(value))
+			if (member.first == "polygon" && cgl::IsType<cgl::List>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
 				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
@@ -446,7 +446,7 @@ namespace cgl
 					currentPolygons.push_back(ToPolygon(polygon));
 				}
 			}
-			else if (member.first == L"hole" && cgl::IsType<cgl::List>(value))
+			else if (member.first == "hole" && cgl::IsType<cgl::List>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
 				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
@@ -455,7 +455,7 @@ namespace cgl
 					currentHoles.push_back(ToPolygon(polygon));
 				}
 			}
-			else if (member.first == L"polygons" && IsType<List>(value))
+			else if (member.first == "polygons" && IsType<List>(value))
 			{
 				const List& polygons = As<List>(value);
 				for (const auto& polygonAddress : polygons.data)
@@ -469,7 +469,7 @@ namespace cgl
 					}
 				}
 			}
-			else if (member.first == L"holes" && IsType<List>(value))
+			else if (member.first == "holes" && IsType<List>(value))
 			{
 				const List& holes = As<List>(value);
 				for (const auto& holeAddress : holes.data)
@@ -508,13 +508,13 @@ namespace cgl
 		{
 			for (int s = 0; s < currentPolygons.size(); ++s)
 			{
-				//std::wcout << __FUNCTION__ << L" : " << __LINE__ << std::endl;
+				//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 				gg::Geometry* erodeGeometry = currentPolygons[s];
 				
 				for (int d = 0; d < currentHoles.size(); ++d)
 				{
 					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
-					//std::wcout << __FUNCTION__ << L" : " << __LINE__ << std::endl;
+					//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 
 					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 					{
@@ -533,10 +533,10 @@ namespace cgl
 					}
 					else
 					{
-						std::wcout << __FUNCTION__ << L" Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+						std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
 					}
 				}
-				//std::wcout << __FUNCTION__ << L" : " << __LINE__ << std::endl;
+				//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
 				currentPolygons[s] = erodeGeometry;
 			}
 
@@ -589,8 +589,8 @@ namespace cgl
 		const auto coord = [&](double x, double y)
 		{
 			Record record;
-			record.append(L"x", pEnv->makeTemporaryValue(x));
-			record.append(L"y", pEnv->makeTemporaryValue(y));
+			record.append("x", pEnv->makeTemporaryValue(x));
+			record.append("y", pEnv->makeTemporaryValue(y));
 			return record;
 		};
 
@@ -610,7 +610,7 @@ namespace cgl
 				const gg::Coordinate& p = outer->getCoordinateN(i);
 				appendCoord(polygonList, p.x, p.y);
 			}
-			result.append(L"polygon", pEnv->makeTemporaryValue(polygonList));
+			result.append("polygon", pEnv->makeTemporaryValue(polygonList));
 		}
 		
 		{
@@ -632,7 +632,7 @@ namespace cgl
 
 				holeList.append(pEnv->makeTemporaryValue(holeVertexList));
 			}
-			result.append(L"holes", pEnv->makeTemporaryValue(holeList));
+			result.append("holes", pEnv->makeTemporaryValue(holeList));
 		}
 		
 		return result;
@@ -680,12 +680,12 @@ namespace cgl
 	inline void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon)
 	{
 		{
-			std::wstringstream ss;
+			std::stringstream ss;
 
 			const gg::LineString* outer = polygon->getExteriorRing();
 			const double area = polygon->getEnvelope()->getArea();
 
-			ss << L"<polygon fill=\"black\" points=\"";
+			ss << "<polygon fill=\"black\" points=\"";
 			for (int i = static_cast<int>(outer->getNumPoints()) - 1; 0 < i; --i)
 			{
 				const gg::Coordinate& p = outer->getCoordinateN(i);
@@ -698,12 +698,12 @@ namespace cgl
 
 		for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
 		{
-			std::wstringstream ss;
+			std::stringstream ss;
 
 			const gg::LineString* hole = polygon->getInteriorRingN(i);
 			const double area = hole->getEnvelope()->getArea();
 
-			ss << L"<polygon fill=\"white\" points=\"";
+			ss << "<polygon fill=\"white\" points=\"";
 			for (int n = static_cast<int>(hole->getNumPoints()) - 1; 0 < n; --n)
 				//for (int n = 0; n < hole->getNumPoints(); ++n)
 			{
@@ -716,7 +716,7 @@ namespace cgl
 		}
 	}
 
-	inline bool OutputSVG(std::wostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
+	inline bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
 	{
 		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
 		if (IsType<Record>(value) && boundingBoxOpt)
@@ -732,7 +732,7 @@ namespace cgl
 
 			const Eigen::Vector2d pos = center - Eigen::Vector2d(halfWidth, halfWidth);
 
-			os << LR"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << LR"(" height=")" << width << LR"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << LR"(">)" << L"\n";
+			os << LR"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << LR"(" height=")" << width << LR"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << LR"(">)" << "\n";
 
 			PolygonsStream ps;
 			std::vector<gg::Geometry*> geometries = GeosFromRecord(value, pEnv);
@@ -761,7 +761,7 @@ namespace cgl
 				os << it->second;
 			}
 
-			os << L"</svg>" << L"\n";
+			os << "</svg>" << "\n";
 
 			return true;
 		}

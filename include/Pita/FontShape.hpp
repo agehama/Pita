@@ -148,7 +148,7 @@ namespace cgl
 			}
 		}
 
-		std::vector<gg::Geometry*> textToPolygon(const std::wstring& str, int quality = 1)
+		std::vector<gg::Geometry*> textToPolygon(const std::string& str, int quality = 1)
 		{
 			std::vector<gg::Geometry*> result;
 			int offsetX = 0;

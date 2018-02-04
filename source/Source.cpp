@@ -1,66 +1,8 @@
-#include <Eigen/Core>
-
 //#define CGL_EnableLogOutput
 //#define CGL_DO_TEST
 
+#include <Pita/Program.hpp>
 #include <Unicode.hpp>
-
-#include "Node.hpp"
-#include "Printer.hpp"
-#include "Environment.hpp"
-#include "Evaluator.hpp"
-#include "OptimizationEvaluator.hpp"
-#include "Program.hpp"
-
-#include <geos/geom/Point.h>
-#include <geos/geom/Polygon.h>
-#include <geos/geom/LineString.h>
-#include <geos/geom/LinearRing.h>
-#include <geos/geom/LineSegment.h>
-#include <geos/geom/MultiLineString.h>
-#include <geos/geom/CoordinateSequenceFactory.h>
-#include <geos/geom/CoordinateArraySequence.h>
-#include <geos/geom/GeometryFactory.h>
-#include <geos/geom/Coordinate.h>
-#include <geos/geom/CoordinateFilter.h>
-#include <geos/index/quadtree/Quadtree.h>
-#include <geos/index/ItemVisitor.h>
-#include <geos/geom/IntersectionMatrix.h>
-#include <geos/geomgraph/PlanarGraph.h>
-#include <geos/operation/linemerge/LineMergeGraph.h>
-#include <geos/planargraph.h>
-#include <geos/planargraph/Edge.h>
-#include <geos/planargraph/Node.h>
-#include <geos/planargraph/DirectedEdge.h>
-#include <geos/operation/polygonize/Polygonizer.h>
-#include <geos/opBuffer.h>
-#include <geos/geom/PrecisionModel.h>
-#include <geos/operation/linemerge/LineMerger.h>
-#include <geos/opDistance.h>
-#include <geos/operation/predicate/RectangleContains.h>
-#include <geos/triangulate/VoronoiDiagramBuilder.h>
-
-//#ifdef _DEBUG
-//#pragma comment(lib, "geos_d.lib")
-//#else
-//#pragma comment(lib, "geos.lib")
-//#endif
-
-namespace gg = geos::geom;
-
-inline double area(const gg::Geometry& poly)
-{
-	if (poly.getGeometryTypeId() == gg::GEOS_POLYGON)
-	{
-		return poly.getArea();
-		//return MultiPolygon({ ToSivPolyFromPolygon(dynamic_cast<const gg::Polygon&>(poly)) });
-	}
-
-	return 0.0;
-}
-
-#include "Parser.hpp"
-#include "Vectorizer.hpp"
 
 std::wofstream ofs;
 bool calculating;
@@ -701,16 +643,11 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	//gg::Polygon* g;
-	//std::cout << area(*g);
-
 	ofs.open("log.txt");
 
-	//const std::string filename(argv[1]);
-	//std::wifstream ifs(filename);
-	//std::wstring sourceCode((std::istreambuf_iterator<wchar_t>(ifs)), std::istreambuf_iterator<wchar_t>());
-	
-	std::u32string sourceCode = UR"({t: "図"})";
+	const std::string filename(argv[1]);
+	std::basic_ifstream<char32_t> ifs(filename);
+	std::u32string sourceCode((std::istreambuf_iterator<char32_t>(ifs)), std::istreambuf_iterator<char32_t>());
 	std::cout << cgl::Unicode::UTF32ToUTF8(sourceCode) << std::endl;
 
 	return 0;

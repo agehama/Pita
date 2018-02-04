@@ -22,12 +22,6 @@
 
 #include <cmaes.h>
 
-//#ifdef _DEBUG
-//#pragma comment(lib,"Debug/cmaes.lib")
-//#else
-//#pragma comment(lib,"Release/cmaes.lib")
-//#endif
-
 #include <cppoptlib/meta.h>
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>

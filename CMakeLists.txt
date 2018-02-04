@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 
 cmake_policy(SET CMP0024 OLD)
 
-project(parserTest2)
+project(Pita)
 
 set(CMAKE_CXX_STANDARD 14)
 #set(CMAKE_CXX_STANDARD 17)
@@ -32,19 +32,16 @@ endif ()
 
 include_directories(external/Eigen)
 include_directories(external/CppNumericalSolvers/include)
-
 include_directories(external/geos/include)
 include_directories(external/geos/capi)
 include_directories(external/geos)
-
 include_directories(external/libcmaes/src)
-
 include_directories(external/Siv3D)
 
 #message("${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib")
 
 link_directories(${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib)
-  link_directories(${PROJECT_BINARY_DIR}/${CGL_LIBCMAES_TARGET_DIR}/src)
+link_directories(${PROJECT_BINARY_DIR}/${CGL_LIBCMAES_TARGET_DIR}/src)
 
 add_subdirectory(external/Eigen ${CGL_EIGEN_TARGET_DIR})
 add_subdirectory(external/geos ${CGL_GEOS_TARGET_DIR})
@@ -67,5 +64,7 @@ include_directories(${PROJECT_BINARY_DIR}/${CGL_LIBCMAES_TARGET_DIR})
 
 include_directories(external/stb)
 
-add_executable(core Source.cpp)
-target_link_libraries(core geos cmaes)
+include_directories(include)
+
+add_executable(pita source/Source.cpp)
+target_link_libraries(pita geos cmaes)

@@ -194,205 +194,208 @@ namespace cgl
 
 #include "miniutf.hpp"
 
-namespace cgl::detail
+namespace cgl
 {
-	[[nodiscard]] static constexpr size_t UTF8Length(const char32_t codePoint) noexcept
+	namespace detail
 	{
-		if (codePoint < 0x80)
+		[[nodiscard]] inline size_t UTF8Length(const char32_t codePoint) noexcept
 		{
-			return 1;
-		}
-		else if (codePoint < 0x800)
-		{
-			return 2;
-		}
-		else if (codePoint < 0x10000)
-		{
-			return 3;
-		}
-		else if (codePoint < 0x110000)
-		{
-			return 4;
-		}
-		else
-		{
-			return 3; // U+FFFD
-		}
-	}
-
-	[[nodiscard]] static constexpr size_t UTF8Length(const std::u32string& str) noexcept
-	{
-		size_t length = 0;
-
-		const char32_t* pSrc = str.c_str();
-		const char32_t* const pSrcEnd = pSrc + str.size();
-
-		while (pSrc != pSrcEnd)
-		{
-			length += UTF8Length(*pSrc++);
+			if (codePoint < 0x80)
+			{
+				return 1;
+			}
+			else if (codePoint < 0x800)
+			{
+				return 2;
+			}
+			else if (codePoint < 0x10000)
+			{
+				return 3;
+			}
+			else if (codePoint < 0x110000)
+			{
+				return 4;
+			}
+			else
+			{
+				return 3; // U+FFFD
+			}
 		}
 
-		return length;
-	}
-
-	[[nodiscard]] static size_t UTF8Length(const std::u16string& str) noexcept
-	{
-		size_t length = 0;
-
-		const char16_t* pSrc = str.c_str();
-		const char16_t* const pSrcEnd = pSrc + str.size();
-
-		while (pSrc != pSrcEnd)
+		[[nodiscard]] inline size_t UTF8Length(const std::u32string& str) noexcept
 		{
-			std::int32_t offset;
+			size_t length = 0;
 
-			length += UTF8Length(utf16_decode(pSrc, pSrcEnd - pSrc, offset));
+			const char32_t* pSrc = str.c_str();
+			const char32_t* const pSrcEnd = pSrc + str.size();
 
-			pSrc += offset;
+			while (pSrc != pSrcEnd)
+			{
+				length += UTF8Length(*pSrc++);
+			}
+
+			return length;
 		}
 
-		return length;
-	}
+		[[nodiscard]] static size_t UTF8Length(const std::u16string& str) noexcept
+		{
+			size_t length = 0;
 
-	static void UTF8Encode(char** s, const char32_t codePoint) noexcept
-	{
-		if (codePoint < 0x80)
-		{
-			*(*s)++ = static_cast<char>(codePoint);
-		}
-		else if (codePoint < 0x800)
-		{
-			*(*s)++ = static_cast<char>((codePoint >> 6) | 0xC0);
-			*(*s)++ = static_cast<char>((codePoint & 0x3F) | 0x80);
-		}
-		else if (codePoint < 0x10000)
-		{
-			*(*s)++ = static_cast<char>((codePoint >> 12) | 0xE0);
-			*(*s)++ = static_cast<char>(((codePoint >> 6) & 0x3F) | 0x80);
-			*(*s)++ = static_cast<char>((codePoint & 0x3F) | 0x80);
-		}
-		else if (codePoint < 0x110000)
-		{
-			*(*s)++ = static_cast<char>((codePoint >> 18) | 0xF0);
-			*(*s)++ = static_cast<char>(((codePoint >> 12) & 0x3F) | 0x80);
-			*(*s)++ = static_cast<char>(((codePoint >> 6) & 0x3F) | 0x80);
-			*(*s)++ = static_cast<char>((codePoint & 0x3F) | 0x80);
-		}
-		else
-		{
-			*(*s)++ = static_cast<std::uint8_t>(0xEF);
-			*(*s)++ = static_cast<std::uint8_t>(0xBF);
-			*(*s)++ = static_cast<std::uint8_t>(0xBD);
-		}
-	}
+			const char16_t* pSrc = str.c_str();
+			const char16_t* const pSrcEnd = pSrc + str.size();
 
-	[[nodiscard]] static constexpr size_t UTF16Length(const char32_t codePoint) noexcept
-	{
-		if (codePoint < 0x10000)
-		{
-			return 1;
-		}
-		else if (codePoint < 0x110000)
-		{
-			return 2;
-		}
-		else
-		{
-			return 1; // 0xFFFD
-		}
-	}
+			while (pSrc != pSrcEnd)
+			{
+				std::int32_t offset;
 
-	[[nodiscard]] static constexpr size_t UTF16Length(const std::u32string& str) noexcept
-	{
-		size_t length = 0;
+				length += UTF8Length(utf16_decode(pSrc, pSrcEnd - pSrc, offset));
 
-		const char32_t* pSrc = str.c_str();
-		const char32_t* const pSrcEnd = pSrc + str.size();
+				pSrc += offset;
+			}
 
-		while (pSrc != pSrcEnd)
-		{
-			length += UTF16Length(*pSrc++);
+			return length;
 		}
 
-		return length;
-	}
-
-	[[nodiscard]] static constexpr size_t UTF16Length(const std::string& str) noexcept
-	{
-		size_t length = 0;
-
-		const char* pSrc = str.c_str();
-		const char* const pSrcEnd = pSrc + str.size();
-
-		while (pSrc != pSrcEnd)
+		static void UTF8Encode(char** s, const char32_t codePoint) noexcept
 		{
-			std::int32_t offset = 0;
-
-			length += UTF16Length(detail::utf8_decode(pSrc, pSrcEnd - pSrc, offset));
-
-			pSrc += offset;
+			if (codePoint < 0x80)
+			{
+				*(*s)++ = static_cast<char>(codePoint);
+			}
+			else if (codePoint < 0x800)
+			{
+				*(*s)++ = static_cast<char>((codePoint >> 6) | 0xC0);
+				*(*s)++ = static_cast<char>((codePoint & 0x3F) | 0x80);
+			}
+			else if (codePoint < 0x10000)
+			{
+				*(*s)++ = static_cast<char>((codePoint >> 12) | 0xE0);
+				*(*s)++ = static_cast<char>(((codePoint >> 6) & 0x3F) | 0x80);
+				*(*s)++ = static_cast<char>((codePoint & 0x3F) | 0x80);
+			}
+			else if (codePoint < 0x110000)
+			{
+				*(*s)++ = static_cast<char>((codePoint >> 18) | 0xF0);
+				*(*s)++ = static_cast<char>(((codePoint >> 12) & 0x3F) | 0x80);
+				*(*s)++ = static_cast<char>(((codePoint >> 6) & 0x3F) | 0x80);
+				*(*s)++ = static_cast<char>((codePoint & 0x3F) | 0x80);
+			}
+			else
+			{
+				*(*s)++ = static_cast<std::uint8_t>(0xEF);
+				*(*s)++ = static_cast<std::uint8_t>(0xBF);
+				*(*s)++ = static_cast<std::uint8_t>(0xBD);
+			}
 		}
 
-		return length;
-	}
-
-	static void UTF16Encode(char16_t** s, const char32_t codePoint) noexcept
-	{
-		if (codePoint < 0x10000)
+		[[nodiscard]] inline size_t UTF16Length(const char32_t codePoint) noexcept
 		{
-			*(*s)++ = static_cast<char16_t>(codePoint);
-		}
-		else if (codePoint < 0x110000)
-		{
-			*(*s)++ = static_cast<char16_t>(((codePoint - 0x10000) >> 10) + 0xD800);
-			*(*s)++ = static_cast<char16_t>((codePoint & 0x3FF) + 0xDC00);
-		}
-		else
-		{
-			*(*s)++ = static_cast<char16_t>(0xFFFD);
-		}
-	}
-
-	[[nodiscard]] static size_t UTF32Length(const std::string& str) noexcept
-	{
-		size_t length = 0;
-
-		const char* pSrc = str.c_str();
-		const char* const pSrcEnd = pSrc + str.size();
-
-		while (pSrc != pSrcEnd)
-		{
-			std::int32_t offset;
-
-			utf8_decode(pSrc, pSrcEnd - pSrc, offset);
-
-			pSrc += offset;
-
-			++length;
+			if (codePoint < 0x10000)
+			{
+				return 1;
+			}
+			else if (codePoint < 0x110000)
+			{
+				return 2;
+			}
+			else
+			{
+				return 1; // 0xFFFD
+			}
 		}
 
-		return length;
-	}
-
-	[[nodiscard]] static size_t UTF32Length(const std::u16string& str)
-	{
-		size_t length = 0;
-
-		const char16_t* pSrc = str.c_str();
-		const char16_t* const pSrcEnd = pSrc + str.size();
-
-		while (pSrc != pSrcEnd)
+		[[nodiscard]] inline size_t UTF16Length(const std::u32string& str) noexcept
 		{
-			std::int32_t offset;
+			size_t length = 0;
 
-			utf16_decode(pSrc, pSrcEnd - pSrc, offset);
+			const char32_t* pSrc = str.c_str();
+			const char32_t* const pSrcEnd = pSrc + str.size();
 
-			pSrc += offset;
+			while (pSrc != pSrcEnd)
+			{
+				length += UTF16Length(*pSrc++);
+			}
 
-			++length;
+			return length;
 		}
 
-		return length;
+		[[nodiscard]] inline size_t UTF16Length(const std::string& str) noexcept
+		{
+			size_t length = 0;
+
+			const char* pSrc = str.c_str();
+			const char* const pSrcEnd = pSrc + str.size();
+
+			while (pSrc != pSrcEnd)
+			{
+				std::int32_t offset = 0;
+
+				length += UTF16Length(detail::utf8_decode(pSrc, pSrcEnd - pSrc, offset));
+
+				pSrc += offset;
+			}
+
+			return length;
+		}
+
+		static void UTF16Encode(char16_t** s, const char32_t codePoint) noexcept
+		{
+			if (codePoint < 0x10000)
+			{
+				*(*s)++ = static_cast<char16_t>(codePoint);
+			}
+			else if (codePoint < 0x110000)
+			{
+				*(*s)++ = static_cast<char16_t>(((codePoint - 0x10000) >> 10) + 0xD800);
+				*(*s)++ = static_cast<char16_t>((codePoint & 0x3FF) + 0xDC00);
+			}
+			else
+			{
+				*(*s)++ = static_cast<char16_t>(0xFFFD);
+			}
+		}
+
+		[[nodiscard]] static size_t UTF32Length(const std::string& str) noexcept
+		{
+			size_t length = 0;
+
+			const char* pSrc = str.c_str();
+			const char* const pSrcEnd = pSrc + str.size();
+
+			while (pSrc != pSrcEnd)
+			{
+				std::int32_t offset;
+
+				utf8_decode(pSrc, pSrcEnd - pSrc, offset);
+
+				pSrc += offset;
+
+				++length;
+			}
+
+			return length;
+		}
+
+		[[nodiscard]] static size_t UTF32Length(const std::u16string& str)
+		{
+			size_t length = 0;
+
+			const char16_t* pSrc = str.c_str();
+			const char16_t* const pSrcEnd = pSrc + str.size();
+
+			while (pSrc != pSrcEnd)
+			{
+				std::int32_t offset;
+
+				utf16_decode(pSrc, pSrcEnd - pSrc, offset);
+
+				pSrc += offset;
+
+				++length;
+			}
+
+			return length;
+		}
 	}
 }
 

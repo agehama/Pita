@@ -40,11 +40,11 @@
 #include <geos/operation/predicate/RectangleContains.h>
 #include <geos/triangulate/VoronoiDiagramBuilder.h>
 
-#ifdef _DEBUG
-#pragma comment(lib, "geos_d.lib")
-#else
-#pragma comment(lib, "geos.lib")
-#endif
+//#ifdef _DEBUG
+//#pragma comment(lib, "geos_d.lib")
+//#else
+//#pragma comment(lib, "geos.lib")
+//#endif
 
 namespace gg = geos::geom;
 

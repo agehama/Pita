@@ -26,10 +26,6 @@
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>
 
-#define WIDE2(x) L##x
-#define WIDE1(x) WIDE2(x)
-#define WFILE WIDE1(__FILE__)
-
 namespace cgl
 {
 	class Exception : public std::exception
@@ -194,10 +190,6 @@ namespace cgl
 			name(name_)
 		{}
 
-		/*Identifier(char name_) :
-			name({ name_ })
-		{}*/
-
 		bool operator==(const Identifier& other)const
 		{
 			return name == other.name;
@@ -303,9 +295,7 @@ namespace cgl
 	struct FunctionAccess;
 
 	struct Accessor;
-
-	//struct FunctionCaller;
-
+	
 	struct DeclSat;
 	struct DeclFree;
 
@@ -340,8 +330,7 @@ namespace cgl
 		boost::recursive_wrapper<KeyValue>,
 		boost::recursive_wrapper<Record>,
 		boost::recursive_wrapper<FuncVal>,
-		boost::recursive_wrapper<Jump>/*,
-		boost::recursive_wrapper<DeclFree>*/
+		boost::recursive_wrapper<Jump>
 	>;
 
 	struct RValue;
@@ -356,7 +345,6 @@ namespace cgl
 		boost::recursive_wrapper<BinaryExpr>,
 
 		boost::recursive_wrapper<DefFunc>,
-		//boost::recursive_wrapper<FunctionCaller>,
 		boost::recursive_wrapper<Range>,
 
 		boost::recursive_wrapper<Lines>,
@@ -395,13 +383,7 @@ namespace cgl
 		{
 			return !IsEqualEvaluated(value, other.value);
 		}
-
-		/*static RValue Bool(bool a) { return RValue(a); }
-		static RValue Int(int a) { return RValue(a); }
-		static RValue Double(double a) { return RValue(a); }
-		static RValue Sat(const DeclSat& a) { return RValue(a); }
-		static RValue Free(const DeclFree& a) { return RValue(a); }*/
-
+		
 		Evaluated value;
 	};
 
@@ -470,7 +452,6 @@ namespace cgl
 		SatReference,
 		boost::recursive_wrapper<SatUnaryExpr>,
 		boost::recursive_wrapper<SatBinaryExpr>,
-		//boost::recursive_wrapper<SatLines>,
 		boost::recursive_wrapper<SatFunctionReference>
 	>;
 
@@ -756,9 +737,7 @@ namespace cgl
 		std::vector<Identifier> arguments;
 		Expr expr;
 		boost::optional<Address> builtinFuncAddress;
-		//std::vector<std::set<std::string>> referenceableVariables;
-		//mutable int currentScopeDepth;
-
+		
 		FuncVal() = default;
 
 		explicit FuncVal(Address builtinFuncAddress) :
@@ -767,13 +746,9 @@ namespace cgl
 
 		FuncVal(
 			const std::vector<Identifier>& arguments,
-			const Expr& expr/*,
-			const std::vector<std::set<std::string>>& referenceableVariables,
-			int currentScopeDepth*/) :
+			const Expr& expr) :
 			arguments(arguments),
-			expr(expr)/*,
-			referenceableVariables(referenceableVariables),
-			currentScopeDepth(currentScopeDepth)*/
+			expr(expr)
 		{}
 
 		bool operator==(const FuncVal& other)const
@@ -870,53 +845,7 @@ namespace cgl
 			return IsEqual(expr, other.expr);
 		}
 	};
-
-	/*
-	struct FunctionCaller
-	{
-		boost::variant<FuncVal, Identifier> funcRef;
-		std::vector<Evaluated> actualArguments;
-
-		FunctionCaller() = default;
-
-		FunctionCaller(const Identifier& funcName) :
-			funcRef(funcName)
-		{}
-
-		FunctionCaller(
-			const FuncVal& funcVal_,
-			const std::vector<Evaluated>& actualArguments_) :
-			funcRef(funcVal_),
-			actualArguments(actualArguments_)
-		{}
-
-		FunctionCaller(
-			const Identifier& funcName,
-			const std::vector<Evaluated>& actualArguments_) :
-			funcRef(funcName),
-			actualArguments(actualArguments_)
-		{}
-
-		bool operator==(const FunctionCaller& other)const
-		{
-			if (actualArguments.size() != other.actualArguments.size())
-			{
-				return false;
-			}
-
-			for (size_t i = 0; i < actualArguments.size(); ++i)
-			{
-				if (!IsEqualEvaluated(actualArguments[i], other.actualArguments[i]))
-				{
-					return false;
-				}
-			}
-
-			return funcRef == other.funcRef;
-		}
-	};
-	*/
-
+	
 	struct If
 	{
 		Expr cond_expr;
@@ -1043,15 +972,6 @@ namespace cgl
 		ListConstractor(const Expr& expr) :
 			data({ expr })
 		{}
-
-		/*ListConstractor(const std::vector<int>& vs) :
-			data(vs.size())
-		{
-			for (size_t i = 0; i < data.size(); ++i)
-			{
-				data[i] = vs[i];
-			}
-		}*/
 
 		ListConstractor& add(const Expr& expr)
 		{

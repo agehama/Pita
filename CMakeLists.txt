@@ -8,8 +8,12 @@ set(CMAKE_CXX_STANDARD 14)
 #set(CMAKE_CXX_STANDARD 17)
 
 set(Boost_USE_STATIC_LIBS ON)
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
+
 set(GEOS_ENABLE_TESTS OFF CACHE BOOL "Disable geos tests" FORCE)
-set(GEOS_BUILD_SHARED OFF CACHE BOOL "Build geos static library" FORCE)
+set(GEOS_BUILD_SHARED OFF CACHE BOOL "Build geos as static library" FORCE)
+set(GEOS_ENABLE_INLINE OFF CACHE BOOL "Disable geos inline option" FORCE)
 set(BUILD_PYTHON OFF CACHE BOOL "Build libcmaes python binding" FORCE)
 
 set(BUILD_TESTING OFF CACHE BOOL "Build test off" FORCE)
@@ -53,6 +57,7 @@ configure_file(${PROJECT_SOURCE_DIR}/external/Eigen/cmake/UseEigen3.cmake
 
 set(Eigen3_DIR "${PROJECT_BINARY_DIR}/${CGL_EIGEN_TARGET_DIR}" CACHE PATH "set Eigen3_DIR to ${PROJECT_BINARY_DIR}/${CGL_EIGEN_TARGET_DIR}")
 
+
 add_subdirectory(external/libcmaes ${CGL_LIBCMAES_TARGET_DIR})
 
 include_directories(${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/include)
@@ -66,5 +71,5 @@ include_directories(external/stb)
 
 include_directories(include)
 
-add_executable(pita source/Source.cpp)
+add_executable(pita source/BinaryEvaluator.cpp source/Environment.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Vectorizer.cpp source/Source.cpp)
 target_link_libraries(pita geos cmaes)

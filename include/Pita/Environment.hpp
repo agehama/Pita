@@ -1,5 +1,6 @@
 #pragma once
 #include <stack>
+#include <map>
 #include "Node.hpp"
 #include "BinaryEvaluator.hpp"
 
@@ -128,38 +129,15 @@ namespace cgl
 		{
 			m_localEnvStack.push(LocalEnvironment());
 		}
+
 		void switchBackScope()
 		{
 			m_localEnvStack.pop();
 		}
 
-		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function)
-		{
-			//m_valuesにFuncVal追加
-			//m_functionsにfunction追加
-			//m_scopeにname->FuncVal追加
-			
-			const Address address1 = m_functions.add(function);
-			const Address address2 = m_values.add(FuncVal(address1));
+		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function);
 
-			if (address1 != address2)
-			{
-				CGL_Error("組み込み関数の追加に失敗");
-			}
-
-			bindValueID(name, address1);
-		}
-
-		Evaluated callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
-		{
-			if (std::shared_ptr<Environment> pEnv = m_weakThis.lock())
-			{
-				return m_functions[functionAddress](pEnv, arguments);
-			}
-			
-			CGL_Error("ここは通らないはず");
-			return 0;
-		}
+		Evaluated callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments);
 
 		/*
 		boost::optional<Address> find(const std::string& name)const
@@ -225,85 +203,16 @@ namespace cgl
 			return 0;
 		}*/
 
-		const Evaluated& expand(const LRValue& lrvalue)const
-		{
-			if (lrvalue.isLValue())
-			{
-				auto it = m_values.at(lrvalue.address());
-				if (it != m_values.end())
-				{
-					return it->second;
-				}
-				
-				CGL_Error(std::string("reference error: Address(") + lrvalue.address().toString() + ")");
-			}
+		const Evaluated& expand(const LRValue& lrvalue)const;
 
-			return lrvalue.evaluated();
-		}
-
-		boost::optional<const Evaluated&> expandOpt(const LRValue& lrvalue)const
-		{
-			if (lrvalue.isLValue())
-			{
-				auto it = m_values.at(lrvalue.address());
-				if (it != m_values.end())
-				{
-					return it->second;
-				}
-
-				return boost::none;
-			}
-
-			return lrvalue.evaluated();
-		}
+		boost::optional<const Evaluated&> expandOpt(const LRValue& lrvalue)const;
 
 		Address evalReference(const Accessor& access);
 
 		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
 		/*std::vector<ObjectReference> expandReferences(const ObjectReference& reference, std::vector<ObjectReference>& output);
 		std::vector<ObjectReference> expandReferences(const ObjectReference& reference)*/
-		std::vector<Address> expandReferences(Address address)
-		{
-			std::vector<Address> result;
-			if (auto sharedThis = m_weakThis.lock())
-			{
-				const auto addElementRec = [&](auto rec, Address address)->void
-				{
-					const Evaluated value = sharedThis->expand(address);
-
-					//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
-					if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
-					{
-						result.push_back(address);
-					}
-					else if (IsType<List>(value))
-					{
-						for (Address elemAddress : As<List>(value).data)
-						{
-							rec(rec, elemAddress);
-						}
-					}
-					else if (IsType<Record>(value))
-					{
-						for (const auto& elem : As<Record>(value).values)
-						{
-							rec(rec, elem.second);
-						}
-					}
-					//それ以外のデータは特に捕捉しない
-					//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
-				};
-
-				const auto addElement = [&](const Address address)
-				{
-					addElementRec(addElementRec, address);
-				};
-
-				addElement(address);
-			}
-
-			return result;
-		}
+		std::vector<Address> expandReferences(Address address);
 
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
 		/*
@@ -383,17 +292,7 @@ namespace cgl
 			makeVariable(name, makeTemporaryValue(value));
 		}
 
-		void bindReference(const std::string& nameLhs, const std::string& nameRhs)
-		{
-			const Address address = findAddress(nameRhs);
-			if (!address.isValid())
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return;
-			}
-
-			bindValueID(nameLhs, address);
-		}
+		void bindReference(const std::string& nameLhs, const std::string& nameRhs);
 
 		/*
 		void bindValueID(const std::string& name, unsigned valueID)
@@ -423,22 +322,7 @@ namespace cgl
 
 			m_variables.back()[name] = ID;
 		}*/
-		void bindValueID(const std::string& name, const Address ID)
-		{
-			//CGL_DebugLog("");
-			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
-			{
-				auto valIt = scopeIt->find(name);
-				if (valIt != scopeIt->end())
-				{
-					valIt->second = ID;
-					return;
-				}
-			}
-			//CGL_DebugLog("");
-
-			localEnv().back()[name] = ID;
-		}
+		void bindValueID(const std::string& name, const Address ID);
 
 		//bindValueIDの変数宣言式用
 		void makeVariable(const std::string& name, const Address ID)
@@ -474,22 +358,9 @@ namespace cgl
 			//m_values[addressTo] = expandRef(m_values[addressFrom]);
 		}
 
-		static std::shared_ptr<Environment> Make()
-		{
-			auto p = std::make_shared<Environment>();
-			p->m_weakThis = p;
-			p->switchFrontScope();
-			p->enterScope();
-			p->initialize();
-			return p;
-		}
+		static std::shared_ptr<Environment> Make();
 
-		static std::shared_ptr<Environment> Make(const Environment& other)
-		{
-			auto p = std::make_shared<Environment>(other);
-			p->m_weakThis = p;
-			return p;
-		}
+		static std::shared_ptr<Environment> Make(const Environment& other);
 
 		std::shared_ptr<Environment> clone()
 		{
@@ -498,18 +369,7 @@ namespace cgl
 
 		//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
 		//式の評価途中でGCは走らないようにするべきか？
-		Address makeTemporaryValue(const Evaluated& value)
-		{
-			const Address address = m_values.add(value);
-
-			//関数はスコープを抜ける時に定義式中の変数が解放されないか監視する必要があるのでIDを保存しておく
-			/*if (IsType<FuncVal>(value))
-			{
-				m_funcValIDs.push_back(address);
-			}*/
-
-			return address;
-		}
+		Address makeTemporaryValue(const Evaluated& value);
 
 		Environment() = default;
 
@@ -561,19 +421,7 @@ namespace cgl
 
 			return Address::Null();
 		}*/
-		Address findAddress(const std::string& name)const
-		{
-			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
-			{
-				auto variableIt = scopeIt->find(name);
-				if (variableIt != scopeIt->end())
-				{
-					return variableIt->second;
-				}
-			}
-
-			return Address::Null();
-		}
+		Address findAddress(const std::string& name)const;
 
 	private:
 

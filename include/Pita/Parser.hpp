@@ -51,7 +51,7 @@ namespace cgl
 
 		LineSkipper() :LineSkipper::base_type(skip)
 		{
-			skip = ascii::space;
+			skip = qi::ascii::space;
 		}
 	};
 

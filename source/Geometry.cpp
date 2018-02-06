@@ -180,8 +180,6 @@ namespace cgl
 
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv)
 	{
-		//return List();
-
 		const auto& values = pathRule.values;
 
 		auto itPoints = values.find("points");
@@ -277,18 +275,35 @@ namespace cgl
 
 		gg::LineString* ls = factory->createLineString(cs);*/
 
-		/*List circumvents;
+		std::vector<gg::Geometry*> obstacles;
+		List circumvents;
 		{
 			const Evaluated evaluated = pEnv->expand(itCircumvents->second);
 			if (!IsType<List>(evaluated))
 			{
 				CGL_Error("不正な式です");
-				return{};
+				return;
 			}
-			circumvents = As<List>(evaluated);
-		}*/
 
-		//*
+			obstacles = GeosFromRecord(evaluated, pEnv);
+		}
+
+		const auto coord = [&](double x, double y)
+		{
+			Record record;
+			record.append("x", pEnv->makeTemporaryValue(x));
+			record.append("y", pEnv->makeTemporaryValue(y));
+			return record;
+		};
+		const auto appendCoord = [&](List& list, double x, double y)
+		{
+			list.append(pEnv->makeTemporaryValue(coord(x, y)));
+		};
+
+		Record result;
+		List polygonList;
+
+		/*
 		PathConstraintProblem  constraintProblem;
 		constraintProblem.evaluator = [&](const PathConstraintProblem::TVector& v)->double
 		{
@@ -309,9 +324,29 @@ namespace cgl
 				penalty += distanceOp.distance();
 			}
 
-			const double totalCost = pathLength + penalty*penalty;
+			double penalty2 = 0;
+			for (int i = 0; i < obstacles.size(); ++i)
+			{
+				gg::Geometry* g = obstacles[i]->intersection(ls2);
+				if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
+					penalty2 += intersections->getLength();
+				}
+				else
+				{
+					//std::cout << "Result type: " << g->getGeometryType();
+				}
+			}
 
-			std::cout << std::string("path cost: ") << ToS(totalCost, 17) << "\n";
+			penalty = 100 * penalty*penalty;
+			penalty2 = 100 * penalty2*penalty2;
+
+			const double totalCost = pathLength + penalty + penalty2;
+
+			//std::cout << std::string("path cost: ") << ToS(totalCost, 17) << "\n";
+
+			std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
 			return totalCost;
 		};
 
@@ -325,24 +360,81 @@ namespace cgl
 		cppoptlib::BfgsSolver<PathConstraintProblem> solver;
 		solver.minimize(constraintProblem, x0s);
 
-		const auto coord = [&](double x, double y)
-		{
-			Record record;
-			record.append("x", pEnv->makeTemporaryValue(x));
-			record.append("y", pEnv->makeTemporaryValue(y));
-			return record;
-		};
-		const auto appendCoord = [&](List& list, double x, double y)
-		{
-			list.append(pEnv->makeTemporaryValue(coord(x, y)));
-		};
-
-		Record result;
-		List polygonList;
 		for (int i = 0; i*2 < x0s.size(); ++i)
 		{
 			appendCoord(polygonList, x0s[i * 2 + 0], x0s[i * 2 + 1]);
 		}
+		//*/
+
+		//*
+		libcmaes::FitFunc func = [&](const double *x, const int N)->double
+		{
+			gg::CoordinateArraySequence cs2;
+			for (int i = 0; i * 2 < N; ++i)
+			{
+				cs2.add(gg::Coordinate(x[i * 2 + 0], x[i * 2 + 1]));
+			}
+
+			gg::LineString* ls2 = factory->createLineString(cs2);
+
+			double pathLength = ls2->getLength();
+
+			double penalty = 0;
+			for (int i = 0; i < originalPoints.size(); ++i)
+			{
+				god::DistanceOp distanceOp(ls2, originalPoints[i]);
+				penalty += distanceOp.distance();
+			}
+
+			double penalty2 = 0;
+			for (int i = 0; i < obstacles.size(); ++i)
+			{
+				gg::Geometry* g = obstacles[i]->intersection(ls2);
+				if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
+					penalty2 += intersections->getLength();
+				}
+				else
+				{
+					//std::cout << "Result type: " << g->getGeometryType();
+				}
+			}
+
+			penalty = 100 * penalty*penalty;
+			//penalty2 = 100 * penalty2*penalty2;
+
+			//const double totalCost = pathLength + penalty + penalty2;
+			//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
+
+			const double totalCost = penalty2;
+			std::cout << std::string("path cost: ") << ToS(penalty2, 17) << "\n";
+			return totalCost;
+		};
+
+		std::vector<double> x0(points.size() * 2);
+		for (int i = 0; i < x0.size(); ++i)
+		{
+			x0[i * 2 + 0] = points[i].x();
+			x0[i * 2 + 1] = points[i].y();
+
+			std::cout << i << "(" << points[i].x() << ", " << points[i].y() << ")\n";
+		}
+
+		const double sigma = 0.1;
+
+		const int lambda = 100;
+
+		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
+		auto resultxs = cmasols.best_candidate().get_x();
+
+		for (int i = 0; i * 2 < resultxs.size(); ++i)
+		{
+			appendCoord(polygonList, resultxs[i * 2 + 0], resultxs[i * 2 + 1]);
+		}
+		//*/
+
 		result.append("line", pEnv->makeTemporaryValue(polygonList));
 		{
 			Record record;
@@ -354,7 +446,8 @@ namespace cgl
 
 		pathRule.append("path", pEnv->makeTemporaryValue(result));
 
-		//*/
+		
+
 
 		/*
 		points: 10

@@ -347,6 +347,19 @@ namespace cgl
 		);
 
 		registerBuiltInFunction(
+			"buffer",
+			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			return ShapeBuffer(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
+		}
+		);
+
+		registerBuiltInFunction(
 			"area",
 			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{

@@ -9,6 +9,8 @@ namespace cgl
 {
 	List ShapeDifference(const Evaluated& lhs, const Evaluated& rhs, std::shared_ptr<cgl::Environment> pEnv);
 
+	List ShapeBuffer(const Evaluated& shape, const Evaluated& amount, std::shared_ptr<cgl::Environment> pEnv);
+
 	//std::vector<Eigen::Vector2d> GetPath(const Record& pathRule, std::shared_ptr<cgl::Environment> pEnv);
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv);
 

@@ -150,6 +150,34 @@ namespace cgl
 		}
 	}
 
+	List ShapeBuffer(const Evaluated & shape, const Evaluated & amount, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		if (!IsType<Record>(shape) && !IsType<List>(shape))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		if (!IsType<int>(amount) && !IsType<double>(amount))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		const double distance = IsType<int>(amount) ? static_cast<double>(As<int>(amount)) : As<double>(amount);
+		std::vector<gg::Geometry*> polygons = GeosFromRecord(shape, pEnv);
+
+		std::vector<gg::Geometry*> resultGeometries;
+		
+		for (int s = 0; s < polygons.size(); ++s)
+		{
+			gg::Geometry* currentGeometry = polygons[s];
+			resultGeometries.push_back(currentGeometry->buffer(distance));
+		}
+
+		return GetShapesFromGeos(resultGeometries, pEnv);
+	}
+
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv)
 	{
 		//return List();

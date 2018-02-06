@@ -1453,6 +1453,9 @@ namespace cgl
 		std::vector<Accessor> freeVariables;
 		//std::vector<Address> freeVariables;//var宣言で指定された変数のアドレス
 		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
+		enum Type { Normal, Path };
+		Type type = Normal;
+		std::vector<Eigen::Vector2d> pathPoints;
 
 		Record() = default;
 		
@@ -1834,6 +1837,11 @@ namespace cgl
 
 	inline Expr BuildString(const std::string& str)
 	{
+		/*Expr expr;
+		FuncVal funcval;
+		funcval.expr = Identifier(str);
+		expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
+		return expr;*/
 		Expr expr;
 		FuncVal funcval;
 		funcval.expr = Identifier(str);

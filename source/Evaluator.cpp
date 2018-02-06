@@ -303,6 +303,7 @@ namespace cgl
 		result.problem = node.problem;
 		result.freeVariables = node.freeVariables;
 		result.freeVariableRefs = node.freeVariableRefs;
+		result.type = node.type;
 
 		return result;
 	}
@@ -339,10 +340,6 @@ namespace cgl
 			const Evaluated& substance = pEnv->expand(value.second);
 			pEnv->assignToObject(value.second, boost::apply_visitor(*this, substance));
 		}
-
-		node.problem;
-		node.freeVariables;
-		node.freeVariableRefs;
 
 		return node;
 	}
@@ -1586,7 +1583,7 @@ namespace cgl
 			}
 			CGL_DebugLog("End Record MakeMap");
 
-			/*
+			//*
 			ConstraintProblem constraintProblem;
 			constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
 			{
@@ -1634,7 +1631,7 @@ namespace cgl
 			}
 			//*/
 
-			//*
+			/*
 			libcmaes::FitFunc func = [&](const double *x, const int N)->double
 			{
 				for (int i = 0; i < N; ++i)
@@ -1704,6 +1701,12 @@ namespace cgl
 			record.append(key, address);
 		}
 
+		if (record.type == Record::Path)
+		{
+			//record.pathPoints = GetPath(record, pEnv);
+			GetPath(record, pEnv);
+		}
+
 		pEnv->printEnvironment();
 
 		CGL_DebugLog("");
@@ -1752,15 +1755,6 @@ namespace cgl
 
 		//Evaluated originalRecordRef = boost::apply_visitor(*this, record.original);
 		//Evaluated originalRecordVal = pEnv->expandRef(originalRecordRef);
-		Evaluated originalRecordVal = pEnv->expand(boost::apply_visitor(*this, record.original));
-		if (auto opt = AsOpt<Record>(originalRecordVal))
-		{
-			recordOpt = opt.value();
-		}
-		else
-		{
-			CGL_Error("not record");
-		}
 
 		/*
 		a{}を評価する手順
@@ -1771,13 +1765,31 @@ namespace cgl
 		(5) レコードをマージする //ローカル変数などの変更処理
 		*/
 
-		//(1)
-		//Record clone = recordOpt.value();
-			
-		pEnv->printEnvironment(true);
-		CGL_DebugLog("Original:");
-		printEvaluated(originalRecordVal, pEnv);
 
+		if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("path"))
+		{
+			Record pathRecord;
+			pathRecord.type = Record::Path;
+			recordOpt = pathRecord;
+		}
+		else
+		{
+			Evaluated originalRecordVal = pEnv->expand(boost::apply_visitor(*this, record.original));
+			if (auto opt = AsOpt<Record>(originalRecordVal))
+			{
+				recordOpt = opt.value();
+			}
+			else
+			{
+				CGL_Error("not record");
+			}
+
+			pEnv->printEnvironment(true);
+			CGL_DebugLog("Original:");
+			printEvaluated(originalRecordVal, pEnv);
+		}
+
+		//(1)オリジナルのレコードaのクローン(a')を作る
 		Record clone = As<Record>(Clone(pEnv, recordOpt.value()));
 
 		CGL_DebugLog("Clone:");
@@ -1789,6 +1801,7 @@ namespace cgl
 		}
 		temporaryRecord = clone;
 
+		//(2) a'の各キーと値に対する参照をローカルスコープに追加する
 		pEnv->enterScope();
 		for (auto& keyval : clone.values)
 		{
@@ -1797,6 +1810,7 @@ namespace cgl
 			CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 		}
 
+		//(3) 追加するレコードの中身を評価する
 		Expr expr = record.adder;
 		Evaluated recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
 

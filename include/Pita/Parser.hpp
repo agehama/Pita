@@ -237,14 +237,15 @@ namespace cgl
 				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
 				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
 
-			factor = float_value[_val = Call(LRValue::Float, _1)]
+			factor = 
+				  '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
+				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
+				| float_value[_val = Call(LRValue::Float, _1)]
 				| int_[_val = Call(LRValue::Int, _1)]
 				| lit("true")[_val = Call(LRValue::Bool, true)]
 				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '\"' >> char_string[_val = Call(BuildString, _1)] >> '\"'
-				| '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
-				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
 				| constraints[_val = _1]
 				| record_inheritor[_val = _1]
 				| freeVals[_val = _1]

@@ -1,6 +1,5 @@
 #include <Eigen/Core>
 
-//#define GEOS_INLINE
 #include <geos/geom/Point.h>
 #include <geos/geom/Polygon.h>
 #include <geos/geom/LineString.h>
@@ -201,7 +200,7 @@ namespace cgl
 		{
 			const Evaluated value = pEnv->expand(member.second);
 
-			if (member.first == "polygon" && IsType<List>(value))
+			if ((member.first == "polygon" || member.first == "line") && IsType<List>(value))
 			{
 				Vector<Eigen::Vector2d> polygon;
 				if (ReadPolygon(polygon, As<List>(value), pEnv, transform) && !polygon.empty())
@@ -306,6 +305,19 @@ namespace cgl
 		return factory->createPolygon(factory->createLinearRing(pts), {});
 	}
 
+	gg::LineString* ToLineString(const Vector<Eigen::Vector2d>& exterior)
+	{
+		gg::CoordinateArraySequence pts;
+
+		for (int i = 0; i < exterior.size(); ++i)
+		{
+			pts.add(gg::Coordinate(exterior[i].x(), exterior[i].y()));
+		}
+
+		auto factory = gg::GeometryFactory::create();
+		return factory->createLineString(pts);
+	}
+
 	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail)
 	{
 		/*if (tail.empty())
@@ -339,6 +351,8 @@ namespace cgl
 
 		std::vector<gg::Geometry*> currentPolygons;
 		std::vector<gg::Geometry*> currentHoles;
+
+		std::vector<gg::Geometry*> currentLines;
 
 		for (const auto& member : record.values)
 		{
@@ -390,6 +404,14 @@ namespace cgl
 					}
 				}
 			}
+			else if (member.first == "line" && IsType<List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentLines.push_back(ToLineString(polygon));
+				}
+			}
 			else if (cgl::IsType<cgl::Record>(value))
 			{
 				GeosPolygonsConcat(currentPolygons, GeosFromRecordImpl(cgl::As<cgl::Record>(value), pEnv, transform));
@@ -405,10 +427,11 @@ namespace cgl
 
 		if (currentPolygons.empty())
 		{
-			return{};
+			return currentLines;
 		}
 		else if (currentHoles.empty())
 		{
+			currentPolygons.insert(currentPolygons.end(), currentLines.begin(), currentLines.end());
 			return currentPolygons;
 		}
 		else
@@ -447,6 +470,7 @@ namespace cgl
 				currentPolygons[s] = erodeGeometry;
 			}
 
+			currentPolygons.insert(currentPolygons.end(), currentLines.begin(), currentLines.end());
 			return currentPolygons;
 
 			/*gg::MultiPolygon* accumlatedPolygons = factory->createMultiPolygon(currentPolygons);
@@ -507,7 +531,6 @@ namespace cgl
 		};
 
 		Record result;
-
 		{
 			List polygonList;
 			const gg::LineString* outer = poly->getExteriorRing();
@@ -623,6 +646,23 @@ namespace cgl
 		}
 	}
 
+	void OutputLineStringStream(PolygonsStream& ps, const gg::LineString* lineString)
+	{
+		std::stringstream ss;
+
+		const double area = lineString->getLength();
+
+		ss << "<polyline stroke=\"rgb(0, 255, 255)\" fill=\"none\" points=\"";
+		for (int i = 0; i < lineString->getNumPoints(); ++i)
+		{
+			const gg::Point* p = lineString->getPointN(i);
+			ss << p->getX() << "," << p->getY() << " ";
+		}
+		ss << "\"/>\n";
+
+		ps.emplace(area, ss.str());
+	}
+
 	bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
 	{
 		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
@@ -658,6 +698,11 @@ namespace cgl
 						const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(polygons->getGeometryN(i));
 						OutputPolygonsStream(ps, polygon);
 					}
+				}
+				else if (geometry->getGeometryTypeId() == gg::GeometryTypeId::GEOS_LINESTRING)
+				{
+					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(geometry);
+					OutputLineStringStream(ps, lineString);
 				}
 			}
 

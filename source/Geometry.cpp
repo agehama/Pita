@@ -395,30 +395,35 @@ namespace cgl
 					const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
 					penalty2 += intersections->getLength();
 				}
+				else if(g->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+				{
+					const gg::MultiLineString* intersections = dynamic_cast<const gg::MultiLineString*>(g);
+					penalty2 += intersections->getLength();
+				}
 				else
 				{
 					//std::cout << "Result type: " << g->getGeometryType();
 				}
 			}
 
-			penalty = 100 * penalty*penalty;
+			//penalty = 100 * penalty*penalty;
 			//penalty2 = 100 * penalty2*penalty2;
 
-			//const double totalCost = pathLength + penalty + penalty2;
+			const double totalCost = pathLength + penalty*penalty + penalty2*penalty2;
 			//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
 
-			const double totalCost = penalty2;
-			std::cout << std::string("path cost: ") << ToS(penalty2, 17) << "\n";
+			//const double totalCost = penalty2;
+			//std::cout << std::string("path cost: ") << ToS(penalty2, 17) << "\n";
 			return totalCost;
 		};
 
 		std::vector<double> x0(points.size() * 2);
-		for (int i = 0; i < x0.size(); ++i)
+		for (int i = 0; i < points.size(); ++i)
 		{
 			x0[i * 2 + 0] = points[i].x();
 			x0[i * 2 + 1] = points[i].y();
 
-			std::cout << i << "(" << points[i].x() << ", " << points[i].y() << ")\n";
+			std::cout << i << ": (" << points[i].x() << ", " << points[i].y() << ")\n";
 		}
 
 		const double sigma = 0.1;
@@ -445,9 +450,6 @@ namespace cgl
 		}
 
 		pathRule.append("path", pEnv->makeTemporaryValue(result));
-
-		
-
 
 		/*
 		points: 10

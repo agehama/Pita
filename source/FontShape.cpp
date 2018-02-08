@@ -83,7 +83,9 @@ namespace cgl
 			return Eigen::Vector2d(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
 		};
 
+		std::cout << "fontInfo1: " << fontInfo << std::endl;
 		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
+		std::cout << "fontInfo1 end" << std::endl;
 
 		stbtt_vertex* pv;
 		const int verticesNum = stbtt_GetGlyphShape(fontInfo, glyphIndex, &pv);
@@ -199,7 +201,10 @@ namespace cgl
 
 	double FontBuilder::glyphWidth(int codePoint)
 	{
+		std::cout << "fontInfo2: " << fontInfo << std::endl;
 		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
+		std::cout << "fontInfo2 end" << std::endl;
+
 		int x0, x1, y0, y1;
 		stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
 		return FontSizeToReal(x1 - x0);

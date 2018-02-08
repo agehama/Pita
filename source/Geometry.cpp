@@ -925,7 +925,7 @@ namespace cgl
 				}
 
 				const int codePoint = static_cast<int>(string[i]);
-				std::cout << "codePoint: " << codePoint << std::endl;
+				
 				const auto characterPolygon = font.makePolygon(codePoint, 5, offsetX, offsetY);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 

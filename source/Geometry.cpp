@@ -879,8 +879,7 @@ namespace cgl
 			ls = factory->createLineString(cs);
 		}
 
-		//FontBuilder font("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
-		FontBuilder font("mplus-1p-medium.ttf");
+		FontBuilder font;
 		std::vector<gg::Geometry*> result;
 
 		std::u32string string = str.toString();
@@ -926,7 +925,7 @@ namespace cgl
 				}
 
 				const int codePoint = static_cast<int>(string[i]);
-				const auto characterPolygon = font.makePolygon(codePoint, 1, offsetX, offsetY);
+				const auto characterPolygon = font.makePolygon(codePoint, 5, offsetX, offsetY);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
 				offsetHorizontal += font.glyphWidth(codePoint);
@@ -974,7 +973,7 @@ namespace cgl
 			return{};
 		}
 
-		cgl::FontBuilder builder("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
+		cgl::FontBuilder builder;
 		const auto result = builder.textToPolygon(str, 5);
 		return GetShapesFromGeos(result, pEnv);
 	}

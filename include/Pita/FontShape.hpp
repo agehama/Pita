@@ -20,6 +20,7 @@ namespace cgl
 	class FontBuilder
 	{
 	public:
+		FontBuilder();
 		FontBuilder(const std::string& fontPath);
 		~FontBuilder();
 

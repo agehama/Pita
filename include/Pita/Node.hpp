@@ -76,7 +76,7 @@ namespace std
 
 namespace cgl
 {
-	std::string UTF8ToString(const std::string& str);
+	//std::string UTF8ToString(const std::string& str);
 
 	template<class T1, class T2>
 	inline bool SameType(const T1& t1, const T2& t2)

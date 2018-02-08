@@ -42,7 +42,8 @@ namespace cgl
 
 	void ValuePrinter::operator()(const CharString& node)const
 	{
-		os << indent() << "String(" << UTF8ToString(Unicode::UTF32ToUTF8(node.toString())) << ")" << std::endl;
+		os << indent() << "String(" << Unicode::UTF32ToUTF8(node.toString()) << ")" << std::endl;
+		//os << indent() << "String(" << UTF8ToString(Unicode::UTF32ToUTF8(node.toString())) << ")" << std::endl;
 	}
 
 	void ValuePrinter::operator()(const List& node)const

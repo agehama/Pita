@@ -245,7 +245,7 @@ namespace cgl
 			double maxDistanceSq = 0;
 			for (int i = 0; i + 1 < points.size(); ++i)
 			{
-				const Eigen::Vector2d diff = points[index] - points[index + 1];
+				const Eigen::Vector2d diff = points[i] - points[i + 1];
 				const double currentDistanceSq = diff.dot(diff);
 				if (maxDistanceSq < currentDistanceSq)
 				{
@@ -263,7 +263,7 @@ namespace cgl
 			{
 				const int insertIndex = mostDistantIndex(points);
 				Eigen::Vector2d mid = (points[insertIndex] + points[insertIndex + 1])*0.5;
-				points.insert(points.begin() + insertIndex, mid);
+				points.insert(points.begin() + insertIndex + 1, mid);
 			}
 		}
 

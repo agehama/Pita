@@ -267,14 +267,6 @@ namespace cgl
 			}
 		}
 
-		/*gg::CoordinateArraySequence cs;
-		for (int i = 0; i + 1 < points.size(); ++i)
-		{
-			cs.add(gg::Coordinate(points[i].x(), points[i].y()));
-		}
-
-		gg::LineString* ls = factory->createLineString(cs);*/
-
 		std::vector<gg::Geometry*> obstacles;
 		List circumvents;
 		{
@@ -299,6 +291,14 @@ namespace cgl
 		{
 			list.append(pEnv->makeTemporaryValue(coord(x, y)));
 		};
+
+		const gg::Coordinate beginPos(points.front().x(), points.front().y());
+		const gg::Coordinate endPos(points.back().x(), points.back().y());
+
+		points.erase(points.end() - 1);
+		points.erase(points.begin());
+		originalPoints.erase(originalPoints.end() - 1);
+		originalPoints.erase(originalPoints.begin());
 
 		Record result;
 		List polygonList;
@@ -367,13 +367,66 @@ namespace cgl
 		//*/
 
 		//*
+		
+		//libcmaes::FitFunc func = [&](const double *x, const int N)->double
+		//{
+		//	gg::CoordinateArraySequence cs2;
+		//	for (int i = 0; i * 2 < N; ++i)
+		//	{
+		//		cs2.add(gg::Coordinate(x[i * 2 + 0], x[i * 2 + 1]));
+		//	}
+
+		//	gg::LineString* ls2 = factory->createLineString(cs2);
+
+		//	double pathLength = ls2->getLength();
+
+		//	double penalty = 0;
+		//	for (int i = 0; i < originalPoints.size(); ++i)
+		//	{
+		//		god::DistanceOp distanceOp(ls2, originalPoints[i]);
+		//		penalty += distanceOp.distance();
+		//	}
+
+		//	double penalty2 = 0;
+		//	for (int i = 0; i < obstacles.size(); ++i)
+		//	{
+		//		gg::Geometry* g = obstacles[i]->intersection(ls2);
+		//		if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+		//		{
+		//			const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
+		//			penalty2 += intersections->getLength();
+		//		}
+		//		else if(g->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+		//		{
+		//			const gg::MultiLineString* intersections = dynamic_cast<const gg::MultiLineString*>(g);
+		//			penalty2 += intersections->getLength();
+		//		}
+		//		else
+		//		{
+		//			//std::cout << "Result type: " << g->getGeometryType();
+		//		}
+		//	}
+
+		//	//penalty = 100 * penalty*penalty;
+		//	//penalty2 = 100 * penalty2*penalty2;
+
+		//	const double totalCost = pathLength + penalty*penalty + penalty2*penalty2;
+		//	//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
+
+		//	//const double totalCost = penalty2;
+		//	//std::cout << std::string("path cost: ") << ToS(penalty2, 17) << "\n";
+		//	return totalCost;
+		//};
+
 		libcmaes::FitFunc func = [&](const double *x, const int N)->double
 		{
 			gg::CoordinateArraySequence cs2;
+			cs2.add(beginPos);
 			for (int i = 0; i * 2 < N; ++i)
 			{
 				cs2.add(gg::Coordinate(x[i * 2 + 0], x[i * 2 + 1]));
 			}
+			cs2.add(endPos);
 
 			gg::LineString* ls2 = factory->createLineString(cs2);
 
@@ -418,6 +471,7 @@ namespace cgl
 		};
 
 		std::vector<double> x0(points.size() * 2);
+		std::cout << "begin : (" << beginPos.x << ", " << beginPos.y << ")\n";
 		for (int i = 0; i < points.size(); ++i)
 		{
 			x0[i * 2 + 0] = points[i].x();
@@ -425,6 +479,7 @@ namespace cgl
 
 			std::cout << i << ": (" << points[i].x() << ", " << points[i].y() << ")\n";
 		}
+		std::cout << "end : (" << endPos.x << ", " << endPos.y << ")\n";
 
 		const double sigma = 0.1;
 
@@ -434,10 +489,13 @@ namespace cgl
 		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 		auto resultxs = cmasols.best_candidate().get_x();
 
+		appendCoord(polygonList, beginPos.x, beginPos.y);
 		for (int i = 0; i * 2 < resultxs.size(); ++i)
 		{
 			appendCoord(polygonList, resultxs[i * 2 + 0], resultxs[i * 2 + 1]);
 		}
+		appendCoord(polygonList, endPos.x, endPos.y);
+
 		//*/
 
 		result.append("line", pEnv->makeTemporaryValue(polygonList));

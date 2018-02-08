@@ -178,6 +178,7 @@ namespace cgl
 		return GetShapesFromGeos(resultGeometries, pEnv);
 	}
 
+#ifdef commentout
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv)
 	{
 		const auto& values = pathRule.values;
@@ -303,15 +304,17 @@ namespace cgl
 		Record result;
 		List polygonList;
 
-		/*
+		//*
 		PathConstraintProblem  constraintProblem;
 		constraintProblem.evaluator = [&](const PathConstraintProblem::TVector& v)->double
 		{
 			gg::CoordinateArraySequence cs2;
+			cs2.add(beginPos);
 			for (int i = 0; i*2 < v.size(); ++i)
 			{
 				cs2.add(gg::Coordinate(v[i * 2 + 0], v[i * 2 + 1]));
 			}
+			cs2.add(endPos);
 
 			gg::LineString* ls2 = factory->createLineString(cs2);
 
@@ -351,7 +354,7 @@ namespace cgl
 		};
 
 		Eigen::VectorXd x0s(points.size()*2);
-		for (int i = 0; i*2 < x0s.size(); ++i)
+		for (int i = 0; i < points.size(); ++i)
 		{
 			x0s[i * 2 + 0] = points[i].x();
 			x0s[i * 2 + 1] = points[i].y();
@@ -367,57 +370,6 @@ namespace cgl
 		//*/
 
 		//*
-		
-		//libcmaes::FitFunc func = [&](const double *x, const int N)->double
-		//{
-		//	gg::CoordinateArraySequence cs2;
-		//	for (int i = 0; i * 2 < N; ++i)
-		//	{
-		//		cs2.add(gg::Coordinate(x[i * 2 + 0], x[i * 2 + 1]));
-		//	}
-
-		//	gg::LineString* ls2 = factory->createLineString(cs2);
-
-		//	double pathLength = ls2->getLength();
-
-		//	double penalty = 0;
-		//	for (int i = 0; i < originalPoints.size(); ++i)
-		//	{
-		//		god::DistanceOp distanceOp(ls2, originalPoints[i]);
-		//		penalty += distanceOp.distance();
-		//	}
-
-		//	double penalty2 = 0;
-		//	for (int i = 0; i < obstacles.size(); ++i)
-		//	{
-		//		gg::Geometry* g = obstacles[i]->intersection(ls2);
-		//		if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
-		//		{
-		//			const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
-		//			penalty2 += intersections->getLength();
-		//		}
-		//		else if(g->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
-		//		{
-		//			const gg::MultiLineString* intersections = dynamic_cast<const gg::MultiLineString*>(g);
-		//			penalty2 += intersections->getLength();
-		//		}
-		//		else
-		//		{
-		//			//std::cout << "Result type: " << g->getGeometryType();
-		//		}
-		//	}
-
-		//	//penalty = 100 * penalty*penalty;
-		//	//penalty2 = 100 * penalty2*penalty2;
-
-		//	const double totalCost = pathLength + penalty*penalty + penalty2*penalty2;
-		//	//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
-
-		//	//const double totalCost = penalty2;
-		//	//std::cout << std::string("path cost: ") << ToS(penalty2, 17) << "\n";
-		//	return totalCost;
-		//};
-
 		libcmaes::FitFunc func = [&](const double *x, const int N)->double
 		{
 			gg::CoordinateArraySequence cs2;
@@ -508,12 +460,328 @@ namespace cgl
 		}
 
 		pathRule.append("path", pEnv->makeTemporaryValue(result));
+	}
+#endif
+
+	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		const auto& values = pathRule.values;
+
+		auto itPoints = values.find("points");
+		auto itPasses = values.find("passes");
+		auto itCircumvents = values.find("circumvents");
+
+		int num = 10;
+		if (itPoints != values.end())
+		{
+			const Evaluated evaluated = pEnv->expand(itPoints->second);
+			if (!IsType<int>(evaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			num = As<int>(evaluated);
+		}
+
+		auto factory = gg::GeometryFactory::create();
+
+		std::vector<gg::Point*> originalPoints;
+		Vector<Eigen::Vector2d> points;
+		{
+			if (itPasses == values.end())
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+
+			const Evaluated evaluated = pEnv->expand(itPasses->second);
+			if (!IsType<List>(evaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			List passShapes = As<List>(evaluated);
+
+			for (Address address : passShapes.data)
+			{
+				const Evaluated pointEvaluated = pEnv->expand(address);
+				if (!IsType<Record>(pointEvaluated))
+				{
+					CGL_Error("不正な式です");
+					return;
+				}
+				const auto& pos = As<Record>(pointEvaluated);
+				const Evaluated xval = pEnv->expand(pos.values.find("x")->second);
+				const Evaluated yval = pEnv->expand(pos.values.find("y")->second);
+				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
+				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
+
+				Eigen::Vector2d v;
+				v << x, y;
+				points.push_back(v);
+
+				originalPoints.push_back(factory->createPoint(gg::Coordinate(x, y)));
+			}
+		}
+
+		//double rodLength = 50;
+		std::vector<double> angles1(num / 2);
+		std::vector<double> angles2(num / 2);
+
+		std::vector<gg::Geometry*> obstacles;
+		List circumvents;
+		{
+			const Evaluated evaluated = pEnv->expand(itCircumvents->second);
+			if (!IsType<List>(evaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+
+			obstacles = GeosFromRecord(evaluated, pEnv);
+		}
+
+		const auto coord = [&](double x, double y)
+		{
+			Record record;
+			record.append("x", pEnv->makeTemporaryValue(x));
+			record.append("y", pEnv->makeTemporaryValue(y));
+			return record;
+		};
+		const auto appendCoord = [&](List& list, double x, double y)
+		{
+			list.append(pEnv->makeTemporaryValue(coord(x, y)));
+		};
+
+		const gg::Coordinate beginPos(points.front().x(), points.front().y());
+		const gg::Coordinate endPos(points.back().x(), points.back().y());
+
+		points.erase(points.end() - 1);
+		points.erase(points.begin());
+		originalPoints.erase(originalPoints.end() - 1);
+		originalPoints.erase(originalPoints.begin());
+
+		Record result;
+		List polygonList;
 
 		/*
-		points: 10
-        passes: [rect.top(), {x: 300, y:400}, rect.bottom()]
-        circumvents: [buffer(rect, 10)]
-		*/
+		PathConstraintProblem  constraintProblem;
+		constraintProblem.evaluator = [&](const PathConstraintProblem::TVector& v)->double
+		{
+			gg::CoordinateArraySequence cs2;
+			cs2.add(beginPos);
+			for (int i = 0; i * 2 < v.size(); ++i)
+			{
+				cs2.add(gg::Coordinate(v[i * 2 + 0], v[i * 2 + 1]));
+			}
+			cs2.add(endPos);
+
+			gg::LineString* ls2 = factory->createLineString(cs2);
+
+			double pathLength = ls2->getLength();
+
+			double penalty = 0;
+			for (int i = 0; i < originalPoints.size(); ++i)
+			{
+				god::DistanceOp distanceOp(ls2, originalPoints[i]);
+				penalty += distanceOp.distance();
+			}
+
+			double penalty2 = 0;
+			for (int i = 0; i < obstacles.size(); ++i)
+			{
+				gg::Geometry* g = obstacles[i]->intersection(ls2);
+				if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
+					penalty2 += intersections->getLength();
+				}
+				else
+				{
+					//std::cout << "Result type: " << g->getGeometryType();
+				}
+			}
+
+			penalty = 100 * penalty*penalty;
+			penalty2 = 100 * penalty2*penalty2;
+
+			const double totalCost = pathLength + penalty + penalty2;
+
+			//std::cout << std::string("path cost: ") << ToS(totalCost, 17) << "\n";
+
+			std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
+			return totalCost;
+		};
+
+		Eigen::VectorXd x0s(points.size() * 2);
+		for (int i = 0; i < points.size(); ++i)
+		{
+			x0s[i * 2 + 0] = points[i].x();
+			x0s[i * 2 + 1] = points[i].y();
+		}
+
+		cppoptlib::BfgsSolver<PathConstraintProblem> solver;
+		solver.minimize(constraintProblem, x0s);
+
+		for (int i = 0; i * 2 < x0s.size(); ++i)
+		{
+			appendCoord(polygonList, x0s[i * 2 + 0], x0s[i * 2 + 1]);
+		}
+		//*/
+
+		//*
+		libcmaes::FitFunc func = [&](const double *x, const int N)->double
+		{
+			const int halfindex = N / 2;
+
+			const double rodLength = abs(x[N - 1]) + 1.0;
+
+			gg::CoordinateArraySequence cs2;
+			cs2.add(beginPos);
+			for (int i = 0; i < halfindex; ++i)
+			{
+				const auto& lastPos = cs2.back();
+				const double angle = x[i];
+				const double dx = rodLength * cos(angle);
+				const double dy = rodLength * sin(angle);
+				cs2.add(gg::Coordinate(lastPos.x + dx, lastPos.y + dy));
+			}
+			const auto ik1Last = cs2.back();
+
+			Vector<Eigen::Vector2d> cs3;
+			//cs3.add(endPos);
+			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
+			for (int i = 0; i < halfindex; ++i)
+			{
+				const int currentIndex = i + halfindex;
+				const auto& lastPos = cs3.back();
+				const double angle = x[currentIndex];
+				const double dx = rodLength * cos(angle);
+				const double dy = rodLength * sin(angle);
+				//cs3.add(gg::Coordinate(lastPos.x + dx, lastPos.y + dy));
+
+				const double lastX = lastPos.x();
+				const double lastY = lastPos.y();
+				cs3.push_back(Eigen::Vector2d(lastX + dx, lastY + dy));
+			}
+			const auto ik2Last = cs3.back();
+			
+			for (auto it = cs3.rbegin(); it != cs3.rend(); ++it)
+			{
+				cs2.add(gg::Coordinate(it->x(), it->y()));
+			}
+
+			gg::LineString* ls2 = factory->createLineString(cs2);
+
+			double pathLength = ls2->getLength();
+
+			const double dx = ik1Last.x - ik2Last.x();
+			const double dy = ik1Last.y - ik2Last.y();
+			const double distanceSq = dx*dx + dy*dy;
+
+			double penalty = 0;
+			for (int i = 0; i < originalPoints.size(); ++i)
+			{
+				god::DistanceOp distanceOp(ls2, originalPoints[i]);
+				penalty += distanceOp.distance();
+			}
+
+			double penalty2 = 0;
+			for (int i = 0; i < obstacles.size(); ++i)
+			{
+				gg::Geometry* g = obstacles[i]->intersection(ls2);
+				if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
+					penalty2 += intersections->getLength();
+				}
+				else if (g->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+				{
+					const gg::MultiLineString* intersections = dynamic_cast<const gg::MultiLineString*>(g);
+					penalty2 += intersections->getLength();
+				}
+				else
+				{
+					//std::cout << "Result type: " << g->getGeometryType();
+				}
+			}
+
+			//penalty = 100 * penalty*penalty;
+			//penalty2 = 100 * penalty2*penalty2;
+
+			const double totalCost = pathLength + distanceSq + penalty*penalty + penalty2*penalty2;
+			//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
+
+			//const double totalCost = penalty2;
+			//std::cout << std::string("path cost: ") << ToS(penalty2, 17) << "\n";
+			return totalCost;
+		};
+
+		std::vector<double> x0(num + 1, 0.0);
+		x0.back() = 10;
+		
+		const double sigma = 0.1;
+
+		const int lambda = 100;
+
+		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
+		auto resultxs = cmasols.best_candidate().get_x();
+
+		{
+			const double rodLength = resultxs.back();
+
+			const int halfindex = num / 2;
+			{
+				double lastX = beginPos.x;
+				double lastY = beginPos.y;
+
+				appendCoord(polygonList, beginPos.x, beginPos.y);
+				for (int i = 0; i < halfindex; ++i)
+				{
+					const double angle = resultxs[i];
+					const double dx = rodLength * cos(angle);
+					const double dy = rodLength * sin(angle);
+					lastX += dx;
+					lastY += dy;
+					appendCoord(polygonList, lastX, lastY);
+				}
+			}
+			
+			Vector<Eigen::Vector2d> cs3;
+			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
+			for (int i = 0; i < halfindex; ++i)
+			{
+				const int currentIndex = i + halfindex;
+				const auto& lastPos = cs3.back();
+				const double angle = resultxs[currentIndex];
+				const double dx = rodLength * cos(angle);
+				const double dy = rodLength * sin(angle);
+
+				const double lastX = lastPos.x();
+				const double lastY = lastPos.y();
+				cs3.push_back(Eigen::Vector2d(lastX + dx, lastY + dy));
+			}
+
+			for (auto it = cs3.rbegin(); it != cs3.rend(); ++it)
+			{
+				//cs2.add(gg::Coordinate(it->x(), it->y()));
+				appendCoord(polygonList, it->x(), it->y());
+			}
+		}
+
+		//*/
+
+		result.append("line", pEnv->makeTemporaryValue(polygonList));
+		{
+			Record record;
+			record.append("r", pEnv->makeTemporaryValue(0));
+			record.append("g", pEnv->makeTemporaryValue(255));
+			record.append("b", pEnv->makeTemporaryValue(255));
+			result.append("color", pEnv->makeTemporaryValue(record));
+		}
+
+		pathRule.append("path", pEnv->makeTemporaryValue(result));
 	}
 
 	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Environment> pEnv)

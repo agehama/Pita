@@ -14,6 +14,8 @@ namespace cgl
 	//std::vector<Eigen::Vector2d> GetPath(const Record& pathRule, std::shared_ptr<cgl::Environment> pEnv);
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv);
 
+	void GetText(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv);
+
 	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Environment> pEnv);
 
 	List GetDefaultFontString(const std::string& str, std::shared_ptr<cgl::Environment> pEnv);

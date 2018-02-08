@@ -76,6 +76,8 @@ namespace std
 
 namespace cgl
 {
+	std::string UTF8ToString(const std::string& str);
+
 	template<class T1, class T2>
 	inline bool SameType(const T1& t1, const T2& t2)
 	{
@@ -288,6 +290,8 @@ namespace cgl
 	struct RecordConstractor;
 	struct RecordInheritor;
 
+	struct Character;
+
 	struct KeyValue;
 	struct Record;
 
@@ -322,10 +326,49 @@ namespace cgl
 		}
 	};
 
+	struct CharString
+	{
+	public:
+		CharString() = default;
+		CharString(const std::u32string& str) :str(str) {}
+
+		bool operator==(const CharString& other)const
+		{
+			if (str.size() != other.str.size())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < str.size(); ++i)
+			{
+				if (str[i] != other.str[i])
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		bool operator!=(const CharString& other)const
+		{
+			return !(*this == other);
+		}
+
+		std::u32string toString()const
+		{
+			return str;
+		}
+
+	private:
+		std::u32string str;
+	};
+
 	using Evaluated = boost::variant<
 		bool,
 		int,
 		double,
+		CharString,
 		boost::recursive_wrapper<List>,
 		boost::recursive_wrapper<KeyValue>,
 		boost::recursive_wrapper<Record>,
@@ -1453,7 +1496,7 @@ namespace cgl
 		std::vector<Accessor> freeVariables;
 		//std::vector<Address> freeVariables;//var宣言で指定された変数のアドレス
 		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
-		enum Type { Normal, Path };
+		enum Type { Normal, Path, Text };
 		Type type = Normal;
 		std::vector<Eigen::Vector2d> pathPoints;
 
@@ -1835,17 +1878,6 @@ namespace cgl
 		}
 	};
 
-	inline Expr BuildString(const std::string& str)
-	{
-		/*Expr expr;
-		FuncVal funcval;
-		funcval.expr = Identifier(str);
-		expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
-		return expr;*/
-		Expr expr;
-		FuncVal funcval;
-		funcval.expr = Identifier(str);
-		expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
-		return expr;
-	}
+	Expr BuildString(const std::string& str);
+	
 }

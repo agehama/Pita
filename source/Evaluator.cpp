@@ -1703,8 +1703,11 @@ namespace cgl
 
 		if (record.type == Record::Path)
 		{
-			//record.pathPoints = GetPath(record, pEnv);
 			GetPath(record, pEnv);
+		}
+		else if (record.type == Record::Text)
+		{
+			GetText(record, pEnv);
 		}
 
 		pEnv->printEnvironment();
@@ -1770,6 +1773,12 @@ namespace cgl
 		{
 			Record pathRecord;
 			pathRecord.type = Record::Path;
+			recordOpt = pathRecord;
+		}
+		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("text"))
+		{
+			Record pathRecord;
+			pathRecord.type = Record::Text;
 			recordOpt = pathRecord;
 		}
 		else
@@ -2680,10 +2689,10 @@ namespace cgl
 			}
 			//return As<double>(value1) == As<double>(value2);
 		}
-		/*else if (IsType<Address>(value1))
+		else if (IsType<CharString>(value1))
 		{
-			return As<Address>(value1) == As<Address>(value2);
-		}*/
+			return As<CharString>(value1) == As<CharString>(value2);
+		}
 		else if (IsType<List>(value1))
 		{
 			return As<List>(value1) == As<List>(value2);

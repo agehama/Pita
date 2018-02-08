@@ -1,6 +1,9 @@
 #include <iomanip>
 #include <fstream>
 #include <memory>
+
+#include <Unicode.hpp>
+
 #include <Pita/Node.hpp>
 #include <Pita/Environment.hpp>
 #include <Pita/Printer.hpp>
@@ -35,6 +38,11 @@ namespace cgl
 	void ValuePrinter::operator()(double node)const
 	{
 		os << indent() << "Double(" << node << ")" << std::endl;
+	}
+
+	void ValuePrinter::operator()(const CharString& node)const
+	{
+		os << indent() << "String(" << UTF8ToString(Unicode::UTF32ToUTF8(node.toString())) << ")" << std::endl;
 	}
 
 	void ValuePrinter::operator()(const List& node)const

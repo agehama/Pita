@@ -42,6 +42,8 @@ namespace cgl
 
 		void operator()(double node)const;
 
+		void operator()(const CharString& node)const;
+
 		void operator()(const List& node)const;
 
 		void operator()(const KeyValue& node)const;
@@ -156,15 +158,4 @@ namespace cgl
 	inline void printExpr(const Expr& expr) {}
 #endif
 
-	//inline void ValuePrinter::operator()(const DeclFree& node)const
-	//{
-	//	os << indent() << "DeclFree(" << std::endl;
-	//	for (size_t i = 0; i < node.accessors.size(); ++i)
-	//	{
-	//		Expr expr = node.accessors[i];
-	//		boost::apply_visitor(Printer(os, m_indent + 1), expr);
-	//	}
-	//	os << indent() << ")" << std::endl;
-	//	//boost::apply_visitor(Printer(m_indent + 1), accessor.head);
-	//}
 }

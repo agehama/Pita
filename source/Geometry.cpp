@@ -529,16 +529,19 @@ namespace cgl
 		std::vector<double> angles2(num / 2);
 
 		std::vector<gg::Geometry*> obstacles;
-		List circumvents;
+		//List circumvents;
+		if (itCircumvents != values.end())
 		{
-			const Evaluated evaluated = pEnv->expand(itCircumvents->second);
-			if (!IsType<List>(evaluated))
 			{
-				CGL_Error("不正な式です");
-				return;
-			}
+				const Evaluated evaluated = pEnv->expand(itCircumvents->second);
+				if (!IsType<List>(evaluated))
+				{
+					CGL_Error("不正な式です");
+					return;
+				}
 
-			obstacles = GeosFromRecord(evaluated, pEnv);
+				obstacles = GeosFromRecord(evaluated, pEnv);
+			}
 		}
 
 		const auto coord = [&](double x, double y)
@@ -782,6 +785,167 @@ namespace cgl
 		}
 
 		pathRule.append("path", pEnv->makeTemporaryValue(result));
+	}
+
+	void GetText(Record& textRule, std::shared_ptr<cgl::Environment> pEnv)
+	{
+		const auto& values = textRule.values;
+
+		auto itStr = values.find("str");
+		auto itBaseLines = values.find("base");
+
+		CharString str;
+		if (itStr != values.end())
+		{
+			const Evaluated evaluated = pEnv->expand(itStr->second);
+			if (!IsType<CharString>(evaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			str = As<CharString>(evaluated);
+		}
+
+		auto factory = gg::GeometryFactory::create();
+		gg::LineString* ls;
+		gg::CoordinateArraySequence cs;
+		std::vector<double> distances;
+
+		boost::optional<Record> baseLineRecord;
+		if (itBaseLines != values.end())
+		{
+			const Evaluated evaluated = pEnv->expand(itBaseLines->second);
+			if (!IsType<Record>(evaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			baseLineRecord = As<Record>(evaluated);
+
+			if (baseLineRecord.value().type != Record::Path)
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Record& record = baseLineRecord.value();
+			
+			auto itPath = record.values.find("path");
+			if (itPath == record.values.end())
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Evaluated pathEvaluated = pEnv->expand(itPath->second);
+			if (!IsType<Record>(pathEvaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Record& pathRecord= As<Record>(pathEvaluated);
+
+			auto itLine = pathRecord.values.find("line");
+			if (itLine == pathRecord.values.end())
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Evaluated lineEvaluated = pEnv->expand(itLine->second);
+			if (!IsType<List>(lineEvaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+
+			const auto vs = As<List>(lineEvaluated).data;
+			for (const auto v : vs)
+			{
+				const Evaluated vertex = pEnv->expand(v);
+				const auto& pos = As<Record>(vertex);
+				const Evaluated xval = pEnv->expand(pos.values.find("x")->second);
+				const Evaluated yval = pEnv->expand(pos.values.find("y")->second);
+				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
+				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
+
+				cs.add(gg::Coordinate(x, y));
+			}
+
+			distances.push_back(0);
+			for (int i = 1; i < cs.size(); ++i)
+			{
+				const double newDistance = cs[i - 1].distance(cs[i]);
+				distances.push_back(distances.back() + newDistance);
+			}
+			
+			ls = factory->createLineString(cs);
+		}
+
+		//FontBuilder font("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
+		FontBuilder font("mplus-1p-medium.ttf");
+		std::vector<gg::Geometry*> result;
+
+		std::u32string string = str.toString();
+		double offsetHorizontal = 0;
+		if (baseLineRecord)
+		{
+			for (size_t i = 0; i < string.size(); ++i)
+			{
+				double offsetX;
+				double offsetY;
+
+				auto it = std::upper_bound(distances.begin(), distances.end(), offsetHorizontal);
+				if (it == distances.end())
+				{
+					const double innerDistance = offsetHorizontal - distances[distances.size() - 2];
+
+					Eigen::Vector2d p0(cs[cs.size() - 2].x, cs[cs.size() - 2].y);
+					Eigen::Vector2d p1(cs[cs.size() - 1].x, cs[cs.size() - 1].y);
+
+					const Eigen::Vector2d v = (p1 - p0);
+					const double currentLineLength = sqrt(v.dot(v));
+					const double progress = innerDistance / currentLineLength;
+
+					const Eigen::Vector2d targetPos = p0 + v * progress;
+					offsetX = targetPos.x();
+					offsetY = targetPos.y();
+				}
+				else
+				{
+					const int lineIndex = std::distance(distances.begin(), it) - 1;
+					const double innerDistance = offsetHorizontal - distances[lineIndex];
+					
+					Eigen::Vector2d p0(cs[lineIndex].x, cs[lineIndex].y);
+					Eigen::Vector2d p1(cs[lineIndex + 1].x, cs[lineIndex + 1].y);
+
+					const Eigen::Vector2d v = (p1 - p0);
+					const double currentLineLength = sqrt(v.dot(v));
+					const double progress = innerDistance / currentLineLength;
+					
+					const Eigen::Vector2d targetPos = p0 + v * progress;
+					offsetX = targetPos.x();
+					offsetY = targetPos.y();
+				}
+
+				const int codePoint = static_cast<int>(string[i]);
+				const auto characterPolygon = font.makePolygon(codePoint, 1, offsetX, offsetY);
+				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
+
+				offsetHorizontal += font.glyphWidth(codePoint);
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < string.size(); ++i)
+			{
+				const int codePoint = static_cast<int>(string[i]);
+				const auto characterPolygon = font.makePolygon(codePoint, 1, offsetHorizontal);
+				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
+
+				offsetHorizontal += font.glyphWidth(codePoint);
+			}
+		}
+		
+
+		textRule.append("path", pEnv->makeTemporaryValue(GetShapesFromGeos(result, pEnv)));
 	}
 
 	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Environment> pEnv)

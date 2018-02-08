@@ -107,6 +107,8 @@ namespace cgl
 
 		Evaluated operator()(double node) { return node; }
 
+		Evaluated operator()(const CharString& node) { return node; }
+
 		Evaluated operator()(const List& node);
 
 		Evaluated operator()(const KeyValue& node) { return node; }
@@ -136,6 +138,8 @@ namespace cgl
 		Evaluated operator()(int node) { return node; }
 
 		Evaluated operator()(double node) { return node; }
+
+		Evaluated operator()(const CharString& node) { return node; }
 
 		Evaluated operator()(const List& node);
 
@@ -168,6 +172,8 @@ namespace cgl
 		void operator()(int& node) {}
 
 		void operator()(double& node) {}
+
+		void operator()(CharString& node) {}
 
 		void operator()(List& node) {}
 

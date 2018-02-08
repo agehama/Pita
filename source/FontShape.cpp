@@ -24,6 +24,12 @@ namespace cgl
 		return sum < 0.0;
 	}
 
+	double FontSizeToReal(int fontSize)
+	{
+		const double size = 0.05;
+		return fontSize*size;
+	}
+
 	//最後の点は含めない
 	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n)
 	{
@@ -36,8 +42,10 @@ namespace cgl
 
 	FontBuilder::FontBuilder(const std::string& fontPath)
 	{
+		fontInfo = new stbtt_fontinfo;
 		fread(current_buffer, 1, 1 << 25, fopen(fontPath.c_str(), "rb"));
 		stbtt_InitFont(fontInfo, current_buffer, stbtt_GetFontOffsetForIndex(current_buffer, 0));
+		stbtt_GetFontVMetrics(fontInfo, &ascent, &descent, &lineGap);
 	}
 
 	FontBuilder::~FontBuilder()
@@ -45,12 +53,18 @@ namespace cgl
 		delete fontInfo;
 	}
 
-	std::vector<gg::Geometry*> FontBuilder::makePolygon(int glyphIndex, int quality, int offsetX, short offsetY)
+	std::vector<gg::Geometry*> FontBuilder::makePolygon(int codePoint, int quality, double offsetX, double offsetY)
 	{
 		const auto vec2 = [&](short x, short y)
 		{
-			return Eigen::Vector2d(0.1*(offsetX + x), 0.1*(offsetY - y));
+			//return Eigen::Vector2d(0.1*(offsetX + x), 0.1*(offsetY - y));
+			
+			//const double size = 0.025;
+			//return Eigen::Vector2d(size * (offsetX + x), size * (offsetY - y));
+			return Eigen::Vector2d(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
 		};
+
+		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
 
 		stbtt_vertex* pv;
 		const int verticesNum = stbtt_GetGlyphShape(fontInfo, glyphIndex, &pv);
@@ -151,14 +165,25 @@ namespace cgl
 		int offsetX = 0;
 		for (int i = 0; i < str.size(); ++i)
 		{
-			const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, static_cast<int>(str[i]));
-			int x0, x1, y0, y1;
-			stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
-			const auto characterPolygon = makePolygon(glyphIndex, quality, offsetX, 0);
+			//const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, static_cast<int>(str[i]));
+			const int codePoint = static_cast<int>(str[i]);
+			//int x0, x1, y0, y1;
+			//stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
+			const auto characterPolygon = makePolygon(codePoint, quality, offsetX, 0);
 			result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
-			offsetX += (x1 - x0);
+			//offsetX += (x1 - x0);
+
+			offsetX += glyphWidth(codePoint);
 		}
 		return result;
+	}
+
+	double FontBuilder::glyphWidth(int codePoint)
+	{
+		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
+		int x0, x1, y0, y1;
+		stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
+		return FontSizeToReal(x1 - x0);
 	}
 
 }

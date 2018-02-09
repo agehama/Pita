@@ -91,17 +91,6 @@ namespace cgl
 			Eval evaluator(sharedThis);
 
 			const Expr accessor = access;
-			/*
-			const Evaluated refVal = boost::apply_visitor(evaluator, accessor);
-
-			if (!IsType<Address>(refVal))
-			{
-			CGL_Error("a");
-			}
-
-			return As<Address>(refVal);
-			*/
-
 			const LRValue refVal = boost::apply_visitor(evaluator, accessor);
 			if (refVal.isLValue())
 			{
@@ -115,9 +104,7 @@ namespace cgl
 		return Address::Null();
 	}
 
-	//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
-	/*std::vector<ObjectReference> expandReferences(const ObjectReference& reference, std::vector<ObjectReference>& output);
-	std::vector<ObjectReference> expandReferences(const ObjectReference& reference)*/
+	//オブジェクトの中にある全ての値への参照をリストで取得する
 	std::vector<Address> Environment::expandReferences(Address address)
 	{
 		std::vector<Address> result;
@@ -159,6 +146,162 @@ namespace cgl
 		}
 
 		return result;
+	}
+
+	std::vector<Address> Environment::expandReferences2(const Accessor & accessor)
+	{
+		if (auto sharedThis = m_weakThis.lock())
+		{
+			Eval evaluator(sharedThis);
+
+			std::array<std::vector<Address>, 2> addressBuffer;
+			unsigned int currentWriteIndex = 0;
+			const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
+			const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
+
+			const auto writeBuffer = [&]()->std::vector<Address>& {return addressBuffer[currentWriteIndex]; };
+			const auto readBuffer = [&]()->std::vector<Address>& {return addressBuffer[nextIndex()]; };
+
+			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
+			if (headValue.isLValue())
+			{
+				writeBuffer().push_back(headValue.address());
+			}
+			else
+			{
+				Evaluated evaluated = headValue.evaluated();
+				if (auto opt = AsOpt<Record>(evaluated))
+				{
+					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+				}
+				else if (auto opt = AsOpt<List>(evaluated))
+				{
+					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+				}
+				else if (auto opt = AsOpt<FuncVal>(evaluated))
+				{
+					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+				}
+				else
+				{
+					CGL_Error("アクセッサのヘッドの評価結果が不正");
+				}
+			}
+
+			for (const auto& access : accessor.accesses)
+			{
+				flipIndex();
+
+				writeBuffer().clear();
+
+				for (int i = 0; i < readBuffer().size(); ++i)
+				{
+					const Address address = readBuffer()[i];
+
+					std::cout << "Address: " << address.toString() << std::endl;;
+
+					boost::optional<const Evaluated&> objOpt = expandOpt(address);
+					if (!objOpt)
+					{
+						CGL_Error("参照エラー");
+					}
+
+					const Evaluated& objRef = objOpt.value();
+
+					if (auto listAccessOpt = AsOpt<ListAccess>(access))
+					{
+						if (!IsType<List>(objRef))
+						{
+							CGL_Error("オブジェクトがリストでない");
+						}
+
+						const List& list = As<const List&>(objRef);
+
+						if (listAccessOpt.value().isArbitrary)
+						{
+							const auto& allIndices = list.data;
+
+							writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
+						}
+						else
+						{
+							Evaluated value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+
+							if (auto indexOpt = AsOpt<int>(value))
+							{
+								//address = list.get(indexOpt.value());
+								writeBuffer().push_back(list.get(indexOpt.value()));
+								std::cout << "List[" << indexOpt.value() << "]" << std::endl;
+							}
+							else
+							{
+								CGL_Error("list[index] の index が int 型でない");
+							}
+						}
+					}
+					else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+					{
+						if (!IsType<Record>(objRef))
+						{
+							CGL_Error("オブジェクトがレコードでない");
+						}
+
+						const Record& record = As<const Record&>(objRef);
+						auto it = record.values.find(recordAccessOpt.value().name);
+						if (it == record.values.end())
+						{
+							CGL_Error("指定された識別子がレコード中に存在しない");
+						}
+
+						//address = it->second;
+						writeBuffer().push_back(it->second);
+					}
+					else
+					{
+						auto funcAccess = As<FunctionAccess>(access);
+
+						if (!IsType<FuncVal>(objRef))
+						{
+							CGL_Error("オブジェクトが関数でない");
+						}
+
+						const FuncVal& function = As<const FuncVal&>(objRef);
+
+						std::vector<Address> args;
+						for (const auto& expr : funcAccess.actualArguments)
+						{
+							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr));
+							if (currentArgument.isLValue())
+							{
+								args.push_back(currentArgument.address());
+							}
+							else
+							{
+								args.push_back(makeTemporaryValue(currentArgument.evaluated()));
+							}
+						}
+
+						const Evaluated returnedValue = expand(evaluator.callFunction(function, args));
+						//address = makeTemporaryValue(returnedValue);
+						writeBuffer().push_back(makeTemporaryValue(returnedValue));
+					}
+				}
+			}
+
+			flipIndex();
+
+			std::vector<Address> result;
+			for (const Address address : readBuffer())
+			{
+				const auto expanded = expandReferences(address);
+				result.insert(result.end(), expanded.begin(), expanded.end());
+			}
+
+			return result;
+		}
+
+		CGL_Error("shared this does not exist.");
+		return {};
 	}
 
 	void Environment::bindReference(const std::string& nameLhs, const std::string& nameRhs)
@@ -307,6 +450,20 @@ namespace cgl
 
 	void Environment::initialize()
 	{
+		registerBuiltInFunction(
+			"print",
+			[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			printEvaluated(pEnv->expand(arguments[0]), pEnv, std::cout, 0);
+			return 0;
+		}
+		);
+
 		registerBuiltInFunction(
 			"sin",
 			[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated

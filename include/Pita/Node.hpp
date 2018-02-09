@@ -1590,6 +1590,7 @@ namespace cgl
 	struct ListAccess
 	{
 		Expr index;
+		bool isArbitrary = false;
 
 		ListAccess() = default;
 
@@ -1600,6 +1601,11 @@ namespace cgl
 			listAccess.index = index;
 		}
 
+		static void SetIndexArbitrary(ListAccess& listAccess)
+		{
+			listAccess.isArbitrary = true;
+		}
+		
 		bool operator==(const ListAccess& other)const
 		{
 			return index == other.index;

@@ -81,50 +81,25 @@ namespace cgl
 	{
 	public:
 
-		//using Scope = std::unordered_map<std::string, unsigned>;
 		using Scope = std::unordered_map<std::string, Address>;
 
 		using LocalEnvironment = std::vector<Scope>;
 
 		using BuiltInFunction = std::function<Evaluated(std::shared_ptr<Environment>, const std::vector<Address>&)>;
 
-		//ObjectReference makeFuncVal(const std::vector<Identifier>& arguments, const Expr& expr);
 		Address makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
 
 		//スコープの内側に入る/出る
 		void enterScope()
 		{
-			//m_variables.emplace_back();
 			localEnv().emplace_back();
 		}
 		void exitScope()
 		{
-			//m_variables.pop_back();
 			localEnv().pop_back();
 		}
 
 		//関数呼び出しなど別のスコープに切り替える/戻す
-		/*
-		void switchFrontScope(int switchDepth)
-		{
-			//関数のスコープが同じ時の動作は未確認
-
-			std::cout << "FuncScope:" << switchDepth << std::endl;
-			std::cout << "Variables:" << m_variables.size() << std::endl;
-
-			m_diffScopes.push({ switchDepth,std::vector<Scope>(m_variables.begin() + switchDepth + 1, m_variables.end()) });
-			m_variables.erase(m_variables.begin() + switchDepth + 1, m_variables.end());
-		}
-		void switchBackScope()
-		{
-			const int switchDepth = m_diffScopes.top().first;
-			const auto& diffScope = m_diffScopes.top().second;
-
-			m_variables.erase(m_variables.begin() + switchDepth + 1, m_variables.end());
-			m_variables.insert(m_variables.end(), diffScope.begin(), diffScope.end());
-			m_diffScopes.pop();
-		}
-		*/
 		void switchFrontScope()
 		{
 			m_localEnvStack.push(LocalEnvironment());
@@ -210,9 +185,9 @@ namespace cgl
 		Address evalReference(const Accessor& access);
 
 		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
-		/*std::vector<ObjectReference> expandReferences(const ObjectReference& reference, std::vector<ObjectReference>& output);
-		std::vector<ObjectReference> expandReferences(const ObjectReference& reference)*/
 		std::vector<Address> expandReferences(Address address);
+
+		std::vector<Address> expandReferences2(const Accessor& access);
 
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
 		/*

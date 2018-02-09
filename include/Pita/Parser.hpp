@@ -231,7 +231,8 @@ namespace cgl
 
 			recordAccess = char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
 
-			listAccess = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']');
+			//listAccess = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']');
+			listAccess = char_('[') >> s >> (char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> s >> char_(']');
 
 			functionAccess = char_('(')
 				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])

@@ -710,7 +710,14 @@ namespace cgl
 		{
 			if (auto listAccess = AsOpt<ListAccess>(access))
 			{
-				result.add(ListAccess(boost::apply_visitor(*this, listAccess.value().index)));
+				if (listAccess.value().isArbitrary)
+				{
+					result.add(listAccess.value());
+				}
+				else
+				{
+					result.add(ListAccess(boost::apply_visitor(*this, listAccess.value().index)));
+				}
 			}
 			else if (auto recordAccess = AsOpt<RecordAccess>(access))
 			{
@@ -880,7 +887,8 @@ namespace cgl
 				if (address.isValid())
 				{
 					CGL_DebugLog("代入式");
-					pEnv->assignToObject(address, rhs);
+					//pEnv->assignToObject(address, rhs);
+					pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
 				}
 				//変数が存在しない：変数宣言式
 				else
@@ -1501,8 +1509,8 @@ namespace cgl
 				freeVariableRefs.clear();
 				for (const auto& accessor : record.freeVariables)
 				{
+					/*
 					const Address refAddress = pEnv->evalReference(accessor);
-					//const Address refAddress = accessor;
 					//単一の値 or List or Record
 					if (refAddress.isValid())
 					{
@@ -1513,6 +1521,10 @@ namespace cgl
 					{
 						CGL_Error("accessor refers null address");
 					}
+					*/
+
+					const auto addresses = pEnv->expandReferences2(accessor);
+					freeVariableRefs.insert(freeVariableRefs.end(), addresses.begin(), addresses.end());
 				}
 
 				CGL_DebugLog(std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size()));
@@ -1546,137 +1558,140 @@ namespace cgl
 				std::cout << (std::string("Record FreeVariablesSize: ") + std::to_string(record.freeVariableRefs.size())) << std::endl;
 			}
 
-			//DeclFreeに出現する参照について、そのインデックス -> Problemのデータのインデックスを取得するマップ
-			std::unordered_map<int, int> variable2Data;
-			for (size_t freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
+			if (!record.freeVariableRefs.empty())
 			{
-				CGL_DebugLog(ToS(freeIndex));
-				CGL_DebugLog(std::string("Address(") + record.freeVariableRefs[freeIndex].toString() + ")");
-				const auto& ref1 = record.freeVariableRefs[freeIndex];
-
-				bool found = false;
-				for (size_t dataIndex = 0; dataIndex < problemRefs.size(); ++dataIndex)
+				//DeclFreeに出現する参照について、そのインデックス -> Problemのデータのインデックスを取得するマップ
+				std::unordered_map<int, int> variable2Data;
+				for (size_t freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
 				{
-					CGL_DebugLog(ToS(dataIndex));
-					CGL_DebugLog(std::string("Address(") + problemRefs[dataIndex].toString() + ")");
+					CGL_DebugLog(ToS(freeIndex));
+					CGL_DebugLog(std::string("Address(") + record.freeVariableRefs[freeIndex].toString() + ")");
+					const auto& ref1 = record.freeVariableRefs[freeIndex];
 
-					const auto& ref2 = problemRefs[dataIndex];
-
-					if (ref1 == ref2)
+					bool found = false;
+					for (size_t dataIndex = 0; dataIndex < problemRefs.size(); ++dataIndex)
 					{
-						//std::cout << "    " << freeIndex << " -> " << dataIndex << std::endl;
+						CGL_DebugLog(ToS(dataIndex));
+						CGL_DebugLog(std::string("Address(") + problemRefs[dataIndex].toString() + ")");
 
-						found = true;
-						variable2Data[freeIndex] = dataIndex;
-						break;
+						const auto& ref2 = problemRefs[dataIndex];
+
+						if (ref1 == ref2)
+						{
+							//std::cout << "    " << freeIndex << " -> " << dataIndex << std::endl;
+
+							found = true;
+							variable2Data[freeIndex] = dataIndex;
+							break;
+						}
+					}
+
+					//DeclFreeにあってDeclSatに無い変数は意味がない。
+					//単に無視しても良いが、恐らく入力のミスと思われるので警告を出す
+					if (!found)
+					{
+						//std::cerr << "Error(" << __LINE__ << "):freeに指定された変数が無効です。\n";
+						//return 0;
+						CGL_WarnLog("freeに指定された変数が無効です");
 					}
 				}
+				CGL_DebugLog("End Record MakeMap");
 
-				//DeclFreeにあってDeclSatに無い変数は意味がない。
-				//単に無視しても良いが、恐らく入力のミスと思われるので警告を出す
-				if (!found)
+				/*
+				ConstraintProblem constraintProblem;
+				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
 				{
-					//std::cerr << "Error(" << __LINE__ << "):freeに指定された変数が無効です。\n";
-					//return 0;
-					CGL_WarnLog("freeに指定された変数が無効です");
-				}
-			}
-			CGL_DebugLog("End Record MakeMap");
-
-			//*
-			ConstraintProblem constraintProblem;
-			constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
-			{
-				//-1000 -> 1000
-				for (int i = 0; i < v.size(); ++i)
-				{
-					problem.update(variable2Data[i], v[i]);
-					//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
-				}
-
-				{
-					for (const auto& keyval : problem.invRefs)
+					//-1000 -> 1000
+					for (int i = 0; i < v.size(); ++i)
 					{
-						pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+						problem.update(variable2Data[i], v[i]);
+						//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
 					}
-				}
 
-				pEnv->switchFrontScope();
-				double result = problem.eval(pEnv);
-				pEnv->switchBackScope();
-
-				CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
-				std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
-				return result;
-			};
-			constraintProblem.originalRecord = record;
-			constraintProblem.keyList = keyList;
-			constraintProblem.pEnv = pEnv;
-
-			Eigen::VectorXd x0s(record.freeVariableRefs.size());
-			for (int i = 0; i < x0s.size(); ++i)
-			{
-				x0s[i] = problem.data[variable2Data[i]];
-				//x0s[i] = (problem.data[variable2Data[i]] / 2000.0) + 0.5;
-				CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
-			}
-
-			cppoptlib::BfgsSolver<ConstraintProblem> solver;
-			solver.minimize(constraintProblem, x0s);
-
-			resultxs.resize(x0s.size());
-			for (int i = 0; i < x0s.size(); ++i)
-			{
-				resultxs[i] = x0s[i];
-			}
-			//*/
-
-			/*
-			libcmaes::FitFunc func = [&](const double *x, const int N)->double
-			{
-				for (int i = 0; i < N; ++i)
-				{
-					problem.update(variable2Data[i], x[i]);
-				}
-
-				{
-					for (const auto& keyval : problem.invRefs)
 					{
-						pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+						for (const auto& keyval : problem.invRefs)
+						{
+							pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+						}
 					}
+
+					pEnv->switchFrontScope();
+					double result = problem.eval(pEnv);
+					pEnv->switchBackScope();
+
+					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+					std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
+					return result;
+				};
+				constraintProblem.originalRecord = record;
+				constraintProblem.keyList = keyList;
+				constraintProblem.pEnv = pEnv;
+
+				Eigen::VectorXd x0s(record.freeVariableRefs.size());
+				for (int i = 0; i < x0s.size(); ++i)
+				{
+					x0s[i] = problem.data[variable2Data[i]];
+					//x0s[i] = (problem.data[variable2Data[i]] / 2000.0) + 0.5;
+					CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
 				}
 
-				pEnv->switchFrontScope();
-				double result = problem.eval(pEnv);
-				pEnv->switchBackScope();
+				cppoptlib::BfgsSolver<ConstraintProblem> solver;
+				solver.minimize(constraintProblem, x0s);
 
-				CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+				resultxs.resize(x0s.size());
+				for (int i = 0; i < x0s.size(); ++i)
+				{
+					resultxs[i] = x0s[i];
+				}
+				//*/
+
+				//*
+				libcmaes::FitFunc func = [&](const double *x, const int N)->double
+				{
+					for (int i = 0; i < N; ++i)
+					{
+						problem.update(variable2Data[i], x[i]);
+					}
+
+					{
+						for (const auto& keyval : problem.invRefs)
+						{
+							pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+						}
+					}
+
+					pEnv->switchFrontScope();
+					double result = problem.eval(pEnv);
+					pEnv->switchBackScope();
+
+					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
 					
-				return result;
-			};
+					return result;
+				};
 
-			CGL_DebugLog("");
+				CGL_DebugLog("");
 
-			std::vector<double> x0(record.freeVariableRefs.size());
-			for (int i = 0; i < x0.size(); ++i)
-			{
-				x0[i] = problem.data[variable2Data[i]];
-				CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
+				std::vector<double> x0(record.freeVariableRefs.size());
+				for (int i = 0; i < x0.size(); ++i)
+				{
+					x0[i] = problem.data[variable2Data[i]];
+					CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
+				}
+
+				CGL_DebugLog("");
+
+				const double sigma = 0.1;
+
+				const int lambda = 100;
+
+				libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+				CGL_DebugLog("");
+				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
+				CGL_DebugLog("");
+				resultxs = cmasols.best_candidate().get_x();
+				CGL_DebugLog("");
+				//*/
 			}
-
-			CGL_DebugLog("");
-
-			const double sigma = 0.1;
-
-			const int lambda = 100;
-
-			libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
-			CGL_DebugLog("");
-			libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
-			CGL_DebugLog("");
-			resultxs = cmasols.best_candidate().get_x();
-			CGL_DebugLog("");
-			//*/
 		}
 
 		CGL_DebugLog("");
@@ -1767,7 +1782,6 @@ namespace cgl
 		(4) ローカルスコープの参照値を読みレコードに上書きする //リストアクセスなどの変更処理
 		(5) レコードをマージする //ローカル変数などの変更処理
 		*/
-
 
 		if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("path"))
 		{
@@ -1926,8 +1940,8 @@ namespace cgl
 
 			if (IsType<Accessor>(closedVarExpr))
 			{
-				//std::cout << "    Free Expr:" << std::endl;
-				//printExpr(closedVarExpr, std::cout);
+				std::cout << "    Free Expr:" << std::endl;
+				printExpr(closedVarExpr, std::cout);
 				currentRecords.top().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
 			}
 			else if (IsType<Identifier>(closedVarExpr))

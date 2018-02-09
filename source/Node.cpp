@@ -78,6 +78,15 @@ namespace cgl
 			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
 		}
 
+		if (freeVariables.empty())
+		{
+			expr = candidateExpr;
+			refs.clear();
+			invRefs.clear();
+			freeVariables.clear();
+			return;
+		}
+
 		SatVariableBinder binder(pEnv, freeVariables);
 		if (boost::apply_visitor(binder, candidateExpr.value()))
 		{

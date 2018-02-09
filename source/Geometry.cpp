@@ -879,7 +879,8 @@ namespace cgl
 			ls = factory->createLineString(cs);
 		}
 
-		FontBuilder font;
+		//FontBuilder font;
+		cgl::FontBuilder font("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
 		
 		std::u32string string = str.toString();
 		double offsetHorizontal = 0;

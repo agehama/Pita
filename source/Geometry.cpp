@@ -888,6 +888,8 @@ namespace cgl
 		{
 			for (size_t i = 0; i < string.size(); ++i)
 			{
+				const int codePoint = static_cast<int>(string[i]);
+
 				double offsetX;
 				double offsetY;
 
@@ -924,8 +926,6 @@ namespace cgl
 					offsetY = targetPos.y();
 				}
 
-				const int codePoint = static_cast<int>(string[i]);
-				
 				const auto characterPolygon = font.makePolygon(codePoint, 5, offsetX, offsetY);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
@@ -943,7 +943,6 @@ namespace cgl
 				offsetHorizontal += font.glyphWidth(codePoint);
 			}
 		}
-		
 
 		textRule.append("path", pEnv->makeTemporaryValue(GetShapesFromGeos(result, pEnv)));
 	}

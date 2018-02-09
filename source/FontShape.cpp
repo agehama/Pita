@@ -50,7 +50,7 @@ namespace cgl
 
 		using namespace boost::archive::iterators;
 		using DecodeIt = transform_width<binary_from_base64<std::string::const_iterator>, 8, 6, char>;
-		const std::string fontDataRaw(DecodeIt(fontDataBase64.begin()), DecodeIt(fontDataBase64.end()));
+		fontDataRaw = std::string(DecodeIt(fontDataBase64.begin()), DecodeIt(fontDataBase64.end()));
 
 		const unsigned char* pc = reinterpret_cast<const unsigned char*>(fontDataRaw.c_str());
 
@@ -83,9 +83,7 @@ namespace cgl
 			return Eigen::Vector2d(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
 		};
 
-		std::cout << "fontInfo1: " << fontInfo << std::endl;
 		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
-		std::cout << "fontInfo1 end" << std::endl;
 
 		stbtt_vertex* pv;
 		const int verticesNum = stbtt_GetGlyphShape(fontInfo, glyphIndex, &pv);
@@ -101,8 +99,6 @@ namespace cgl
 			stbtt_vertex* nextPolygonBegin = std::find_if(pv + polygonBeginIndex + 1, pv + verticesNum, [](const stbtt_vertex& p) {return p.type == STBTT_vmove; });
 			const int nextPolygonFirstIndex = std::distance(pv, nextPolygonBegin);
 			const int currentPolygonLastIndex = nextPolygonFirstIndex - 1;
-
-			stbtt_vertex* vertex = pv + polygonBeginIndex;
 
 			Vector<Eigen::Vector2d> points;
 
@@ -201,9 +197,7 @@ namespace cgl
 
 	double FontBuilder::glyphWidth(int codePoint)
 	{
-		std::cout << "fontInfo2: " << fontInfo << std::endl;
 		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
-		std::cout << "fontInfo2 end" << std::endl;
 
 		int x0, x1, y0, y1;
 		stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);

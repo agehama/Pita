@@ -31,6 +31,7 @@ namespace cgl
 		double glyphWidth(int codePoint);
 
 	private:
+		std::string fontDataRaw;
 		stbtt_fontinfo* fontInfo;
 		int ascent;
 		int descent;

@@ -32,7 +32,7 @@ square = shape{
 
 main = text{
     rect: square{scale: {x: 400, y: 300}}
-    str: "https://github.com/agehama/Pita"
+    str: "https://github.com/agehama/Pita/tree/master/source"
     base: path{
         points: 4
         passes: [rect.top(), rect.right(), rect.bottom(), rect.left()]

@@ -47,6 +47,7 @@ namespace cgl
 
 	const double pi = 3.1415926535;
 	const double deg2rad = pi / 180.0;
+	const double rad2deg = 180.0 / pi;
 }
 
 extern std::ofstream ofs;

@@ -880,18 +880,25 @@ namespace cgl
 		}
 
 		FontBuilder font;
-		std::vector<gg::Geometry*> result;
-
+		
 		std::u32string string = str.toString();
 		double offsetHorizontal = 0;
+
+		List resultCharList;
 		if (baseLineRecord)
 		{
 			for (size_t i = 0; i < string.size(); ++i)
 			{
+				Record currentCharRecord;
+
+				std::vector<gg::Geometry*> result;
+
 				const int codePoint = static_cast<int>(string[i]);
 
-				double offsetX;
-				double offsetY;
+				double offsetX = 0;
+				double offsetY = 0;
+
+				double angle = 0;
 
 				auto it = std::upper_bound(distances.begin(), distances.end(), offsetHorizontal);
 				if (it == distances.end())
@@ -908,43 +915,64 @@ namespace cgl
 					const Eigen::Vector2d targetPos = p0 + v * progress;
 					offsetX = targetPos.x();
 					offsetY = targetPos.y();
+
+					const auto n = v.normalized();
+					angle = rad2deg * atan2(n.y(), n.x());
 				}
 				else
 				{
 					const int lineIndex = std::distance(distances.begin(), it) - 1;
 					const double innerDistance = offsetHorizontal - distances[lineIndex];
-					
+
 					Eigen::Vector2d p0(cs[lineIndex].x, cs[lineIndex].y);
 					Eigen::Vector2d p1(cs[lineIndex + 1].x, cs[lineIndex + 1].y);
 
 					const Eigen::Vector2d v = (p1 - p0);
 					const double currentLineLength = sqrt(v.dot(v));
 					const double progress = innerDistance / currentLineLength;
-					
+
 					const Eigen::Vector2d targetPos = p0 + v * progress;
 					offsetX = targetPos.x();
 					offsetY = targetPos.y();
+
+					const auto n = v.normalized();
+					angle = rad2deg * atan2(n.y(), n.x());
 				}
 
-				const auto characterPolygon = font.makePolygon(codePoint, 5, offsetX, offsetY);
+				const auto characterPolygon = font.makePolygon(codePoint, 5, 0, 0);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
 				offsetHorizontal += font.glyphWidth(codePoint);
+
+				Record posRecord;
+				posRecord.append("x", pEnv->makeTemporaryValue(offsetX));
+				posRecord.append("y", pEnv->makeTemporaryValue(offsetY));
+
+				currentCharRecord.append("char", pEnv->makeTemporaryValue(GetShapesFromGeos(result, pEnv)));
+				currentCharRecord.append("pos", pEnv->makeTemporaryValue(posRecord));
+
+				currentCharRecord.append("angle", pEnv->makeTemporaryValue(angle));
+
+				resultCharList.append(pEnv->makeTemporaryValue(currentCharRecord));
 			}
 		}
 		else
 		{
 			for (size_t i = 0; i < string.size(); ++i)
 			{
+				std::vector<gg::Geometry*> result;
+
 				const int codePoint = static_cast<int>(string[i]);
 				const auto characterPolygon = font.makePolygon(codePoint, 1, offsetHorizontal);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
 				offsetHorizontal += font.glyphWidth(codePoint);
+
+				resultCharList.append(pEnv->makeTemporaryValue(GetShapesFromGeos(result, pEnv)));
 			}
 		}
 
-		textRule.append("path", pEnv->makeTemporaryValue(GetShapesFromGeos(result, pEnv)));
+		textRule.append("text", pEnv->makeTemporaryValue(resultCharList));
 	}
 
 	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Environment> pEnv)

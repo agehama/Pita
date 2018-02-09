@@ -199,10 +199,10 @@ namespace cgl
 	{
 		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
 
-		int x0, x1, y0, y1;
-		stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
-		return FontSizeToReal(x1 - x0);
+		int advanceWidth;
+		int leftSideBearing;
+		stbtt_GetCodepointHMetrics(fontInfo, codePoint, &advanceWidth, &leftSideBearing);
+		return FontSizeToReal(advanceWidth - leftSideBearing);
 	}
-
 }
 

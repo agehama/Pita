@@ -77,17 +77,17 @@ namespace cgl
 		unsigned m_ID = 0;
 	};
 
-	class Environment
+	class Context
 	{
 	public:
 
 		using Scope = std::unordered_map<std::string, Address>;
 
-		using LocalEnvironment = std::vector<Scope>;
+		using LocalContext = std::vector<Scope>;
 
-		using BuiltInFunction = std::function<Evaluated(std::shared_ptr<Environment>, const std::vector<Address>&)>;
+		using BuiltInFunction = std::function<Evaluated(std::shared_ptr<Context>, const std::vector<Address>&)>;
 
-		Address makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
+		Address makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
 
 		//スコープの内側に入る/出る
 		void enterScope()
@@ -102,7 +102,7 @@ namespace cgl
 		//関数呼び出しなど別のスコープに切り替える/戻す
 		void switchFrontScope()
 		{
-			m_localEnvStack.push(LocalEnvironment());
+			m_localEnvStack.push(LocalContext());
 		}
 
 		void switchBackScope()
@@ -307,7 +307,7 @@ namespace cgl
 
 		/*void push()
 		{
-			m_bindingNames.emplace_back(LocalEnvironment::Type::NormalScope);
+			m_bindingNames.emplace_back(LocalContext::Type::NormalScope);
 		}
 
 		void pop()
@@ -315,8 +315,8 @@ namespace cgl
 			m_bindingNames.pop_back();
 		}*/
 
-		void printEnvironment(bool flag = false)const;
-		void printEnvironment(std::ostream& os)const;
+		void printContext(bool flag = false)const;
+		void printContext(std::ostream& os)const;
 
 		//void assignToObject(const ObjectReference& objectRef, const Evaluated& newValue);
 		void assignToObject(Address address, const Evaluated& newValue)
@@ -333,11 +333,11 @@ namespace cgl
 			//m_values[addressTo] = expandRef(m_values[addressFrom]);
 		}
 
-		static std::shared_ptr<Environment> Make();
+		static std::shared_ptr<Context> Make();
 
-		static std::shared_ptr<Environment> Make(const Environment& other);
+		static std::shared_ptr<Context> Make(const Context& other);
 
-		std::shared_ptr<Environment> clone()
+		std::shared_ptr<Context> clone()
 		{
 			return Make(*this);
 		}
@@ -346,7 +346,7 @@ namespace cgl
 		//式の評価途中でGCは走らないようにするべきか？
 		Address makeTemporaryValue(const Evaluated& value);
 
-		Environment() = default;
+		Context() = default;
 
 /*
 式中に現れ得る識別子は次の3種類に分けられる。
@@ -402,12 +402,12 @@ namespace cgl
 
 		void initialize();
 
-		LocalEnvironment& localEnv()
+		LocalContext& localEnv()
 		{
 			return m_localEnvStack.top();
 		}
 
-		const LocalEnvironment& localEnv()const
+		const LocalContext& localEnv()const
 		{
 			return m_localEnvStack.top();
 		}
@@ -463,16 +463,16 @@ namespace cgl
 		//スコープを抜けたらそのスコープで管理している変数を環境ごと削除する
 		//したがって環境はネストの浅い順にリストで管理することができる（同じ深さの環境が二つ存在することはない）
 		//リストの最初の要素はグローバル変数とするとする
-		//std::vector<LocalEnvironment> m_bindingNames;
+		//std::vector<LocalContext> m_bindingNames;
 
 		/*std::vector<Scope> m_variables;
 		std::stack<std::pair<int, std::vector<Scope>>> m_diffScopes;*/
 		
 		
-		std::stack<LocalEnvironment> m_localEnvStack;
+		std::stack<LocalContext> m_localEnvStack;
 
 		//std::vector<Address> m_funcValIDs;
 
-		std::weak_ptr<Environment> m_weakThis;
+		std::weak_ptr<Context> m_weakThis;
 	};
 }

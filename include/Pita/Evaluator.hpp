@@ -7,7 +7,7 @@
 #include <mutex>
 
 #include "Node.hpp"
-#include "Environment.hpp"
+#include "Context.hpp"
 #include "BinaryEvaluator.hpp"
 #include "Printer.hpp"
 #include "Geometry.hpp"
@@ -17,13 +17,13 @@ namespace cgl
 	class ProgressStore
 	{
 	public:
-		static void TryWrite(std::shared_ptr<Environment> env, const Evaluated& value);
+		static void TryWrite(std::shared_ptr<Context> env, const Evaluated& value);
 
 		static bool TryLock();
 
 		static void Unlock();
 
-		static std::shared_ptr<Environment> GetEnvironment();
+		static std::shared_ptr<Context> GetContext();
 
 		static boost::optional<Evaluated>& GetEvaluated();
 
@@ -34,7 +34,7 @@ namespace cgl
 	private:
 		static ProgressStore& Instance();
 
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		boost::optional<Evaluated> evaluated;
 
 		std::mutex mtx;
@@ -92,11 +92,11 @@ namespace cgl
 	class ValueCloner : public boost::static_visitor<Evaluated>
 	{
 	public:
-		ValueCloner(std::shared_ptr<Environment> pEnv) :
+		ValueCloner(std::shared_ptr<Context> pEnv) :
 			pEnv(pEnv)
 		{}
 
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		std::unordered_map<Address, Address> replaceMap;
 
 		boost::optional<Address> getOpt(Address address)const;
@@ -123,12 +123,12 @@ namespace cgl
 	class ValueCloner2 : public boost::static_visitor<Evaluated>
 	{
 	public:
-		ValueCloner2(std::shared_ptr<Environment> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
+		ValueCloner2(std::shared_ptr<Context> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
 			pEnv(pEnv),
 			replaceMap(replaceMap)
 		{}
 
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		const std::unordered_map<Address, Address>& replaceMap;
 
 		boost::optional<Address> getOpt(Address address)const;
@@ -155,12 +155,12 @@ namespace cgl
 	class ValueCloner3 : public boost::static_visitor<void>
 	{
 	public:
-		ValueCloner3(std::shared_ptr<Environment> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
+		ValueCloner3(std::shared_ptr<Context> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
 			pEnv(pEnv),
 			replaceMap(replaceMap)
 		{}
 
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		const std::unordered_map<Address, Address>& replaceMap;
 
 		boost::optional<Address> getOpt(Address address)const;
@@ -186,7 +186,7 @@ namespace cgl
 		void operator()(Jump& node) {}
 	};
 
-	Evaluated Clone(std::shared_ptr<Environment> pEnv, const Evaluated& value);
+	Evaluated Clone(std::shared_ptr<Context> pEnv, const Evaluated& value);
 
 	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
 	//外側のスコープを参照する識別子をアドレスに置き換えた式を返す
@@ -197,12 +197,12 @@ namespace cgl
 		//関数内部で閉じているローカル変数
 		std::set<std::string> localVariables;
 
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 
 		//レコード継承の構文を扱うために必要必要
 		bool isInnerRecord;
 
-		ClosureMaker(std::shared_ptr<Environment> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
+		ClosureMaker(std::shared_ptr<Context> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
 			pEnv(pEnv),
 			localVariables(functionArguments),
 			isInnerRecord(isInnerRecord)
@@ -259,7 +259,7 @@ namespace cgl
 		std::function<double(const TVector&)> evaluator;
 		Record originalRecord;
 		std::vector<Identifier> keyList;
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 
 		bool callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar>& state, const TVector& x) override;
 
@@ -273,7 +273,7 @@ namespace cgl
 	{
 	public:
 
-		Eval(std::shared_ptr<Environment> pEnv) :pEnv(pEnv) {}
+		Eval(std::shared_ptr<Context> pEnv) :pEnv(pEnv) {}
 
 		LRValue operator()(const LRValue& node) { return node; }
 
@@ -314,7 +314,7 @@ namespace cgl
 		LRValue operator()(const Accessor& accessor);
 
 	private:
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		
 		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
 		std::stack<std::reference_wrapper<Record>> currentRecords;
@@ -327,13 +327,13 @@ namespace cgl
 	{
 	public:
 
-		HasFreeVariables(std::shared_ptr<Environment> pEnv, const std::vector<Address>& freeVariables) :
+		HasFreeVariables(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
 			pEnv(pEnv),
 			freeVariables(freeVariables)
 		{}
 
 		//AccessorからObjectReferenceに変換するのに必要
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 
 		//freeに指定された変数全て
 		std::vector<Address> freeVariables;
@@ -372,7 +372,7 @@ namespace cgl
 		int refID_Offset;
 
 		//AccessorからObjectReferenceに変換するのに必要
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 
 		//freeに指定された変数全て
 		std::vector<Address> freeVariables;
@@ -386,7 +386,7 @@ namespace cgl
 		//TODO:vector->mapに書き換える
 		std::vector<Address> refs;
 
-		Expr2SatExpr(int refID_Offset, std::shared_ptr<Environment> pEnv, const std::vector<Address>& freeVariables) :
+		Expr2SatExpr(int refID_Offset, std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
 			refID_Offset(refID_Offset),
 			pEnv(pEnv),
 			freeVariables(freeVariables),

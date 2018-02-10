@@ -79,7 +79,7 @@ namespace cgl
 		}
 	}
 
-	Evaluated Not(const Evaluated& lhs, Environment& env)
+	Evaluated Not(const Evaluated& lhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 
@@ -92,7 +92,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Plus(const Evaluated& lhs, Environment& env)
+	Evaluated Plus(const Evaluated& lhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 
@@ -105,7 +105,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Minus(const Evaluated& lhs, Environment& env)
+	Evaluated Minus(const Evaluated& lhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 
@@ -122,7 +122,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated And(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated And(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -136,7 +136,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Or(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Or(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -150,7 +150,7 @@ namespace cgl
 		return 0;
 	}
 
-	bool Equal(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	bool Equal(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -187,7 +187,7 @@ namespace cgl
 		return false;
 	}
 
-	bool NotEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	bool NotEqual(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -224,7 +224,7 @@ namespace cgl
 		return false;
 	}
 
-	bool LessThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	bool LessThan(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -256,7 +256,7 @@ namespace cgl
 		return false;
 	}
 
-	bool LessEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	bool LessEqual(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -288,7 +288,7 @@ namespace cgl
 		return false;
 	}
 
-	bool GreaterThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	bool GreaterThan(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -320,7 +320,7 @@ namespace cgl
 		return false;
 	}
 
-	bool GreaterEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	bool GreaterEqual(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -352,7 +352,7 @@ namespace cgl
 		return false;
 	}
 
-	Evaluated Max(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Max(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -384,7 +384,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Min(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Min(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -416,7 +416,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Abs(const Evaluated& lhs, Environment& env)
+	Evaluated Abs(const Evaluated& lhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 
@@ -463,7 +463,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Add(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Add(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -495,7 +495,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Sub(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Sub(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -527,7 +527,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Mul(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Mul(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -559,7 +559,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Div(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Div(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -591,7 +591,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Pow(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Pow(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
@@ -623,7 +623,7 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated Concat(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Concat(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		if (!IsType<List>(lhs) || !IsType<List>(rhs))
 		{

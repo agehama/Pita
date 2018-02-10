@@ -6,7 +6,7 @@
 #include <boost/archive/iterators/transform_width.hpp>
 
 #include <Pita/Node.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/Vectorizer.hpp>
 #include <Pita/FontShape.hpp>
 

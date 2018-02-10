@@ -1,5 +1,5 @@
 #include <Pita/Node.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/Vectorizer.hpp>
 #include <Pita/FontShape.hpp>
 #include <Pita/Geometry.hpp>
@@ -20,7 +20,7 @@ namespace cgl
 		}
 	};
 
-	List ShapeDifference(const Evaluated& lhs, const Evaluated& rhs, std::shared_ptr<cgl::Environment> pEnv)
+	List ShapeDifference(const Evaluated& lhs, const Evaluated& rhs, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if ((!IsType<Record>(lhs) && !IsType<List>(lhs)) || (!IsType<Record>(rhs) && !IsType<List>(rhs)))
 		{
@@ -150,7 +150,7 @@ namespace cgl
 		}
 	}
 
-	List ShapeBuffer(const Evaluated & shape, const Evaluated & amount, std::shared_ptr<cgl::Environment> pEnv)
+	List ShapeBuffer(const Evaluated & shape, const Evaluated & amount, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if (!IsType<Record>(shape) && !IsType<List>(shape))
 		{
@@ -179,7 +179,7 @@ namespace cgl
 	}
 
 #ifdef commentout
-	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv)
+	void GetPath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv)
 	{
 		const auto& values = pathRule.values;
 
@@ -463,7 +463,7 @@ namespace cgl
 	}
 #endif
 
-	void GetPath(Record& pathRule, std::shared_ptr<cgl::Environment> pEnv)
+	void GetPath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv)
 	{
 		const auto& values = pathRule.values;
 
@@ -787,7 +787,7 @@ namespace cgl
 		pathRule.append("path", pEnv->makeTemporaryValue(result));
 	}
 
-	void GetText(Record& textRule, std::shared_ptr<cgl::Environment> pEnv)
+	void GetText(Record& textRule, std::shared_ptr<cgl::Context> pEnv)
 	{
 		const auto& values = textRule.values;
 
@@ -976,7 +976,7 @@ namespace cgl
 		textRule.append("text", pEnv->makeTemporaryValue(resultCharList));
 	}
 
-	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Environment> pEnv)
+	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if (!IsType<Record>(lhs) && !IsType<List>(lhs))
 		{
@@ -995,7 +995,7 @@ namespace cgl
 		return area;
 	}
 
-	List GetDefaultFontString(const std::string& str, std::shared_ptr<cgl::Environment> pEnv)
+	List GetDefaultFontString(const std::string& str, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if (str.empty() || str.front() == ' ')
 		{

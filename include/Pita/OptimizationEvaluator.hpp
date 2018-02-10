@@ -5,7 +5,7 @@
 #include <functional>
 
 #include "Node.hpp"
-#include "Environment.hpp"
+#include "Context.hpp"
 #include "BinaryEvaluator.hpp"
 #include "Printer.hpp"
 #include "Evaluator.hpp"
@@ -18,7 +18,7 @@ namespace cgl
 	public:
 
 		//AccessorからObjectReferenceに変換するのに必要
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 
 		//free変数集合->freeに指定された変数全て
 		std::vector<Address> freeVariables;
@@ -35,7 +35,7 @@ namespace cgl
 		//Address->参照ID
 		std::unordered_map<Address, int> invRefs;
 
-		SatVariableBinder(std::shared_ptr<Environment> pEnv, const std::vector<Address>& freeVariables) :
+		SatVariableBinder(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
 			pEnv(pEnv),
 			freeVariables(freeVariables),
 			usedInSat(freeVariables.size(), 0)
@@ -86,14 +86,14 @@ namespace cgl
 	class EvalSatExpr : public boost::static_visitor<Evaluated>
 	{
 	public:
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		const std::vector<double>& data;//参照ID->data
 		const std::vector<Address>& refs;//参照ID->Address
 		const std::unordered_map<Address, int>& invRefs;//Address->参照ID
 
 		//TODO:このpEnvは外部の環境を書き換えたくないので、独立したものを設定する
 		EvalSatExpr(
-			std::shared_ptr<Environment> pEnv, 
+			std::shared_ptr<Context> pEnv, 
 			const std::vector<double>& data, 
 			const std::vector<Address>& refs,
 			const std::unordered_map<Address, int>& invRefs) :

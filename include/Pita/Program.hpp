@@ -3,7 +3,7 @@
 
 #include "Node.hpp"
 #include "Printer.hpp"
-#include "Environment.hpp"
+#include "Context.hpp"
 #include "Evaluator.hpp"
 #include "OptimizationEvaluator.hpp"
 #include "Parser.hpp"
@@ -15,7 +15,7 @@ namespace cgl
 	{
 	public:
 		Program() :
-			pEnv(Environment::Make()),
+			pEnv(Context::Make()),
 			evaluator(pEnv)
 		{}
 
@@ -31,7 +31,7 @@ namespace cgl
 
 		bool test(const std::string& program, const Expr& expr);
 
-		std::shared_ptr<Environment> getEnvironment()
+		std::shared_ptr<Context> getContext()
 		{
 			return pEnv;
 		}
@@ -47,7 +47,7 @@ namespace cgl
 		}
 
 	private:
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		Eval evaluator;
 		boost::optional<Evaluated> evaluated;
 		bool succeeded;

@@ -499,7 +499,7 @@ namespace cgl
 		boost::recursive_wrapper<SatFunctionReference>
 	>;
 
-	class Environment;
+	class Context;
 
 	struct OptimizationProblemSat
 	{
@@ -517,16 +517,16 @@ namespace cgl
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
 		void addConstraint(const Expr& logicExpr);
-		void constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables);
+		void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<Address>& freeVariables);
 
-		bool initializeData(std::shared_ptr<Environment> pEnv);
+		bool initializeData(std::shared_ptr<Context> pEnv);
 
 		void update(int index, double x)
 		{
 			data[index] = x;
 		}
 
-		double eval(std::shared_ptr<Environment> pEnv);
+		double eval(std::shared_ptr<Context> pEnv);
 	};
 
 	struct SatUnaryExpr
@@ -1715,7 +1715,7 @@ namespace cgl
 			obj.accesses.push_back(access);
 		}
 
-		//std::pair<FunctionCaller, std::vector<Access>> getFirstFunction(std::shared_ptr<Environment> pEnv);
+		//std::pair<FunctionCaller, std::vector<Access>> getFirstFunction(std::shared_ptr<Context> pEnv);
 
 		bool hasFunctionCall()const
 		{

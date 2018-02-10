@@ -6,7 +6,7 @@
 #include <Unicode.hpp>
 
 #include <Pita/Node.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
@@ -52,7 +52,7 @@ namespace cgl
 		}
 	}
 
-	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Environment> pEnv, std::vector<Address>& freeVariables)
+	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Context> pEnv, std::vector<Address>& freeVariables)
 	{
 		if (!candidateExpr)
 		{
@@ -113,14 +113,14 @@ namespace cgl
 
 		{
 			CGL_DebugLog("env:");
-			pEnv->printEnvironment(true);
+			pEnv->printContext(true);
 
 			CGL_DebugLog("expr:");
 			printExpr(candidateExpr.value());
 		}
 	}
 
-	bool OptimizationProblemSat::initializeData(std::shared_ptr<Environment> pEnv)
+	bool OptimizationProblemSat::initializeData(std::shared_ptr<Context> pEnv)
 	{
 		//std::cout << "Begin OptimizationProblemSat::initializeData" << std::endl;
 
@@ -153,7 +153,7 @@ namespace cgl
 		return true;
 	}
 
-	double OptimizationProblemSat::eval(std::shared_ptr<Environment> pEnv)
+	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv)
 	{
 		if (!expr)
 		{
@@ -186,7 +186,7 @@ namespace cgl
 			}
 
 			CGL_DebugLog("env:");
-			pEnv->printEnvironment();
+			pEnv->printContext();
 
 			CGL_DebugLog("expr:");
 			printExpr(expr.value());

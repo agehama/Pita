@@ -5,7 +5,7 @@
 #include <Unicode.hpp>
 
 #include <Pita/Node.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/Printer.hpp>
 
 extern std::ofstream ofs;

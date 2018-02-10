@@ -4,7 +4,7 @@
 #include <functional>
 
 #include <Pita/Node.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
@@ -45,7 +45,7 @@ namespace cgl
 			refs.push_back(reference);
 
 			{
-				pEnv->printEnvironment(true);
+				pEnv->printContext(true);
 			}
 				
 			return referenceID;
@@ -447,7 +447,7 @@ namespace cgl
 	Evaluated EvalSatExpr::operator()(const Identifier& node)
 	{
 		//CGL_DebugLog("Evaluated operator()(const Identifier& node)");
-		//pEnv->printEnvironment(true);
+		//pEnv->printContext(true);
 		//CGL_DebugLog(std::string("find Identifier(") + std::string(node) + ")");
 		const Address address = pEnv->findAddress(node);
 		if (auto opt = expandFreeOpt(address))
@@ -759,7 +759,7 @@ namespace cgl
 
 		for (const auto& key : keyList)
 		{
-			//pEnv->printEnvironment(true);
+			//pEnv->printContext(true);
 			Address address = pEnv->findAddress(key);
 			boost::optional<const Evaluated&> opt = pEnv->expandOpt(address);
 			record.append(key, pEnv->makeTemporaryValue(opt.value()));

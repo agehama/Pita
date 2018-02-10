@@ -1,7 +1,7 @@
 #pragma once
 #include <iomanip>
 #include "Node.hpp"
-#include "Environment.hpp"
+#include "Context.hpp"
 
 namespace cgl
 {
@@ -22,14 +22,14 @@ namespace cgl
 	class ValuePrinter : public boost::static_visitor<void>
 	{
 	public:
-		ValuePrinter(std::shared_ptr<Environment> pEnv, std::ostream& os, int indent, const std::string& header = "") :
+		ValuePrinter(std::shared_ptr<Context> pEnv, std::ostream& os, int indent, const std::string& header = "") :
 			pEnv(pEnv),
 			os(os),
 			m_indent(indent),
 			m_header(header)
 		{}
 
-		std::shared_ptr<Environment> pEnv;
+		std::shared_ptr<Context> pEnv;
 		int m_indent;
 		std::ostream& os;
 		mutable std::string m_header;
@@ -55,19 +55,19 @@ namespace cgl
 		void operator()(const Jump& node)const;
 	};
 
-	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, std::ostream& os, int indent = 0)
+	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Context> pEnv, std::ostream& os, int indent = 0)
 	{
 		ValuePrinter printer(pEnv, os, indent);
 		boost::apply_visitor(printer, evaluated);
 	}
 
 #ifdef CGL_EnableLogOutput
-	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, int indent = 0)
+	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Context> pEnv, int indent = 0)
 	{
 		printEvaluated(evaluated, pEnv, ofs, indent);
 	}
 #else
-	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Environment> pEnv, int indent = 0) {}
+	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Context> pEnv, int indent = 0) {}
 #endif
 
 	class PrintSatExpr : public boost::static_visitor<void>

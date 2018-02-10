@@ -2,7 +2,7 @@
 
 #include <Pita/Node.hpp>
 #include <Pita/Printer.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/Evaluator.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/Parser.hpp>
@@ -146,7 +146,7 @@ namespace cgl
 
 	void Program::clear()
 	{
-		pEnv = Environment::Make();
+		pEnv = Context::Make();
 		evaluated = boost::none;
 		evaluator = Eval(pEnv);
 		succeeded = false;
@@ -158,7 +158,7 @@ namespace cgl
 
 		if (auto result = execute(program))
 		{
-			std::shared_ptr<Environment> pEnv2 = Environment::Make();
+			std::shared_ptr<Context> pEnv2 = Context::Make();
 			Eval evaluator2(pEnv2);
 
 			const Evaluated answer = pEnv->expand(boost::apply_visitor(evaluator2, expr));

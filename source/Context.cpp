@@ -1,13 +1,13 @@
 #include <stack>
 #include <Pita/Node.hpp>
 #include <Pita/BinaryEvaluator.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/Evaluator.hpp>
 #include <Pita/Geometry.hpp>
 
 namespace cgl
 {
-	Address Environment::makeFuncVal(std::shared_ptr<Environment> pEnv, const std::vector<Identifier>& arguments, const Expr& expr)
+	Address Context::makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr)
 	{
 		std::set<std::string> functionArguments;
 		for (const auto& arg : arguments)
@@ -24,7 +24,7 @@ namespace cgl
 		//return address;
 	}
 
-	void Environment::registerBuiltInFunction(const std::string& name, const BuiltInFunction& function)
+	void Context::registerBuiltInFunction(const std::string& name, const BuiltInFunction& function)
 	{
 		//m_valuesにFuncVal追加
 		//m_functionsにfunction追加
@@ -41,9 +41,9 @@ namespace cgl
 		bindValueID(name, address1);
 	}
 
-	Evaluated Environment::callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
+	Evaluated Context::callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
 	{
-		if (std::shared_ptr<Environment> pEnv = m_weakThis.lock())
+		if (std::shared_ptr<Context> pEnv = m_weakThis.lock())
 		{
 			return m_functions[functionAddress](pEnv, arguments);
 		}
@@ -52,7 +52,7 @@ namespace cgl
 		return 0;
 	}
 
-	const Evaluated& Environment::expand(const LRValue& lrvalue)const
+	const Evaluated& Context::expand(const LRValue& lrvalue)const
 	{
 		if (lrvalue.isLValue())
 		{
@@ -68,7 +68,7 @@ namespace cgl
 		return lrvalue.evaluated();
 	}
 
-	boost::optional<const Evaluated&> Environment::expandOpt(const LRValue& lrvalue)const
+	boost::optional<const Evaluated&> Context::expandOpt(const LRValue& lrvalue)const
 	{
 		if (lrvalue.isLValue())
 		{
@@ -84,7 +84,7 @@ namespace cgl
 		return lrvalue.evaluated();
 	}
 
-	Address Environment::evalReference(const Accessor & access)
+	Address Context::evalReference(const Accessor & access)
 	{
 		if (auto sharedThis = m_weakThis.lock())
 		{
@@ -105,7 +105,7 @@ namespace cgl
 	}
 
 	//オブジェクトの中にある全ての値への参照をリストで取得する
-	std::vector<Address> Environment::expandReferences(Address address)
+	std::vector<Address> Context::expandReferences(Address address)
 	{
 		std::vector<Address> result;
 		if (auto sharedThis = m_weakThis.lock())
@@ -148,7 +148,7 @@ namespace cgl
 		return result;
 	}
 
-	std::vector<Address> Environment::expandReferences2(const Accessor & accessor)
+	std::vector<Address> Context::expandReferences2(const Accessor & accessor)
 	{
 		if (auto sharedThis = m_weakThis.lock())
 		{
@@ -304,7 +304,7 @@ namespace cgl
 		return {};
 	}
 
-	void Environment::bindReference(const std::string& nameLhs, const std::string& nameRhs)
+	void Context::bindReference(const std::string& nameLhs, const std::string& nameRhs)
 	{
 		const Address address = findAddress(nameRhs);
 		if (!address.isValid())
@@ -316,7 +316,7 @@ namespace cgl
 		bindValueID(nameLhs, address);
 	}
 
-	void Environment::bindValueID(const std::string& name, const Address ID)
+	void Context::bindValueID(const std::string& name, const Address ID)
 	{
 		//CGL_DebugLog("");
 		for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
@@ -334,7 +334,7 @@ namespace cgl
 	}
 
 #ifdef CGL_EnableLogOutput
-	void Environment::printEnvironment(bool flag)const
+	void Context::printContext(bool flag)const
 	{
 		if (!flag)
 		{
@@ -343,7 +343,7 @@ namespace cgl
 
 		std::ostream& os = ofs;
 
-		os << "Print Environment Begin:\n";
+		os << "Print Context Begin:\n";
 
 		os << "Values:\n";
 		for (const auto& keyval : m_values)
@@ -367,15 +367,15 @@ namespace cgl
 			}
 		}
 
-		os << "Print Environment End:\n";
+		os << "Print Context End:\n";
 	}
 #else
-	void Environment::printEnvironment(bool flag)const {}
+	void Context::printContext(bool flag)const {}
 #endif
 
-	void Environment::printEnvironment(std::ostream& os)const
+	void Context::printContext(std::ostream& os)const
 	{
-		os << "Print Environment Begin:\n";
+		os << "Print Context Begin:\n";
 
 		os << "Values:\n";
 		for (const auto& keyval : m_values)
@@ -399,12 +399,12 @@ namespace cgl
 			}
 		}
 
-		os << "Print Environment End:\n";
+		os << "Print Context End:\n";
 	}
 		
-	std::shared_ptr<Environment> Environment::Make()
+	std::shared_ptr<Context> Context::Make()
 	{
-		auto p = std::make_shared<Environment>();
+		auto p = std::make_shared<Context>();
 		p->m_weakThis = p;
 		p->switchFrontScope();
 		p->enterScope();
@@ -412,16 +412,16 @@ namespace cgl
 		return p;
 	}
 
-	std::shared_ptr<Environment> Environment::Make(const Environment& other)
+	std::shared_ptr<Context> Context::Make(const Context& other)
 	{
-		auto p = std::make_shared<Environment>(other);
+		auto p = std::make_shared<Context>(other);
 		p->m_weakThis = p;
 		return p;
 	}
 
 	//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
 	//式の評価途中でGCは走らないようにするべきか？
-	Address Environment::makeTemporaryValue(const Evaluated& value)
+	Address Context::makeTemporaryValue(const Evaluated& value)
 	{
 		const Address address = m_values.add(value);
 
@@ -434,7 +434,7 @@ namespace cgl
 		return address;
 	}
 
-	Address Environment::findAddress(const std::string& name)const
+	Address Context::findAddress(const std::string& name)const
 	{
 		for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 		{
@@ -448,11 +448,11 @@ namespace cgl
 		return Address::Null();
 	}
 
-	void Environment::initialize()
+	void Context::initialize()
 	{
 		registerBuiltInFunction(
 			"print",
-			[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
 			if (arguments.size() != 1)
 			{
@@ -466,7 +466,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"sin",
-			[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
 			if (arguments.size() != 1)
 			{
@@ -479,7 +479,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"cos",
-			[](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
 			if (arguments.size() != 1)
 			{
@@ -492,7 +492,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"diff",
-			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
 			if (arguments.size() != 2)
 			{
@@ -505,7 +505,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"buffer",
-			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
 			if (arguments.size() != 2)
 			{
@@ -518,7 +518,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"area",
-			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
 			if (arguments.size() != 1)
 			{
@@ -531,7 +531,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"DefaultFontString",
-			[&](std::shared_ptr<Environment> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
 			if (arguments.size() != 1)
 			{
@@ -559,7 +559,7 @@ namespace cgl
 		);
 	}
 
-	void Environment::garbageCollect()
+	void Context::garbageCollect()
 	{
 
 	}

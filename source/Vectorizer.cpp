@@ -29,12 +29,12 @@
 #include <geos/triangulate/VoronoiDiagramBuilder.h>
 
 #include <Pita/Node.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/Vectorizer.hpp>
 
 namespace cgl
 {
-	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Environment> environment)
+	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment)
 	{
 		const auto& values = record.values;
 		auto it = values.find(name);
@@ -59,7 +59,7 @@ namespace cgl
 		return true;
 	}
 
-	Transform::Transform(const Record& record, std::shared_ptr<Environment> pEnv)
+	Transform::Transform(const Record& record, std::shared_ptr<Context> pEnv)
 	{
 		double px = 0, py = 0;
 		double sx = 1, sy = 1;
@@ -153,7 +153,7 @@ namespace cgl
 		}
 	}
 
-	bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Environment> pEnv, const Transform& transform)
+	bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Context> pEnv, const Transform& transform)
 	{
 		output.clear();
 
@@ -191,7 +191,7 @@ namespace cgl
 		return true;
 	}
 
-	void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent)
+	void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Context> pEnv, const Transform& parent)
 	{
 		const Transform current(record, pEnv);
 		const Transform transform = parent * current;
@@ -239,7 +239,7 @@ namespace cgl
 		}
 	}
 
-	void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform)
+	void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Context> pEnv, const Transform& transform)
 	{
 		for (const Address member : list.data)
 		{
@@ -256,7 +256,7 @@ namespace cgl
 		}
 	}
 
-	boost::optional<BoundingRect> GetBoundingBox(const Evaluated& value, std::shared_ptr<Environment> pEnv)
+	boost::optional<BoundingRect> GetBoundingBox(const Evaluated& value, std::shared_ptr<Context> pEnv)
 	{
 		if (IsType<Record>(value))
 		{
@@ -343,7 +343,7 @@ namespace cgl
 		head.insert(head.end(), tail.begin(), tail.end());
 	};
 
-	std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& parent)
+	std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent)
 	{
 		const cgl::Transform current(record, pEnv);
 
@@ -480,7 +480,7 @@ namespace cgl
 		}
 	}
 
-	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& transform)
+	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform)
 	{
 		std::vector<gg::Geometry*> currentPolygons;
 		for (const cgl::Address member : list.data)
@@ -499,7 +499,7 @@ namespace cgl
 		return currentPolygons;
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& transform)
+	std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform)
 	{
 		if (cgl::IsType<cgl::Record>(value))
 		{
@@ -515,7 +515,7 @@ namespace cgl
 		return{};
 	}
 
-	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Environment> pEnv)
+	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv)
 	{
 		const auto coord = [&](double x, double y)
 		{
@@ -568,7 +568,7 @@ namespace cgl
 		return result;
 	}
 
-	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Environment> pEnv)
+	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Context> pEnv)
 	{
 		List resultShapes;
 		
@@ -663,7 +663,7 @@ namespace cgl
 		ps.emplace(area, ss.str());
 	}
 
-	bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv)
+	bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Context> pEnv)
 	{
 		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
 		if (IsType<Record>(value) && boundingBoxOpt)

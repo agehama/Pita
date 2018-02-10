@@ -8,53 +8,53 @@ namespace cgl
 
 	void MargeRecordInplace(Record& result, const Record& rec2);
 
-	Evaluated Not(const Evaluated& lhs, Environment& env);
+	Evaluated Not(const Evaluated& lhs, Context& env);
 
-	Evaluated Plus(const Evaluated& lhs, Environment& env);
+	Evaluated Plus(const Evaluated& lhs, Context& env);
 
-	Evaluated Minus(const Evaluated& lhs, Environment& env);
+	Evaluated Minus(const Evaluated& lhs, Context& env);
 
-	Evaluated And(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated And(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Or(const Evaluated& lhs, const Evaluated& rhs, Environment& env);;
+	Evaluated Or(const Evaluated& lhs, const Evaluated& rhs, Context& env);;
 
-	bool Equal(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	bool Equal(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	bool NotEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	bool NotEqual(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	bool LessThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	bool LessThan(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	bool LessEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	bool LessEqual(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	bool GreaterThan(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	bool GreaterThan(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	bool GreaterEqual(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	bool GreaterEqual(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Max(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Max(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Min(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Min(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Abs(const Evaluated& lhs, Environment& env);
+	Evaluated Abs(const Evaluated& lhs, Context& env);
 
 	Evaluated Sin(const Evaluated& lhs);
 
 	Evaluated Cos(const Evaluated& lhs);
 
-	Evaluated Add(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Add(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Sub(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Sub(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Mul(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Mul(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Div(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Div(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Pow(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Pow(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
-	Evaluated Concat(const Evaluated& lhs, const Evaluated& rhs, Environment& env);
+	Evaluated Concat(const Evaluated& lhs, const Evaluated& rhs, Context& env);
 
 
 #ifdef commentout
-	Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Environment& env)
+	Evaluated Assign(const Evaluated& lhs, const Evaluated& rhs, Context& env)
 	{
 		if (!IsLValue(lhs))
 		{

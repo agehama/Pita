@@ -30,11 +30,11 @@
 #include <geos/triangulate/VoronoiDiagramBuilder.h>
 
 #include "Node.hpp"
-#include "Environment.hpp"
+#include "Context.hpp"
 
 namespace cgl
 {
-	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Environment> environment);
+	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment);
 
 	struct Transform
 	{
@@ -52,7 +52,7 @@ namespace cgl
 
 		Transform(const Mat3x3& mat) :mat(mat) {}
 
-		Transform(const Record& record, std::shared_ptr<Environment> pEnv);
+		Transform(const Record& record, std::shared_ptr<Context> pEnv);
 
 		void init(double px = 0, double py = 0, double sx = 1, double sy = 1, double angle = 0);
 
@@ -125,13 +125,13 @@ namespace cgl
 		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
 	};
 
-	bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Environment> pEnv, const Transform& transform);
+	bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Context> pEnv, const Transform& transform);
 
-	void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Environment> pEnv, const Transform& transform);
+	void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Context> pEnv, const Transform& transform);
 
-	void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Environment> pEnv, const Transform& parent = Transform());
+	void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Context> pEnv, const Transform& parent = Transform());
 
-	boost::optional<BoundingRect> GetBoundingBox(const Evaluated& value, std::shared_ptr<Environment> pEnv);
+	boost::optional<BoundingRect> GetBoundingBox(const Evaluated& value, std::shared_ptr<Context> pEnv);
 
 	using PolygonsStream = std::multimap<double, std::string>;
 	
@@ -146,17 +146,17 @@ namespace cgl
 
 	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
 
-	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& transform);
+	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
 
-	std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& parent = cgl::Transform());
+	std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent = cgl::Transform());
 
-	std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Environment> pEnv, const cgl::Transform& transform = cgl::Transform());
+	std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
 
-	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Environment> pEnv);
+	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 
-	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Environment> pEnv);
+	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Context> pEnv);
 
 	void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon);
 
-	bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Environment> pEnv);
+	bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Context> pEnv);
 }

@@ -6,7 +6,7 @@
 #include <mutex>
 
 #include <Pita/Node.hpp>
-#include <Pita/Environment.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/Geometry.hpp>
@@ -14,7 +14,7 @@
 
 namespace cgl
 {
-	void ProgressStore::TryWrite(std::shared_ptr<Environment> env, const Evaluated& value)
+	void ProgressStore::TryWrite(std::shared_ptr<Context> env, const Evaluated& value)
 	{
 		ProgressStore& i = Instance();
 		if (i.mtx.try_lock())
@@ -38,7 +38,7 @@ namespace cgl
 		i.mtx.unlock();
 	}
 
-	std::shared_ptr<Environment> ProgressStore::GetEnvironment()
+	std::shared_ptr<Context> ProgressStore::GetContext()
 	{
 		ProgressStore& i = Instance();
 		return i.pEnv;
@@ -410,7 +410,7 @@ namespace cgl
 		}
 	}
 
-	Evaluated Clone(std::shared_ptr<Environment> pEnv, const Evaluated& value)
+	Evaluated Clone(std::shared_ptr<Context> pEnv, const Evaluated& value)
 	{
 		/*
 		関数値がアドレスを内部に持っている時、クローン作成の前後でその依存関係を保存する必要があるので、クローン作成は2ステップに分けて行う。
@@ -936,8 +936,8 @@ namespace cgl
 	{
 		std::cout << "callFunction:" << std::endl;
 
-		CGL_DebugLog("Function Environment:");
-		pEnv->printEnvironment();
+		CGL_DebugLog("Function Context:");
+		pEnv->printContext();
 
 		/*
 		まだ参照をスコープ間で共有できるようにしていないため、引数に与えられたオブジェクトは全て展開して渡す。
@@ -1096,7 +1096,7 @@ namespace cgl
 		{
 			//std::cout << "Evaluate expression(" << i << ")" << std::endl;
 			CGL_DebugLog("Evaluate expression(" + std::to_string(i) + ")");
-			pEnv->printEnvironment();
+			pEnv->printContext();
 
 			//std::cout << "LINES_A Expr:" << std::endl;
 			//printExpr(expr);
@@ -1483,7 +1483,7 @@ namespace cgl
 			++i;
 		}
 
-		pEnv->printEnvironment();
+		pEnv->printContext();
 		CGL_DebugLog("");
 
 		/*for (const auto& satExpr : innerSatClosures)
@@ -1725,7 +1725,7 @@ namespace cgl
 			GetText(record, pEnv);
 		}
 
-		pEnv->printEnvironment();
+		pEnv->printContext();
 
 		CGL_DebugLog("");
 
@@ -1734,8 +1734,8 @@ namespace cgl
 		//pEnv->pop();
 		pEnv->exitScope();
 
-		CGL_DebugLog("--------------------------- Print Environment ---------------------------");
-		pEnv->printEnvironment();
+		CGL_DebugLog("--------------------------- Print Context ---------------------------");
+		pEnv->printContext();
 		CGL_DebugLog("-------------------------------------------------------------------------");
 
 		return RValue(record);
@@ -1807,7 +1807,7 @@ namespace cgl
 				CGL_Error("not record");
 			}
 
-			pEnv->printEnvironment(true);
+			pEnv->printContext(true);
 			CGL_DebugLog("Original:");
 			printEvaluated(originalRecordVal, pEnv);
 		}
@@ -2645,14 +2645,14 @@ namespace cgl
 	
 	Evaluated evalExpr(const Expr& expr)
 	{
-		auto env = Environment::Make();
+		auto env = Context::Make();
 
 		Eval evaluator(env);
 
 		const Evaluated result = env->expand(boost::apply_visitor(evaluator, expr));
 
-		std::cout << "Environment:\n";
-		env->printEnvironment();
+		std::cout << "Context:\n";
+		env->printContext();
 
 		std::cout << "Result Evaluation:\n";
 		printEvaluated(result, env);

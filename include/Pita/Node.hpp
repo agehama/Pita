@@ -26,6 +26,8 @@
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>
 
+#include <Unicode.hpp>
+
 namespace cgl
 {
 	class Exception : public std::exception
@@ -192,6 +194,11 @@ namespace cgl
 		Identifier(const std::string& name_) :
 			name(name_)
 		{}
+
+		static Identifier MakeIdentifier(const std::u32string& name_)
+		{
+			return Identifier(Unicode::UTF32ToUTF8(name_));
+		}
 
 		bool operator==(const Identifier& other)const
 		{
@@ -442,7 +449,8 @@ namespace cgl
 		static LRValue Bool(bool a) { return LRValue(a); }
 		static LRValue Int(int a) { return LRValue(a); }
 		static LRValue Double(double a) { return LRValue(a); }
-		static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
+		//static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
+		static LRValue Float(const std::u32string& str) { return LRValue(std::stod(Unicode::UTF32ToUTF8(str))); }
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
 		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
@@ -1885,6 +1893,6 @@ namespace cgl
 		}
 	};
 
-	Expr BuildString(const std::string& str);
+	Expr BuildString(const std::u32string& str);
 	
 }

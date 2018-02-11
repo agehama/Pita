@@ -1,7 +1,9 @@
 #pragma once
 #define BOOST_RESULT_OF_USE_DECLTYPE
 #define BOOST_SPIRIT_USE_PHOENIX_V3
+#define BOOST_SPIRIT_UNICODE
 
+#include <boost/regex/pending/unicode_iterator.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 
@@ -32,7 +34,7 @@ namespace cgl
 	}
 
 	using namespace boost::spirit;
-
+	
 	template<typename Iterator>
 	struct SpaceSkipper : public qi::grammar<Iterator>
 	{
@@ -44,6 +46,8 @@ namespace cgl
 		}
 	};
 
+	namespace wide = qi::unicode;
+
 	template<typename Iterator>
 	struct LineSkipper : public qi::grammar<Iterator>
 	{
@@ -51,7 +55,7 @@ namespace cgl
 
 		LineSkipper() :LineSkipper::base_type(skip)
 		{
-			skip = qi::ascii::space;
+			skip = wide::space;
 		}
 	};
 
@@ -68,16 +72,15 @@ namespace cgl
 		}
 	} const keywords;
 
-	using IteratorT = std::string::const_iterator;
+	//using IteratorT = std::string::const_iterator;
+	//using IteratorT = std::u32string::const_iterator;
+	using IteratorT = boost::u8_to_u32_iterator<std::string::const_iterator>;
 	using SpaceSkipperT = SpaceSkipper<IteratorT>;
 	using LineSkipperT = LineSkipper<IteratorT>;
 
 	static SpaceSkipperT spaceSkipper;
 	static LineSkipperT lineSkipper;
 
-	//namespace wide = qi::standard_wide;
-	using namespace qi;
-	
 	template<typename Iterator, typename Skipper>
 	struct Parser
 		: qi::grammar<Iterator, Lines(), Skipper>
@@ -103,15 +106,16 @@ namespace cgl
 		qi::rule<Iterator, DefFunc(), Skipper> def_func;
 		qi::rule<Iterator, Arguments(), Skipper> arguments;
 		qi::rule<Iterator, Identifier(), Skipper> id;
-		qi::rule<Iterator, std::string(), Skipper> char_string;
+		//qi::rule<Iterator, std::string(), Skipper> char_string;
+		qi::rule<Iterator, std::u32string(), Skipper> char_string;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
 		qi::rule<Iterator, Lines(), Skipper> expr_seq, statement;
 		qi::rule<Iterator, Lines(), Skipper> program;
 
 		qi::rule<Iterator> s, s1;
 		qi::rule<Iterator> distinct_keyword;
-		qi::rule<Iterator, std::string(), Skipper> unchecked_identifier;
-		qi::rule<Iterator, std::string(), Skipper> float_value;
+		qi::rule<Iterator, std::u32string(), Skipper> unchecked_identifier;
+		qi::rule<Iterator, std::u32string(), Skipper> float_value;
 		
 		Parser() : Parser::base_type(program)
 		{
@@ -201,25 +205,25 @@ namespace cgl
 			record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 
 			record_maker = (
-				char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
+				wide::char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
 				*(
 				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-					| (+(char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					| (+(wide::char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					)
-				>> s >> char_('}')
+				>> s >> wide::char_('}')
 				)
-				| (char_('{') >> s >> char_('}'));
+				| (wide::char_('{') >> s >> wide::char_('}'));
 
 			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
-			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
+			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> wide::char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
-			list_maker = (char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
+			list_maker = (wide::char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
 				*(
-					(s >> char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					| (+(char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					) >> s >> char_(']')
+					(s >> wide::char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					| (+(wide::char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					) >> s >> wide::char_(']')
 				)
-				| (char_('[') >> s >> char_(']'));
+				| (wide::char_('[') >> s >> wide::char_(']'));
 			
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
@@ -229,14 +233,14 @@ namespace cgl
 				| listAccess[_val = Cast<ListAccess, Access>()]
 				| recordAccess[_val = Cast<RecordAccess, Access>()];
 
-			recordAccess = char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
+			recordAccess = wide::char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
 
-			//listAccess = char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> char_(']');
-			listAccess = char_('[') >> s >> (char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> s >> char_(']');
+			//listAccess = wide::char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> wide::char_(']');
+			listAccess = wide::char_('[') >> s >> (wide::char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> s >> wide::char_(']');
 
-			functionAccess = char_('(')
+			functionAccess = wide::char_('(')
 				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
-				>> *(s >> char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> char_(')');
+				>> *(s >> wide::char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> wide::char_(')');
 
 			factor = 
 				  '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
@@ -257,16 +261,16 @@ namespace cgl
 				| record_maker[_val = _1]
 				| id[_val = _1];
 
-			id = unchecked_identifier[_val = _1] - distinct_keyword;
+			id = unchecked_identifier[_val = Call(Identifier::MakeIdentifier, _1)] - distinct_keyword;
 
-			char_string = lexeme[*(char_ - char_('\"'))];
+			char_string = lexeme[*(wide::char_ - wide::char_('\"'))];
 
-			distinct_keyword = lexeme[keywords >> !(alnum | '_')];
-			unchecked_identifier = lexeme[(alpha | char_('_')) >> *(alnum | char_('_'))];
+			distinct_keyword = lexeme[keywords >> !(wide::alnum | '_')];
+			unchecked_identifier = lexeme[(wide::alpha | wide::char_('_')) >> *(wide::alnum | wide::char_('_'))];
 
-			float_value = lexeme[+char_('0', '9') >> char_('.') >> +char_('0', '9')];
+			float_value = lexeme[+wide::char_('0', '9') >> wide::char_('.') >> +wide::char_('0', '9')];
 			
-			s = *(space);
+			s = *(wide::space);
 		}
 	};
 }

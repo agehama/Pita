@@ -14,26 +14,34 @@
 
 namespace cgl
 {
-	Expr BuildString(const std::string& str)
-	{
-		/*Expr expr;
-		FuncVal funcval;
-		funcval.expr = Identifier(str);
-		expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
-		return expr;*/
+	//Expr BuildString(const std::string& str)
+	//{
+	//	/*Expr expr;
+	//	FuncVal funcval;
+	//	funcval.expr = Identifier(str);
+	//	expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
+	//	return expr;*/
 
-		/*
-		std::u32string str32 = Unicode::UTF8ToUTF32(str);
-		Expr expr;
-		ListConstractor list;
-		for (char32_t c : str32)
-		{
-			list.add(LRValue(Character(c)));
-		}
-		expr = list;
-		*/
-		
-		std::u32string str32 = Unicode::UTF8ToUTF32(str);
+	//	/*
+	//	std::u32string str32 = Unicode::UTF8ToUTF32(str);
+	//	Expr expr;
+	//	ListConstractor list;
+	//	for (char32_t c : str32)
+	//	{
+	//		list.add(LRValue(Character(c)));
+	//	}
+	//	expr = list;
+	//	*/
+	//	
+	//	std::u32string str32 = Unicode::UTF8ToUTF32(str);
+	//	Expr expr;
+	//	expr = LRValue(CharString(str32));
+
+	//	return expr;
+	//}
+
+	Expr BuildString(const std::u32string& str32)
+	{
 		Expr expr;
 		expr = LRValue(CharString(str32));
 

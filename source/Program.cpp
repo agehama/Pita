@@ -18,23 +18,30 @@ namespace cgl
 	{
 		using namespace cgl;
 
+		//boost::u8_to_u32_iterator<const char*> tbegin(std::begin(utf8_text)), tend(std::end(utf8_text));
+		
+		boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
+
 		Lines lines;
 
 		SpaceSkipper<IteratorT> skipper;
 		Parser<IteratorT, SpaceSkipperT> grammer;
 
-		std::string::const_iterator it = program.begin();
-		if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
+		//std::string::const_iterator it = program.begin();
+		//if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
+		auto it = tbegin;
+		if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
 		{
 			//std::cerr << "Syntax Error: parse failed\n";
 			std::cout << "Syntax Error: parse failed\n";
 			return boost::none;
 		}
 
-		if (it != program.end())
+		//if (it != program.end())
+		if (it != tend)
 		{
-			//std::cerr << "Syntax Error: ramains input\n" << std::string(it, program.end());
-			std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
+			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
+			std::cout << "Syntax Error: ramains input\n";
 			return boost::none;
 		}
 

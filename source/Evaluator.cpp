@@ -1835,6 +1835,21 @@ namespace cgl
 		Expr expr = record.adder;
 		Evaluated recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
 
+		//(4) ローカルスコープの参照値を読みレコードに上書きする
+		if (auto opt = AsOpt<Record>(recordValue))
+		{
+			Record& newRecord = opt.value();
+			for (auto& keyval : clone.values)
+			{
+				const Address newAddress = pEnv->findAddress(keyval.first);
+				if (newAddress.isValid() && newAddress != keyval.second)
+				{
+					CGL_DebugLog(std::string("Updated ") + keyval.first + ": " + "Address(" + keyval.second.toString() + ") -> Address(" + newAddress.toString() + ")");
+					newRecord.values[keyval.first] = newAddress;
+				}				
+			}
+		}
+
 		pEnv->exitScope();
 
 		return pEnv->makeTemporaryValue(recordValue);

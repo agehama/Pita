@@ -1,14 +1,9 @@
 #pragma warning(disable:4996)
-#include <iomanip>
-#include <cmath>
 #include <functional>
 
-#include <Pita/Node.hpp>
-#include <Pita/Context.hpp>
-#include <Pita/BinaryEvaluator.hpp>
-#include <Pita/Printer.hpp>
-#include <Pita/Evaluator.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
+#include <Pita/Evaluator.hpp>
+#include <Pita/BinaryEvaluator.hpp>
 
 namespace cgl
 {

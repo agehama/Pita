@@ -1,36 +1,22 @@
 #pragma once
 #include <Eigen/Core>
 
-#include <geos/geom/Point.h>
-#include <geos/geom/Polygon.h>
-#include <geos/geom/LineString.h>
-#include <geos/geom/LinearRing.h>
-#include <geos/geom/LineSegment.h>
-#include <geos/geom/MultiLineString.h>
-#include <geos/geom/CoordinateSequenceFactory.h>
-#include <geos/geom/CoordinateArraySequence.h>
-#include <geos/geom/GeometryFactory.h>
-#include <geos/geom/Coordinate.h>
-#include <geos/geom/CoordinateFilter.h>
-#include <geos/index/quadtree/Quadtree.h>
-#include <geos/index/ItemVisitor.h>
-#include <geos/geom/IntersectionMatrix.h>
-#include <geos/geomgraph/PlanarGraph.h>
-#include <geos/operation/linemerge/LineMergeGraph.h>
-#include <geos/planargraph.h>
-#include <geos/planargraph/Edge.h>
-#include <geos/planargraph/Node.h>
-#include <geos/planargraph/DirectedEdge.h>
-#include <geos/operation/polygonize/Polygonizer.h>
-#include <geos/opBuffer.h>
-#include <geos/geom/PrecisionModel.h>
-#include <geos/operation/linemerge/LineMerger.h>
-#include <geos/opDistance.h>
-#include <geos/operation/predicate/RectangleContains.h>
-#include <geos/triangulate/VoronoiDiagramBuilder.h>
-
 #include "Node.hpp"
 #include "Context.hpp"
+
+namespace geos
+{
+	namespace geom
+	{
+		class Geometry;
+		class Polygon;
+	}
+	namespace operation
+	{
+		namespace buffer {}
+		namespace distance {}
+	}
+}
 
 namespace cgl
 {
@@ -68,9 +54,6 @@ namespace cgl
 	private:
 		Mat3x3 mat;
 	};
-
-	template<class T>
-	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
 
 	class BoundingRect
 	{
@@ -138,7 +121,7 @@ namespace cgl
 	namespace gg = geos::geom;
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
-	namespace gt = geos::triangulate;
+	//namespace gt = geos::triangulate;
 
 	std::string GetGeometryType(gg::Geometry* geometry);
 

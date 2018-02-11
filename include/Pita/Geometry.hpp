@@ -1,8 +1,6 @@
 #pragma once
 #include "Node.hpp"
 #include "Context.hpp"
-#include "Vectorizer.hpp"
-#include "FontShape.hpp"
 
 namespace cgl
 {

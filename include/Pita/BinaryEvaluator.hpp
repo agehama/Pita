@@ -1,6 +1,6 @@
 #pragma once
-#include <cmath>
 #include "Node.hpp"
+#include "Context.hpp"
 
 namespace cgl
 {

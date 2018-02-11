@@ -1,8 +1,8 @@
 #pragma once
 #include <stack>
 #include <map>
+
 #include "Node.hpp"
-#include "BinaryEvaluator.hpp"
 
 namespace cgl
 {
@@ -10,7 +10,6 @@ namespace cgl
 	class Values
 	{
 	public:
-
 		using ValueList = std::unordered_map<Address, ValueType>;
 
 		Address add(const ValueType& value)
@@ -66,7 +65,6 @@ namespace cgl
 		}
 
 	private:
-
 		Address newAddress()
 		{
 			return Address(++m_ID);
@@ -80,7 +78,6 @@ namespace cgl
 	class Context
 	{
 	public:
-
 		using Scope = std::unordered_map<std::string, Address>;
 
 		using LocalContext = std::vector<Scope>;
@@ -399,7 +396,6 @@ namespace cgl
 		Address findAddress(const std::string& name)const;
 
 	private:
-
 		void initialize();
 
 		LocalContext& localEnv()

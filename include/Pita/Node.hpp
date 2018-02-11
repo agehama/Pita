@@ -12,7 +12,6 @@
 #include <set>
 #include <map>
 #include <unordered_map>
-#include <wchar.h>
 
 #include <boost/fusion/include/vector.hpp>
 
@@ -20,13 +19,7 @@
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
 
-#include <cmaes.h>
-
-#include <cppoptlib/meta.h>
-#include <cppoptlib/problem.h>
-#include <cppoptlib/solver/bfgssolver.h>
-
-#include <Unicode.hpp>
+#include <Eigen/Core>
 
 namespace cgl
 {
@@ -42,14 +35,16 @@ namespace cgl
 
 	inline void Log(std::ostream& os, const std::string& str)
 	{
-		//std::wregex regex("\n");
-		//os << std::regex_replace(str, regex, "\n          |> ") << "\n";
-		os << str << "\n";
+		std::regex regex("\n");
+		os << std::regex_replace(str, regex, "\n          |> ") << "\n";
 	}
 
 	const double pi = 3.1415926535;
 	const double deg2rad = pi / 180.0;
 	const double rad2deg = 180.0 / pi;
+
+	template<class T>
+	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
 }
 
 extern std::ofstream ofs;
@@ -195,10 +190,7 @@ namespace cgl
 			name(name_)
 		{}
 
-		static Identifier MakeIdentifier(const std::u32string& name_)
-		{
-			return Identifier(Unicode::UTF32ToUTF8(name_));
-		}
+		static Identifier MakeIdentifier(const std::u32string& name_);
 
 		bool operator==(const Identifier& other)const
 		{
@@ -450,7 +442,7 @@ namespace cgl
 		static LRValue Int(int a) { return LRValue(a); }
 		static LRValue Double(double a) { return LRValue(a); }
 		//static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
-		static LRValue Float(const std::u32string& str) { return LRValue(std::stod(Unicode::UTF32ToUTF8(str))); }
+		static LRValue Float(const std::u32string& str);
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
 		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
@@ -1507,7 +1499,7 @@ namespace cgl
 		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
 		enum Type { Normal, Path, Text };
 		Type type = Normal;
-		std::vector<Eigen::Vector2d> pathPoints;
+		Vector<Eigen::Vector2d> pathPoints;
 
 		Record() = default;
 		

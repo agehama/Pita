@@ -1,16 +1,14 @@
 #pragma once
 #pragma warning(disable:4996)
-#include <iomanip>
-#include <cmath>
 #include <functional>
 #include <thread>
 #include <mutex>
 
+#include <cppoptlib/meta.h>
+#include <cppoptlib/problem.h>
+
 #include "Node.hpp"
 #include "Context.hpp"
-#include "BinaryEvaluator.hpp"
-#include "Printer.hpp"
-#include "Geometry.hpp"
 
 namespace cgl
 {

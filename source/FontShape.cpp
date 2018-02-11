@@ -5,9 +5,10 @@
 #include <boost/archive/iterators/binary_from_base64.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
 
-#include <Pita/Node.hpp>
-#include <Pita/Context.hpp>
-#include <Pita/Vectorizer.hpp>
+#include <geos/geom.h>
+#include <geos/opBuffer.h>
+#include <geos/opDistance.h>
+
 #include <Pita/FontShape.hpp>
 
 namespace cgl
@@ -198,7 +199,6 @@ namespace cgl
 	double FontBuilder::glyphWidth(int codePoint)
 	{
 		const int glyphIndex = stbtt_FindGlyphIndex(fontInfo, codePoint);
-
 		int advanceWidth;
 		int leftSideBearing;
 		stbtt_GetCodepointHMetrics(fontInfo, codePoint, &advanceWidth, &leftSideBearing);

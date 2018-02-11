@@ -2,12 +2,8 @@
 #include <Eigen/Core>
 
 #include "Node.hpp"
-#include "Printer.hpp"
 #include "Context.hpp"
 #include "Evaluator.hpp"
-#include "OptimizationEvaluator.hpp"
-#include "Parser.hpp"
-#include "Vectorizer.hpp"
 
 namespace cgl
 {

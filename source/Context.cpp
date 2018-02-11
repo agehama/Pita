@@ -1,9 +1,9 @@
 #include <stack>
-#include <Pita/Node.hpp>
-#include <Pita/BinaryEvaluator.hpp>
 #include <Pita/Context.hpp>
 #include <Pita/Evaluator.hpp>
 #include <Pita/Geometry.hpp>
+#include <Pita/Printer.hpp>
+#include <Pita/BinaryEvaluator.hpp>
 
 namespace cgl
 {

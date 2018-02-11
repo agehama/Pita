@@ -1,14 +1,7 @@
 #pragma once
 #pragma warning(disable:4996)
-#include <iomanip>
-#include <cmath>
-#include <functional>
-
 #include "Node.hpp"
 #include "Context.hpp"
-#include "BinaryEvaluator.hpp"
-#include "Printer.hpp"
-#include "Evaluator.hpp"
 
 namespace cgl
 {
@@ -25,9 +18,6 @@ namespace cgl
 
 		//free変数集合->freeに指定された変数が実際にsatに現れたかどうか
 		std::vector<char> usedInSat;
-
-		//参照ID->SatReference
-		//std::map<int, SatReference> satRefs;
 
 		//参照ID->Address
 		std::vector<Address> refs;

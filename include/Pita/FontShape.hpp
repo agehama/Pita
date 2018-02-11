@@ -1,9 +1,6 @@
 #pragma once
 #pragma warning(disable:4996)
 #include "Vectorizer.hpp"
-#include "Node.hpp"
-#include "Context.hpp"
-#include "Vectorizer.hpp"
 
 struct stbtt_fontinfo;
 

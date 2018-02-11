@@ -1,13 +1,9 @@
 #include <Eigen/Core>
 
-#include <Pita/Node.hpp>
-#include <Pita/Printer.hpp>
-#include <Pita/Context.hpp>
-#include <Pita/Evaluator.hpp>
-#include <Pita/OptimizationEvaluator.hpp>
+#include <Pita/Program.hpp>
 #include <Pita/Parser.hpp>
 #include <Pita/Vectorizer.hpp>
-#include <Pita/Program.hpp>
+#include <Pita/Printer.hpp>
 
 extern std::ofstream ofs;
 extern bool calculating;
@@ -18,8 +14,6 @@ namespace cgl
 	{
 		using namespace cgl;
 
-		//boost::u8_to_u32_iterator<const char*> tbegin(std::begin(utf8_text)), tend(std::end(utf8_text));
-		
 		boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
 
 		Lines lines;
@@ -27,8 +21,6 @@ namespace cgl
 		SpaceSkipper<IteratorT> skipper;
 		Parser<IteratorT, SpaceSkipperT> grammer;
 
-		//std::string::const_iterator it = program.begin();
-		//if (!boost::spirit::qi::phrase_parse(it, program.end(), grammer, skipper, lines))
 		auto it = tbegin;
 		if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
 		{
@@ -37,7 +29,6 @@ namespace cgl
 			return boost::none;
 		}
 
-		//if (it != program.end())
 		if (it != tend)
 		{
 			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());

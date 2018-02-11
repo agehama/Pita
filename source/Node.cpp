@@ -1,44 +1,20 @@
 #pragma warning(disable:4996)
-#include <iomanip>
-#include <cmath>
-#include <functional>
-
 #include <Unicode.hpp>
 
 #include <Pita/Node.hpp>
-#include <Pita/Context.hpp>
-#include <Pita/BinaryEvaluator.hpp>
-#include <Pita/Printer.hpp>
-#include <Pita/Evaluator.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
 
 namespace cgl
 {
-	//Expr BuildString(const std::string& str)
-	//{
-	//	/*Expr expr;
-	//	FuncVal funcval;
-	//	funcval.expr = Identifier(str);
-	//	expr = Accessor(Identifier("DefaultFontString")).add(FunctionAccess().add(LRValue(funcval)));
-	//	return expr;*/
+	Identifier Identifier::MakeIdentifier(const std::u32string& name_)
+	{
+		return Identifier(Unicode::UTF32ToUTF8(name_));
+	}
 
-	//	/*
-	//	std::u32string str32 = Unicode::UTF8ToUTF32(str);
-	//	Expr expr;
-	//	ListConstractor list;
-	//	for (char32_t c : str32)
-	//	{
-	//		list.add(LRValue(Character(c)));
-	//	}
-	//	expr = list;
-	//	*/
-	//	
-	//	std::u32string str32 = Unicode::UTF8ToUTF32(str);
-	//	Expr expr;
-	//	expr = LRValue(CharString(str32));
-
-	//	return expr;
-	//}
+	LRValue LRValue::Float(const std::u32string& str)
+	{
+		return LRValue(std::stod(Unicode::UTF32ToUTF8(str)));
+	}
 
 	Expr BuildString(const std::u32string& str32)
 	{

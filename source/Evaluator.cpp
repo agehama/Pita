@@ -1,16 +1,14 @@
 #pragma warning(disable:4996)
-#include <iomanip>
-#include <cmath>
-#include <functional>
-#include <thread>
-#include <mutex>
+#include <cmaes.h>
 
-#include <Pita/Node.hpp>
-#include <Pita/Context.hpp>
+#include <cppoptlib/meta.h>
+#include <cppoptlib/problem.h>
+#include <cppoptlib/solver/bfgssolver.h>
+
+#include <Pita/Evaluator.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/Geometry.hpp>
-#include <Pita/Evaluator.hpp>
 
 namespace cgl
 {

@@ -1,32 +1,8 @@
 #include <Eigen/Core>
 
-#include <geos/geom/Point.h>
-#include <geos/geom/Polygon.h>
-#include <geos/geom/LineString.h>
-#include <geos/geom/LinearRing.h>
-#include <geos/geom/LineSegment.h>
-#include <geos/geom/MultiLineString.h>
-#include <geos/geom/CoordinateSequenceFactory.h>
-#include <geos/geom/CoordinateArraySequence.h>
-#include <geos/geom/GeometryFactory.h>
-#include <geos/geom/Coordinate.h>
-#include <geos/geom/CoordinateFilter.h>
-#include <geos/index/quadtree/Quadtree.h>
-#include <geos/index/ItemVisitor.h>
-#include <geos/geom/IntersectionMatrix.h>
-#include <geos/geomgraph/PlanarGraph.h>
-#include <geos/operation/linemerge/LineMergeGraph.h>
-#include <geos/planargraph.h>
-#include <geos/planargraph/Edge.h>
-#include <geos/planargraph/Node.h>
-#include <geos/planargraph/DirectedEdge.h>
-#include <geos/operation/polygonize/Polygonizer.h>
+#include <geos/geom.h>
 #include <geos/opBuffer.h>
-#include <geos/geom/PrecisionModel.h>
-#include <geos/operation/linemerge/LineMerger.h>
 #include <geos/opDistance.h>
-#include <geos/operation/predicate/RectangleContains.h>
-#include <geos/triangulate/VoronoiDiagramBuilder.h>
 
 #include <Pita/Node.hpp>
 #include <Pita/Context.hpp>
@@ -40,19 +16,16 @@ namespace cgl
 		auto it = values.find(name);
 		if (it == values.end())
 		{
-			//CGL_DebugLog(__FUNCTION__);
 			return false;
 		}
 		auto opt = environment->expandOpt(it->second);
 		if (!opt)
 		{
-			//CGL_DebugLog(__FUNCTION__);
 			return false;
 		}
 		const Evaluated& value = opt.value();
 		if (!IsType<int>(value) && !IsType<double>(value))
 		{
-			//CGL_DebugLog(__FUNCTION__);
 			return false;
 		}
 		output = IsType<int>(value) ? static_cast<double>(As<int>(value)) : As<double>(value);
@@ -159,35 +132,26 @@ namespace cgl
 
 		for (const Address vertex : vertices.data)
 		{
-			//CGL_DebugLog(__FUNCTION__);
 			const Evaluated value = pEnv->expand(vertex);
 
-			//CGL_DebugLog(__FUNCTION__);
 			if (IsType<Record>(value))
 			{
 				double x = 0, y = 0;
 				const Record& pos = As<Record>(value);
-				//CGL_DebugLog(__FUNCTION__);
 				if (!ReadDouble(x, "x", pos, pEnv) || !ReadDouble(y, "y", pos, pEnv))
 				{
-					//CGL_DebugLog(__FUNCTION__);
 					return false;
 				}
-				//CGL_DebugLog(__FUNCTION__);
 				Eigen::Vector2d v;
 				v << x, y;
-				//CGL_DebugLog(ToS(v.x()) + ", " + ToS(v.y()));
 				output.push_back(transform.product(v));
-				//CGL_DebugLog(__FUNCTION__);
 			}
 			else
 			{
-				//CGL_DebugLog(__FUNCTION__);
 				return false;
 			}
 		}
 
-		//CGL_DebugLog(__FUNCTION__);
 		return true;
 	}
 

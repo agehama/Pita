@@ -107,9 +107,10 @@ namespace cgl
 			m_localEnvStack.pop();
 		}
 
-		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function);
+		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction);
 
 		Evaluated callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments);
+		bool isPlateausBuiltInFunction(Address functionAddress);
 
 		/*
 		boost::optional<Address> find(const std::string& name)const
@@ -452,6 +453,7 @@ namespace cgl
 		void garbageCollect();
 
 		Values<BuiltInFunction> m_functions;
+		std::unordered_map<Address, std::string> m_plateausFunctions;
 
 		Values<Evaluated> m_values;
 

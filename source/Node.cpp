@@ -77,6 +77,7 @@ namespace cgl
 			expr = candidateExpr.value();
 			refs = binder.refs;
 			invRefs = binder.invRefs;
+			hasPlateausFunction = binder.hasPlateausFunction;
 
 			//satに出てこないfreeVariablesの削除
 			for (int i = static_cast<int>(freeVariables.size()) - 1; 0 <= i; --i)
@@ -93,6 +94,7 @@ namespace cgl
 			refs.clear();
 			invRefs.clear();
 			freeVariables.clear();
+			hasPlateausFunction = false;
 		}
 
 		{

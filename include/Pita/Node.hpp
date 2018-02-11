@@ -516,6 +516,8 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
+		bool hasPlateausFunction = false;
+
 		void addConstraint(const Expr& logicExpr);
 		void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<Address>& freeVariables);
 

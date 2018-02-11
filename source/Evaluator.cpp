@@ -932,8 +932,6 @@ namespace cgl
 
 	LRValue Eval::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 	{
-		std::cout << "callFunction:" << std::endl;
-
 		CGL_DebugLog("Function Context:");
 		pEnv->printContext();
 
@@ -1207,8 +1205,6 @@ namespace cgl
 
 	LRValue Eval::operator()(const For& forExpression)
 	{
-		std::cout << "For:" << std::endl;
-
 		const Evaluated startVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeStart));
 		const Evaluated endVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeEnd));
 
@@ -1364,8 +1360,6 @@ namespace cgl
 
 	LRValue Eval::operator()(const RecordConstractor& recordConsractor)
 	{
-		std::cout << "RecordConstractor:" << std::endl;
-
 		CGL_DebugLog("");
 		pEnv->enterScope();
 		CGL_DebugLog("");
@@ -1595,100 +1589,109 @@ namespace cgl
 				}
 				CGL_DebugLog("End Record MakeMap");
 
-				/*
-				ConstraintProblem constraintProblem;
-				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
+				if (problem.hasPlateausFunction)
 				{
-					//-1000 -> 1000
-					for (int i = 0; i < v.size(); ++i)
-					{
-						problem.update(variable2Data[i], v[i]);
-						//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
-					}
+					std::cout << "Solve constraint by CMA-ES...\n";
 
+					libcmaes::FitFunc func = [&](const double *x, const int N)->double
 					{
-						for (const auto& keyval : problem.invRefs)
+						for (int i = 0; i < N; ++i)
 						{
-							pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+							problem.update(variable2Data[i], x[i]);
 						}
-					}
 
-					pEnv->switchFrontScope();
-					double result = problem.eval(pEnv);
-					pEnv->switchBackScope();
-
-					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
-					std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
-					return result;
-				};
-				constraintProblem.originalRecord = record;
-				constraintProblem.keyList = keyList;
-				constraintProblem.pEnv = pEnv;
-
-				Eigen::VectorXd x0s(record.freeVariableRefs.size());
-				for (int i = 0; i < x0s.size(); ++i)
-				{
-					x0s[i] = problem.data[variable2Data[i]];
-					//x0s[i] = (problem.data[variable2Data[i]] / 2000.0) + 0.5;
-					CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
-				}
-
-				cppoptlib::BfgsSolver<ConstraintProblem> solver;
-				solver.minimize(constraintProblem, x0s);
-
-				resultxs.resize(x0s.size());
-				for (int i = 0; i < x0s.size(); ++i)
-				{
-					resultxs[i] = x0s[i];
-				}
-				//*/
-
-				//*
-				libcmaes::FitFunc func = [&](const double *x, const int N)->double
-				{
-					for (int i = 0; i < N; ++i)
-					{
-						problem.update(variable2Data[i], x[i]);
-					}
-
-					{
-						for (const auto& keyval : problem.invRefs)
 						{
-							pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+							for (const auto& keyval : problem.invRefs)
+							{
+								pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+							}
 						}
+
+						pEnv->switchFrontScope();
+						double result = problem.eval(pEnv);
+						pEnv->switchBackScope();
+
+						CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+
+						return result;
+					};
+
+					CGL_DebugLog("");
+
+					std::vector<double> x0(record.freeVariableRefs.size());
+					for (int i = 0; i < x0.size(); ++i)
+					{
+						x0[i] = problem.data[variable2Data[i]];
+						CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
 					}
 
-					pEnv->switchFrontScope();
-					double result = problem.eval(pEnv);
-					pEnv->switchBackScope();
+					CGL_DebugLog("");
 
-					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
-					
-					return result;
-				};
+					const double sigma = 0.1;
 
-				CGL_DebugLog("");
+					const int lambda = 100;
 
-				std::vector<double> x0(record.freeVariableRefs.size());
-				for (int i = 0; i < x0.size(); ++i)
-				{
-					x0[i] = problem.data[variable2Data[i]];
-					CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
+					libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+					CGL_DebugLog("");
+					libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
+					CGL_DebugLog("");
+					resultxs = cmasols.best_candidate().get_x();
+					CGL_DebugLog("");
+
+					std::cout << "solved\n";
 				}
+				else
+				{
+					std::cout << "Solve constraint by BFGS...\n";
 
-				CGL_DebugLog("");
+					ConstraintProblem constraintProblem;
+					constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
+					{
+						//-1000 -> 1000
+						for (int i = 0; i < v.size(); ++i)
+						{
+							problem.update(variable2Data[i], v[i]);
+							//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
+						}
 
-				const double sigma = 0.1;
+						{
+							for (const auto& keyval : problem.invRefs)
+							{
+								pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+							}
+						}
 
-				const int lambda = 100;
+						pEnv->switchFrontScope();
+						double result = problem.eval(pEnv);
+						pEnv->switchBackScope();
 
-				libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
-				CGL_DebugLog("");
-				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
-				CGL_DebugLog("");
-				resultxs = cmasols.best_candidate().get_x();
-				CGL_DebugLog("");
-				//*/
+						CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+						//std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
+						return result;
+					};
+					constraintProblem.originalRecord = record;
+					constraintProblem.keyList = keyList;
+					constraintProblem.pEnv = pEnv;
+
+					Eigen::VectorXd x0s(record.freeVariableRefs.size());
+					for (int i = 0; i < x0s.size(); ++i)
+					{
+						x0s[i] = problem.data[variable2Data[i]];
+						//x0s[i] = (problem.data[variable2Data[i]] / 2000.0) + 0.5;
+						CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
+					}
+
+					cppoptlib::BfgsSolver<ConstraintProblem> solver;
+					solver.minimize(constraintProblem, x0s);
+
+					resultxs.resize(x0s.size());
+					for (int i = 0; i < x0s.size(); ++i)
+					{
+						resultxs[i] = x0s[i];
+					}
+
+					std::cout << "solved\n";
+				}
 			}
 		}
 

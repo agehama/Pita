@@ -24,12 +24,12 @@ namespace cgl
 		//return address;
 	}
 
-	void Context::registerBuiltInFunction(const std::string& name, const BuiltInFunction& function)
+	void Context::registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction)
 	{
 		//m_valuesにFuncVal追加
 		//m_functionsにfunction追加
 		//m_scopeにname->FuncVal追加
-			
+
 		const Address address1 = m_functions.add(function);
 		const Address address2 = m_values.add(FuncVal(address1));
 
@@ -39,6 +39,11 @@ namespace cgl
 		}
 
 		bindValueID(name, address1);
+
+		if (isPlateausFunction)
+		{
+			m_plateausFunctions[address1] = name;
+		}
 	}
 
 	Evaluated Context::callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
@@ -50,6 +55,11 @@ namespace cgl
 			
 		CGL_Error("ここは通らないはず");
 		return 0;
+	}
+
+	bool Context::isPlateausBuiltInFunction(Address functionAddress)
+	{
+		return m_plateausFunctions.find(functionAddress) != m_plateausFunctions.end();
 	}
 
 	const Evaluated& Context::expand(const LRValue& lrvalue)const
@@ -461,8 +471,9 @@ namespace cgl
 
 			printEvaluated(pEnv->expand(arguments[0]), pEnv, std::cout, 0);
 			return 0;
-		}
-		);
+		},
+			false
+			);
 
 		registerBuiltInFunction(
 			"sin",
@@ -474,8 +485,9 @@ namespace cgl
 			}
 
 			return Sin(pEnv->expand(arguments[0]));
-		}
-		);
+		},
+			false
+			);
 
 		registerBuiltInFunction(
 			"cos",
@@ -487,8 +499,9 @@ namespace cgl
 			}
 
 			return Cos(pEnv->expand(arguments[0]));
-		}
-		);
+		},
+			false
+			);
 
 		registerBuiltInFunction(
 			"diff",
@@ -500,8 +513,9 @@ namespace cgl
 			}
 
 			return ShapeDifference(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
-		}
-		);
+		},
+			true
+			);
 
 		registerBuiltInFunction(
 			"buffer",
@@ -513,8 +527,9 @@ namespace cgl
 			}
 
 			return ShapeBuffer(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
-		}
-		);
+		},
+			true
+			);
 
 		registerBuiltInFunction(
 			"area",
@@ -526,8 +541,9 @@ namespace cgl
 			}
 
 			return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
-		}
-		);
+		},
+			true
+			);
 
 		registerBuiltInFunction(
 			"DefaultFontString",
@@ -555,8 +571,9 @@ namespace cgl
 			return GetDefaultFontString(static_cast<std::string>(As<Identifier>(expr)), m_weakThis.lock());
 			//return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
 			//return 0;
-		}
-		);
+		},
+			false
+			);
 	}
 
 	void Context::garbageCollect()

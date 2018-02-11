@@ -128,7 +128,7 @@ namespace cgl
 			}
 		}*/
 
-		//組み込み関数の場合は関数定義の中身と照らし合わせるという事ができないため、とりあえず引数から辿れる要素を全て見る
+		//組み込み関数の場合は関数定義の中身と照らし合わせるという事ができないため、とりあえず引数から辿れる要素を全て指定する
 		if (funcVal.builtinFuncAddress)
 		{
 			bool result = false;
@@ -140,6 +140,13 @@ namespace cgl
 					result = static_cast<bool>(addSatRef(address)) || result;
 				}
 			}
+
+			//もし組み込み関数の引数に変数が指定されていた場合は不連続関数かどうかを保存し、これによって最適化手法を切り替えられるようにしておく
+			if (result)
+			{
+				hasPlateausFunction = pEnv->isPlateausBuiltInFunction(funcVal.builtinFuncAddress.value()) || hasPlateausFunction;
+			}
+
 			return result;
 		}
 

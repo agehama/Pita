@@ -115,7 +115,7 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cout << "execute succeeded" << std::endl;
-					printEvaluated(evaluated.value(), pEnv, std::cout, 0);
+					//printEvaluated(evaluated.value(), pEnv, std::cout, 0);
 
 					std::cout << "output SVG..." << std::endl;
 					std::ofstream file("result.svg");

@@ -25,6 +25,8 @@ namespace cgl
 		//Address->参照ID
 		std::unordered_map<Address, int> invRefs;
 
+		bool hasPlateausFunction = false;
+
 		SatVariableBinder(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
 			pEnv(pEnv),
 			freeVariables(freeVariables),

@@ -1,4 +1,5 @@
 #pragma once
+#include <cfloat>
 #include <Eigen/Core>
 
 #include "Node.hpp"

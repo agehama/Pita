@@ -2,6 +2,7 @@
 #include <Unicode.hpp>
 
 #include <Pita/Node.hpp>
+#include <Pita/Context.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
 
 namespace cgl
@@ -14,6 +15,25 @@ namespace cgl
 	LRValue LRValue::Float(const std::u32string& str)
 	{
 		return LRValue(std::stod(Unicode::UTF32ToUTF8(str)));
+	}
+
+	bool LRValue::isValid() const
+	{
+		return IsType<Address>(value)
+			? As<Address>(value).isValid()
+			: true; //Reference と Evaluated は常に有効であるものとする
+	}
+
+	std::string LRValue::toString() const
+	{
+		return "LRValue";
+	}
+
+	Address LRValue::address(const Context & env) const
+	{
+		return IsType<Address>(value)
+			? As<Address>(value)
+			: env.getReference(As<Reference>(value));
 	}
 
 	Expr BuildString(const std::u32string& str32)

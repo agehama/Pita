@@ -125,7 +125,9 @@ namespace cgl
 		Not,
 
 		Plus,
-		Minus
+		Minus,
+
+		Dynamic
 	};
 
 	enum class BinaryOp
@@ -250,6 +252,31 @@ namespace cgl
 
 		unsigned valueID;
 	};
+
+	struct Reference
+	{
+	public:
+		Reference() {}
+
+		explicit Reference(unsigned referenceID) :
+			referenceID(referenceID)
+		{}
+
+		bool operator==(const Reference other)const
+		{
+			return referenceID == other.referenceID;
+		}
+
+		bool operator!=(const Reference other)const
+		{
+			return referenceID != other.referenceID;
+		}
+
+	private:
+		friend struct std::hash<Reference>;
+
+		unsigned referenceID;
+	};
 }
 
 namespace std
@@ -261,6 +288,16 @@ namespace std
 		size_t operator()(const cgl::Address& address)const
 		{
 			return hash<size_t>()(static_cast<size_t>(address.valueID));
+		}
+	};
+
+	template <>
+	struct hash<cgl::Reference>
+	{
+	public:
+		size_t operator()(const cgl::Reference& reference)const
+		{
+			return hash<size_t>()(static_cast<size_t>(reference.referenceID));
 		}
 	};
 }
@@ -430,6 +467,8 @@ namespace cgl
 		Evaluated value;
 	};
 
+	class Context;
+
 	struct LRValue
 	{
 		LRValue() = default;
@@ -437,6 +476,7 @@ namespace cgl
 		LRValue(const Evaluated& value) :value(RValue(value)) {}
 		LRValue(const RValue& value) :value(value) {}
 		LRValue(Address value) :value(value) {}
+		LRValue(Reference value) :value(value) {}
 
 		static LRValue Bool(bool a) { return LRValue(a); }
 		static LRValue Int(int a) { return LRValue(a); }
@@ -454,25 +494,52 @@ namespace cgl
 		bool isLValue()const
 		{
 			return !isRValue();
+			//return IsType<Address>(value);
 		}
 
-		Address address()const
+		bool isAddress()const
 		{
-			return As<Address>(value);
+			return IsType<Address>(value);
 		}
 
+		bool isReference()const
+		{
+			return IsType<Reference>(value);
+		}
+
+		bool isValid()const;
+
+		std::string toString()const;
+
+		Address address(const Context& env)const;
+
+		Reference reference()const
+		{
+			return As<Reference>(value);
+		}
+		
 		const Evaluated& evaluated()const
 		{
 			return As<RValue>(value).value;
 		}
 
+		Evaluated& mutableEvaluated()
+		{
+			return As<RValue&>(value).value;
+		}
+
 		bool operator==(const LRValue& other)const
 		{
-			if (isLValue() && other.isLValue())
+			/*if (isLValue() && other.isLValue())
 			{
 				return address() == other.address();
 			}
 			else if (isRValue() && other.isRValue())
+			{
+				return IsEqualEvaluated(evaluated(), other.evaluated());
+			}*/
+
+			if (isRValue() && other.isRValue())
 			{
 				return IsEqualEvaluated(evaluated(), other.evaluated());
 			}
@@ -480,7 +547,7 @@ namespace cgl
 			return false;
 		}
 
-		boost::variant<boost::recursive_wrapper<RValue>, Address> value;
+		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference> value;
 	};
 
 	struct OptimizationProblemSat;

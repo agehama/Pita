@@ -178,7 +178,11 @@ namespace cgl
 
 		const Evaluated& expand(const LRValue& lrvalue)const;
 
+		Evaluated& mutableExpand(LRValue& lrvalue);
+
 		boost::optional<const Evaluated&> expandOpt(const LRValue& lrvalue)const;
+
+		boost::optional<Evaluated&> mutableExpandOpt(LRValue& lrvalue);
 
 		Address evalReference(const Accessor& access);
 
@@ -186,6 +190,10 @@ namespace cgl
 		std::vector<Address> expandReferences(Address address);
 
 		std::vector<Address> expandReferences2(const Accessor& access);
+
+		Reference bindReference(Address address);
+		Address getReference(Reference reference)const;
+		void cloneReference(const std::unordered_map<Address, Address>& replaceMap);
 
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
 		/*
@@ -265,7 +273,17 @@ namespace cgl
 			makeVariable(name, makeTemporaryValue(value));
 		}
 
-		void bindReference(const std::string& nameLhs, const std::string& nameRhs);
+		/*void bindReference(const std::string& nameLhs, const std::string& nameRhs)
+		{
+			const Address address = findAddress(nameRhs);
+			if (!address.isValid())
+			{
+				std::cerr << "Error(" << __LINE__ << ")\n";
+				return;
+			}
+
+			bindValueID(nameLhs, address);
+		}*/
 
 		/*
 		void bindValueID(const std::string& name, unsigned valueID)
@@ -302,26 +320,19 @@ namespace cgl
 		{
 			localEnv().back()[name] = ID;
 		}
-
-		/*void push()
-		{
-			m_bindingNames.emplace_back(LocalContext::Type::NormalScope);
-		}
-
-		void pop()
-		{
-			m_bindingNames.pop_back();
-		}*/
-
+		
 		void printContext(bool flag = false)const;
 		void printContext(std::ostream& os)const;
 
-		//void assignToObject(const ObjectReference& objectRef, const Evaluated& newValue);
+		void TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(Address address, const Evaluated& newValue)
+		{
+			m_values[address] = newValue;
+		}
+
+		/*
 		void assignToObject(Address address, const Evaluated& newValue)
 		{
 			m_values[address] = newValue;
-			
-			//m_values[address] = expandRef(newValue);
 		}
 
 		//これで正しい？
@@ -329,7 +340,10 @@ namespace cgl
 		{
 			m_values[addressTo] = m_values[addressFrom];
 			//m_values[addressTo] = expandRef(m_values[addressFrom]);
-		}
+		}*/
+
+		//Accessorの示すリスト or レコードの持つアドレスを書き換える
+		void assignToAccessor(const Accessor& accessor, const LRValue& newValue);
 
 		static std::shared_ptr<Context> Make();
 
@@ -409,6 +423,8 @@ namespace cgl
 			return m_localEnvStack.top();
 		}
 
+		void changeAddress(Address addressFrom, Address addressTo);
+
 		/*int scopeDepth()const
 		{
 			return static_cast<int>(m_variables.size()) - 1;
@@ -455,6 +471,9 @@ namespace cgl
 		Values<BuiltInFunction> m_functions;
 		std::unordered_map<Address, std::string> m_plateausFunctions;
 
+		std::unordered_map<Reference, Address> m_refAddressMap;
+		std::unordered_multimap<Address, Reference> m_addressRefMap;
+
 		Values<Evaluated> m_values;
 
 		//変数はスコープ単位で管理される
@@ -470,6 +489,7 @@ namespace cgl
 		std::stack<LocalContext> m_localEnvStack;
 
 		//std::vector<Address> m_funcValIDs;
+		unsigned m_referenceID = 0;
 
 		std::weak_ptr<Context> m_weakThis;
 	};

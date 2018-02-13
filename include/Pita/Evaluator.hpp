@@ -42,9 +42,11 @@ namespace cgl
 	{
 	public:
 		const std::unordered_map<Address, Address>& replaceMap;
+		std::shared_ptr<Context> pEnv;
 
-		AddressReplacer(const std::unordered_map<Address, Address>& replaceMap) :
-			replaceMap(replaceMap)
+		AddressReplacer(const std::unordered_map<Address, Address>& replaceMap, std::shared_ptr<Context> pEnv) :
+			replaceMap(replaceMap),
+			pEnv(pEnv)
 		{}
 
 		boost::optional<Address> getOpt(Address address)const;

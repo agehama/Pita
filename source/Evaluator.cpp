@@ -79,13 +79,34 @@ namespace cgl
 
 	Expr AddressReplacer::operator()(const LRValue& node)const
 	{
+		/*
 		if (node.isLValue())
 		{
-			if (auto opt = getOpt(node.address()))
+			if (auto opt = getOpt(node.address(*pEnv)))
 			{
 				return LRValue(opt.value());
 			}
 		}
+		return node;
+		*/
+		
+		if (node.isRValue())
+		{
+			return node;
+		}
+
+		if (auto opt = getOpt(node.address(*pEnv)))
+		{
+			if (node.isReference())
+			{
+				return LRValue(pEnv->bindReference(opt.value()));
+			}
+			else
+			{
+				return LRValue(opt.value());
+			}
+		}
+
 		return node;
 	}
 	
@@ -324,7 +345,7 @@ namespace cgl
 		{
 			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
 			const Evaluated& substance = pEnv->expand(data[i]);
-			pEnv->assignToObject(data[i], boost::apply_visitor(*this, substance));
+			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(data[i], boost::apply_visitor(*this, substance));
 		}
 
 		return node;
@@ -336,7 +357,7 @@ namespace cgl
 		{
 			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
 			const Evaluated& substance = pEnv->expand(value.second);
-			pEnv->assignToObject(value.second, boost::apply_visitor(*this, substance));
+			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(value.second, boost::apply_visitor(*this, substance));
 		}
 
 		return node;
@@ -353,7 +374,7 @@ namespace cgl
 		result.arguments = node.arguments;
 		result.builtinFuncAddress = node.builtinFuncAddress;
 
-		AddressReplacer replacer(replaceMap);
+		AddressReplacer replacer(replaceMap, pEnv);
 		result.expr = boost::apply_visitor(replacer, node.expr);
 
 		return result;
@@ -381,7 +402,7 @@ namespace cgl
 
 	void ValueCloner3::operator()(Record& node)
 	{
-		AddressReplacer replacer(replaceMap);
+		AddressReplacer replacer(replaceMap, pEnv);
 
 		auto& problem = node.problem;
 		if (problem.candidateExpr)
@@ -471,6 +492,18 @@ namespace cgl
 
 	Expr ClosureMaker::operator()(const UnaryExpr& node)
 	{
+		if (node.op == UnaryOp::Dynamic)
+		{
+			Eval evaluator(pEnv);
+
+			const LRValue lrvalue = boost::apply_visitor(evaluator, node.lhs);
+			if (lrvalue.isRValue())
+			{
+				CGL_Error("単項@演算子の右辺には識別子かアクセッサしか用いることができません");
+			}
+
+			return LRValue(pEnv->bindReference(lrvalue.address(*pEnv)));
+		}
 		return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op);
 	}
 
@@ -764,6 +797,7 @@ namespace cgl
 
 	bool ConstraintProblem::callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar> &state, const TVector &x)
 	{
+		/*
 		Record tempRecord = originalRecord;
 
 		for (size_t i = 0; i < x.size(); ++i)
@@ -779,7 +813,7 @@ namespace cgl
 		}
 
 		ProgressStore::TryWrite(pEnv, tempRecord);
-
+		*/
 		return true;
 	}
 	
@@ -789,9 +823,10 @@ namespace cgl
 
 		switch (node.op)
 		{
-		case UnaryOp::Not:   return RValue(Not(lhs, *pEnv));
-		case UnaryOp::Minus: return RValue(Minus(lhs, *pEnv));
-		case UnaryOp::Plus:  return RValue(Plus(lhs, *pEnv));
+		case UnaryOp::Not:     return RValue(Not(lhs, *pEnv));
+		case UnaryOp::Minus:   return RValue(Minus(lhs, *pEnv));
+		case UnaryOp::Plus:    return RValue(Plus(lhs, *pEnv));
+		case UnaryOp::Dynamic: return RValue(lhs);
 		}
 
 		CGL_Error("Invalid UnaryExpr");
@@ -800,16 +835,19 @@ namespace cgl
 
 	LRValue Eval::operator()(const BinaryExpr& node)
 	{
-		//const Evaluated lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs));
 		const LRValue lhs_ = boost::apply_visitor(*this, node.lhs);
-		//const Evaluated lhs = pEnv->expand(lhs_);
+		const LRValue rhs_ = boost::apply_visitor(*this, node.rhs);
+
 		Evaluated lhs;
 		if (node.op != BinaryOp::Assign)
 		{
 			lhs = pEnv->expand(lhs_);
-		}
 			
-		const Evaluated rhs = pEnv->expand(boost::apply_visitor(*this, node.rhs));
+		}
+
+		Evaluated rhs = pEnv->expand(rhs_);
+
+		//const Evaluated rhs = pEnv->expand(boost::apply_visitor(*this, node.rhs));
 
 		switch (node.op)
 		{
@@ -840,7 +878,8 @@ namespace cgl
 			//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
 			if (auto valOpt = AsOpt<LRValue>(node.lhs))
 			{
-				const LRValue& val = valOpt.value();
+				CGL_Error("一時オブジェクトへの代入はできません");
+				/*const LRValue& val = valOpt.value();
 				if (val.isLValue())
 				{
 					if (val.address().isValid())
@@ -855,25 +894,6 @@ namespace cgl
 				else
 				{
 					CGL_Error("");
-				}
-
-				/*const RValue& val = valOpt.value();
-				if (IsType<Address>(val.value))
-				{
-					if (Address address = As<Address>(val.value))
-					{
-						pEnv->assignToObject(address, rhs);
-					}
-					else
-					{
-						CGL_Error("Invalid address");
-						return 0;
-					}
-				}
-				else
-				{
-					CGL_Error("");
-					return 0;
 				}*/
 			}
 			else if (auto valOpt = AsOpt<Identifier>(node.lhs))
@@ -898,14 +918,13 @@ namespace cgl
 
 				return RValue(rhs);
 			}
-			else if (auto valOpt = AsOpt<Accessor>(node.lhs))
+			else if (auto accessorOpt = AsOpt<Accessor>(node.lhs))
 			{
 				if (lhs_.isLValue())
 				{
-					Address address = lhs_.address();
-					if (address.isValid())
+					if (lhs_.isValid())
 					{
-						pEnv->assignToObject(address, rhs);
+						pEnv->assignToAccessor(accessorOpt.value(), rhs_);
 						return RValue(rhs);
 					}
 					else
@@ -1340,7 +1359,7 @@ namespace cgl
 			LRValue lrvalue = boost::apply_visitor(*this, expr);
 			if (lrvalue.isLValue())
 			{
-				list.append(lrvalue.address());
+				list.append(lrvalue.address(*pEnv));
 			}
 			else
 			{
@@ -1603,7 +1622,7 @@ namespace cgl
 						{
 							for (const auto& keyval : problem.invRefs)
 							{
-								pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+								pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, problem.data[keyval.second]);
 							}
 						}
 
@@ -1657,7 +1676,7 @@ namespace cgl
 						{
 							for (const auto& keyval : problem.invRefs)
 							{
-								pEnv->assignToObject(keyval.first, problem.data[keyval.second]);
+								pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, problem.data[keyval.second]);
 							}
 						}
 
@@ -1699,7 +1718,7 @@ namespace cgl
 		for (size_t i = 0; i < resultxs.size(); ++i)
 		{
 			Address address = record.freeVariableRefs[i];
-			pEnv->assignToObject(address, resultxs[i]);
+			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
 			//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
 		}
 
@@ -2042,7 +2061,7 @@ namespace cgl
 		LRValue headValue = boost::apply_visitor(*this, accessor.head);
 		if (headValue.isLValue())
 		{
-			address = headValue.address();
+			address = headValue.address(*pEnv);
 		}
 		else
 		{
@@ -2141,7 +2160,7 @@ namespace cgl
 					const LRValue currentArgument = pEnv->expand(boost::apply_visitor(*this, expr));
 					if (currentArgument.isLValue())
 					{
-						args.push_back(currentArgument.address());
+						args.push_back(currentArgument.address(*pEnv));
 					}
 					else
 					{
@@ -2171,7 +2190,7 @@ namespace cgl
 			CGL_Error("不正な値");
 		}
 
-		Address address = node.address();
+		Address address = node.address(*pEnv);
 		for (const auto& freeVal : freeVariables)
 		{
 			if (address == freeVal)
@@ -2222,7 +2241,7 @@ namespace cgl
 
 		if (value.isLValue())
 		{
-			const Address address = value.address();
+			const Address address = value.address(*pEnv);
 
 			for (const auto& freeVal : freeVariables)
 			{
@@ -2295,7 +2314,7 @@ namespace cgl
 		}
 		else
 		{
-			const Address address = node.address();
+			const Address address = node.address(*pEnv);
 
 			if (!address.isValid())
 			{
@@ -2350,9 +2369,10 @@ namespace cgl
 
 		switch (node.op)
 		{
-		case UnaryOp::Not:   return UnaryExpr(lhs, UnaryOp::Not);
-		case UnaryOp::Minus: return UnaryExpr(lhs, UnaryOp::Minus);
-		case UnaryOp::Plus:  return lhs;
+		case UnaryOp::Not:     return UnaryExpr(lhs, UnaryOp::Not);
+		case UnaryOp::Minus:   return UnaryExpr(lhs, UnaryOp::Minus);
+		case UnaryOp::Plus:    return lhs;
+		case UnaryOp::Dynamic: return lhs;
 		}
 
 		CGL_Error("invalid expression");
@@ -2455,7 +2475,7 @@ namespace cgl
 				CGL_Error("sat式中のアクセッサの先頭部が不正な値です");
 			}
 
-			const Address address = headAddressValue.address();
+			const Address address = headAddressValue.address(*pEnv);
 
 			//↑のIdentifierと同様に直接展開する
 			//result.head = LRValue(address);
@@ -2603,7 +2623,7 @@ namespace cgl
 						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
 						if (lrvalue.isLValue())
 						{
-							args.push_back(lrvalue.address());
+							args.push_back(lrvalue.address(*pEnv));
 						}
 						else
 						{
@@ -2799,7 +2819,7 @@ namespace cgl
 			const LRValue& lrvalue2 = As<LRValue>(value2);
 			if (lrvalue1.isLValue() && lrvalue2.isLValue())
 			{
-				return lrvalue1.address() == lrvalue2.address();
+				return lrvalue1 == lrvalue2;
 			}
 			else if (lrvalue1.isRValue() && lrvalue2.isRValue())
 			{

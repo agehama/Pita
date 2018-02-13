@@ -164,8 +164,9 @@ namespace cgl
 		switch (node.op)
 		{
 			//case UnaryOp::Not:   return lhs;
-		case UnaryOp::Minus: os << "-( "; break;
-		case UnaryOp::Plus:  os << "+( "; break;
+		case UnaryOp::Minus:    os << "-( "; break;
+		case UnaryOp::Plus:     os << "+( "; break;
+		case UnaryOp::Dynamic:  os << "@( "; break;
 		}
 
 		boost::apply_visitor(*this, node.lhs);
@@ -223,8 +224,7 @@ namespace cgl
 	{
 		if (node.isLValue())
 		{
-			//os << indent() << "Address(" << node.address() << ")" << std::endl;
-			os << indent() << "Address(" << node.address().toString() << ")" << std::endl;
+			os << indent() << "Address(" << node.toString() << ")" << std::endl;
 		}
 		else
 		{

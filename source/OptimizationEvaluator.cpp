@@ -53,7 +53,7 @@ namespace cgl
 	{
 		if (node.isLValue())
 		{
-			const Address address = node.address();
+			const Address address = node.address(*pEnv);
 
 			if (!address.isValid())
 			{
@@ -273,7 +273,7 @@ namespace cgl
 				CGL_Error("sat式中のアクセッサの先頭部が不正な値です");
 			}
 
-			headAddress = headAddressValue.address();
+			headAddress = headAddressValue.address(*pEnv);
 		}
 		else
 		{
@@ -387,7 +387,7 @@ namespace cgl
 						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
 						if (lrvalue.isLValue())
 						{
-							arguments.push_back(lrvalue.address());
+							arguments.push_back(lrvalue.address(*pEnv));
 						}
 						else
 						{
@@ -430,12 +430,12 @@ namespace cgl
 		//CGL_DebugLog("Evaluated operator()(const LRValue& node)");
 		if (node.isLValue())
 		{
-			if (auto opt = expandFreeOpt(node.address()))
+			if (auto opt = expandFreeOpt(node.address(*pEnv)))
 			{
 				return opt.value();
 			}
 			//CGL_DebugLog(std::string("address: ") + node.address().toString());
-			return pEnv->expand(node.address());
+			return pEnv->expand(node.address(*pEnv));
 		}
 		return node.evaluated();
 	}
@@ -473,7 +473,7 @@ namespace cgl
 	Evaluated EvalSatExpr::operator()(const BinaryExpr& node)
 	{
 		//CGL_DebugLog("Evaluated operator()(const BinaryExpr& node)");
-			
+
 		const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
 		if (node.op != BinaryOp::Assign)
 		{
@@ -502,22 +502,7 @@ namespace cgl
 		}
 		else if (auto valOpt = AsOpt<LRValue>(node.lhs))
 		{
-			const LRValue& val = valOpt.value();
-			if (val.isLValue())
-			{
-				if (val.address().isValid())
-				{
-					pEnv->assignToObject(val.address(), rhs);
-				}
-				else
-				{
-					CGL_Error("reference error");
-				}
-			}
-			else
-			{
-				CGL_Error("ここは通らないはず");
-			}
+			CGL_Error("一時オブジェクトへの代入はできません");
 		}
 		else if (auto valOpt = AsOpt<Identifier>(node.lhs))
 		{
@@ -527,7 +512,8 @@ namespace cgl
 			//変数が存在する：代入式
 			if (address.isValid())
 			{
-				pEnv->assignToObject(address, rhs);
+				//pEnv->assignToObject(address, rhs);
+				pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
 			}
 			//変数が存在しない：変数宣言式
 			else
@@ -537,16 +523,16 @@ namespace cgl
 
 			return rhs;
 		}
-		else if (auto valOpt = AsOpt<Accessor>(node.lhs))
+		else if (auto accessorOpt = AsOpt<Accessor>(node.lhs))
 		{
 			Eval evaluator(pEnv);
 			const LRValue lhs = boost::apply_visitor(evaluator, node.lhs);
 			if (lhs.isLValue())
 			{
-				Address address = lhs.address();
-				if (address.isValid())
+				if (lhs.isValid())
 				{
-					pEnv->assignToObject(address, rhs);
+					//pEnv->assignToObject(address, rhs);
+					pEnv->assignToAccessor(accessorOpt.value(), LRValue(rhs));
 					return rhs;
 				}
 				else
@@ -788,7 +774,7 @@ namespace cgl
 		LRValue headValue = boost::apply_visitor(*this, node.head);
 		if (headValue.isLValue())
 		{
-			address = headValue.address();
+			address = headValue.address(*pEnv);
 		}
 		else
 		{

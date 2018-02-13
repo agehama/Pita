@@ -245,6 +245,7 @@ namespace cgl
 			factor = 
 				  '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
+				| '@' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Dynamic)]
 				| float_value[_val = Call(LRValue::Float, _1)]
 				| int_[_val = Call(LRValue::Int, _1)]
 				| lit("true")[_val = Call(LRValue::Bool, true)]

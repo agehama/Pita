@@ -66,23 +66,39 @@ namespace cgl
 	{
 		if (lrvalue.isLValue())
 		{
-			auto it = m_values.at(lrvalue.address());
+			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
 			{
 				return it->second;
 			}
 				
-			CGL_Error(std::string("reference error: Address(") + lrvalue.address().toString() + ")");
+			CGL_Error(std::string("reference error: Address(") + lrvalue.toString() + ")");
 		}
 
 		return lrvalue.evaluated();
+	}
+
+	Evaluated& Context::mutableExpand(LRValue& lrvalue)
+	{
+		if (lrvalue.isLValue())
+		{
+			auto it = m_values.at(lrvalue.address(*this));
+			if (it != m_values.end())
+			{
+				return it->second;
+			}
+
+			CGL_Error(std::string("reference error: Address(") + lrvalue.toString() + ")");
+		}
+
+		return lrvalue.mutableEvaluated();
 	}
 
 	boost::optional<const Evaluated&> Context::expandOpt(const LRValue& lrvalue)const
 	{
 		if (lrvalue.isLValue())
 		{
-			auto it = m_values.at(lrvalue.address());
+			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
 			{
 				return it->second;
@@ -94,7 +110,23 @@ namespace cgl
 		return lrvalue.evaluated();
 	}
 
-	Address Context::evalReference(const Accessor & access)
+	boost::optional<Evaluated&> Context::mutableExpandOpt(LRValue& lrvalue)
+	{
+		if (lrvalue.isLValue())
+		{
+			auto it = m_values.at(lrvalue.address(*this));
+			if (it != m_values.end())
+			{
+				return it->second;
+			}
+
+			return boost::none;
+		}
+
+		return lrvalue.mutableEvaluated();
+	}
+
+	Address Context::evalReference(const Accessor& access)
 	{
 		if (auto sharedThis = m_weakThis.lock())
 		{
@@ -104,7 +136,7 @@ namespace cgl
 			const LRValue refVal = boost::apply_visitor(evaluator, accessor);
 			if (refVal.isLValue())
 			{
-				return refVal.address();
+				return refVal.address(*this);
 			}
 
 			CGL_Error("アクセッサの評価結果がアドレス値でない");
@@ -175,7 +207,7 @@ namespace cgl
 			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
 			if (headValue.isLValue())
 			{
-				writeBuffer().push_back(headValue.address());
+				writeBuffer().push_back(headValue.address(*this));
 			}
 			else
 			{
@@ -283,7 +315,7 @@ namespace cgl
 							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr));
 							if (currentArgument.isLValue())
 							{
-								args.push_back(currentArgument.address());
+								args.push_back(currentArgument.address(*this));
 							}
 							else
 							{
@@ -314,31 +346,46 @@ namespace cgl
 		return {};
 	}
 
-	void Context::bindReference(const std::string& nameLhs, const std::string& nameRhs)
+	Reference Context::bindReference(Address address)
 	{
-		const Address address = findAddress(nameRhs);
-		if (!address.isValid())
-		{
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return;
-		}
+		++m_referenceID;
 
-		bindValueID(nameLhs, address);
+		Reference reference(m_referenceID);
+
+		m_refAddressMap[reference] = address;
+		m_addressRefMap.insert({ address, reference });
+
+		return reference;
+	}
+
+	Address Context::getReference(Reference reference)const
+	{
+		auto it = m_refAddressMap.find(reference);
+		return it->second;
+		//return m_refAddressMap[reference];
+	}
+
+	void Context::cloneReference(const std::unordered_map<Address, Address>& replaceMap)
+	{
+		for (const auto& oldNew : replaceMap)
+		{
+			oldNew.first;
+			oldNew.second;
+		}
 	}
 
 	void Context::bindValueID(const std::string& name, const Address ID)
 	{
-		//CGL_DebugLog("");
 		for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 		{
 			auto valIt = scopeIt->find(name);
 			if (valIt != scopeIt->end())
 			{
+				changeAddress(valIt->second, ID);
 				valIt->second = ID;
 				return;
 			}
 		}
-		//CGL_DebugLog("");
 
 		localEnv().back()[name] = ID;
 	}
@@ -411,7 +458,102 @@ namespace cgl
 
 		os << "Print Context End:\n";
 	}
-		
+
+	void Context::assignToAccessor(const Accessor& accessor, const LRValue& newValue)
+	{
+		if (auto pEnv = m_weakThis.lock())
+		{
+			LRValue address;
+
+			Eval evaluator(pEnv);
+			address = boost::apply_visitor(evaluator, accessor.head);
+			if (address.isRValue())
+			{
+				CGL_Error("一時オブジェクトへの代入はできません");
+			}
+
+			for (int i = 0; i < accessor.accesses.size(); ++i)
+			{
+				const auto& access = accessor.accesses[i];
+				const bool isLastElement = i + 1 == accessor.accesses.size();
+
+				boost::optional<Evaluated&> objOpt = mutableExpandOpt(address);
+				if (!objOpt)
+				{
+					CGL_Error("参照エラー");
+				}
+
+				Evaluated& objRef = objOpt.value();
+
+				if (auto listAccessOpt = AsOpt<ListAccess>(access))
+				{
+					Evaluated indexValue = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+
+					if (!IsType<List>(objRef))
+					{
+						CGL_Error("オブジェクトがリストでない");
+					}
+
+					List& list = As<List&>(objRef);
+
+					if (auto indexOpt = AsOpt<int>(indexValue))
+					{
+						const int index = indexOpt.value();
+						if (isLastElement)
+						{
+							const Address oldAddress = list.data[index];
+							const Address newAddress = newValue.isLValue() ? newValue.address(*this) : makeTemporaryValue(newValue.evaluated());
+							changeAddress(oldAddress, newAddress);
+							list.data[index] = newAddress;
+						}
+						else
+						{
+							address = list.get(index);
+						}
+					}
+					else
+					{
+						CGL_Error("list[index] の index が int 型でない");
+					}
+				}
+				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+				{
+					if (!IsType<Record>(objRef))
+					{
+						CGL_Error("オブジェクトがレコードでない");
+					}
+
+					Record& record = As<Record&>(objRef);
+					auto it = record.values.find(recordAccessOpt.value().name);
+					if (it == record.values.end())
+					{
+						CGL_Error("指定された識別子がレコード中に存在しない");
+					}
+
+					if (isLastElement)
+					{
+						const Address oldAddress = it->second;
+						const Address newAddress = newValue.isLValue() ? newValue.address(*this) : makeTemporaryValue(newValue.evaluated());
+						changeAddress(oldAddress, newAddress);
+						it->second = newAddress;
+					}
+					else
+					{
+						address = it->second;
+					}
+				}
+				else
+				{
+					CGL_Error("一時オブジェクトへの代入はできません");
+				}
+			}
+		}
+		else
+		{
+			CGL_Error("shared this does not exist.");
+		}
+	}
+
 	std::shared_ptr<Context> Context::Make()
 	{
 		auto p = std::make_shared<Context>();
@@ -574,6 +716,25 @@ namespace cgl
 		},
 			false
 			);
+	}
+
+	void Context::changeAddress(Address addressFrom, Address addressTo)
+	{
+		//m_refAddressMap[reference] = address;
+		//m_addressRefMap.insert({ address, reference });
+		//m_values[addressTo] = m_values[addressFrom];
+
+		if (addressFrom == addressTo)
+		{
+			return;
+		}
+
+		for (auto it = m_addressRefMap.find(addressFrom); it != m_addressRefMap.end(); it = m_addressRefMap.find(addressFrom))
+		{
+			m_addressRefMap.insert({ addressTo, it->second });
+			m_refAddressMap[it->second] = addressTo;
+			m_addressRefMap.erase(it);
+		}
 	}
 
 	void Context::garbageCollect()

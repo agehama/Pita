@@ -983,6 +983,101 @@ namespace cgl
 		textRule.append("text", pEnv->makeTemporaryValue(resultCharList));
 	}
 
+	void GetShapePath(Record & pathRule, std::shared_ptr<cgl::Context> pEnv)
+	{
+		const auto& values = pathRule.values;
+
+		auto itStr = values.find("shapes");
+		auto itBaseLines = values.find("base");
+
+		List shapeList;
+		if (itStr != values.end())
+		{
+			const Evaluated evaluated = pEnv->expand(itStr->second);
+			if (!IsType<List>(evaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			shapeList = As<List>(evaluated);
+		}
+
+		auto factory = gg::GeometryFactory::create();
+		gg::LineString* ls;
+		gg::CoordinateArraySequence cs;
+		std::vector<double> distances;
+
+		boost::optional<Record> baseLineRecord;
+		if (itBaseLines != values.end())
+		{
+			const Evaluated evaluated = pEnv->expand(itBaseLines->second);
+			if (!IsType<Record>(evaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			baseLineRecord = As<Record>(evaluated);
+
+			if (baseLineRecord.value().type != Record::Path)
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Record& record = baseLineRecord.value();
+
+			auto itPath = record.values.find("path");
+			if (itPath == record.values.end())
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Evaluated pathEvaluated = pEnv->expand(itPath->second);
+			if (!IsType<Record>(pathEvaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Record& pathRecord = As<Record>(pathEvaluated);
+
+			auto itLine = pathRecord.values.find("line");
+			if (itLine == pathRecord.values.end())
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+			const Evaluated lineEvaluated = pEnv->expand(itLine->second);
+			if (!IsType<List>(lineEvaluated))
+			{
+				CGL_Error("不正な式です");
+				return;
+			}
+
+			const auto vs = As<List>(lineEvaluated).data;
+			for (const auto v : vs)
+			{
+				const Evaluated vertex = pEnv->expand(v);
+				const auto& pos = As<Record>(vertex);
+				const Evaluated xval = pEnv->expand(pos.values.find("x")->second);
+				const Evaluated yval = pEnv->expand(pos.values.find("y")->second);
+				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
+				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
+
+				cs.add(gg::Coordinate(x, y));
+			}
+
+			distances.push_back(0);
+			for (int i = 1; i < cs.size(); ++i)
+			{
+				const double newDistance = cs[i - 1].distance(cs[i]);
+				distances.push_back(distances.back() + newDistance);
+			}
+
+			ls = factory->createLineString(cs);
+		}
+
+		/*TODO: 実装する*/
+	}
+
 	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if (!IsType<Record>(lhs) && !IsType<List>(lhs))

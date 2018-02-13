@@ -13,6 +13,8 @@ namespace cgl
 
 	void GetText(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
 
+	void GetShapePath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
+
 	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Context> pEnv);
 
 	List GetDefaultFontString(const std::string& str, std::shared_ptr<cgl::Context> pEnv);

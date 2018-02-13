@@ -1744,6 +1744,10 @@ namespace cgl
 		{
 			GetText(record, pEnv);
 		}
+		else if (record.type == Record::ShapePath)
+		{
+			GetText(record, pEnv);
+		}
 
 		pEnv->printContext();
 
@@ -1813,6 +1817,12 @@ namespace cgl
 		{
 			Record pathRecord;
 			pathRecord.type = Record::Text;
+			recordOpt = pathRecord;
+		}
+		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("shapepath"))
+		{
+			Record pathRecord;
+			pathRecord.type = Record::ShapePath;
 			recordOpt = pathRecord;
 		}
 		else

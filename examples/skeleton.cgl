@@ -19,8 +19,8 @@ kite = shape{
     polygon: [
         {x: 0, y: 0}, {x: 20, y: -20}, {x: 80, y: 0}, {x: 20, y: +20}
     ]
-    begin: (->transform(pos, scale, angle, polygon[0]))
-    end:   (->transform(pos, scale, angle, polygon[2]))
+    begin: (->transform(@pos, @scale, @angle, polygon[0]))
+    end:   (->transform(@pos, @scale, @angle, polygon[2]))
 }
 
 skeleton = (num -> shape{
@@ -33,8 +33,8 @@ skeleton = (num -> shape{
     for i in 0:num-2 do(
         sat( contact(ss[i].end(), ss[i+1].begin()) )
     )
-    begin: (->transform(pos, scale, angle, ss[0].begin()))
-    end:   (->transform(pos, scale, angle, ss[num-1].end()))
+    begin: (->transform(@pos, @scale, @angle, ss[0].begin()))
+    end:   (->transform(@pos, @scale, @angle, ss[num-1].end()))
 })
 
 skeletonA = skeleton(5)

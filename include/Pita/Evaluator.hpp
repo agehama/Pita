@@ -199,13 +199,17 @@ namespace cgl
 
 		std::shared_ptr<Context> pEnv;
 
-		//レコード継承の構文を扱うために必要必要
+		//レコード継承の構文を扱うために必要
 		bool isInnerRecord;
 
-		ClosureMaker(std::shared_ptr<Context> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false) :
+		//内側の未評価式における参照変数の展開を防ぐために必要
+		bool isInnerClosure;
+
+		ClosureMaker(std::shared_ptr<Context> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false, bool isInnerClosure = false) :
 			pEnv(pEnv),
 			localVariables(functionArguments),
-			isInnerRecord(isInnerRecord)
+			isInnerRecord(isInnerRecord),
+			isInnerClosure(isInnerClosure)
 		{}
 
 		ClosureMaker& addLocalVariable(const std::string& name);

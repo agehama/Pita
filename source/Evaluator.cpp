@@ -492,10 +492,10 @@ namespace cgl
 
 	Expr ClosureMaker::operator()(const UnaryExpr& node)
 	{
-		if (node.op == UnaryOp::Dynamic)
+		if (node.op == UnaryOp::Dynamic && !isInnerClosure)
 		{
 			Eval evaluator(pEnv);
-
+			
 			const LRValue lrvalue = boost::apply_visitor(evaluator, node.lhs);
 			if (lrvalue.isRValue())
 			{
@@ -610,7 +610,7 @@ namespace cgl
 	Expr ClosureMaker::operator()(const DefFunc& node)
 	{
 		//ClosureMaker child(*this);
-		ClosureMaker child(pEnv, localVariables, false);
+		ClosureMaker child(pEnv, localVariables, false, true);
 		for (const auto& argument : node.arguments)
 		{
 			child.addLocalVariable(argument);
@@ -638,7 +638,7 @@ namespace cgl
 		result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
 
 		//ClosureMaker child(*this);
-		ClosureMaker child(pEnv, localVariables, false);
+		ClosureMaker child(pEnv, localVariables, false, isInnerClosure);
 		child.addLocalVariable(node.loopCounter);
 		result.doExpr = boost::apply_visitor(child, node.doExpr);
 		result.loopCounter = node.loopCounter;
@@ -657,7 +657,7 @@ namespace cgl
 	{
 		ListConstractor result;
 		//ClosureMaker child(*this);
-		ClosureMaker child(pEnv, localVariables, false);
+		ClosureMaker child(pEnv, localVariables, false, isInnerClosure);
 		for (const auto& expr : node.data)
 		{
 			result.data.push_back(boost::apply_visitor(child, expr));
@@ -691,7 +691,7 @@ namespace cgl
 		}
 		else
 		{
-			ClosureMaker child(pEnv, localVariables, false);
+			ClosureMaker child(pEnv, localVariables, false, isInnerClosure);
 			for (const auto& expr : node.exprs)
 			{
 				result.exprs.push_back(boost::apply_visitor(child, expr));
@@ -708,7 +708,7 @@ namespace cgl
 		RecordInheritor result;
 
 		//新たに追加
-		ClosureMaker child(pEnv, localVariables, true);
+		ClosureMaker child(pEnv, localVariables, true, isInnerClosure);
 
 		//result.original = boost::apply_visitor(*this, node.original);
 		result.original = boost::apply_visitor(child, node.original);

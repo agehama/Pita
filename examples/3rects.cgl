@@ -15,10 +15,10 @@ square = shape{
     polygon: [
         {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
     ]
-    topLeft:     (->transform(pos, scale, angle, polygon[0]))
-    topRight:    (->transform(pos, scale, angle, polygon[1]))
-    bottomRight: (->transform(pos, scale, angle, polygon[2]))
-    bottomLeft:  (->transform(pos, scale, angle, polygon[3]))
+    topLeft:     (->transform(@pos, @scale, @angle, polygon[0]))
+    topRight:    (->transform(@pos, @scale, @angle, polygon[1]))
+    bottomRight: (->transform(@pos, @scale, @angle, polygon[2]))
+    bottomLeft:  (->transform(@pos, @scale, @angle, polygon[3]))
 }
 
 contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)

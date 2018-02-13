@@ -8,9 +8,6 @@
 
 #include <Pita/Program.hpp>
 
-std::ofstream ofs;
-bool calculating;
-
 #ifdef CGL_DO_TEST
 int main()
 {

@@ -9,9 +9,7 @@
 
 #include <Pita/Program.hpp>
 
-std::ofstream ofs;
-bool calculating;
-int constraintViolationCount;
+extern int constraintViolationCount;
 
 std::vector<std::string> exampleFiles()
 {

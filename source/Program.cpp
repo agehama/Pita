@@ -5,8 +5,9 @@
 #include <Pita/Vectorizer.hpp>
 #include <Pita/Printer.hpp>
 
-extern std::ofstream ofs;
-extern bool calculating;
+std::ofstream ofs;
+bool calculating;
+int constraintViolationCount;
 
 namespace cgl
 {

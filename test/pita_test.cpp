@@ -5,10 +5,6 @@
 
 #include <Pita/Program.hpp>
 
-std::ofstream ofs;
-bool calculating;
-int constraintViolationCount;
-
 BOOST_AUTO_TEST_SUITE(cgl)
 
 BOOST_AUTO_TEST_CASE(test_case1)

@@ -117,13 +117,13 @@ namespace cgl
 			hasPlateausFunction = false;
 		}
 
-		{
+		/*{
 			CGL_DebugLog("env:");
 			pEnv->printContext(true);
 
 			CGL_DebugLog("expr:");
 			printExpr(candidateExpr.value());
-		}
+		}*/
 	}
 
 	bool OptimizationProblemSat::initializeData(std::shared_ptr<Context> pEnv)

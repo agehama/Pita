@@ -1,8 +1,8 @@
 #pragma warning(disable:4996)
 #include <functional>
 
-#include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/Evaluator.hpp>
+#include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 
 namespace cgl
@@ -241,11 +241,11 @@ namespace cgl
 
 	bool SatVariableBinder::operator()(const Accessor& node)
 	{
-		CGL_DebugLog("SatVariableBinder::operator()(const Accessor& node)");
+		/*CGL_DebugLog("SatVariableBinder::operator()(const Accessor& node)");
 		{
 			Expr expr = node;
 			printExpr(expr);
-		}
+		}*/
 
 		Address headAddress;
 		const Expr& head = node.head;

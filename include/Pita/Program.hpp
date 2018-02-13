@@ -1,9 +1,9 @@
 #pragma once
 #include <Eigen/Core>
 
+#include "Evaluator.hpp"
 #include "Node.hpp"
 #include "Context.hpp"
-#include "Evaluator.hpp"
 
 namespace cgl
 {
@@ -22,6 +22,7 @@ namespace cgl
 		bool draw(const std::string& program, bool logOutput = true);
 
 		void execute1(const std::string& program, bool logOutput = true);
+		void run(const std::string& program, bool logOutput = true);
 
 		void clear();
 
@@ -41,6 +42,9 @@ namespace cgl
 		{
 			return succeeded;
 		}
+
+		boost::optional<int> asIntOpt();
+		boost::optional<double> asDoubleOpt();
 
 	private:
 		std::shared_ptr<Context> pEnv;

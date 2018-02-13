@@ -1,12 +1,12 @@
+#include <cppoptlib/meta.h>
+#include <cppoptlib/problem.h>
+#include <cppoptlib/solver/bfgssolver.h>
+
 #include <geos/geom.h>
 #include <geos/opBuffer.h>
 #include <geos/opDistance.h>
 
 #include <cmaes.h>
-
-#include <cppoptlib/meta.h>
-#include <cppoptlib/problem.h>
-#include <cppoptlib/solver/bfgssolver.h>
 
 #include <Pita/Geometry.hpp>
 #include <Pita/Vectorizer.hpp>

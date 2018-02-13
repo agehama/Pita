@@ -142,6 +142,49 @@ namespace cgl
 		calculating = false;
 	}
 
+	void Program::run(const std::string& program, bool logOutput)
+	{
+		clear();
+
+		if (logOutput)
+		{
+			std::cout << "parse..." << std::endl;
+			std::cout << program << std::endl;
+		}
+
+		if (auto exprOpt = parse(program))
+		{
+			try
+			{
+				if (logOutput)
+				{
+					std::cout << "parse succeeded" << std::endl;
+					printExpr(exprOpt.value(), std::cout);
+				}
+
+				if (logOutput) std::cout << "execute..." << std::endl;
+				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
+				evaluated = pEnv->expand(lrvalue);
+				if (logOutput) std::cout << "completed" << std::endl;
+
+				succeeded = true;
+			}
+			catch (const cgl::Exception& e)
+			{
+				//std::cerr << "Exception: " << e.what() << std::endl;
+				std::cout << "Exception: " << e.what() << std::endl;
+
+				succeeded = false;
+			}
+		}
+		else
+		{
+			succeeded = false;
+		}
+
+		calculating = false;
+	}
+
 	void Program::clear()
 	{
 		pEnv = Context::Make();
@@ -165,5 +208,31 @@ namespace cgl
 		}
 
 		return false;
+	}
+
+	boost::optional<int> Program::asIntOpt()
+	{
+		if (evaluated)
+		{
+			if (auto opt = AsOpt<int>(evaluated.value()))
+			{
+				return opt.value();
+			}
+		}
+
+		return boost::none;
+	}
+
+	boost::optional<double> Program::asDoubleOpt()
+	{
+		if (evaluated)
+		{
+			if (auto opt = AsOpt<double>(evaluated.value()))
+			{
+				return opt.value();
+			}
+		}
+
+		return boost::none;
 	}
 }

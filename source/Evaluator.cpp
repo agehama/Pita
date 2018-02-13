@@ -1,9 +1,9 @@
 #pragma warning(disable:4996)
-#include <cmaes.h>
-
 #include <cppoptlib/meta.h>
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>
+
+#include <cmaes.h>
 
 #include <Pita/Evaluator.hpp>
 #include <Pita/BinaryEvaluator.hpp>

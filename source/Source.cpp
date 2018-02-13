@@ -1,10 +1,12 @@
+#define NOMINMAX
+
 //#define CGL_EnableLogOutput
 //#define CGL_DO_TEST
 
 #include <iostream>
 #include <fstream>
+
 #include <Pita/Program.hpp>
-#include <Unicode.hpp>
 
 std::ofstream ofs;
 bool calculating;

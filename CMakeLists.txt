@@ -80,4 +80,5 @@ target_link_libraries(pita_lib geos cmaes)
 add_executable(pita source/Source.cpp)
 target_link_libraries(pita pita_lib)
 
+enable_testing()
 add_subdirectory(test)

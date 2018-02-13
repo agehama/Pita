@@ -7,16 +7,11 @@
 
 std::ofstream ofs;
 bool calculating;
+int constraintViolationCount;
 
 BOOST_AUTO_TEST_SUITE(cgl)
 
 BOOST_AUTO_TEST_CASE(test_case1)
-{
-	int x = 2;
-	BOOST_CHECK_EQUAL(x, 2);
-}
-
-BOOST_AUTO_TEST_CASE(test_case2)
 {
 	Program program;
 	std::string test1 = u8R"(

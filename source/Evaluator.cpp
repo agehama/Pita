@@ -10,6 +10,8 @@
 #include <Pita/Printer.hpp>
 #include <Pita/Geometry.hpp>
 
+extern int constraintViolationCount;
+
 namespace cgl
 {
 	void ProgressStore::TryWrite(std::shared_ptr<Context> env, const Evaluated& value)
@@ -1109,17 +1111,14 @@ namespace cgl
 		int i = 0;
 		for (const auto& expr : statement.exprs)
 		{
-			//std::cout << "Evaluate expression(" << i << ")" << std::endl;
 			CGL_DebugLog("Evaluate expression(" + std::to_string(i) + ")");
 			pEnv->printContext();
 
-			//std::cout << "LINES_A Expr:" << std::endl;
 			//printExpr(expr);
 			CGL_DebugLog("");
 			result = pEnv->expand(boost::apply_visitor(*this, expr));
 			printEvaluated(result, pEnv);
 
-			//std::cout << "LINES_B" << std::endl;
 			CGL_DebugLog("");
 
 			//TODO: 後で考える
@@ -1137,23 +1136,19 @@ namespace cgl
 			}
 			*/
 
-			//std::cout << "LINES_C" << std::endl;
 			CGL_DebugLog("");
 			//途中でジャンプ命令を読んだら即座に評価を終了する
 			if (IsType<Jump>(result))
 			{
-				//std::cout << "LINES_D" << std::endl;
 				CGL_DebugLog("");
 				break;
 			}
 
-			//std::cout << "LINES_D" << std::endl;
 			CGL_DebugLog("");
 
 			++i;
 		}
 
-		//std::cout << "LINES_E" << std::endl;
 		CGL_DebugLog("");
 
 		//この後すぐ解放されるので dereference しておく
@@ -1166,9 +1161,7 @@ namespace cgl
 				deref = false;
 			}
 		}
-
-		std::cout << "LINES_F" << std::endl;
-
+		
 		if (deref)
 		{
 			result = pEnv->dereference(result);
@@ -1184,12 +1177,10 @@ namespace cgl
 		}
 		*/
 
-		//std::cout << "LINES_G" << std::endl;
 		CGL_DebugLog("");
 
 		pEnv->exitScope();
 
-		//std::cout << "LINES_H" << std::endl;
 		CGL_DebugLog("");
 		return LRValue(result);
 	}
@@ -1650,7 +1641,7 @@ namespace cgl
 
 					const int lambda = 100;
 
-					libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+					libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
 					CGL_DebugLog("");
 					libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 					CGL_DebugLog("");
@@ -1709,8 +1700,8 @@ namespace cgl
 						resultxs[i] = x0s[i];
 					}
 
-					std::cout << "solved\n";
-				}
+					//std::cout << "solved\n";
+				}				
 			}
 		}
 
@@ -1720,6 +1711,22 @@ namespace cgl
 			Address address = record.freeVariableRefs[i];
 			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
 			//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
+		}
+
+		if (record.problem.expr)
+		{
+			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, record.problem.expr.value()));
+			if (!IsType<bool>(result))
+			{
+				CGL_Error("制約式の評価結果がブール値でない");
+			}
+
+			record.isSatisfied = As<bool>(result);
+			//std::cout << "Constraint is " << (record.isSatisfied ? "satisfied\n" : "not satisfied\n");
+			if (!record.isSatisfied)
+			{
+				++constraintViolationCount;
+			}
 		}
 
 		for (const auto& key : keyList)
@@ -1945,8 +1952,6 @@ namespace cgl
 
 	LRValue Eval::operator()(const DeclSat& node)
 	{
-		//std::cout << "DeclSat:" << std::endl;
-
 		//ここでクロージャを作る必要がある
 		ClosureMaker closureMaker(pEnv, {});
 		const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
@@ -1970,7 +1975,6 @@ namespace cgl
 
 	LRValue Eval::operator()(const DeclFree& node)
 	{
-		//std::cout << "DeclFree:" << std::endl;
 		for (const auto& accessor : node.accessors)
 		{
 			//std::cout << "  accessor:" << std::endl;
@@ -1985,8 +1989,8 @@ namespace cgl
 
 			if (IsType<Accessor>(closedVarExpr))
 			{
-				std::cout << "    Free Expr:" << std::endl;
-				printExpr(closedVarExpr, std::cout);
+				//std::cout << "    Free Expr:" << std::endl;
+				//printExpr(closedVarExpr, std::cout);
 				currentRecords.top().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
 			}
 			else if (IsType<Identifier>(closedVarExpr))
@@ -2697,11 +2701,11 @@ namespace cgl
 
 		const Evaluated result = env->expand(boost::apply_visitor(evaluator, expr));
 
-		std::cout << "Context:\n";
-		env->printContext();
+		//std::cout << "Context:\n";
+		//env->printContext();
 
-		std::cout << "Result Evaluation:\n";
-		printEvaluated(result, env);
+		//std::cout << "Result Evaluation:\n";
+		//printEvaluated(result, env);
 
 		return result;
 	}

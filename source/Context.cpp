@@ -240,7 +240,7 @@ namespace cgl
 				{
 					const Address address = readBuffer()[i];
 
-					std::cout << "Address: " << address.toString() << std::endl;;
+					//std::cout << "Address: " << address.toString() << std::endl;;
 
 					boost::optional<const Evaluated&> objOpt = expandOpt(address);
 					if (!objOpt)
@@ -273,7 +273,7 @@ namespace cgl
 							{
 								//address = list.get(indexOpt.value());
 								writeBuffer().push_back(list.get(indexOpt.value()));
-								std::cout << "List[" << indexOpt.value() << "]" << std::endl;
+								//std::cout << "List[" << indexOpt.value() << "]" << std::endl;
 							}
 							else
 							{

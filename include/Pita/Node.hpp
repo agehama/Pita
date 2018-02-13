@@ -1568,6 +1568,7 @@ namespace cgl
 		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
 		enum Type { Normal, Path, Text, ShapePath };
 		Type type = Normal;
+		bool isSatisfied = true;
 		Vector<Eigen::Vector2d> pathPoints;
 
 		Record() = default;

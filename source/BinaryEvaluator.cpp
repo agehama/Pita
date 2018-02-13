@@ -154,6 +154,7 @@ namespace cgl
 	{
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
+		const double eps = 0.001;
 
 		if (IsType<int>(lhs))
 		{
@@ -163,18 +164,21 @@ namespace cgl
 			}
 			else if (IsType<double>(rhs))
 			{
-				return As<int>(lhs) == As<double>(rhs);
+				//return As<int>(lhs) == As<double>(rhs);
+				return std::abs(static_cast<double>(As<int>(lhs)) - As<double>(rhs)) < eps;
 			}
 		}
 		else if (IsType<double>(lhs))
 		{
 			if (IsType<int>(rhs))
 			{
-				return As<double>(lhs) == As<int>(rhs);
+				//return As<double>(lhs) == As<int>(rhs);
+				return std::abs(As<double>(lhs) - static_cast<double>(As<int>(rhs))) < eps;
 			}
 			else if (IsType<double>(rhs))
 			{
-				return As<double>(lhs) == As<double>(rhs);
+				//return As<double>(lhs) == As<double>(rhs);
+				return std::abs(As<double>(lhs) - As<double>(rhs)) < eps;
 			}
 		}
 
@@ -192,6 +196,8 @@ namespace cgl
 		//const Evaluated lhs = env.expandRef(lhs_);
 		//const Evaluated rhs = env.expandRef(rhs_);
 
+		return !Equal(lhs, rhs, env);
+		/*
 		if (IsType<int>(lhs))
 		{
 			if (IsType<int>(rhs))
@@ -222,6 +228,7 @@ namespace cgl
 
 		CGL_Error("不正な式です");
 		return false;
+		*/
 	}
 
 	bool LessThan(const Evaluated& lhs, const Evaluated& rhs, Context& env)

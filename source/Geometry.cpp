@@ -444,7 +444,7 @@ namespace cgl
 
 		const int lambda = 100;
 
-		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
 		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 		auto resultxs = cmasols.best_candidate().get_x();
 
@@ -734,7 +734,7 @@ namespace cgl
 
 		const int lambda = 100;
 
-		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda);
+		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
 		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 		auto resultxs = cmasols.best_candidate().get_x();
 

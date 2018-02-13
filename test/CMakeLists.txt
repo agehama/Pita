@@ -12,3 +12,12 @@ add_test(
 	COMMAND $<TARGET_FILE:pita_test>
 )
 set_tests_properties(pita_test1 PROPERTIES LABELS pita)
+
+add_executable(pita_examples pita_examples.cpp)
+target_link_libraries(pita_examples pita_lib)
+add_test(
+	NAME pita_examples1
+	COMMAND $<TARGET_FILE:pita_examples>
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/examples
+)
+set_tests_properties(pita_examples1 PROPERTIES LABELS pita)

@@ -2,7 +2,9 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 #include <fstream>
+#include <chrono>
 
 #define BOOST_TEST_MAIN
 #include <boost/test/included/unit_test.hpp>
@@ -35,12 +37,22 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 	{
 		constraintViolationCount = 0;
 
-		Program program;
+		std::cout << "----------------------------------------------\n";
+		std::cout << "run \"" << filename << "\" ...\n";
 
 		std::ifstream ifs(filename);
 		std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
+		auto start = std::chrono::system_clock::now();
+
+		Program program;
 		program.run(sourceCode, false);
+		
+		auto end = std::chrono::system_clock::now();
+
+		const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+		std::cout << "time: " << time*0.001 << "[sec]\n";
+
 		BOOST_CHECK(program.isSucceeded());
 		BOOST_CHECK_EQUAL(constraintViolationCount, 0);
 	}
@@ -50,12 +62,22 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 {
 	for (const auto& filename : exampleFiles())
 	{
-		Program program;
+		std::cout << "----------------------------------------------\n";
+		std::cout << "run \"" << filename << "\" ...\n";
 
 		std::ifstream ifs(filename);
 		std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
+		auto start = std::chrono::system_clock::now();
+
+		Program program;
 		program.run(sourceCode, false);
+		
+		auto end = std::chrono::system_clock::now();
+
+		const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+		std::cout << "time: " << time*0.001 << "[sec]\n";
+
 		BOOST_CHECK(program.isSucceeded());
 	}
 }

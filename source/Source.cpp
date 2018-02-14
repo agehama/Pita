@@ -8,6 +8,8 @@
 
 #include <Pita/Program.hpp>
 
+extern bool calculating;
+
 #ifdef CGL_DO_TEST
 int main()
 {

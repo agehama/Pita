@@ -272,6 +272,11 @@ namespace cgl
 			return referenceID != other.referenceID;
 		}
 
+		std::string toString()const
+		{
+			return std::to_string(referenceID);
+		}
+
 	private:
 		friend struct std::hash<Reference>;
 

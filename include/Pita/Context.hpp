@@ -1,6 +1,7 @@
 #pragma once
 #include <stack>
 #include <map>
+#include <unordered_set>
 
 #include "Node.hpp"
 
@@ -64,6 +65,29 @@ namespace cgl
 			return m_values.cend();
 		}
 
+		void gc(const std::unordered_set<Address>& ramainAddresses)
+		{
+			/*for (const Address address : ramainAddresses)
+			{
+				if (ramainAddresses.find(address) == ramainAddresses.end())
+				{
+					m_values.erase(address);
+				}
+			}*/
+
+			for (auto it = m_values.begin(); it != m_values.end();)
+			{
+				if (ramainAddresses.find(it->first) == ramainAddresses.end())
+				{
+					it = m_values.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+		}
+
 	private:
 		Address newAddress()
 		{
@@ -75,10 +99,20 @@ namespace cgl
 		unsigned m_ID = 0;
 	};
 
+	struct Scope
+	{
+		using VriableMap = std::unordered_map<std::string, Address>;
+
+		Scope() = default;
+
+		VriableMap variables;
+		std::vector<Address> temporaryAddresses;
+	};
+
 	class Context
 	{
-	public:
-		using Scope = std::unordered_map<std::string, Address>;
+	public:		
+		//using Scope = std::unordered_map<std::string, Address>;
 
 		using LocalContext = std::vector<Scope>;
 
@@ -193,7 +227,7 @@ namespace cgl
 
 		Reference bindReference(Address address);
 		Address getReference(Reference reference)const;
-		void cloneReference(const std::unordered_map<Address, Address>& replaceMap);
+		//void cloneReference(const std::unordered_map<Address, Address>& replaceMap);
 
 		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
 		/*
@@ -318,7 +352,7 @@ namespace cgl
 		//bindValueIDの変数宣言式用
 		void makeVariable(const std::string& name, const Address ID)
 		{
-			localEnv().back()[name] = ID;
+			localEnv().back().variables[name] = ID;
 		}
 		
 		void printContext(bool flag = false)const;
@@ -410,6 +444,8 @@ namespace cgl
 		}*/
 		Address findAddress(const std::string& name)const;
 
+		void garbageCollect();
+
 	private:
 		void initialize();
 
@@ -465,8 +501,6 @@ namespace cgl
 
 			return valueIDOpt;
 		}*/
-
-		void garbageCollect();
 
 		Values<BuiltInFunction> m_functions;
 		std::unordered_map<Address, std::string> m_plateausFunctions;

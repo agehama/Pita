@@ -325,6 +325,7 @@ namespace cgl
 		result.freeVariables = node.freeVariables;
 		result.freeVariableRefs = node.freeVariableRefs;
 		result.type = node.type;
+		result.isSatisfied = node.isSatisfied;
 
 		return result;
 	}
@@ -1701,7 +1702,7 @@ namespace cgl
 					}
 
 					//std::cout << "solved\n";
-				}				
+				}
 			}
 		}
 
@@ -1764,6 +1765,8 @@ namespace cgl
 
 		//pEnv->pop();
 		pEnv->exitScope();
+
+		//pEnv->garbageCollect();
 
 		CGL_DebugLog("--------------------------- Print Context ---------------------------");
 		pEnv->printContext();

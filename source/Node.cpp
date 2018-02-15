@@ -26,7 +26,18 @@ namespace cgl
 
 	std::string LRValue::toString() const
 	{
-		return "LRValue";
+		if (isAddress())
+		{
+			return std::string("Address(") + As<Address>(value).toString() + std::string(")");
+		}
+		else if (isReference())
+		{
+			return std::string("Reference(") + As<Reference>(value).toString() + std::string(")");
+		}
+		else
+		{
+			return std::string("Evaluated(...)");
+		}
 	}
 
 	Address LRValue::address(const Context & env) const

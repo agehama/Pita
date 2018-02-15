@@ -1,4 +1,5 @@
 #include <stack>
+#include <unordered_set>
 #include <Pita/Context.hpp>
 #include <Pita/Evaluator.hpp>
 #include <Pita/Geometry.hpp>
@@ -72,7 +73,7 @@ namespace cgl
 				return it->second;
 			}
 				
-			CGL_Error(std::string("reference error: Address(") + lrvalue.toString() + ")");
+			CGL_Error(std::string("reference error: ") + lrvalue.toString());
 		}
 
 		return lrvalue.evaluated();
@@ -88,7 +89,7 @@ namespace cgl
 				return it->second;
 			}
 
-			CGL_Error(std::string("reference error: Address(") + lrvalue.toString() + ")");
+			CGL_Error(std::string("reference error: ") + lrvalue.toString());
 		}
 
 		return lrvalue.mutableEvaluated();
@@ -365,21 +366,21 @@ namespace cgl
 		//return m_refAddressMap[reference];
 	}
 
-	void Context::cloneReference(const std::unordered_map<Address, Address>& replaceMap)
+	/*void Context::cloneReference(const std::unordered_map<Address, Address>& replaceMap)
 	{
 		for (const auto& oldNew : replaceMap)
 		{
 			oldNew.first;
 			oldNew.second;
 		}
-	}
+	}*/
 
 	void Context::bindValueID(const std::string& name, const Address ID)
 	{
 		for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 		{
-			auto valIt = scopeIt->find(name);
-			if (valIt != scopeIt->end())
+			auto valIt = scopeIt->variables.find(name);
+			if (valIt != scopeIt->variables.end())
 			{
 				changeAddress(valIt->second, ID);
 				valIt->second = ID;
@@ -387,7 +388,7 @@ namespace cgl
 			}
 		}
 
-		localEnv().back()[name] = ID;
+		localEnv().back().variables[name] = ID;
 	}
 
 #ifdef CGL_EnableLogOutput
@@ -450,9 +451,9 @@ namespace cgl
 			os << "Depth : " << d << "\n";
 			const auto& names = localEnv()[d];
 
-			for (const auto& keyval : names)
+			for (const auto& keyval : names.variables)
 			{
-				os << keyval.first << " : " << keyval.second.toString() << "\n";
+				os << "    " << keyval.first << " : " << keyval.second.toString() << "\n";
 			}
 		}
 
@@ -590,8 +591,8 @@ namespace cgl
 	{
 		for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
 		{
-			auto variableIt = scopeIt->find(name);
-			if (variableIt != scopeIt->end())
+			auto variableIt = scopeIt->variables.find(name);
+			if (variableIt != scopeIt->variables.end())
 			{
 				return variableIt->second;
 			}
@@ -716,6 +717,38 @@ namespace cgl
 		},
 			false
 			);
+
+		registerBuiltInFunction(
+			"gc",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 0)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			garbageCollect();
+
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"printContext",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 0)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			printContext(std::cout);
+
+			return 0;
+		},
+			false
+			);
 	}
 
 	void Context::changeAddress(Address addressFrom, Address addressTo)
@@ -737,8 +770,325 @@ namespace cgl
 		}
 	}
 
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
+	void CheckValue(const Evaluated& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
+
+	class ExprAddressCheker : public boost::static_visitor<void>
+	{
+	public:
+		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet)
+		{}
+
+		const Context& context;
+		std::unordered_set<Address>& reachableAddressSet;
+		std::unordered_set<Address>& newAddressSet;
+
+		bool isMarked(Address address)const
+		{
+			return reachableAddressSet.find(address) != reachableAddressSet.end();
+		}
+
+		void update(Address address)
+		{
+			if (!isMarked(address))
+			{
+				reachableAddressSet.emplace(address);
+				newAddressSet.emplace(address);
+				CheckValue(context.expand(LRValue(address)), context, reachableAddressSet, newAddressSet);
+			}
+		}
+
+		void operator()(const LRValue& node)
+		{
+			if (node.isRValue())
+			{
+				return;
+			}
+
+			update(node.address(context));
+		}
+
+		void operator()(const Identifier& node){}
+
+		void operator()(const SatReference& node){}
+
+		void operator()(const UnaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+		}
+
+		void operator()(const BinaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Range& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Lines& node)
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const DefFunc& node)
+		{
+			//boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const If& node)
+		{
+			boost::apply_visitor(*this, node.cond_expr);
+			boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				boost::apply_visitor(*this, node.else_expr.value());
+			}
+		}
+
+		void operator()(const For& node)
+		{
+			boost::apply_visitor(*this, node.rangeStart);
+			boost::apply_visitor(*this, node.rangeEnd);
+			boost::apply_visitor(*this, node.doExpr);
+		}
+
+		void operator()(const Return& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const ListConstractor& node)
+		{
+			for (const auto& expr : node.data)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const KeyExpr& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const RecordConstractor& node)
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const RecordInheritor& node)
+		{
+			boost::apply_visitor(*this, node.original);
+			const Expr adderExpr = node.adder;
+			boost::apply_visitor(*this, adderExpr);
+		}
+
+		void operator()(const Accessor& node)
+		{
+			boost::apply_visitor(*this, node.head);
+
+			for (const auto& access : node.accesses)
+			{
+				if (auto listAccess = AsOpt<ListAccess>(access))
+				{
+					boost::apply_visitor(*this, listAccess.value().index);
+				}
+				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
+				{
+					for (const auto& argument : functionAccess.value().actualArguments)
+					{
+						boost::apply_visitor(*this, argument);
+					}
+				}
+			}
+		}
+
+		void operator()(const DeclSat& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const DeclFree& node)
+		{
+			for (const auto& accessor : node.accessors)
+			{
+				Expr expr = accessor;
+				boost::apply_visitor(*this, expr);
+			}
+		}
+	};
+
+	class ValueAddressChecker : public boost::static_visitor<void>
+	{
+	public:
+		ValueAddressChecker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet)
+		{}
+
+		const Context& context;
+		std::unordered_set<Address>& reachableAddressSet;
+		std::unordered_set<Address>& newAddressSet;
+
+		bool isMarked(Address address)const
+		{
+			return reachableAddressSet.find(address) != reachableAddressSet.end();
+		}
+
+		void update(Address address)
+		{
+			if (!isMarked(address))
+			{
+				reachableAddressSet.emplace(address);
+				newAddressSet.emplace(address);
+				boost::apply_visitor(*this, context.expand(LRValue(address)));
+			}
+		}
+		
+		void operator()(bool node) {}
+
+		void operator()(int node) {}
+
+		void operator()(double node) {}
+
+		void operator()(const CharString& node) {}
+
+		void operator()(const List& node)
+		{
+			for (Address address : node.data)
+			{
+				update(address);
+			}
+		}
+
+		void operator()(const KeyValue& node) {}
+
+		void operator()(const Record& node)
+		{
+			for (const auto& keyval : node.values)
+			{
+				update(keyval.second);
+			}
+
+			/*
+			for (Address address : node.freeVariableRefs)
+			{
+				update(address);
+			}
+			for (const auto& accessor : node.freeVariables)
+			{
+				Expr expr = accessor;
+				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
+			}
+			*/
+			
+			const auto& problem = node.problem;
+			/*if (problem.candidateExpr)
+			{
+				CheckExpr(problem.candidateExpr.value(), context, reachableAddressSet, newAddressSet);
+			}*/
+			if(problem.expr)
+			{
+				CheckExpr(problem.expr.value(), context, reachableAddressSet, newAddressSet);
+			}
+			/*for (Address address : problem.refs)
+			{
+				update(address);
+			}*/
+		}
+
+		void operator()(const FuncVal& node)
+		{
+			if (!node.builtinFuncAddress)
+			{
+				CheckExpr(node.expr, context, reachableAddressSet, newAddressSet);
+			}
+		}
+
+		void operator()(const Jump& node) {}
+	};
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
+	{
+		ExprAddressCheker cheker(context, reachableAddressSet, newAddressSet);
+		boost::apply_visitor(cheker, expr);
+	}
+
+	void CheckValue(const Evaluated& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
+	{
+		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet);
+		boost::apply_visitor(cheker, evaluated);
+	}
+
 	void Context::garbageCollect()
 	{
+		std::unordered_set<Address> referenceableAddresses;
 
+		const auto isReachable = [&](const Address address)
+		{
+			return referenceableAddresses.find(address) != referenceableAddresses.end();
+		};
+
+		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
+		{
+			for (const Address address : addresses)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckExpr(LRValue(address), *this, referenceableAddresses, addressesDelta);
+				
+				traverse(addressesDelta, traverse);
+			}
+		};
+
+		{
+			std::unordered_set<Address> addressesDelta;
+			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
+			{
+				for (const auto& var : scopeIt->variables)
+				{
+					const Address address = var.second;
+					if (!isReachable(address))
+					{
+						addressesDelta.emplace(address);
+					}
+				}
+
+				for (const Address address : scopeIt->temporaryAddresses)
+				{
+					if (!isReachable(address))
+					{
+						addressesDelta.emplace(address);
+					}
+				}
+			}
+
+			traverse(addressesDelta, traverse);
+		}
+
+		for (const auto& keyval : m_functions)
+		{
+			referenceableAddresses.emplace(keyval.first);
+		}
+		
+		const size_t prevGC = m_values.size();
+
+		m_values.gc(referenceableAddresses);
+
+		const size_t postGC = m_values.size();
+
+		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
 	}
 }

@@ -246,7 +246,7 @@ namespace cgl
 
 	void Printer::operator()(const UnaryExpr& node)const
 	{
-		os << indent() << "Unary(" << std::endl;
+		os << indent() << UnaryOpToStr(node.op) << "(" << std::endl;
 
 		boost::apply_visitor(Printer(os, m_indent + 1), node.lhs);
 
@@ -255,7 +255,7 @@ namespace cgl
 
 	void Printer::operator()(const BinaryExpr& node)const
 	{
-		os << indent() << "Binary(" << std::endl;
+		os << indent() << BinaryOpToStr(node.op) << "(" << std::endl;
 		boost::apply_visitor(Printer(os, m_indent + 1), node.lhs);
 		boost::apply_visitor(Printer(os, m_indent + 1), node.rhs);
 		os << indent() << ")" << std::endl;

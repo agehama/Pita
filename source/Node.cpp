@@ -71,7 +71,6 @@ namespace cgl
 	{
 		if (!candidateExpr)
 		{
-			expr = boost::none;
 			return;
 		}
 
@@ -95,7 +94,6 @@ namespace cgl
 
 		if (freeVariables.empty())
 		{
-			expr = candidateExpr;
 			refs.clear();
 			invRefs.clear();
 			freeVariables.clear();
@@ -105,7 +103,6 @@ namespace cgl
 		SatVariableBinder binder(pEnv, freeVariables);
 		if (boost::apply_visitor(binder, candidateExpr.value()))
 		{
-			expr = candidateExpr.value();
 			refs = binder.refs;
 			invRefs = binder.invRefs;
 			hasPlateausFunction = binder.hasPlateausFunction;
@@ -121,7 +118,6 @@ namespace cgl
 		}
 		else
 		{
-			expr = boost::none;
 			refs.clear();
 			invRefs.clear();
 			freeVariables.clear();
@@ -139,13 +135,10 @@ namespace cgl
 
 	bool OptimizationProblemSat::initializeData(std::shared_ptr<Context> pEnv)
 	{
-		//std::cout << "Begin OptimizationProblemSat::initializeData" << std::endl;
-
 		data.resize(refs.size());
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			//const Evaluated val = pEnv->expandRef(refs[i]);
 			const Evaluated val = pEnv->expand(refs[i]);
 			if (auto opt = AsOpt<double>(val))
 			{
@@ -159,20 +152,16 @@ namespace cgl
 			}
 			else
 			{
-				//存在しない参照をsatに指定した
-				/*std::cerr << "Error(" << __LINE__ << "): reference does not exist.\n";
-				return false;*/
 				CGL_Error("存在しない参照をsatに指定した");
 			}
 		}
 
-		//std::cout << "End OptimizationProblemSat::initializeData" << std::endl;
 		return true;
 	}
 
 	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv)
 	{
-		if (!expr)
+		if (!candidateExpr)
 		{
 			return 0.0;
 		}
@@ -210,7 +199,7 @@ namespace cgl
 		}*/
 		
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		const Evaluated evaluated = boost::apply_visitor(evaluator, expr.value());
+		const Evaluated evaluated = boost::apply_visitor(evaluator, candidateExpr.value());
 		
 		if (IsType<double>(evaluated))
 		{

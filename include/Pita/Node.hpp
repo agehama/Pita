@@ -130,6 +130,19 @@ namespace cgl
 		Dynamic
 	};
 
+	inline std::string UnaryOpToStr(UnaryOp op)
+	{
+		switch (op)
+		{
+		case UnaryOp::Not:     return "Not";
+		case UnaryOp::Plus:    return "Plus";
+		case UnaryOp::Minus:   return "Minus";
+		case UnaryOp::Dynamic: return "Dynamic";
+		}
+
+		return "UnknownUnaryOp";
+	}
+
 	enum class BinaryOp
 	{
 		And,
@@ -178,7 +191,7 @@ namespace cgl
 		case BinaryOp::Concat: return "Concat";
 		}
 
-		return "Unknown";
+		return "UnknownBinaryOp";
 	}
 
 	struct DefFunc;
@@ -499,7 +512,6 @@ namespace cgl
 		bool isLValue()const
 		{
 			return !isRValue();
-			//return IsType<Address>(value);
 		}
 
 		bool isAddress()const
@@ -577,11 +589,8 @@ namespace cgl
 	{
 		boost::optional<Expr> candidateExpr;
 
-		boost::optional<Expr> expr;
-
 		//制約式に含まれる全ての参照にIDを振る(=参照ID)
 		//参照IDはdouble型の値に紐付けられる
-		//std::unordered_map<int, int> refs;//参照ID -> dataのインデックス
 
 		std::vector<double> data;//参照ID->data
 		std::vector<Address> refs;//参照ID->Address

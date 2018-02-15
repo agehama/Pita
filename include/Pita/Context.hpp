@@ -67,14 +67,6 @@ namespace cgl
 
 		void gc(const std::unordered_set<Address>& ramainAddresses)
 		{
-			/*for (const Address address : ramainAddresses)
-			{
-				if (ramainAddresses.find(address) == ramainAddresses.end())
-				{
-					m_values.erase(address);
-				}
-			}*/
-
 			for (auto it = m_values.begin(); it != m_values.end();)
 			{
 				if (ramainAddresses.find(it->first) == ramainAddresses.end())
@@ -111,9 +103,7 @@ namespace cgl
 
 	class Context
 	{
-	public:		
-		//using Scope = std::unordered_map<std::string, Address>;
-
+	public:	
 		using LocalContext = std::vector<Scope>;
 
 		using BuiltInFunction = std::function<Evaluated(std::shared_ptr<Context>, const std::vector<Address>&)>;
@@ -133,13 +123,11 @@ namespace cgl
 		//関数呼び出しなど別のスコープに切り替える/戻す
 		void switchFrontScope()
 		{
-			//m_localEnvStack.push(LocalContext());
 			m_localEnvStack.push_back(LocalContext());
 		}
 
 		void switchBackScope()
 		{
-			//m_localEnvStack.pop();
 			m_localEnvStack.pop_back();
 		}
 
@@ -229,25 +217,6 @@ namespace cgl
 
 		Reference bindReference(Address address);
 		Address getReference(Reference reference)const;
-		//void cloneReference(const std::unordered_map<Address, Address>& replaceMap);
-
-		//{a=1,b=[2,3]}, [a, b] => [1, [2, 3]]
-		/*
-		Evaluated expandList(const Evaluated& reference)
-		{
-			if (auto listOpt = AsOpt<List>(reference))
-			{
-				List expanded;
-				for (const auto& elem : listOpt.value().data)
-				{
-					expanded.append(expandList(elem));
-				}
-				return expanded;
-			}
-
-			return dereference(reference);
-		}
-		*/
 		
 		//ローカル変数を全て展開する
 		//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
@@ -449,7 +418,6 @@ namespace cgl
 		void garbageCollect();
 
 		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
-		//std::stack<std::reference_wrapper<Record>> currentRecords;
 		std::vector<std::reference_wrapper<Record>> currentRecords;
 
 		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
@@ -460,41 +428,15 @@ namespace cgl
 
 		LocalContext& localEnv()
 		{
-			//return m_localEnvStack.top();
 			return m_localEnvStack.back();
 		}
 
 		const LocalContext& localEnv()const
 		{
-			//return m_localEnvStack.top();
 			return m_localEnvStack.back();
 		}
 
 		void changeAddress(Address addressFrom, Address addressTo);
-
-		/*int scopeDepth()const
-		{
-			return static_cast<int>(m_variables.size()) - 1;
-		}*/
-
-		//現在参照可能な変数名のリストのリストを返す
-		/*
-		std::vector<std::set<std::string>> currentReferenceableVariables()const
-		{
-			std::vector<std::set<std::string>> result;
-			for (const auto& scope : m_variables)
-			{
-				result.emplace_back();
-				auto& currentScope = result.back();
-				for (const auto& var : scope)
-				{
-					currentScope.insert(var.first);
-				}
-			}
-
-			return result;
-		}
-		*/
 
 		//内側のスコープから順番に変数を探して返す
 		/*boost::optional<unsigned> findValueID(const std::string& name)const
@@ -521,20 +463,8 @@ namespace cgl
 
 		Values<Evaluated> m_values;
 
-		//変数はスコープ単位で管理される
-		//スコープを抜けたらそのスコープで管理している変数を環境ごと削除する
-		//したがって環境はネストの浅い順にリストで管理することができる（同じ深さの環境が二つ存在することはない）
-		//リストの最初の要素はグローバル変数とするとする
-		//std::vector<LocalContext> m_bindingNames;
-
-		/*std::vector<Scope> m_variables;
-		std::stack<std::pair<int, std::vector<Scope>>> m_diffScopes;*/
-		
-		
-		//std::stack<LocalContext> m_localEnvStack;
 		std::vector<LocalContext> m_localEnvStack;
 
-		//std::vector<Address> m_funcValIDs;
 		unsigned m_referenceID = 0;
 
 		size_t m_lastGCValueSize = 0;

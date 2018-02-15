@@ -21,16 +21,10 @@ namespace cgl
 
 		FuncVal funcVal(arguments, closedFuncExpr);
 		return makeTemporaryValue(funcVal);
-		//Address address = makeTemporaryValue(funcVal);
-		//return address;
 	}
 
 	void Context::registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction)
 	{
-		//m_valuesにFuncVal追加
-		//m_functionsにfunction追加
-		//m_scopeにname->FuncVal追加
-
 		const Address address1 = m_functions.add(function);
 		const Address address2 = m_values.add(FuncVal(address1));
 
@@ -158,7 +152,7 @@ namespace cgl
 				const Evaluated value = sharedThis->expand(address);
 
 				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
-				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolは将来的に対応
+				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
 				{
 					result.push_back(address);
 				}
@@ -241,8 +235,6 @@ namespace cgl
 				{
 					const Address address = readBuffer()[i];
 
-					//std::cout << "Address: " << address.toString() << std::endl;;
-
 					boost::optional<const Evaluated&> objOpt = expandOpt(address);
 					if (!objOpt)
 					{
@@ -272,9 +264,7 @@ namespace cgl
 
 							if (auto indexOpt = AsOpt<int>(value))
 							{
-								//address = list.get(indexOpt.value());
 								writeBuffer().push_back(list.get(indexOpt.value()));
-								//std::cout << "List[" << indexOpt.value() << "]" << std::endl;
 							}
 							else
 							{
@@ -296,7 +286,6 @@ namespace cgl
 							CGL_Error("指定された識別子がレコード中に存在しない");
 						}
 
-						//address = it->second;
 						writeBuffer().push_back(it->second);
 					}
 					else
@@ -325,7 +314,6 @@ namespace cgl
 						}
 
 						const Evaluated returnedValue = expand(evaluator.callFunction(function, args));
-						//address = makeTemporaryValue(returnedValue);
 						writeBuffer().push_back(makeTemporaryValue(returnedValue));
 					}
 				}
@@ -363,17 +351,7 @@ namespace cgl
 	{
 		auto it = m_refAddressMap.find(reference);
 		return it->second;
-		//return m_refAddressMap[reference];
 	}
-
-	/*void Context::cloneReference(const std::unordered_map<Address, Address>& replaceMap)
-	{
-		for (const auto& oldNew : replaceMap)
-		{
-			oldNew.first;
-			oldNew.second;
-		}
-	}*/
 
 	void Context::bindValueID(const std::string& name, const Address ID)
 	{
@@ -580,7 +558,6 @@ namespace cgl
 
 		localEnv().back().temporaryAddresses.push_back(address);
 
-		//const int thresholdGC = 5000;
 		const int thresholdGC = 20000;
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
@@ -692,36 +669,6 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"DefaultFontString",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
-		{
-			if (arguments.size() != 1)
-			{
-				CGL_Error("引数の数が正しくありません");
-			}
-
-			const Evaluated evaluated = pEnv->expand(arguments[0]);
-			if (!IsType<FuncVal>(evaluated))
-			{
-				CGL_Error("不正な式です");
-			}
-
-			const Expr expr = As<FuncVal>(evaluated).expr;
-			if (!IsType<Identifier>(expr))
-			{
-				CGL_Error("不正な式です");
-			}
-
-			std::cout << "Fontの取得：" << static_cast<std::string>(As<Identifier>(expr)) << "\n";
-
-			return GetDefaultFontString(static_cast<std::string>(As<Identifier>(expr)), m_weakThis.lock());
-			//return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
-			//return 0;
-		},
-			false
-			);
-
-		registerBuiltInFunction(
 			"gc",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
 		{
@@ -756,10 +703,6 @@ namespace cgl
 
 	void Context::changeAddress(Address addressFrom, Address addressTo)
 	{
-		//m_refAddressMap[reference] = address;
-		//m_addressRefMap.insert({ address, reference });
-		//m_values[addressTo] = m_values[addressFrom];
-
 		if (addressFrom == addressTo)
 		{
 			return;
@@ -843,10 +786,7 @@ namespace cgl
 			}
 		}
 
-		void operator()(const DefFunc& node)
-		{
-			//boost::apply_visitor(*this, node.expr);
-		}
+		void operator()(const DefFunc& node) {/*boost::apply_visitor(*this, node.expr);*/ }
 
 		void operator()(const If& node)
 		{
@@ -985,9 +925,23 @@ namespace cgl
 			{
 				update(keyval.second);
 			}
+			const auto& problem = node.problem;
+			if (problem.candidateExpr)
+			{
+				CheckExpr(problem.candidateExpr.value(), context, reachableAddressSet, newAddressSet);
+			}
 
-			
-			/*for (Address address : node.freeVariableRefs)
+			/*
+			if (problem.expr)
+			{
+				CheckExpr(problem.expr.value(), context, reachableAddressSet, newAddressSet);
+			}
+			for (Address address : problem.refs)
+			{
+				update(address);
+			}
+
+			for (Address address : node.freeVariableRefs)
 			{
 				update(address);
 			}
@@ -995,22 +949,8 @@ namespace cgl
 			{
 				Expr expr = accessor;
 				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-			}*/
-			
-			
-			const auto& problem = node.problem;
-			if (problem.candidateExpr)
-			{
-				CheckExpr(problem.candidateExpr.value(), context, reachableAddressSet, newAddressSet);
 			}
-			/*if(problem.expr)
-			{
-				CheckExpr(problem.expr.value(), context, reachableAddressSet, newAddressSet);
-			}*/
-			/*for (Address address : problem.refs)
-			{
-				update(address);
-			}*/
+			*/
 		}
 
 		void operator()(const FuncVal& node)

@@ -1717,9 +1717,9 @@ namespace cgl
 			//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
 		}
 
-		if (record.problem.expr)
+		if (record.problem.candidateExpr)
 		{
-			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, record.problem.expr.value()));
+			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, record.problem.candidateExpr.value()));
 			if (!IsType<bool>(result))
 			{
 				CGL_Error("制約式の評価結果がブール値でない");

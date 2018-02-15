@@ -1367,6 +1367,7 @@ namespace cgl
 		const Evaluated value = pEnv->expand(boost::apply_visitor(*this, keyExpr.expr));
 
 		return RValue(KeyValue(keyExpr.name, value));
+		//return LRValue(pEnv->makeTemporaryValue(KeyValue(keyExpr.name, value)));
 	}
 
 	LRValue Eval::operator()(const RecordConstractor& recordConsractor)
@@ -1389,26 +1390,28 @@ namespace cgl
 
 		Record newRecord;
 
-		if (temporaryRecord)
+		if (pEnv->temporaryRecord)
 		{
-			currentRecords.push(temporaryRecord.value());
-			temporaryRecord = boost::none;
+			//pEnv->currentRecords.push(pEnv->temporaryRecord.value());
+			pEnv->currentRecords.push_back(pEnv->temporaryRecord.value());
+			pEnv->temporaryRecord = boost::none;
 		}
 		else
 		{
-			currentRecords.push(std::ref(newRecord));
+			pEnv->currentRecords.push_back(std::ref(newRecord));
 		}
 
-		Record& record = currentRecords.top();
+		//Record& record = pEnv->currentRecords.top();
+		Record& record = pEnv->currentRecords.back();
 			
 		int i = 0;
 
 		for (const auto& expr : recordConsractor.exprs)
 		{
 			CGL_DebugLog("");
-			Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 			CGL_DebugLog("Evaluate: ");
-			printExpr(expr);
+			printExpr(expr/*, std::cout*/);
+			Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
 			CGL_DebugLog("Result: ");
 			printEvaluated(value, pEnv);
 
@@ -1761,10 +1764,13 @@ namespace cgl
 
 		CGL_DebugLog("");
 
-		currentRecords.pop();
+		//pEnv->currentRecords.pop();
+		pEnv->currentRecords.pop_back();
 
 		//pEnv->pop();
 		pEnv->exitScope();
+
+		const Address address = pEnv->makeTemporaryValue(record);
 
 		//pEnv->garbageCollect();
 
@@ -1772,7 +1778,8 @@ namespace cgl
 		pEnv->printContext();
 		CGL_DebugLog("-------------------------------------------------------------------------");
 
-		return RValue(record);
+		//return RValue(record);
+		return LRValue(address);
 	}
 
 	LRValue Eval::operator()(const RecordInheritor& record)
@@ -1858,11 +1865,11 @@ namespace cgl
 		CGL_DebugLog("Clone:");
 		printEvaluated(clone, pEnv);
 
-		if (temporaryRecord)
+		if (pEnv->temporaryRecord)
 		{
 			CGL_Error("レコード拡張に失敗");
 		}
-		temporaryRecord = clone;
+		pEnv->temporaryRecord = clone;
 
 		//(2) a'の各キーと値に対する参照をローカルスコープに追加する
 		pEnv->enterScope();
@@ -1965,12 +1972,13 @@ namespace cgl
 		const Evaluated result = pEnv->expand(boost::apply_visitor(*this, closedSatExpr));
 		pEnv->exitScope();
 
-		if (currentRecords.empty())
+		if (pEnv->currentRecords.empty())
 		{
 			CGL_Error("sat宣言はレコードの中にしか書くことができません");
 		}
 
-		currentRecords.top().get().problem.addConstraint(closedSatExpr);
+		//pEnv->currentRecords.top().get().problem.addConstraint(closedSatExpr);
+		pEnv->currentRecords.back().get().problem.addConstraint(closedSatExpr);
 
 		return RValue(result);
 		//return RValue(false);
@@ -1981,7 +1989,7 @@ namespace cgl
 		for (const auto& accessor : node.accessors)
 		{
 			//std::cout << "  accessor:" << std::endl;
-			if (currentRecords.empty())
+			if (pEnv->currentRecords.empty())
 			{
 				CGL_Error("var宣言はレコードの中にしか書くことができません");
 			}
@@ -1994,12 +2002,12 @@ namespace cgl
 			{
 				//std::cout << "    Free Expr:" << std::endl;
 				//printExpr(closedVarExpr, std::cout);
-				currentRecords.top().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
+				pEnv->currentRecords.back().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
 			}
 			else if (IsType<Identifier>(closedVarExpr))
 			{
 				Accessor result(closedVarExpr);
-				currentRecords.top().get().freeVariables.push_back(result);
+				pEnv->currentRecords.back().get().freeVariables.push_back(result);
 			}
 			else
 			{

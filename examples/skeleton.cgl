@@ -15,8 +15,6 @@ contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1 & (p.y - q.y)*(p.y - q.y) < 1)
 
 distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
 
-gc()
-
 kite = shape{
     polygon: [
         {x: 0, y: 0}, {x: 20, y: -20}, {x: 80, y: 0}, {x: 20, y: +20}
@@ -24,8 +22,6 @@ kite = shape{
     begin: (->transform(@pos, @scale, @angle, polygon[0]))
     end:   (->transform(@pos, @scale, @angle, polygon[2]))
 }
-
-gc()
 
 skeleton = (num -> shape{
     ss: []
@@ -41,11 +37,7 @@ skeleton = (num -> shape{
     end:   (->transform(@pos, @scale, @angle, ss[num-1].end()))
 })
 
-gc()
-
 skeletonA = skeleton(5)
-
-gc()
 
 main = skeletonA{
     sat( contact(begin(), {x: 30, y:200}) )

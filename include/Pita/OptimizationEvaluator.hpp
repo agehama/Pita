@@ -33,6 +33,26 @@ namespace cgl
 			usedInSat(freeVariables.size(), 0)
 		{}
 
+		/*int depth = 0;
+		std::string getIndent()const
+		{
+			const int tabSize = 4;
+			std::string str;
+			for (int i = 0; i < depth*tabSize; ++i)
+			{
+				if (i % tabSize == 0)
+				{
+					const int a = (i / tabSize) % 10;
+					str += '0' + a;
+				}
+				else
+				{
+					str += ' ';
+				}
+			}
+			return str;
+		}*/
+
 		boost::optional<size_t> freeVariableIndex(Address reference);
 
 		//Address -> 参照ID

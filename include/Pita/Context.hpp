@@ -133,12 +133,14 @@ namespace cgl
 		//関数呼び出しなど別のスコープに切り替える/戻す
 		void switchFrontScope()
 		{
-			m_localEnvStack.push(LocalContext());
+			//m_localEnvStack.push(LocalContext());
+			m_localEnvStack.push_back(LocalContext());
 		}
 
 		void switchBackScope()
 		{
-			m_localEnvStack.pop();
+			//m_localEnvStack.pop();
+			m_localEnvStack.pop_back();
 		}
 
 		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction);
@@ -446,17 +448,26 @@ namespace cgl
 
 		void garbageCollect();
 
+		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
+		//std::stack<std::reference_wrapper<Record>> currentRecords;
+		std::vector<std::reference_wrapper<Record>> currentRecords;
+
+		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
+		boost::optional<Record&> temporaryRecord;
+
 	private:
 		void initialize();
 
 		LocalContext& localEnv()
 		{
-			return m_localEnvStack.top();
+			//return m_localEnvStack.top();
+			return m_localEnvStack.back();
 		}
 
 		const LocalContext& localEnv()const
 		{
-			return m_localEnvStack.top();
+			//return m_localEnvStack.top();
+			return m_localEnvStack.back();
 		}
 
 		void changeAddress(Address addressFrom, Address addressTo);
@@ -520,10 +531,13 @@ namespace cgl
 		std::stack<std::pair<int, std::vector<Scope>>> m_diffScopes;*/
 		
 		
-		std::stack<LocalContext> m_localEnvStack;
+		//std::stack<LocalContext> m_localEnvStack;
+		std::vector<LocalContext> m_localEnvStack;
 
 		//std::vector<Address> m_funcValIDs;
 		unsigned m_referenceID = 0;
+
+		size_t m_lastGCValueSize = 0;
 
 		std::weak_ptr<Context> m_weakThis;
 	};

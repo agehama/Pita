@@ -578,11 +578,13 @@ namespace cgl
 	{
 		const Address address = m_values.add(value);
 
-		//関数はスコープを抜ける時に定義式中の変数が解放されないか監視する必要があるのでIDを保存しておく
-		/*if (IsType<FuncVal>(value))
+		localEnv().back().temporaryAddresses.push_back(address);
+
+		const int thresholdGC = 5000;
+		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
-			m_funcValIDs.push_back(address);
-		}*/
+			garbageCollect();
+		}
 
 		return address;
 	}
@@ -983,8 +985,8 @@ namespace cgl
 				update(keyval.second);
 			}
 
-			/*
-			for (Address address : node.freeVariableRefs)
+			
+			/*for (Address address : node.freeVariableRefs)
 			{
 				update(address);
 			}
@@ -992,18 +994,18 @@ namespace cgl
 			{
 				Expr expr = accessor;
 				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-			}
-			*/
+			}*/
+			
 			
 			const auto& problem = node.problem;
-			/*if (problem.candidateExpr)
+			if (problem.candidateExpr)
 			{
 				CheckExpr(problem.candidateExpr.value(), context, reachableAddressSet, newAddressSet);
-			}*/
-			if(problem.expr)
+			}
+			/*if(problem.expr)
 			{
 				CheckExpr(problem.expr.value(), context, reachableAddressSet, newAddressSet);
-			}
+			}*/
 			/*for (Address address : problem.refs)
 			{
 				update(address);
@@ -1055,27 +1057,51 @@ namespace cgl
 
 		{
 			std::unordered_set<Address> addressesDelta;
-			for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
+			for (const auto& env : m_localEnvStack)
 			{
-				for (const auto& var : scopeIt->variables)
+				for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
 				{
-					const Address address = var.second;
-					if (!isReachable(address))
+					for (const auto& var : scopeIt->variables)
 					{
-						addressesDelta.emplace(address);
+						const Address address = var.second;
+						if (!isReachable(address))
+						{
+							addressesDelta.emplace(address);
+						}
 					}
-				}
 
-				for (const Address address : scopeIt->temporaryAddresses)
-				{
-					if (!isReachable(address))
+					for (const Address address : scopeIt->temporaryAddresses)
 					{
-						addressesDelta.emplace(address);
+						if (!isReachable(address))
+						{
+							addressesDelta.emplace(address);
+						}
 					}
 				}
 			}
-
+			
 			traverse(addressesDelta, traverse);
+		}
+
+		{
+
+			for (size_t i = 0; i < currentRecords.size(); ++i)
+			{
+				Record& record = currentRecords[i];
+				Evaluated evaluated = record;
+				std::unordered_set<Address> addressesDelta;
+				CheckValue(evaluated, *this, referenceableAddresses, addressesDelta);
+
+				traverse(addressesDelta, traverse);
+			}
+
+			if (temporaryRecord)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckValue(temporaryRecord.value(), *this, referenceableAddresses, addressesDelta);
+
+				traverse(addressesDelta, traverse);
+			}
 		}
 
 		for (const auto& keyval : m_functions)
@@ -1090,5 +1116,6 @@ namespace cgl
 		const size_t postGC = m_values.size();
 
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
+		m_lastGCValueSize = m_values.size();
 	}
 }

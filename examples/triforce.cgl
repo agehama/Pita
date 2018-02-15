@@ -13,7 +13,7 @@ transformA = (pos, scale, angle, polygon -> {
 })
 
 shape = {
-    pos: {x:0, y:0}
+    pos: {x:3, y:5}
     scale: {x:1, y:1}
     angle: 0
 }
@@ -21,8 +21,6 @@ shape = {
 contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
 
 distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
-
-gc()
 
 regularTriangle = shape{
 	polygon: [
@@ -32,22 +30,15 @@ regularTriangle = shape{
 	var(polygon[1], polygon[2])
 }
 
-gc()
-
 regularTriangleT = regularTriangle{
 	sat( transformA(pos,scale,angle,polygon[1]).y == transformA(pos,scale,angle,polygon[2]).y )
 	var(angle)
 }
 
-gc()
-
 main = shape{
 	a: regularTriangleT{pos: {x:50, y:50}}
-	gc()
 	b: regularTriangleT{pos: {x:150, y:50}}
-	gc()
 	c: regularTriangleT{pos: {x:250, y:50}}
-	gc()
 	sat( contact(transform(a, a.polygon[2]), transform(b, b.polygon[0])) & contact(transform(a, a.polygon[1]), transform(c, c.polygon[0])))
 	var(b.pos, c.pos)
 }

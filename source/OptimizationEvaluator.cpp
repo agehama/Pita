@@ -51,6 +51,8 @@ namespace cgl
 
 	bool SatVariableBinder::operator()(const LRValue& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		if (node.isLValue())
 		{
 			const Address address = node.address(*pEnv);
@@ -69,6 +71,8 @@ namespace cgl
 
 	bool SatVariableBinder::operator()(const Identifier& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		Address address = pEnv->findAddress(node);
 		if (!address.isValid())
 		{
@@ -83,18 +87,29 @@ namespace cgl
 
 	bool SatVariableBinder::operator()(const UnaryExpr& node)
 	{
-		return boost::apply_visitor(*this, node.lhs);
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
+		//++depth;
+		const bool a = boost::apply_visitor(*this, node.lhs);
+		//--depth;
+		return a;
 	}
 
 	bool SatVariableBinder::operator()(const BinaryExpr& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
+		//++depth;
 		const bool a = boost::apply_visitor(*this, node.lhs);
 		const bool b = boost::apply_visitor(*this, node.rhs);
+		//--depth;
 		return a || b;
 	}
 	
 	bool SatVariableBinder::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 	{
+		//std::cout << getIndent() << typeid(funcVal).name() << std::endl;
+
 		/*FuncVal funcVal;
 
 		if (auto opt = AsOpt<FuncVal>(node.funcRef))
@@ -168,7 +183,9 @@ namespace cgl
 		{
 			pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
 		}
+		//++depth;
 		const bool result = boost::apply_visitor(*this, funcVal.expr);
+		//--depth;
 
 		pEnv->exitScope();
 		pEnv->switchBackScope();
@@ -178,55 +195,77 @@ namespace cgl
 
 	bool SatVariableBinder::operator()(const Lines& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		bool result = false;
 		for (const auto& expr : node.exprs)
 		{
+			//++depth;
 			result = boost::apply_visitor(*this, expr) || result;
+			//--depth;
 		}
 		return result;
 	}
 
 	bool SatVariableBinder::operator()(const If& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		bool result = false;
+		//++depth;
 		result = boost::apply_visitor(*this, node.cond_expr) || result;
 		result = boost::apply_visitor(*this, node.then_expr) || result;
+		//--depth;
 		if (node.else_expr)
 		{
+			//++depth;
 			result = boost::apply_visitor(*this, node.else_expr.value()) || result;
+			//--depth;
 		}
 		return result;
 	}
 
 	bool SatVariableBinder::operator()(const For& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		bool result = false;
 			
 		//for式の範囲を制約で制御できるようにする意味はあるか？
 		//result = boost::apply_visitor(*this, node.rangeEnd) || result;
 		//result = boost::apply_visitor(*this, node.rangeStart) || result;
 
+		//++depth;
 		result = boost::apply_visitor(*this, node.doExpr) || result;
+		//--depth;
 		return result;
 	}
 
 	bool SatVariableBinder::operator()(const ListConstractor& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		bool result = false;
 		for (const auto& expr : node.data)
 		{
+			//++depth;
 			result = boost::apply_visitor(*this, expr) || result;
+			//--depth;
 		}
 		return result;
 	}
 
 	bool SatVariableBinder::operator()(const KeyExpr& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		return boost::apply_visitor(*this, node.expr);
 	}
 
 	bool SatVariableBinder::operator()(const RecordConstractor& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		bool result = false;
 		//for (const auto& expr : node.exprs)
 		for (size_t i = 0; i < node.exprs.size(); ++i)
@@ -234,13 +273,17 @@ namespace cgl
 			const auto& expr = node.exprs[i];
 			//CGL_DebugLog(std::string("BindRecordExpr(") + ToS(i) + ")");
 			//printExpr(expr);
+			//++depth;
 			result = boost::apply_visitor(*this, expr) || result;
+			//--depth;
 		}
 		return result;
 	}
 
 	bool SatVariableBinder::operator()(const Accessor& node)
 	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
 		/*CGL_DebugLog("SatVariableBinder::operator()(const Accessor& node)");
 		{
 			Expr expr = node;
@@ -303,8 +346,10 @@ namespace cgl
 			if (IsType<ListAccess>(access))
 			{
 				const ListAccess& listAccess = As<ListAccess>(access);
-
+				
+				//++depth;
 				isDeterministic = !boost::apply_visitor(*this, listAccess.index) && isDeterministic;
+				//--depth;
 
 				if (isDeterministic)
 				{
@@ -357,11 +402,14 @@ namespace cgl
 					//Case2(関数引数がfree)への対応
 					for (const auto& argument : funcAccess.actualArguments)
 					{
+						//++depth;
 						isDeterministic = !boost::apply_visitor(*this, argument) && isDeterministic;
+						//--depth;
 					}
 
 					//呼ばれる関数の実体はその引数には依存しないため、ここでisDeterministicがfalseになっても問題ない
 
+					//std::cout << getIndent() << typeid(node).name() << " -> objOpt.value()" << std::endl;
 					//Case4以降への対応は関数の中身を見に行く必要がある
 					const Evaluated& objRef = objOpt.value();
 					if (!IsType<FuncVal>(objRef))
@@ -381,6 +429,7 @@ namespace cgl
 					Expr caller = FunctionCaller(function, arguments);
 					isDeterministic = !boost::apply_visitor(*this, caller) && isDeterministic;
 					*/
+					//std::cout << getIndent() << typeid(node).name() << " -> actualArguments" << std::endl;
 					std::vector<Address> arguments;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
@@ -399,6 +448,7 @@ namespace cgl
 					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
 					if (isDeterministic)
 					{
+						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
 						//const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
 						const Evaluated returnedValue = pEnv->expand(evaluator.callFunction(function, arguments));
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
@@ -412,6 +462,7 @@ namespace cgl
 			return static_cast<bool>(addSatRef(headAddress));
 		}
 
+		//std::cout << getIndent() << "End " << typeid(node).name() << std::endl;
 		return true;
 	}
 

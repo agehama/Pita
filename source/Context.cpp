@@ -580,7 +580,8 @@ namespace cgl
 
 		localEnv().back().temporaryAddresses.push_back(address);
 
-		const int thresholdGC = 5000;
+		//const int thresholdGC = 5000;
+		const int thresholdGC = 20000;
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
 			garbageCollect();

@@ -24,6 +24,12 @@ std::vector<std::string> exampleFiles()
 		"str.cgl",
 		"str2.cgl",
 		"triforce.cgl",
+		"fib1.cgl",
+		"fib2.cgl",
+		"grid.cgl",
+		"rec_shape1.cgl",
+		"rec_shape2.cgl",
+		"rec_shape3.cgl"
 	});
 
 	return filenames;

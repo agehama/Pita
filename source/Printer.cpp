@@ -133,7 +133,7 @@ namespace cgl
 
 				os << child.indent() << "->";
 
-				boost::apply_visitor(Printer(os, m_indent + 1), node.expr);
+				boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.expr);
 			}
 
 			os << indent() << ")" << std::endl;
@@ -224,7 +224,14 @@ namespace cgl
 	{
 		if (node.isLValue())
 		{
-			os << indent() << "Address(" << node.toString() << ")" << std::endl;
+			if (pEnv)
+			{
+				os << indent() << "Address(" << node.address(*pEnv).toString() << ")" << std::endl;
+			}
+			else
+			{
+				os << indent() << "Address(" << node.toString() << ")" << std::endl;
+			}
 		}
 		else
 		{
@@ -248,7 +255,7 @@ namespace cgl
 	{
 		os << indent() << UnaryOpToStr(node.op) << "(" << std::endl;
 
-		boost::apply_visitor(Printer(os, m_indent + 1), node.lhs);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.lhs);
 
 		os << indent() << ")" << std::endl;
 	}
@@ -256,8 +263,8 @@ namespace cgl
 	void Printer::operator()(const BinaryExpr& node)const
 	{
 		os << indent() << BinaryOpToStr(node.op) << "(" << std::endl;
-		boost::apply_visitor(Printer(os, m_indent + 1), node.lhs);
-		boost::apply_visitor(Printer(os, m_indent + 1), node.rhs);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.lhs);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.rhs);
 		os << indent() << ")" << std::endl;
 	}
 
@@ -266,10 +273,10 @@ namespace cgl
 		os << indent() << "DefFunc(" << std::endl;
 
 		{
-			const auto child = Printer(os, m_indent + 1);
+			const auto child = Printer(pEnv, os, m_indent + 1);
 			os << child.indent() << "Arguments(" << std::endl;
 			{
-				const auto grandChild = Printer(os, child.m_indent + 1);
+				const auto grandChild = Printer(pEnv, os, child.m_indent + 1);
 
 				const auto& args = defFunc.arguments;
 				for (size_t i = 0; i < args.size(); ++i)
@@ -280,7 +287,7 @@ namespace cgl
 			os << child.indent() << ")" << std::endl;
 		}
 
-		boost::apply_visitor(Printer(os, m_indent + 1), defFunc.expr);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), defFunc.expr);
 
 		os << indent() << ")" << std::endl;
 	}
@@ -288,8 +295,8 @@ namespace cgl
 	void Printer::operator()(const Range& range)const
 	{
 		os << indent() << "Range(" << std::endl;
-		boost::apply_visitor(Printer(os, m_indent + 1), range.lhs);
-		boost::apply_visitor(Printer(os, m_indent + 1), range.rhs);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), range.lhs);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), range.rhs);
 		os << indent() << ")" << std::endl;
 	}
 
@@ -301,7 +308,7 @@ namespace cgl
 		for (const auto& expr : statement.exprs)
 		{
 			os << indent() << "(" << i << "): " << std::endl;
-			boost::apply_visitor(Printer(os, m_indent + 1), expr);
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 			++i;
 		}
 
@@ -313,29 +320,29 @@ namespace cgl
 		os << indent() << "If(" << std::endl;
 
 		{
-			const auto child = Printer(os, m_indent + 1);
+			const auto child = Printer(pEnv, os, m_indent + 1);
 			os << child.indent() << "Cond(" << std::endl;
 
-			boost::apply_visitor(Printer(os, m_indent + 2), if_statement.cond_expr);
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), if_statement.cond_expr);
 
 			os << child.indent() << ")" << std::endl;
 		}
 
 		{
-			const auto child = Printer(os, m_indent + 1);
+			const auto child = Printer(pEnv, os, m_indent + 1);
 			os << child.indent() << "Then(" << std::endl;
 
-			boost::apply_visitor(Printer(os, m_indent + 2), if_statement.then_expr);
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), if_statement.then_expr);
 
 			os << child.indent() << ")" << std::endl;
 		}
 
 		if (if_statement.else_expr)
 		{
-			const auto child = Printer(os, m_indent + 1);
+			const auto child = Printer(pEnv, os, m_indent + 1);
 			os << child.indent() << "Else(" << std::endl;
 
-			boost::apply_visitor(Printer(os, m_indent + 2), if_statement.else_expr.value());
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), if_statement.else_expr.value());
 
 			os << child.indent() << ")" << std::endl;
 		}
@@ -354,7 +361,7 @@ namespace cgl
 	{
 		os << indent() << "Return(" << std::endl;
 
-		boost::apply_visitor(Printer(os, m_indent + 1), return_statement.expr);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), return_statement.expr);
 
 		os << indent() << ")" << std::endl;
 	}
@@ -367,7 +374,7 @@ namespace cgl
 		for (const auto& expr : listConstractor.data)
 		{
 			os << indent() << "(" << i << "): " << std::endl;
-			boost::apply_visitor(Printer(os, m_indent + 1), expr);
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 			++i;
 		}
 		os << indent() << ")" << std::endl;
@@ -377,10 +384,10 @@ namespace cgl
 	{
 		os << indent() << "KeyExpr(" << std::endl;
 
-		const auto child = Printer(os, m_indent + 1);
+		const auto child = Printer(pEnv, os, m_indent + 1);
 
 		os << child.indent() << static_cast<std::string>(keyExpr.name) << std::endl;
-		boost::apply_visitor(Printer(os, m_indent + 1), keyExpr.expr);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), keyExpr.expr);
 		os << indent() << ")" << std::endl;
 	}
 
@@ -392,7 +399,7 @@ namespace cgl
 		for (const auto& expr : recordConstractor.exprs)
 		{
 			os << indent() << "(" << i << "): " << std::endl;
-			boost::apply_visitor(Printer(os, m_indent + 1), expr);
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 			++i;
 		}
 		os << indent() << ")" << std::endl;
@@ -402,7 +409,7 @@ namespace cgl
 	{
 		os << indent() << "RecordInheritor(" << std::endl;
 
-		const auto child = Printer(os, m_indent + 1);
+		const auto child = Printer(pEnv, os, m_indent + 1);
 		Expr expr = record.adder;
 		boost::apply_visitor(child, record.original);
 		boost::apply_visitor(child, expr);
@@ -413,7 +420,7 @@ namespace cgl
 	void Printer::operator()(const DeclSat& node)const
 	{
 		os << indent() << "DeclSat(" << std::endl;
-		boost::apply_visitor(Printer(os, m_indent + 1), node.expr);
+		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.expr);
 		os << indent() << ")" << std::endl;
 	}
 
@@ -423,7 +430,7 @@ namespace cgl
 		for (const auto& accessor : node.accessors)
 		{
 			Expr expr = accessor;
-			boost::apply_visitor(Printer(os, m_indent + 1), expr);
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 		}
 		os << indent() << ")" << std::endl;
 	}
@@ -432,7 +439,7 @@ namespace cgl
 	{
 		os << indent() << "Accessor(" << std::endl;
 
-		Printer child(os, m_indent + 1);
+		Printer child(pEnv, os, m_indent + 1);
 		boost::apply_visitor(child, accessor.head);
 		for (const auto& access : accessor.accesses)
 		{

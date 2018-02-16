@@ -583,6 +583,8 @@ namespace cgl
 
 	void Context::initialize()
 	{
+		m_random.seed(1);
+
 		registerBuiltInFunction(
 			"print",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
@@ -593,6 +595,31 @@ namespace cgl
 			}
 
 			printEvaluated(pEnv->expand(arguments[0]), pEnv, std::cout, 0);
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"size",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Evaluated& value = pEnv->expand(arguments[0]);
+			if (auto opt = AsOpt<List>(value))
+			{
+				return static_cast<int>(opt.value().data.size());
+			}
+			else if (auto opt = AsOpt<Record>(value))
+			{
+				return static_cast<int>(opt.value().values.size());
+			}
+
+			CGL_Error("不正な式です");
 			return 0;
 		},
 			false
@@ -622,6 +649,23 @@ namespace cgl
 			}
 
 			return Cos(pEnv->expand(arguments[0]));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"random",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const double x0 = AsDouble(expand(arguments[0]));
+			const double x1 = AsDouble(expand(arguments[1]));
+			const double x01 = m_dist(m_random);
+			return x0 + (x1 - x0)*x01;
 		},
 			false
 			);

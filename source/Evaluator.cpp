@@ -2111,13 +2111,15 @@ namespace cgl
 
 		for (const auto& access : accessor.accesses)
 		{
-			boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(address);
+			//boost::optional<Evaluated&> objOpt = pEnv->expandOpt(address);
+			LRValue lrAddress = LRValue(address);
+			boost::optional<Evaluated&> objOpt = pEnv->mutableExpandOpt(lrAddress);
 			if (!objOpt)
 			{
 				CGL_Error("参照エラー");
 			}
 
-			const Evaluated& objRef = objOpt.value();
+			Evaluated& objRef = objOpt.value();
 
 			if (auto listAccessOpt = AsOpt<ListAccess>(access))
 			{
@@ -2128,11 +2130,30 @@ namespace cgl
 					CGL_Error("オブジェクトがリストでない");
 				}
 
-				const List& list = As<const List&>(objRef);
+				List& list = As<List&>(objRef);
 
 				if (auto indexOpt = AsOpt<int>(value))
 				{
-					address = list.get(indexOpt.value());
+					const int indexValue = indexOpt.value();
+					const int listSize = static_cast<int>(list.data.size());
+					const int maxIndex = listSize - 1;
+
+					if (0 <= indexValue && indexValue <= maxIndex)
+					{
+						address = list.get(indexValue);
+					}
+					else if (indexValue < 0 || !pEnv->isAutomaticExtendMode())
+					{
+						CGL_Error("listの範囲外アクセスが発生しました");
+					}
+					else
+					{
+						while (static_cast<int>(list.data.size()) - 1 < indexValue)
+						{
+							list.data.push_back(pEnv->makeTemporaryValue(0));
+						}
+						address = list.get(indexValue);
+					}
 				}
 				else
 				{

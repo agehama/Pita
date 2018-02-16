@@ -46,7 +46,7 @@ namespace cgl
 		}
 	};
 
-	namespace wide = qi::unicode;
+	namespace encode = qi::unicode;
 
 	template<typename Iterator>
 	struct LineSkipper : public qi::grammar<Iterator>
@@ -55,7 +55,7 @@ namespace cgl
 
 		LineSkipper() :LineSkipper::base_type(skip)
 		{
-			skip = wide::space;
+			skip = encode::space;
 		}
 	};
 
@@ -205,25 +205,25 @@ namespace cgl
 			record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 
 			record_maker = (
-				wide::char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
+				encode::char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
 				*(
 				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-					| (+(wide::char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					| (+(encode::char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					)
-				>> s >> wide::char_('}')
+				>> s >> encode::char_('}')
 				)
-				| (wide::char_('{') >> s >> wide::char_('}'));
+				| (encode::char_('{') >> s >> encode::char_('}'));
 
 			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
-			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> wide::char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
+			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> encode::char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
-			list_maker = (wide::char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
+			list_maker = (encode::char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
 				*(
-					(s >> wide::char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					| (+(wide::char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					) >> s >> wide::char_(']')
+					(s >> encode::char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					| (+(encode::char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
+					) >> s >> encode::char_(']')
 				)
-				| (wide::char_('[') >> s >> wide::char_(']'));
+				| (encode::char_('[') >> s >> encode::char_(']'));
 			
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
@@ -233,14 +233,14 @@ namespace cgl
 				| listAccess[_val = Cast<ListAccess, Access>()]
 				| recordAccess[_val = Cast<RecordAccess, Access>()];
 
-			recordAccess = wide::char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
+			recordAccess = encode::char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
 
-			//listAccess = wide::char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> wide::char_(']');
-			listAccess = wide::char_('[') >> s >> (wide::char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> s >> wide::char_(']');
+			//listAccess = encode::char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> encode::char_(']');
+			listAccess = encode::char_('[') >> s >> (encode::char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> s >> encode::char_(']');
 
-			functionAccess = wide::char_('(')
+			functionAccess = encode::char_('(')
 				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
-				>> *(s >> wide::char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> wide::char_(')');
+				>> *(s >> encode::char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> encode::char_(')');
 
 			factor = 
 				  '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
@@ -264,14 +264,14 @@ namespace cgl
 
 			id = unchecked_identifier[_val = Call(Identifier::MakeIdentifier, _1)] - distinct_keyword;
 
-			char_string = lexeme[*(wide::char_ - wide::char_('\"'))];
+			char_string = lexeme[*(encode::char_ - encode::char_('\"'))];
 
-			distinct_keyword = lexeme[keywords >> !(wide::alnum | '_')];
-			unchecked_identifier = lexeme[(wide::alpha | wide::char_('_')) >> *(wide::alnum | wide::char_('_'))];
+			distinct_keyword = lexeme[keywords >> !(encode::alnum | '_')];
+			unchecked_identifier = lexeme[(encode::alpha | encode::char_('_')) >> *(encode::alnum | encode::char_('_'))];
 
-			float_value = lexeme[+wide::char_('0', '9') >> wide::char_('.') >> +wide::char_('0', '9')];
+			float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9')];
 			
-			s = *(wide::space);
+			s = *(encode::space);
 		}
 	};
 }

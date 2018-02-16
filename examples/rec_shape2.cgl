@@ -1,0 +1,63 @@
+vec2 = (x, y -> {x: x, y: y})
+x2 = (v -> {x: v, y: v})
+
+contact = (p1, p2 -> (p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) == 0)
+
+shape = {
+    pos: vec2(0, 0)
+    scale: vec2(1, 1)
+    angle: 0
+    getPos: (p ->
+        cosT = cos(@angle)
+        sinT = sin(@angle), {
+            x: @pos.x + cosT * @scale.x * p.x - sinT * @scale.y * p.y
+            y: @pos.y + sinT * @scale.x * p.x + cosT * @scale.y * p.y
+        }
+    )
+}
+
+square = shape{
+    polygon: [
+        {x: -0.5, y: -0.5}
+        {x: +0.5, y: -0.5}
+        {x: +0.5, y: +0.5}
+        {x: -0.5, y: +0.5}
+    ]
+    p: [
+        (->getPos(polygon[0]))
+        (->getPos(polygon[1]))
+        (->getPos(polygon[2]))
+        (->getPos(polygon[3]))
+    ]
+}
+
+triangle = shape{
+    polygon: [
+        {x: 0, y: -0.5773502691896}
+        {x: 0.5, y: 0.2886751345948}
+        {x: -0.5, y: 0.2886751345948}
+    ]
+    p1: (->getPos(polygon[0]))
+    p2: (->getPos(polygon[1]))
+    p3: (->getPos(polygon[2]))
+}
+
+shapeList = (f, depth, template -> 
+	if depth == 0
+	then shape{
+		a: template{}
+	}
+	else shape{
+		a: template{}
+		b: f(f, depth-1, template){
+			pos.y = -1
+			angle = 30
+			scale = x2(0.9)
+		}
+	}
+)
+
+tree = shape{
+	depth = 50
+	a: shapeList(shapeList, depth, shape{a:diff(triangle{}, buffer(triangle{}, -0.1))}){scale = x2(100)}
+}

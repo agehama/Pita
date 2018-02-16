@@ -431,6 +431,18 @@ namespace cgl
 		boost::recursive_wrapper<Jump>
 	>;
 
+	inline double AsDouble(const Evaluated& value)
+	{
+		if (IsType<double>(value))
+			return As<double>(value);
+		else if (IsType<int>(value))
+			return static_cast<double>(As<int>(value));
+		else {
+			CGL_Error("不正な値です");
+			return 0;
+		}
+	}
+
 	struct RValue;
 	struct LRValue;
 

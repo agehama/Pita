@@ -95,11 +95,13 @@ namespace cgl
 	class Printer : public boost::static_visitor<void>
 	{
 	public:
-		Printer(std::ostream& os, int indent = 0) :
+		Printer(std::shared_ptr<Context> pEnv, std::ostream& os, int indent = 0) :
+			pEnv(pEnv),
 			os(os),
 			m_indent(indent)
 		{}
 
+		std::shared_ptr<Context> pEnv;
 		std::ostream& os;
 		int m_indent;
 
@@ -142,10 +144,10 @@ namespace cgl
 		void operator()(const Accessor& accessor)const;
 	};
 
-	inline void printExpr(const Expr& expr, std::ostream& os)
+	inline void printExpr(const Expr& expr, std::shared_ptr<Context> pEnv, std::ostream& os)
 	{
 		os << "PrintExpr(\n";
-		boost::apply_visitor(Printer(os), expr);
+		boost::apply_visitor(Printer(pEnv, os), expr);
 		os << ") " << std::endl;
 	}
 

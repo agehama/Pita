@@ -2,6 +2,7 @@
 #include <stack>
 #include <map>
 #include <unordered_set>
+#include <random>
 
 #include "Node.hpp"
 
@@ -423,6 +424,11 @@ namespace cgl
 		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
 		boost::optional<Record&> temporaryRecord;
 
+		bool isAutomaticExtendMode()
+		{
+			return m_automaticExtendMode;
+		}
+
 	private:
 		void initialize();
 
@@ -468,6 +474,11 @@ namespace cgl
 		unsigned m_referenceID = 0;
 
 		size_t m_lastGCValueSize = 0;
+
+		bool m_automaticExtendMode = true;
+
+		std::uniform_real_distribution<double> m_dist;
+		std::mt19937 m_random;
 
 		std::weak_ptr<Context> m_weakThis;
 	};

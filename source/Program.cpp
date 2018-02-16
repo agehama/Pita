@@ -107,7 +107,7 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.value(), std::cout);
+					printExpr(exprOpt.value(), pEnv, std::cout);
 				}
 
 				if (logOutput) std::cout << "execute..." << std::endl;
@@ -160,7 +160,7 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.value(), std::cout);
+					printExpr(exprOpt.value(), pEnv, std::cout);
 				}
 
 				if (logOutput) std::cout << "execute..." << std::endl;

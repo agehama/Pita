@@ -1,0 +1,21 @@
+vec2 = (x, y -> {x: x, y: y})
+x2 = (v -> {x: v, y: v})
+
+shape = {
+    pos: vec2(0, 0)
+    scale: x2(1, 1)
+    angle: 0
+}
+
+NotIntersectsMin = (a, b -> intersection(a, b) + area(BoundingBox(a, b)))
+
+main = shape{
+	a: text{
+		str: "図"
+	}
+	b: text{
+		str: "形"
+	}
+	sat(NotIntersectsMin(a, b))
+	var(b.pos)
+}

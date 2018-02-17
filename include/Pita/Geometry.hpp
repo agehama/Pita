@@ -11,6 +11,8 @@ namespace cgl
 	//std::vector<Eigen::Vector2d> GetPath(const Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
 
+	void GetOffsetPath(Record& pathRule, double offset, std::shared_ptr<cgl::Context> pEnv);
+
 	void GetText(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
 
 	void GetShapePath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);

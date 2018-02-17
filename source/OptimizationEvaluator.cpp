@@ -299,7 +299,7 @@ namespace cgl
 			Address address = pEnv->findAddress(As<Identifier>(head));
 			if (!address.isValid())
 			{
-				CGL_Error("識別子が定義されていません");
+				CGL_Error(std::string("識別子\"") + static_cast<std::string>(As<Identifier>(head)) + "\"が定義されていません");
 			}
 
 			//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。

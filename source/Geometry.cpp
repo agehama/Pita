@@ -794,6 +794,10 @@ namespace cgl
 		pathRule.append("path", pEnv->makeTemporaryValue(result));
 	}
 
+	void GetOffsetPath(Record & pathRule, double offset, std::shared_ptr<cgl::Context> pEnv)
+	{
+	}
+
 	void GetText(Record& textRule, std::shared_ptr<cgl::Context> pEnv)
 	{
 		const auto& values = textRule.values;

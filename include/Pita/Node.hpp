@@ -1811,8 +1811,6 @@ namespace cgl
 			obj.accesses.push_back(access);
 		}
 
-		//std::pair<FunctionCaller, std::vector<Access>> getFirstFunction(std::shared_ptr<Context> pEnv);
-
 		bool hasFunctionCall()const
 		{
 			for (const auto& a : accesses)
@@ -1842,6 +1840,34 @@ namespace cgl
 			}
 
 			return IsEqual(head, other.head);
+		}
+	};
+
+	struct DeepReference
+	{
+		DeepReference() = default;
+
+		using Key = boost::variant<int, std::string>;
+
+		Address head;
+		std::vector<std::pair<Key, Address>> tail;
+
+		DeepReference& addList(int index, Address address)
+		{
+			tail.emplace_back(index, address);
+			return *this;
+		}
+
+		DeepReference& addRecord(const std::string& name, Address address)
+		{
+			tail.emplace_back(name, address);
+			return *this;
+		}
+
+		DeepReference& add(const Key& key, Address address)
+		{
+			tail.emplace_back(key, address);
+			return *this;
 		}
 	};
 

@@ -340,17 +340,162 @@ namespace cgl
 		++m_referenceID;
 
 		Reference reference(m_referenceID);
-
-		m_refAddressMap[reference] = address;
+		
+		DeepReference deepReference;
+		deepReference.head = address;
+		m_refAddressMap[reference] = { address };
 		m_addressRefMap.insert({ address, reference });
 
 		return reference;
 	}
 
+	Reference Context::bindReference(const Identifier& identifier)
+	{
+		return bindReference(findAddress(identifier));
+
+		/*
+		++m_referenceID;
+
+		Reference reference(m_referenceID);
+
+		const Address address = findAddress(identifier);
+
+		
+		DeepReference deepReference;
+		deepReference.head = address;
+		m_refAddressMap[reference] = { address };
+		m_addressRefMap.insert({ address, reference });
+
+		return reference;
+		*/
+	}
+
+	Reference Context::bindReference(const Accessor& accessor)
+	{
+		if(auto pEnv = m_weakThis.lock())
+		{
+			DeepReference deepReference;
+
+			Eval evaluator(pEnv);
+
+			LRValue head = boost::apply_visitor(evaluator, accessor.head);
+			if (!head.isAddress())
+			{
+				CGL_Error("右辺値に対して参照演算子を適用しようとしました");
+			}
+			
+			Address address = head.address(*this);
+			deepReference.head = address;
+
+			for (const auto& access : accessor.accesses)
+			{
+				boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(address);
+				if (!objOpt)
+				{
+					CGL_Error("参照エラー");
+				}
+				
+				const Evaluated& objRef = objOpt.value();
+
+				if (auto listAccessOpt = AsOpt<ListAccess>(access))
+				{
+					if (!IsType<List>(objRef))
+					{
+						CGL_Error("オブジェクトがリストでない");
+					}
+
+					const List& list = As<const List&>(objRef);
+
+					Evaluated value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+					if (auto indexOpt = AsOpt<int>(value))
+					{
+						address = list.get(indexOpt.value());
+						deepReference.addList(indexOpt.value(), address);
+					}
+					else
+					{
+						CGL_Error("list[index] の index が int 型でない");
+					}
+				}
+				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+				{
+					if (!IsType<Record>(objRef))
+					{
+						CGL_Error("オブジェクトがレコードでない");
+					}
+
+					const Record& record = As<const Record&>(objRef);
+					auto it = record.values.find(recordAccessOpt.value().name);
+					if (it == record.values.end())
+					{
+						CGL_Error("指定された識別子がレコード中に存在しない");
+					}
+
+					address = it->second;
+					deepReference.addRecord(it->first, address);
+				}
+				else
+				{
+					CGL_Error("右辺値に対して参照演算子を適用しようとしました");
+				}
+			}
+
+			++m_referenceID;
+
+			Reference reference(m_referenceID);
+
+			m_refAddressMap[reference] = deepReference;
+			m_addressRefMap.insert({ deepReference.head, reference });
+			for (const auto& keyAddress : deepReference.tail)
+			{
+				m_addressRefMap.insert({ keyAddress.second, reference });
+			}
+
+			return reference;
+		}
+
+		CGL_Error("shared this does not exist.");
+		return Reference();
+	}
+
 	Address Context::getReference(Reference reference)const
 	{
 		auto it = m_refAddressMap.find(reference);
-		return it->second;
+		const auto& deepReference = it->second;
+
+		if (deepReference.tail.empty())
+		{
+			return deepReference.head;
+		}
+		return deepReference.tail.back().second;
+	}
+
+	Reference Context::cloneReference(Reference oldReference, const std::unordered_map<Address, Address>& addressReplaceMap)
+	{
+		const auto newAddress = [&](const Address address)
+		{
+			return addressReplaceMap.at(address);
+		};
+
+		const DeepReference& oldDeepReference = m_refAddressMap[oldReference];
+
+		++m_referenceID;
+		Reference newReference(m_referenceID);	
+		DeepReference newDeepReference;
+
+		newDeepReference.head = newAddress(oldDeepReference.head);
+		m_addressRefMap.insert({ newDeepReference.head, newReference });
+
+		for (const auto& keyval : oldDeepReference.tail)
+		{
+			const Address currentAddress = newAddress(keyval.second);
+			newDeepReference.add(keyval.first, currentAddress);
+			m_addressRefMap.insert({ currentAddress, newReference });
+		}
+
+		m_refAddressMap[newReference] = newDeepReference;
+		
+		return newReference;
 	}
 
 	void Context::bindValueID(const std::string& name, const Address ID)
@@ -751,11 +896,94 @@ namespace cgl
 		{
 			return;
 		}
-
+		
+		/*
 		for (auto it = m_addressRefMap.find(addressFrom); it != m_addressRefMap.end(); it = m_addressRefMap.find(addressFrom))
 		{
 			m_addressRefMap.insert({ addressTo, it->second });
 			m_refAddressMap[it->second] = addressTo;
+			m_addressRefMap.erase(it);
+		}
+		*/
+
+		//アクセッサの全てのアドレスをm_addressRefMapに紐付けているので、一つのReferenceに対して複数回処理が走るのを防止するために処理済みの参照を記録しておく
+		std::unordered_set<Reference> processedList;
+
+		for (auto it = m_addressRefMap.find(addressFrom); it != m_addressRefMap.end(); it = m_addressRefMap.find(addressFrom))
+		{
+			if (processedList.find(it->second) != processedList.end())
+			{
+				m_addressRefMap.insert({ addressTo, it->second });
+				m_addressRefMap.erase(it);
+				continue;
+			}
+
+			{
+				DeepReference& deepReference = m_refAddressMap[it->second];
+
+				auto& head = deepReference.head;
+				auto& tail = deepReference.tail;
+
+				Address address;
+				size_t startIndex;
+
+				if (head == addressFrom)
+				{
+					address = addressTo;
+					head = address;
+					startIndex = 0;
+				}
+				else
+				{
+					for (size_t i = 0; i < tail.size(); ++i)
+					{
+						if (tail[i].second == addressFrom)
+						{
+							address = addressTo;
+							tail[i].second = address;
+							startIndex = i + 1;
+						}
+					}
+				}
+
+				for (size_t i = startIndex; i < tail.size(); ++i)
+				{
+					boost::optional<const Evaluated&> objOpt = expandOpt(address);
+					if (!objOpt)
+					{
+						CGL_Error("参照エラー");
+					}
+
+					const Evaluated& objRef = objOpt.value();
+
+					if (IsType<int>(tail[i].first))
+					{
+						if (!IsType<List>(objRef))
+						{
+							CGL_Error("参照が作られた変数に異なる型の値を代入しようとしました");
+						}
+
+						const int index = As<int>(tail[i].first);
+						address = As<List>(objRef).data[index];
+						tail[i].second = address;
+					}
+					else
+					{
+						if (!IsType<Record>(objRef))
+						{
+							CGL_Error("参照が作られた変数に異なる型の値を代入しようとしました");
+						}
+
+						const std::string name = As<std::string>(tail[i].first);
+						address = As<Record>(objRef).values.at(name);
+						tail[i].second = address;
+					}
+				}
+			}
+			
+			processedList.emplace(it->second);
+
+			m_addressRefMap.insert({ addressTo, it->second });
 			m_addressRefMap.erase(it);
 		}
 	}

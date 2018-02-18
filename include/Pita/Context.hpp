@@ -217,7 +217,10 @@ namespace cgl
 		std::vector<Address> expandReferences2(const Accessor& access);
 
 		Reference bindReference(Address address);
+		Reference bindReference(const Identifier& identifier);
+		Reference bindReference(const Accessor& accessor);
 		Address getReference(Reference reference)const;
+		Reference cloneReference(Reference reference, const std::unordered_map<Address, Address>& addressReplaceMap);
 		
 		//ローカル変数を全て展開する
 		//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
@@ -464,7 +467,9 @@ namespace cgl
 		Values<BuiltInFunction> m_functions;
 		std::unordered_map<Address, std::string> m_plateausFunctions;
 
-		std::unordered_map<Reference, Address> m_refAddressMap;
+		//std::unordered_map<Reference, Address> m_refAddressMap;
+		//std::unordered_map<Reference, std::vector<Address>> m_refAddressMap;
+		std::unordered_map<Reference, DeepReference> m_refAddressMap;
 		std::unordered_multimap<Address, Reference> m_addressRefMap;
 
 		Values<Evaluated> m_values;

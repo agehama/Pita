@@ -81,17 +81,6 @@ namespace cgl
 
 	Expr AddressReplacer::operator()(const LRValue& node)const
 	{
-		/*
-		if (node.isLValue())
-		{
-			if (auto opt = getOpt(node.address(*pEnv)))
-			{
-				return LRValue(opt.value());
-			}
-		}
-		return node;
-		*/
-		
 		if (node.isRValue())
 		{
 			return node;
@@ -101,7 +90,7 @@ namespace cgl
 		{
 			if (node.isReference())
 			{
-				return LRValue(pEnv->bindReference(opt.value()));
+				return LRValue(pEnv->cloneReference(node.reference(), replaceMap));
 			}
 			else
 			{
@@ -497,7 +486,7 @@ namespace cgl
 	{
 		if (node.op == UnaryOp::Dynamic && !isInnerClosure)
 		{
-			Eval evaluator(pEnv);
+			/*Eval evaluator(pEnv);
 			
 			const LRValue lrvalue = boost::apply_visitor(evaluator, node.lhs);
 			if (lrvalue.isRValue())
@@ -505,7 +494,18 @@ namespace cgl
 				CGL_Error("単項@演算子の右辺には識別子かアクセッサしか用いることができません");
 			}
 
-			return LRValue(pEnv->bindReference(lrvalue.address(*pEnv)));
+			return LRValue(pEnv->bindReference(lrvalue.address(*pEnv)));*/
+
+			if (IsType<Identifier>(node.lhs))
+			{
+				return LRValue(pEnv->bindReference(As<Identifier>(node.lhs)));
+			}
+			else if (IsType<Accessor>(node.lhs))
+			{
+				return LRValue(pEnv->bindReference(As<Accessor>(node.lhs)));
+			}
+
+			CGL_Error("参照演算子@の右辺には識別子かアクセッサしか用いることができません");
 		}
 		return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op);
 	}

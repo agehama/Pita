@@ -286,8 +286,11 @@ namespace cgl
 	bool SatVariableBinder::operator()(const KeyExpr& node)
 	{
 		//std::cout << getIndent() << typeid(node).name() << std::endl;
+		
+		bool result = boost::apply_visitor(*this, node.expr);
+		addLocalVariable(node.name);
 
-		return boost::apply_visitor(*this, node.expr);
+		return result;
 	}
 
 	bool SatVariableBinder::operator()(const RecordConstractor& node)

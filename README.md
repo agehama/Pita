@@ -1,5 +1,5 @@
 Pita
----
+===
 Constraint geometry processing language.
 
 ### Requirements
@@ -17,3 +17,7 @@ Constraint geometry processing language.
 
     ./pita ../Pita/examples/3rects.cgl
     #output result.svg
+
+### Run test
+
+    ctest -V

@@ -14,24 +14,50 @@ namespace cgl
 		std::shared_ptr<Context> pEnv;
 
 		//free変数集合->freeに指定された変数全て
-		std::vector<Address> freeVariables;
+		//std::vector<Address> freeVariables;
+		const std::vector<Address>& freeVariables;
 
 		//free変数集合->freeに指定された変数が実際にsatに現れたかどうか
-		std::vector<char> usedInSat;
+		std::vector<char>& usedInSat;
 
 		//参照ID->Address
-		std::vector<Address> refs;
+		//std::vector<Address> refs;
+		std::vector<Address>& refs;
 
 		//Address->参照ID
-		std::unordered_map<Address, int> invRefs;
+		//std::unordered_map<Address, int> invRefs;
+		std::unordered_map<Address, int>& invRefs;
 
-		bool hasPlateausFunction = false;
+		//bool hasPlateausFunction = false;
+		bool& hasPlateausFunction;
 
-		SatVariableBinder(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
+		//ローカル変数
+		std::set<std::string> localVariables;
+
+		/*SatVariableBinder(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
 			pEnv(pEnv),
 			freeVariables(freeVariables),
 			usedInSat(freeVariables.size(), 0)
+		{}*/
+		SatVariableBinder(
+			std::shared_ptr<Context> pEnv, 
+			const std::vector<Address>& freeVariables, 
+			std::vector<char>& usedInSat,
+			std::vector<Address>& refs,
+			std::unordered_map<Address, int>& invRefs,
+			bool& hasPlateausFunction) :
+			pEnv(pEnv),
+			freeVariables(freeVariables),
+			usedInSat(usedInSat),
+			//usedInSat(freeVariables.size(), 0),
+			refs(refs),
+			invRefs(invRefs),
+			hasPlateausFunction(hasPlateausFunction)
 		{}
+
+		SatVariableBinder& addLocalVariable(const std::string& name);
+
+		bool isLocalVariable(const std::string& name)const;
 
 		/*int depth = 0;
 		std::string getIndent()const

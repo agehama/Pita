@@ -524,28 +524,7 @@ namespace cgl
 		//つまり現時点では、(if cond then x else y) = true のような式を許可していない
 		//ここで左辺に直接アドレスが入っていることは有り得る？
 		//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
-		/*if (auto valOpt = AsOpt<Evaluated>(node.lhs))
-		{
-			const Evaluated& val = valOpt.value();
-			if (IsType<Address>(val))
-			{
-				if (Address address = As<Address>(val))
-				{
-
-				}
-				else
-				{
-					ErrorLog("");
-					return 0;
-				}
-			}
-			else
-			{
-				ErrorLog("");
-				return 0;
-			}
-		}
-		else */if (auto valOpt = AsOpt<Identifier>(node.lhs))
+		if (auto valOpt = AsOpt<Identifier>(node.lhs))
 		{
 			const Identifier identifier = valOpt.value();
 

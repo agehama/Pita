@@ -69,7 +69,11 @@ namespace cgl
 
 	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Context> pEnv, std::vector<Address>& freeVariables)
 	{
-		if (!candidateExpr)
+		refs.clear();
+		invRefs.clear();
+		hasPlateausFunction = false;
+
+		if (!candidateExpr || freeVariables.empty())
 		{
 			return;
 		}
@@ -85,32 +89,25 @@ namespace cgl
 			CGL_DebugLog("");
 		}*/
 
-		
 		CGL_DebugLog("freeVariables:");
 		for (const auto& val : freeVariables)
 		{
 			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
 		}
-
-		if (freeVariables.empty())
-		{
-			refs.clear();
-			invRefs.clear();
-			freeVariables.clear();
-			return;
-		}
-
-		SatVariableBinder binder(pEnv, freeVariables);
+		
+		std::vector<char> usedInSat(freeVariables.size(), 0);
+		//SatVariableBinder binder(pEnv, freeVariables);
+		SatVariableBinder binder(pEnv, freeVariables, usedInSat, refs, invRefs, hasPlateausFunction);
 		if (boost::apply_visitor(binder, candidateExpr.value()))
 		{
-			refs = binder.refs;
-			invRefs = binder.invRefs;
-			hasPlateausFunction = binder.hasPlateausFunction;
+			//refs = binder.refs;
+			//invRefs = binder.invRefs;
+			//hasPlateausFunction = binder.hasPlateausFunction;
 
 			//satに出てこないfreeVariablesの削除
 			for (int i = static_cast<int>(freeVariables.size()) - 1; 0 <= i; --i)
 			{
-				if (binder.usedInSat[i] == 0)
+				if (usedInSat[i] == 0)
 				{
 					freeVariables.erase(freeVariables.begin() + i);
 				}

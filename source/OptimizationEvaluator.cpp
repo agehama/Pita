@@ -7,6 +7,17 @@
 
 namespace cgl
 {
+	SatVariableBinder& SatVariableBinder::addLocalVariable(const std::string& name)
+	{
+		localVariables.insert(name);
+		return *this;
+	}
+
+	bool SatVariableBinder::isLocalVariable(const std::string& name) const
+	{
+		return localVariables.find(name) != localVariables.end();
+	}
+
 	boost::optional<size_t> SatVariableBinder::freeVariableIndex(Address reference)
 	{
 		for (size_t i = 0; i < freeVariables.size(); ++i)
@@ -73,11 +84,15 @@ namespace cgl
 	{
 		//std::cout << getIndent() << typeid(node).name() << std::endl;
 
+		if (isLocalVariable(node))
+		{
+			return false;
+		}
+
 		Address address = pEnv->findAddress(node);
 		if (!address.isValid())
 		{
-			//CGL_Error("識別子が定義されていません");
-			//この中で作られた変数だった場合、定義されていない可能性がある
+			CGL_Error("識別子\"" + static_cast<std::string>(node) + "\"が定義されていません");
 			return false;
 		}
 
@@ -99,10 +114,17 @@ namespace cgl
 	{
 		//std::cout << getIndent() << typeid(node).name() << std::endl;
 
+		//ローカル変数の宣言となるのは、左辺が識別子の時のみ
+		if (node.op == BinaryOp::Assign && IsType<Identifier>(node.lhs))
+		{
+			addLocalVariable(As<Identifier>(node.lhs));
+		}
+
 		//++depth;
 		const bool a = boost::apply_visitor(*this, node.lhs);
 		const bool b = boost::apply_visitor(*this, node.rhs);
 		//--depth;
+
 		return a || b;
 	}
 	
@@ -182,10 +204,16 @@ namespace cgl
 		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 		{
 			pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
+			//addLocalVariable(funcVal.arguments[i]);
 		}
-		//++depth;
-		const bool result = boost::apply_visitor(*this, funcVal.expr);
-		//--depth;
+		
+		bool result;
+		{
+			SatVariableBinder child(*this);
+			//++depth;
+			result = boost::apply_visitor(child, funcVal.expr);
+			//--depth;
+		}
 
 		pEnv->exitScope();
 		pEnv->switchBackScope();
@@ -294,12 +322,17 @@ namespace cgl
 		const Expr& head = node.head;
 
 		//headがsat式中のローカル変数
-		if (IsType<Identifier>(head))
+		if (auto headOpt = AsOpt<Identifier>(head))
 		{
-			Address address = pEnv->findAddress(As<Identifier>(head));
+			if (isLocalVariable(headOpt.value()))
+			{
+				return false;
+			}
+
+			Address address = pEnv->findAddress(headOpt.value());
 			if (!address.isValid())
 			{
-				CGL_Error(std::string("識別子\"") + static_cast<std::string>(As<Identifier>(head)) + "\"が定義されていません");
+				CGL_Error(std::string("識別子\"") + static_cast<std::string>(headOpt.value()) + "\"が定義されていません");
 			}
 
 			//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。

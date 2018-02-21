@@ -844,7 +844,8 @@ namespace cgl
 	{
 		pathRule.pack(*pEnv);
 
-		const PackedRecord& packedRecord = pathRule.asPackedOpt().value();
+		auto packedOpt = pathRule.asPackedOpt();
+		const PackedRecord& packedRecord = packedOpt.value();
 		const auto& values = packedRecord.values;
 
 		auto itPoints = values.find("points");
@@ -882,8 +883,9 @@ namespace cgl
 			}
 
 			const List& passShapes = As<List>(evaluated);
+			auto passShapesPackedOpt = passShapes.asPackedOpt();
 			
-			for (const auto& pointEvaluated : passShapes.asPackedOpt().value().data)
+			for (const auto& pointEvaluated : passShapesPackedOpt.value().data)
 			{
 				if (!IsType<Record>(pointEvaluated.value))
 				{
@@ -892,7 +894,8 @@ namespace cgl
 				}
 
 				const Record& pos = As<Record>(pointEvaluated.value);
-				const PackedRecord& packedPosRecord = pos.asPackedOpt().value();
+				auto posPackedOpt = pos.asPackedOpt();
+				const PackedRecord& packedPosRecord = posPackedOpt.value();
 				
 				const double x = AsDouble(packedPosRecord.values.find("x")->second.value);
 				const double y = AsDouble(packedPosRecord.values.find("y")->second.value);
@@ -1163,7 +1166,8 @@ namespace cgl
 			result.add(*pEnv, "color", Record(record));
 		}
 
-		PackedRecord& packedPathRuleRecord = pathRule.asPackedOpt().value();
+		auto packedPathRuleRecordOpt = pathRule.asPackedOpt();
+		PackedRecord& packedPathRuleRecord = packedPathRuleRecordOpt.value();
 
 		packedPathRuleRecord.add(*pEnv, "path", Record(result));
 

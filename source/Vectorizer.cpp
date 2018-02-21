@@ -152,7 +152,8 @@ namespace cgl
 
 			if (valOpt)
 			{
-				const PackedRecord& childRecord = valOpt.value().asPackedOpt().value();
+				auto childRecordOpt = valOpt.value().asPackedOpt();
+				const PackedRecord& childRecord = childRecordOpt.value();
 				if (member.first == "pos" && valOpt)
 				{
 					ReadDoublePacked(px, "x", childRecord, pEnv);
@@ -278,7 +279,8 @@ namespace cgl
 			{
 				double x = 0, y = 0;
 				//const Record& pos = As<Record>(value);
-				const PackedRecord& pos = As<Record>(value).asPackedOpt().value();
+				auto posOpt = As<Record>(value).asPackedOpt();
+				const PackedRecord& pos = posOpt.value();
 				if (!ReadDoublePacked(x, "x", pos, pEnv) || !ReadDoublePacked(y, "y", pos, pEnv))
 				{
 					return false;
@@ -677,11 +679,13 @@ namespace cgl
 			const Evaluated& value = val.value;
 			if (cgl::IsType<cgl::Record>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::Record>(value).asPackedOpt().value(), pEnv, transform));
+				auto packetOpt = cgl::As<cgl::Record>(value).asPackedOpt();
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(packetOpt.value(), pEnv, transform));
 			}
 			else if (cgl::IsType<cgl::List>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::List>(value).asPackedOpt().value(), pEnv, transform));
+				auto packetOpt = cgl::As<cgl::List>(value).asPackedOpt();
+				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(packetOpt.value(), pEnv, transform));
 			}
 		}
 		return currentPolygons;
@@ -705,7 +709,8 @@ namespace cgl
 			if (member.first == "polygon" && cgl::IsType<cgl::List>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::List>(value).asPackedOpt().value(), pEnv, transform) && !polygon.empty())
+				auto packedOpt = cgl::As<cgl::List>(value).asPackedOpt();
+				if (cgl::ReadPolygonPacked(polygon, packedOpt.value(), pEnv, transform) && !polygon.empty())
 				{
 					currentPolygons.push_back(ToPolygon(polygon));
 				}
@@ -713,19 +718,22 @@ namespace cgl
 			else if (member.first == "hole" && cgl::IsType<cgl::List>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::List>(value).asPackedOpt().value(), pEnv, transform) && !polygon.empty())
+				auto packedOpt = cgl::As<cgl::List>(value).asPackedOpt();
+				if (cgl::ReadPolygonPacked(polygon, packedOpt.value(), pEnv, transform) && !polygon.empty())
 				{
 					currentHoles.push_back(ToPolygon(polygon));
 				}
 			}
 			else if (member.first == "polygons" && IsType<List>(value))
 			{
-				for (const auto& polygonAddress : As<List>(value).asPackedOpt().value().data)
+				auto packedOpt = As<List>(value).asPackedOpt();
+				for (const auto& polygonAddress : packedOpt.value().data)
 				{
 					const Evaluated& polygonVertices = polygonAddress.value;
 
 					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<List>(polygonVertices).asPackedOpt().value(), pEnv, transform) && !polygon.empty())
+					auto childPackedOpt = As<List>(polygonVertices).asPackedOpt();
+					if (ReadPolygonPacked(polygon, childPackedOpt.value(), pEnv, transform) && !polygon.empty())
 					{
 						currentPolygons.push_back(ToPolygon(polygon));
 					}
@@ -733,12 +741,14 @@ namespace cgl
 			}
 			else if (member.first == "holes" && IsType<List>(value))
 			{
-				for (const auto& holeAddress : As<List>(value).asPackedOpt().value().data)
+				auto packedOpt = As<List>(value).asPackedOpt();
+				for (const auto& holeAddress : packedOpt.value().data)
 				{
 					const Evaluated& hole = holeAddress.value;
 
 					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<List>(hole).asPackedOpt().value(), pEnv, transform) && !polygon.empty())
+					auto childPackedOpt = As<List>(hole).asPackedOpt();
+					if (ReadPolygonPacked(polygon, childPackedOpt.value(), pEnv, transform) && !polygon.empty())
 					{
 						currentHoles.push_back(ToPolygon(polygon));
 					}
@@ -747,18 +757,21 @@ namespace cgl
 			else if (member.first == "line" && IsType<List>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::List>(value).asPackedOpt().value(), pEnv, transform) && !polygon.empty())
+				auto packedOpt = cgl::As<cgl::List>(value).asPackedOpt();
+				if (cgl::ReadPolygonPacked(polygon, packedOpt.value(), pEnv, transform) && !polygon.empty())
 				{
 					currentLines.push_back(ToLineString(polygon));
 				}
 			}
 			else if (cgl::IsType<cgl::Record>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::Record>(value).asPackedOpt().value(), pEnv, transform));
+				auto packedOpt = cgl::As<cgl::Record>(value).asPackedOpt();
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(packedOpt.value(), pEnv, transform));
 			}
 			else if (cgl::IsType<cgl::List>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::List>(value).asPackedOpt().value(), pEnv, transform));
+				auto packedOpt = cgl::As<cgl::List>(value).asPackedOpt();
+				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(packedOpt.value(), pEnv, transform));
 			}
 		}
 
@@ -817,12 +830,14 @@ namespace cgl
 		if (cgl::IsType<cgl::Record>(value))
 		{
 			const cgl::Record& record = cgl::As<cgl::Record>(value);
-			return GeosFromRecordPackedImpl(record.asPackedOpt().value(), pEnv, transform);
+			auto packedOpt = record.asPackedOpt();
+			return GeosFromRecordPackedImpl(packedOpt.value(), pEnv, transform);
 		}
 		if (cgl::IsType<cgl::List>(value))
 		{
 			const cgl::List& list = cgl::As<cgl::List>(value);
-			return GeosFromListPacked(list.asPackedOpt().value(), pEnv, transform);
+			auto packedOpt = list.asPackedOpt();
+			return GeosFromListPacked(packedOpt.value(), pEnv, transform);
 		}
 
 		return{};

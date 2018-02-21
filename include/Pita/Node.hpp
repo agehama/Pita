@@ -1651,6 +1651,7 @@ namespace cgl
 		//std::vector<Ref> refs;
 
 		std::vector<Accessor> accessors;
+		std::vector<Expr> ranges;
 
 		DeclFree() = default;
 
@@ -1662,6 +1663,12 @@ namespace cgl
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
 		{
 			decl.accessors.push_back(accessor);
+		}
+
+		static void AddRange(DeclFree& decl, const Expr& expr)
+		{
+			decl.ranges.push_back(expr);
+			//decl.accessors.push_back(accessor);
 		}
 
 		bool operator==(const DeclFree& other)const

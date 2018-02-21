@@ -17,7 +17,7 @@ namespace cgl
 
 		boost::optional<Expr> parse(const std::string& program);
 
-		boost::optional<Evaluated> execute(const std::string& program);
+		boost::optional<Val> execute(const std::string& program);
 
 		bool draw(const std::string& program, bool logOutput = true);
 
@@ -33,7 +33,7 @@ namespace cgl
 			return pEnv;
 		}
 
-		boost::optional<Evaluated>& getEvaluated()
+		boost::optional<Val>& getVal()
 		{
 			return evaluated;
 		}
@@ -49,7 +49,7 @@ namespace cgl
 	private:
 		std::shared_ptr<Context> pEnv;
 		Eval evaluator;
-		boost::optional<Evaluated> evaluated;
+		boost::optional<Val> evaluated;
 		bool succeeded;
 	};
 }

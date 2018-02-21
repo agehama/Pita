@@ -28,7 +28,7 @@ namespace cgl
 		}
 	};
 
-	List ShapeDifference(const Evaluated& lhs, const Evaluated& rhs, std::shared_ptr<cgl::Context> pEnv)
+	List ShapeDifference(const Val& lhs, const Val& rhs, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if ((!IsType<Record>(lhs) && !IsType<List>(lhs)) || (!IsType<Record>(rhs) && !IsType<List>(rhs)))
 		{
@@ -158,7 +158,7 @@ namespace cgl
 		}
 	}
 
-	List ShapeBuffer(const Evaluated & shape, const Evaluated & amount, std::shared_ptr<cgl::Context> pEnv)
+	List ShapeBuffer(const Val & shape, const Val & amount, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if (!IsType<Record>(shape) && !IsType<List>(shape))
 		{
@@ -198,7 +198,7 @@ namespace cgl
 		int num = 10;
 		if (itPoints != values.end())
 		{
-			const Evaluated evaluated = pEnv->expand(itPoints->second);
+			const Val evaluated = pEnv->expand(itPoints->second);
 			if (!IsType<int>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -218,7 +218,7 @@ namespace cgl
 				return;
 			}
 
-			const Evaluated evaluated = pEnv->expand(itPasses->second);
+			const Val evaluated = pEnv->expand(itPasses->second);
 			if (!IsType<List>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -228,15 +228,15 @@ namespace cgl
 
 			for (Address address : passShapes.data)
 			{
-				const Evaluated pointEvaluated = pEnv->expand(address);
-				if (!IsType<Record>(pointEvaluated))
+				const Val pointVal = pEnv->expand(address);
+				if (!IsType<Record>(pointVal))
 				{
 					CGL_Error("不正な式です");
 					return;
 				}
-				const auto& pos = As<Record>(pointEvaluated);
-				const Evaluated xval = pEnv->expand(pos.values.find("x")->second);
-				const Evaluated yval = pEnv->expand(pos.values.find("y")->second);
+				const auto& pos = As<Record>(pointVal);
+				const Val xval = pEnv->expand(pos.values.find("x")->second);
+				const Val yval = pEnv->expand(pos.values.find("y")->second);
 				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
 				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
 				//points.add(gg::Coordinate(x, y));
@@ -279,7 +279,7 @@ namespace cgl
 		std::vector<gg::Geometry*> obstacles;
 		List circumvents;
 		{
-			const Evaluated evaluated = pEnv->expand(itCircumvents->second);
+			const Val evaluated = pEnv->expand(itCircumvents->second);
 			if (!IsType<List>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -490,7 +490,7 @@ namespace cgl
 		int num = 10;
 		if (itPoints != values.end())
 		{
-			const Evaluated evaluated = pEnv->expand(itPoints->second);
+			const Val evaluated = pEnv->expand(itPoints->second);
 			if (!IsType<int>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -510,7 +510,7 @@ namespace cgl
 				return;
 			}
 
-			const Evaluated evaluated = pEnv->expand(itPasses->second);
+			const Val evaluated = pEnv->expand(itPasses->second);
 			if (!IsType<List>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -527,14 +527,14 @@ namespace cgl
 
 			for (Address address : unpackedPassShapes.data)
 			{
-				const Evaluated pointEvaluated = pEnv->expand(address);
-				if (!IsType<Record>(pointEvaluated))
+				const Val pointVal = pEnv->expand(address);
+				if (!IsType<Record>(pointVal))
 				{
 					CGL_Error("不正な式です");
 					return;
 				}
 
-				const Record& pos = As<Record>(pointEvaluated);
+				const Record& pos = As<Record>(pointVal);
 				auto unpackedPosOpt = pos.asUnpackedOpt();
 				if (!unpackedPosOpt)
 				{
@@ -542,8 +542,8 @@ namespace cgl
 				}
 				const UnpackedRecord& unpackedPosRecord = unpackedPosOpt.value();
 
-				const Evaluated xval = pEnv->expand(unpackedPosRecord.values.find("x")->second);
-				const Evaluated yval = pEnv->expand(unpackedPosRecord.values.find("y")->second);
+				const Val xval = pEnv->expand(unpackedPosRecord.values.find("x")->second);
+				const Val yval = pEnv->expand(unpackedPosRecord.values.find("y")->second);
 				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
 				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
 
@@ -564,7 +564,7 @@ namespace cgl
 		if (itCircumvents != values.end())
 		{
 			{
-				const Evaluated evaluated = pEnv->expand(itCircumvents->second);
+				const Val evaluated = pEnv->expand(itCircumvents->second);
 				if (!IsType<List>(evaluated))
 				{
 					CGL_Error("不正な式です");
@@ -855,7 +855,7 @@ namespace cgl
 		int num = 10;
 		if (itPoints != values.end())
 		{
-			const Evaluated& evaluated = itPoints->second.value;
+			const Val& evaluated = itPoints->second.value;
 			if (!IsType<int>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -875,7 +875,7 @@ namespace cgl
 				return;
 			}
 
-			const Evaluated& evaluated = itPasses->second.value;
+			const Val& evaluated = itPasses->second.value;
 			if (!IsType<List>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -885,15 +885,15 @@ namespace cgl
 			const List& passShapes = As<List>(evaluated);
 			auto passShapesPackedOpt = passShapes.asPackedOpt();
 			
-			for (const auto& pointEvaluated : passShapesPackedOpt.value().data)
+			for (const auto& pointVal : passShapesPackedOpt.value().data)
 			{
-				if (!IsType<Record>(pointEvaluated.value))
+				if (!IsType<Record>(pointVal.value))
 				{
 					CGL_Error("不正な式です");
 					return;
 				}
 
-				const Record& pos = As<Record>(pointEvaluated.value);
+				const Record& pos = As<Record>(pointVal.value);
 				auto posPackedOpt = pos.asPackedOpt();
 				const PackedRecord& packedPosRecord = posPackedOpt.value();
 				
@@ -915,7 +915,7 @@ namespace cgl
 		std::vector<gg::Geometry*> obstacles;
 		if (itCircumvents != values.end())
 		{
-			const Evaluated& evaluated = itCircumvents->second.value;
+			const Val& evaluated = itCircumvents->second.value;
 			if (!IsType<List>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -1195,7 +1195,7 @@ namespace cgl
 		CharString str;
 		if (itStr != values.end())
 		{
-			const Evaluated evaluated = pEnv->expand(itStr->second);
+			const Val evaluated = pEnv->expand(itStr->second);
 			if (!IsType<CharString>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -1212,7 +1212,7 @@ namespace cgl
 		boost::optional<Record> baseLineRecord;
 		if (itBaseLines != values.end())
 		{
-			const Evaluated evaluated = pEnv->expand(itBaseLines->second);
+			const Val evaluated = pEnv->expand(itBaseLines->second);
 			if (!IsType<Record>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -1240,14 +1240,14 @@ namespace cgl
 				CGL_Error("不正な式です");
 				return;
 			}
-			const Evaluated pathEvaluated = pEnv->expand(itPath->second);
-			if (!IsType<Record>(pathEvaluated))
+			const Val pathVal = pEnv->expand(itPath->second);
+			if (!IsType<Record>(pathVal))
 			{
 				CGL_Error("不正な式です");
 				return;
 			}
 			
-			const Record& pathRecord= As<Record>(pathEvaluated);
+			const Record& pathRecord= As<Record>(pathVal);
 			auto unpackedPathRecordOpt = pathRecord.asUnpackedOpt();
 			if (!unpackedPathRecordOpt)
 			{
@@ -1261,15 +1261,15 @@ namespace cgl
 				CGL_Error("不正な式です");
 				return;
 			}
-			const Evaluated lineEvaluated = pEnv->expand(itLine->second);
-			if (!IsType<List>(lineEvaluated))
+			const Val lineVal = pEnv->expand(itLine->second);
+			if (!IsType<List>(lineVal))
 			{
 				CGL_Error("不正な式です");
 				return;
 			}
 
-			//const auto vs = As<List>(lineEvaluated).data;
-			const List& listVS = As<List>(lineEvaluated);
+			//const auto vs = As<List>(lineVal).data;
+			const List& listVS = As<List>(lineVal);
 			auto unpackedVSOpt = listVS.asUnpackedOpt();
 			if (!unpackedVSOpt)
 			{
@@ -1280,7 +1280,7 @@ namespace cgl
 
 			for (const auto v : vs)
 			{
-				const Evaluated vertex = pEnv->expand(v);
+				const Val vertex = pEnv->expand(v);
 
 				const auto& pos = As<Record>(vertex);
 				auto unpackedPosOpt = pos.asUnpackedOpt();
@@ -1290,8 +1290,8 @@ namespace cgl
 				}
 				const UnpackedRecord& unpackedPosRecord = unpackedPosOpt.value();
 
-				const Evaluated xval = pEnv->expand(unpackedPosRecord.values.find("x")->second);
-				const Evaluated yval = pEnv->expand(unpackedPosRecord.values.find("y")->second);
+				const Val xval = pEnv->expand(unpackedPosRecord.values.find("x")->second);
+				const Val yval = pEnv->expand(unpackedPosRecord.values.find("y")->second);
 				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
 				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
 
@@ -1429,7 +1429,7 @@ namespace cgl
 		List shapeList;
 		if (itStr != values.end())
 		{
-			const Evaluated evaluated = pEnv->expand(itStr->second);
+			const Val evaluated = pEnv->expand(itStr->second);
 			if (!IsType<List>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -1446,7 +1446,7 @@ namespace cgl
 		boost::optional<Record> baseLineRecord;
 		if (itBaseLines != values.end())
 		{
-			const Evaluated evaluated = pEnv->expand(itBaseLines->second);
+			const Val evaluated = pEnv->expand(itBaseLines->second);
 			if (!IsType<Record>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -1474,13 +1474,13 @@ namespace cgl
 				CGL_Error("不正な式です");
 				return;
 			}
-			const Evaluated pathEvaluated = pEnv->expand(itPath->second);
-			if (!IsType<Record>(pathEvaluated))
+			const Val pathVal = pEnv->expand(itPath->second);
+			if (!IsType<Record>(pathVal))
 			{
 				CGL_Error("不正な式です");
 				return;
 			}
-			const Record& pathRecord = As<Record>(pathEvaluated);
+			const Record& pathRecord = As<Record>(pathVal);
 
 			auto itLine = unpackedBaseLineRecord.values.find("line");
 			if (itLine == unpackedBaseLineRecord.values.end())
@@ -1488,26 +1488,26 @@ namespace cgl
 				CGL_Error("不正な式です");
 				return;
 			}
-			const Evaluated lineEvaluated = pEnv->expand(itLine->second);
-			if (!IsType<List>(lineEvaluated))
+			const Val lineVal = pEnv->expand(itLine->second);
+			if (!IsType<List>(lineVal))
 			{
 				CGL_Error("不正な式です");
 				return;
 			}
 
-			//const auto vs = As<List>(lineEvaluated).data;
-			List& lineEvaluatedList = As<List&>(lineEvaluated);
-			auto unpackedLineEvaluatedListOpt = lineEvaluatedList.asUnpackedOpt();
-			if (!unpackedLineEvaluatedListOpt)
+			//const auto vs = As<List>(lineVal).data;
+			List& lineValList = As<List&>(lineVal);
+			auto unpackedLineValListOpt = lineValList.asUnpackedOpt();
+			if (!unpackedLineValListOpt)
 			{
 				CGL_Error("List is packed");
 			}
-			UnpackedList& unpackedLineEvaluatedList = unpackedLineEvaluatedListOpt.value();
-			const auto& vs = unpackedLineEvaluatedList.data;
+			UnpackedList& unpackedLineValList = unpackedLineValListOpt.value();
+			const auto& vs = unpackedLineValList.data;
 
 			for (const auto v : vs)
 			{
-				const Evaluated vertex = pEnv->expand(v);
+				const Val vertex = pEnv->expand(v);
 				
 				const auto& pos = As<Record>(vertex);
 				auto unpackedPosOpt = pos.asUnpackedOpt();
@@ -1517,8 +1517,8 @@ namespace cgl
 				}
 				const UnpackedRecord& unpackedPos = unpackedPosOpt.value();
 
-				const Evaluated xval = pEnv->expand(unpackedPos.values.find("x")->second);
-				const Evaluated yval = pEnv->expand(unpackedPos.values.find("y")->second);
+				const Val xval = pEnv->expand(unpackedPos.values.find("x")->second);
+				const Val yval = pEnv->expand(unpackedPos.values.find("y")->second);
 				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
 				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
 
@@ -1538,7 +1538,7 @@ namespace cgl
 		/*TODO: 実装する*/
 	}
 
-	double ShapeArea(const Evaluated& lhs, std::shared_ptr<cgl::Context> pEnv)
+	double ShapeArea(const Val& lhs, std::shared_ptr<cgl::Context> pEnv)
 	{
 		if (!IsType<Record>(lhs) && !IsType<List>(lhs))
 		{

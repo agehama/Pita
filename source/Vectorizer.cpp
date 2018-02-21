@@ -39,7 +39,7 @@ namespace cgl
 		{
 			return false;
 		}
-		const Evaluated& value = opt.value();
+		const Val& value = opt.value();
 		if (!IsType<int>(value) && !IsType<double>(value))
 		{
 			return false;
@@ -57,7 +57,7 @@ namespace cgl
 		{
 			return false;
 		}
-		const Evaluated& value = it->second.value;
+		const Val& value = it->second.value;
 		if (!IsType<int>(value) && !IsType<double>(value))
 		{
 			return false;
@@ -147,7 +147,7 @@ namespace cgl
 
 		for (const auto& member : record.values)
 		{
-			const Evaluated& value = member.second.value;
+			const Val& value = member.second.value;
 			const auto valOpt = AsOpt<Record>(value);
 
 			if (valOpt)
@@ -244,7 +244,7 @@ namespace cgl
 
 		for (const Address vertex : unpackedList.data)
 		{
-			const Evaluated value = pEnv->expand(vertex);
+			const Val value = pEnv->expand(vertex);
 
 			if (IsType<Record>(value))
 			{
@@ -273,7 +273,7 @@ namespace cgl
 
 		for (const auto& val: vertices.data)
 		{
-			const Evaluated& value = val.value;
+			const Val& value = val.value;
 
 			if (IsType<Record>(value))
 			{
@@ -312,7 +312,7 @@ namespace cgl
 
 		for (const auto& member : unpackedRecord.values)
 		{
-			const Evaluated value = pEnv->expand(member.second);
+			const Val value = pEnv->expand(member.second);
 
 			if ((member.first == "polygon" || member.first == "line") && IsType<List>(value))
 			{
@@ -337,7 +337,7 @@ namespace cgl
 
 				for (const auto& polygonAddress : unpackedList.data)
 				{
-					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
+					const Val& polygonVertices = pEnv->expand(polygonAddress);
 
 					Vector<Eigen::Vector2d> polygon;
 					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
@@ -371,7 +371,7 @@ namespace cgl
 
 		for (const Address member : unpackedList.data)
 		{
-			const Evaluated value = pEnv->expand(member);
+			const Val value = pEnv->expand(member);
 
 			if (IsType<Record>(value))
 			{
@@ -384,7 +384,7 @@ namespace cgl
 		}
 	}
 
-	boost::optional<BoundingRect> GetBoundingBox(const Evaluated& value, std::shared_ptr<Context> pEnv)
+	boost::optional<BoundingRect> GetBoundingBox(const Val& value, std::shared_ptr<Context> pEnv)
 	{
 		if (IsType<Record>(value))
 		{
@@ -491,7 +491,7 @@ namespace cgl
 
 		for (const auto& member : unpackedRecord.values)
 		{
-			const cgl::Evaluated value = pEnv->expand(member.second);
+			const cgl::Val value = pEnv->expand(member.second);
 
 			if (member.first == "polygon" && cgl::IsType<cgl::List>(value))
 			{
@@ -523,7 +523,7 @@ namespace cgl
 
 				for (const auto& polygonAddress : unpackedPolygonsList.data)
 				{
-					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
+					const Val& polygonVertices = pEnv->expand(polygonAddress);
 
 					Vector<Eigen::Vector2d> polygon;
 					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
@@ -544,7 +544,7 @@ namespace cgl
 
 				for (const auto& holeAddress : unpackedHolesList.data)
 				{
-					const Evaluated& hole = pEnv->expand(holeAddress);
+					const Val& hole = pEnv->expand(holeAddress);
 
 					Vector<Eigen::Vector2d> polygon;
 					if (ReadPolygon(polygon, As<List>(hole), pEnv, transform) && !polygon.empty())
@@ -641,7 +641,7 @@ namespace cgl
 		std::vector<gg::Geometry*> currentPolygons;
 		for (const cgl::Address member : unpackedList.data)
 		{
-			const cgl::Evaluated value = pEnv->expand(member);
+			const cgl::Val value = pEnv->expand(member);
 
 			if (cgl::IsType<cgl::Record>(value))
 			{
@@ -655,7 +655,7 @@ namespace cgl
 		return currentPolygons;
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform)
+	std::vector<gg::Geometry*> GeosFromRecord(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform)
 	{
 		if (cgl::IsType<cgl::Record>(value))
 		{
@@ -676,7 +676,7 @@ namespace cgl
 		std::vector<gg::Geometry*> currentPolygons;
 		for (const auto& val : list.data)
 		{
-			const Evaluated& value = val.value;
+			const Val& value = val.value;
 			if (cgl::IsType<cgl::Record>(value))
 			{
 				auto packetOpt = cgl::As<cgl::Record>(value).asPackedOpt();
@@ -704,7 +704,7 @@ namespace cgl
 
 		for (const auto& member : record.values)
 		{
-			const cgl::Evaluated& value = member.second.value;
+			const cgl::Val& value = member.second.value;
 
 			if (member.first == "polygon" && cgl::IsType<cgl::List>(value))
 			{
@@ -729,7 +729,7 @@ namespace cgl
 				auto packedOpt = As<List>(value).asPackedOpt();
 				for (const auto& polygonAddress : packedOpt.value().data)
 				{
-					const Evaluated& polygonVertices = polygonAddress.value;
+					const Val& polygonVertices = polygonAddress.value;
 
 					Vector<Eigen::Vector2d> polygon;
 					auto childPackedOpt = As<List>(polygonVertices).asPackedOpt();
@@ -744,7 +744,7 @@ namespace cgl
 				auto packedOpt = As<List>(value).asPackedOpt();
 				for (const auto& holeAddress : packedOpt.value().data)
 				{
-					const Evaluated& hole = holeAddress.value;
+					const Val& hole = holeAddress.value;
 
 					Vector<Eigen::Vector2d> polygon;
 					auto childPackedOpt = As<List>(hole).asPackedOpt();
@@ -825,7 +825,7 @@ namespace cgl
 		}
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform)
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform)
 	{
 		if (cgl::IsType<cgl::Record>(value))
 		{
@@ -1002,7 +1002,7 @@ namespace cgl
 		ps.emplace(area, ss.str());
 	}
 
-	bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Context> pEnv)
+	bool OutputSVG(std::ostream& os, const Val& value, std::shared_ptr<Context> pEnv)
 	{
 		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
 		if (IsType<Record>(value) && boundingBoxOpt)

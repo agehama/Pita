@@ -15,7 +15,7 @@ namespace cgl
 	class ProgressStore
 	{
 	public:
-		static void TryWrite(std::shared_ptr<Context> env, const Evaluated& value);
+		static void TryWrite(std::shared_ptr<Context> env, const Val& value);
 
 		static bool TryLock();
 
@@ -23,7 +23,7 @@ namespace cgl
 
 		static std::shared_ptr<Context> GetContext();
 
-		static boost::optional<Evaluated>& GetEvaluated();
+		static boost::optional<Val>& GetVal();
 
 		static void Reset();
 
@@ -33,7 +33,7 @@ namespace cgl
 		static ProgressStore& Instance();
 
 		std::shared_ptr<Context> pEnv;
-		boost::optional<Evaluated> evaluated;
+		boost::optional<Val> evaluated;
 
 		std::mutex mtx;
 	};
@@ -88,8 +88,8 @@ namespace cgl
 		Expr operator()(const DeclFree& node)const;
 	};
 
-	//Evaluatedのアドレス値を再帰的に展開したクローンを作成する
-	class ValueCloner : public boost::static_visitor<Evaluated>
+	//Valのアドレス値を再帰的に展開したクローンを作成する
+	class ValueCloner : public boost::static_visitor<Val>
 	{
 	public:
 		ValueCloner(std::shared_ptr<Context> pEnv) :
@@ -101,26 +101,26 @@ namespace cgl
 
 		boost::optional<Address> getOpt(Address address)const;
 
-		Evaluated operator()(bool node) { return node; }
+		Val operator()(bool node) { return node; }
 
-		Evaluated operator()(int node) { return node; }
+		Val operator()(int node) { return node; }
 
-		Evaluated operator()(double node) { return node; }
+		Val operator()(double node) { return node; }
 
-		Evaluated operator()(const CharString& node) { return node; }
+		Val operator()(const CharString& node) { return node; }
 
-		Evaluated operator()(const List& node);
+		Val operator()(const List& node);
 
-		Evaluated operator()(const KeyValue& node) { return node; }
+		Val operator()(const KeyValue& node) { return node; }
 
-		Evaluated operator()(const Record& node);
+		Val operator()(const Record& node);
 
-		Evaluated operator()(const FuncVal& node) { return node; }
+		Val operator()(const FuncVal& node) { return node; }
 
-		Evaluated operator()(const Jump& node) { return node; }
+		Val operator()(const Jump& node) { return node; }
 	};
 
-	class ValueCloner2 : public boost::static_visitor<Evaluated>
+	class ValueCloner2 : public boost::static_visitor<Val>
 	{
 	public:
 		ValueCloner2(std::shared_ptr<Context> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
@@ -133,23 +133,23 @@ namespace cgl
 
 		boost::optional<Address> getOpt(Address address)const;
 
-		Evaluated operator()(bool node) { return node; }
+		Val operator()(bool node) { return node; }
 
-		Evaluated operator()(int node) { return node; }
+		Val operator()(int node) { return node; }
 
-		Evaluated operator()(double node) { return node; }
+		Val operator()(double node) { return node; }
 
-		Evaluated operator()(const CharString& node) { return node; }
+		Val operator()(const CharString& node) { return node; }
 
-		Evaluated operator()(const List& node);
+		Val operator()(const List& node);
 
-		Evaluated operator()(const KeyValue& node) { return node; }
+		Val operator()(const KeyValue& node) { return node; }
 
-		Evaluated operator()(const Record& node);
+		Val operator()(const Record& node);
 
-		Evaluated operator()(const FuncVal& node)const;
+		Val operator()(const FuncVal& node)const;
 
-		Evaluated operator()(const Jump& node) { return node; }
+		Val operator()(const Jump& node) { return node; }
 	};
 
 	class ValueCloner3 : public boost::static_visitor<void>
@@ -186,7 +186,7 @@ namespace cgl
 		void operator()(Jump& node) {}
 	};
 
-	Evaluated Clone(std::shared_ptr<Context> pEnv, const Evaluated& value);
+	Val Clone(std::shared_ptr<Context> pEnv, const Val& value);
 
 	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
 	//外側のスコープを参照する識別子をアドレスに置き換えた式を返す
@@ -439,9 +439,9 @@ namespace cgl
 		Expr operator()(const Accessor& node);
 	};
 
-	Evaluated evalExpr(const Expr& expr);
+	Val evalExpr(const Expr& expr);
 
-	bool IsEqualEvaluated(const Evaluated& value1, const Evaluated& value2);
+	bool IsEqualVal(const Val& value1, const Val& value2);
 
 	bool IsEqual(const Expr& value1, const Expr& value2);
 }

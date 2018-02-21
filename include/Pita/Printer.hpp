@@ -55,19 +55,19 @@ namespace cgl
 		void operator()(const Jump& node)const;
 	};
 
-	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Context> pEnv, std::ostream& os, int indent = 0)
+	inline void printVal(const Val& evaluated, std::shared_ptr<Context> pEnv, std::ostream& os, int indent = 0)
 	{
 		ValuePrinter printer(pEnv, os, indent);
 		boost::apply_visitor(printer, evaluated);
 	}
 
 #ifdef CGL_EnableLogOutput
-	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Context> pEnv, int indent = 0)
+	inline void printVal(const Val& evaluated, std::shared_ptr<Context> pEnv, int indent = 0)
 	{
-		printEvaluated(evaluated, pEnv, ofs, indent);
+		printVal(evaluated, pEnv, ofs, indent);
 	}
 #else
-	inline void printEvaluated(const Evaluated& evaluated, std::shared_ptr<Context> pEnv, int indent = 0) {}
+	inline void printVal(const Val& evaluated, std::shared_ptr<Context> pEnv, int indent = 0) {}
 #endif
 
 	class PrintSatExpr : public boost::static_visitor<void>

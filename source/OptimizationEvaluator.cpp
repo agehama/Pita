@@ -369,7 +369,7 @@ namespace cgl
 
 		for (const auto& access : node.accesses)
 		{
-			boost::optional<const Evaluated&> objOpt;
+			boost::optional<const Val&> objOpt;
 			if (isDeterministic)
 			{
 				objOpt = pEnv->expandOpt(headAddress);
@@ -389,7 +389,7 @@ namespace cgl
 
 				if (isDeterministic)
 				{
-					const Evaluated& objRef = objOpt.value();
+					const Val& objRef = objOpt.value();
 					if (!IsType<List>(objRef))
 					{
 						CGL_Error("オブジェクトがリストでない");
@@ -403,7 +403,7 @@ namespace cgl
 					}
 					const UnpackedList& unpackedList = unpackedOpt.value();
 
-					Evaluated indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
+					Val indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
 					if (auto indexOpt = AsOpt<int>(indexValue))
 					{
 						headAddress = unpackedList.get(indexOpt.value());
@@ -420,7 +420,7 @@ namespace cgl
 
 				if (isDeterministic)
 				{
-					const Evaluated& objRef = objOpt.value();
+					const Val& objRef = objOpt.value();
 					if (!IsType<Record>(objRef))
 					{
 						CGL_Error("オブジェクトがレコードでない");
@@ -461,7 +461,7 @@ namespace cgl
 
 					//std::cout << getIndent() << typeid(node).name() << " -> objOpt.value()" << std::endl;
 					//Case4以降への対応は関数の中身を見に行く必要がある
-					const Evaluated& objRef = objOpt.value();
+					const Val& objRef = objOpt.value();
 					if (!IsType<FuncVal>(objRef))
 					{
 						CGL_Error("オブジェクトが関数でない");
@@ -470,7 +470,7 @@ namespace cgl
 
 					//Case4,6への対応
 					/*
-					std::vector<Evaluated> arguments;
+					std::vector<Val> arguments;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
 					//ここでexpandして大丈夫なのか？
@@ -499,8 +499,8 @@ namespace cgl
 					if (isDeterministic)
 					{
 						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
-						//const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
-						const Evaluated returnedValue = pEnv->expand(evaluator.callFunction(function, arguments));
+						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+						const Val returnedValue = pEnv->expand(evaluator.callFunction(function, arguments));
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
 					}
 				}
@@ -526,9 +526,9 @@ namespace cgl
 		return boost::none;
 	}
 
-	Evaluated EvalSatExpr::operator()(const LRValue& node)
+	Val EvalSatExpr::operator()(const LRValue& node)
 	{
-		//CGL_DebugLog("Evaluated operator()(const LRValue& node)");
+		//CGL_DebugLog("Val operator()(const LRValue& node)");
 		if (node.isLValue())
 		{
 			if (auto opt = expandFreeOpt(node.address(*pEnv)))
@@ -541,15 +541,15 @@ namespace cgl
 		return node.evaluated();
 	}
 
-	Evaluated EvalSatExpr::operator()(const SatReference& node)
+	Val EvalSatExpr::operator()(const SatReference& node)
 	{
 		CGL_Error("不正な式");
 		return 0;
 	}
 
-	Evaluated EvalSatExpr::operator()(const Identifier& node)
+	Val EvalSatExpr::operator()(const Identifier& node)
 	{
-		//CGL_DebugLog("Evaluated operator()(const Identifier& node)");
+		//CGL_DebugLog("Val operator()(const Identifier& node)");
 		//pEnv->printContext(true);
 		//CGL_DebugLog(std::string("find Identifier(") + std::string(node) + ")");
 		const Address address = pEnv->findAddress(node);
@@ -560,9 +560,9 @@ namespace cgl
 		return pEnv->expand(address);
 	}
 
-	Evaluated EvalSatExpr::operator()(const UnaryExpr& node)
+	Val EvalSatExpr::operator()(const UnaryExpr& node)
 	{
-		//CGL_DebugLog("Evaluated operator()(const UnaryExpr& node)");
+		//CGL_DebugLog("Val operator()(const UnaryExpr& node)");
 		//if (node.op == UnaryOp::Not)
 		{
 			CGL_Error("TODO: sat宣言中の単項演算子は未対応です");
@@ -571,14 +571,14 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated EvalSatExpr::operator()(const BinaryExpr& node)
+	Val EvalSatExpr::operator()(const BinaryExpr& node)
 	{
-		//CGL_DebugLog("Evaluated operator()(const BinaryExpr& node)");
+		//CGL_DebugLog("Val operator()(const BinaryExpr& node)");
 
-		const Evaluated rhs = boost::apply_visitor(*this, node.rhs);
+		const Val rhs = boost::apply_visitor(*this, node.rhs);
 		if (node.op != BinaryOp::Assign)
 		{
-			const Evaluated lhs = boost::apply_visitor(*this, node.lhs);
+			const Val lhs = boost::apply_visitor(*this, node.lhs);
 
 			switch (node.op)
 			{
@@ -651,9 +651,9 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated EvalSatExpr::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
+	Val EvalSatExpr::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 	{
-		//CGL_DebugLog("Evaluated operator()(const FunctionCaller& callFunc)");
+		//CGL_DebugLog("Val operator()(const FunctionCaller& callFunc)");
 
 		/*
 		std::vector<Address> expandedArguments(callFunc.actualArguments.size());
@@ -727,15 +727,15 @@ namespace cgl
 		//CGL_DebugLog("Function Definition:");
 		//boost::apply_visitor(Printer(), funcVal.expr);
 
-		Evaluated result;
+		Val result;
 		{
 			//関数も通常の関数ではなく、制約を表す関数であるはずなので、評価はEvalではなく*thisで行う
 
 			result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
-			//CGL_DebugLog("Function Evaluated:");
-			//printEvaluated(result, nullptr);
+			//CGL_DebugLog("Function Val:");
+			//printVal(result, nullptr);
 		}
-		//Evaluated result = pEnv->expandObject();
+		//Val result = pEnv->expandObject();
 
 		//CGL_DebugLog("");
 
@@ -752,9 +752,9 @@ namespace cgl
 		return result;
 	}
 
-	Evaluated EvalSatExpr::operator()(const Lines& node)
+	Val EvalSatExpr::operator()(const Lines& node)
 	{
-		//CGL_DebugLog("Evaluated operator()(const Lines& node)");
+		//CGL_DebugLog("Val operator()(const Lines& node)");
 		/*if (node.exprs.size() != 1)
 		{
 			CGL_Error("不正な式です"); return 0;
@@ -764,7 +764,7 @@ namespace cgl
 
 		pEnv->enterScope();
 
-		Evaluated result;
+		Val result;
 		for (const auto& expr : node.exprs)
 		{
 			result = boost::apply_visitor(*this, expr);
@@ -775,13 +775,13 @@ namespace cgl
 		return result;
 	}
 
-	Evaluated EvalSatExpr::operator()(const If& if_statement)
+	Val EvalSatExpr::operator()(const If& if_statement)
 	{
-		//CGL_DebugLog("Evaluated operator()(const If& if_statement)");
+		//CGL_DebugLog("Val operator()(const If& if_statement)");
 		Eval evaluator(pEnv);
 
 		//if式の条件式は制約が満たされているかどうかを評価するべき
-		const Evaluated cond = pEnv->expand(boost::apply_visitor(evaluator, if_statement.cond_expr));
+		const Val cond = pEnv->expand(boost::apply_visitor(evaluator, if_statement.cond_expr));
 		if (!IsType<bool>(cond))
 		{
 			CGL_Error("条件は必ずブール値である必要がある");
@@ -800,16 +800,16 @@ namespace cgl
 		return 0;
 	}
 
-	Evaluated EvalSatExpr::operator()(const KeyExpr& node)
+	Val EvalSatExpr::operator()(const KeyExpr& node)
 	{
-		//CGL_DebugLog("Evaluated operator()(const KeyExpr& node)");
-		const Evaluated value = boost::apply_visitor(*this, node.expr);
+		//CGL_DebugLog("Val operator()(const KeyExpr& node)");
+		const Val value = boost::apply_visitor(*this, node.expr);
 		return KeyValue(node.name, value);
 	}
 
-	Evaluated EvalSatExpr::operator()(const RecordConstractor& recordConsractor)
+	Val EvalSatExpr::operator()(const RecordConstractor& recordConsractor)
 	{
-		//CGL_DebugLog("Evaluated operator()(const RecordConstractor& recordConsractor)");
+		//CGL_DebugLog("Val operator()(const RecordConstractor& recordConsractor)");
 		pEnv->enterScope();
 			
 		std::vector<Identifier> keyList;
@@ -819,7 +819,7 @@ namespace cgl
 
 		for (const auto& expr : recordConsractor.exprs)
 		{
-			Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
+			Val value = pEnv->expand(boost::apply_visitor(*this, expr));
 
 			//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
 			if (auto keyValOpt = AsOpt<KeyValue>(value))
@@ -827,7 +827,7 @@ namespace cgl
 				const auto keyVal = keyValOpt.value();
 				keyList.push_back(keyVal.name);
 
-				//識別子はEvaluatedからはずしたので、識別子に対して直接代入を行うことはできなくなった
+				//識別子はValからはずしたので、識別子に対して直接代入を行うことはできなくなった
 				//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 
 				//したがって、一度代入式を作ってからそれを評価する
@@ -857,7 +857,7 @@ namespace cgl
 		{
 			//pEnv->printContext(true);
 			Address address = pEnv->findAddress(key);
-			boost::optional<const Evaluated&> opt = pEnv->expandOpt(address);
+			boost::optional<const Val&> opt = pEnv->expandOpt(address);
 			unpackedRecord.append(key, pEnv->makeTemporaryValue(opt.value()));
 		}
 
@@ -866,10 +866,10 @@ namespace cgl
 		return record;
 	}
 
-	Evaluated EvalSatExpr::operator()(const Accessor& node)
+	Val EvalSatExpr::operator()(const Accessor& node)
 	{
 		/*
-		CGL_DebugLog("Evaluated operator()(const Accessor& node)");
+		CGL_DebugLog("Val operator()(const Accessor& node)");
 		{
 			CGL_DebugLog("Access to:");
 			Expr expr = node;
@@ -886,7 +886,7 @@ namespace cgl
 		}
 		else
 		{
-			Evaluated evaluated = headValue.evaluated();
+			Val evaluated = headValue.evaluated();
 			if (auto opt = AsOpt<Record>(evaluated))
 			{
 				address = pEnv->makeTemporaryValue(opt.value());
@@ -913,18 +913,18 @@ namespace cgl
 				return opt.value();
 			}
 
-			boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(address);
+			boost::optional<const Val&> objOpt = pEnv->expandOpt(address);
 			if (!objOpt)
 			{
 				CGL_Error("参照エラー");
 			}
 
-			const Evaluated& objRef = objOpt.value();
+			const Val& objRef = objOpt.value();
 
 			if (auto listAccessOpt = AsOpt<ListAccess>(access))
 			{
 				//CGL_DebugLog("if (auto listAccessOpt = AsOpt<ListAccess>(access))");
-				Evaluated value = boost::apply_visitor(*this, listAccessOpt.value().index);
+				Val value = boost::apply_visitor(*this, listAccessOpt.value().index);
 
 				if (!IsType<List>(objRef))
 				{
@@ -990,13 +990,13 @@ namespace cgl
 
 				const FuncVal& function = As<const FuncVal&>(objRef);
 
-				/*std::vector<Evaluated> args;
+				/*std::vector<Val> args;
 				for (const auto& expr : funcAccess.actualArguments)
 				{
 					args.push_back(pEnv->expand(boost::apply_visitor(*this, expr)));
 				}
 				Expr caller = FunctionCaller(function, args);
-				const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(*this, caller));
+				const Val returnedValue = pEnv->expand(boost::apply_visitor(*this, caller));
 				address = pEnv->makeTemporaryValue(returnedValue);
 				*/
 
@@ -1006,7 +1006,7 @@ namespace cgl
 					args.push_back(pEnv->makeTemporaryValue(boost::apply_visitor(*this, expr)));
 				}
 
-				const Evaluated returnedValue = callFunction(function, args);
+				const Val returnedValue = callFunction(function, args);
 				address = pEnv->makeTemporaryValue(returnedValue);
 			}
 		}

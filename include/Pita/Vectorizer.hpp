@@ -148,7 +148,7 @@ namespace cgl
 
 	void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Context> pEnv, const Transform& parent = Transform());
 
-	boost::optional<BoundingRect> GetBoundingBox(const Evaluated& value, std::shared_ptr<Context> pEnv);
+	boost::optional<BoundingRect> GetBoundingBox(const Val& value, std::shared_ptr<Context> pEnv);
 
 	using PolygonsStream = std::multimap<double, std::string>;
 	
@@ -167,13 +167,13 @@ namespace cgl
 
 	//std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent = cgl::Transform());
 
-	std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
+	std::vector<gg::Geometry*> GeosFromRecord(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
 
 	//std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform);
 
 	//std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& parent = cgl::TransformPacked());
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform = cgl::TransformPacked());
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
 	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 
@@ -181,5 +181,5 @@ namespace cgl
 
 	void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon);
 
-	bool OutputSVG(std::ostream& os, const Evaluated& value, std::shared_ptr<Context> pEnv);
+	bool OutputSVG(std::ostream& os, const Val& value, std::shared_ptr<Context> pEnv);
 }

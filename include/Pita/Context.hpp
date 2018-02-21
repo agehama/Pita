@@ -107,7 +107,7 @@ namespace cgl
 	public:	
 		using LocalContext = std::vector<Scope>;
 
-		using BuiltInFunction = std::function<Evaluated(std::shared_ptr<Context>, const std::vector<Address>&)>;
+		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
 
 		Address makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
 
@@ -134,7 +134,7 @@ namespace cgl
 
 		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction);
 
-		Evaluated callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments);
+		Val callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments);
 		bool isPlateausBuiltInFunction(Address functionAddress);
 
 		/*
@@ -156,9 +156,9 @@ namespace cgl
 			return m_values.at(address) != m_values.end();
 		}*/
 
-		//Address dereference(const Evaluated& reference);
+		//Address dereference(const Val& reference);
 		/*
-		boost::optional<const Evaluated&> dereference(const Evaluated& reference)const
+		boost::optional<const Val&> dereference(const Val& reference)const
 		{
 			if (!IsType<Address>(reference))
 			{
@@ -177,7 +177,7 @@ namespace cgl
 		}
 		*/
 
-		/*Evaluated expandRef(const Evaluated& reference)const
+		/*Val expandRef(const Val& reference)const
 		{
 			if (!IsType<Address>(reference))
 			{
@@ -201,13 +201,13 @@ namespace cgl
 			return 0;
 		}*/
 
-		const Evaluated& expand(const LRValue& lrvalue)const;
+		const Val& expand(const LRValue& lrvalue)const;
 
-		Evaluated& mutableExpand(LRValue& lrvalue);
+		Val& mutableExpand(LRValue& lrvalue);
 
-		boost::optional<const Evaluated&> expandOpt(const LRValue& lrvalue)const;
+		boost::optional<const Val&> expandOpt(const LRValue& lrvalue)const;
 
-		boost::optional<Evaluated&> mutableExpandOpt(LRValue& lrvalue);
+		boost::optional<Val&> mutableExpandOpt(LRValue& lrvalue);
 
 		Address evalReference(const Accessor& access);
 
@@ -225,7 +225,7 @@ namespace cgl
 		//ローカル変数を全て展開する
 		//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
 		/*
-		Evaluated expandObject(const Evaluated& reference)
+		Val expandObject(const Val& reference)
 		{
 			if (auto opt = AsOpt<Record>(reference))
 			{
@@ -268,7 +268,7 @@ namespace cgl
 		}
 
 		/*
-		void bindNewValue(const std::string& name, const Evaluated& value)
+		void bindNewValue(const std::string& name, const Val& value)
 		{
 			CGL_DebugLog("");
 			const Address newAddress = m_values.add(value);
@@ -276,7 +276,7 @@ namespace cgl
 			bindValueID(name, newAddress);
 		}
 		*/
-		void bindNewValue(const std::string& name, const Evaluated& value)
+		void bindNewValue(const std::string& name, const Val& value)
 		{
 			CGL_DebugLog("");
 			makeVariable(name, makeTemporaryValue(value));
@@ -333,13 +333,13 @@ namespace cgl
 		void printContext(bool flag = false)const;
 		void printContext(std::ostream& os)const;
 
-		void TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(Address address, const Evaluated& newValue)
+		void TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(Address address, const Val& newValue)
 		{
 			m_values[address] = newValue;
 		}
 
 		/*
-		void assignToObject(Address address, const Evaluated& newValue)
+		void assignToObject(Address address, const Val& newValue)
 		{
 			m_values[address] = newValue;
 		}
@@ -365,7 +365,7 @@ namespace cgl
 
 		//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
 		//式の評価途中でGCは走らないようにするべきか？
-		Address makeTemporaryValue(const Evaluated& value);
+		Address makeTemporaryValue(const Val& value);
 
 		Context() = default;
 
@@ -472,7 +472,7 @@ namespace cgl
 		std::unordered_map<Reference, DeepReference> m_refAddressMap;
 		std::unordered_multimap<Address, Reference> m_addressRefMap;
 
-		Values<Evaluated> m_values;
+		Values<Val> m_values;
 
 		std::vector<LocalContext> m_localEnvStack;
 

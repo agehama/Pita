@@ -419,7 +419,7 @@ namespace cgl
 		std::u32string str;
 	};
 
-	using Evaluated = boost::variant<
+	using Val = boost::variant<
 		bool,
 		int,
 		double,
@@ -431,7 +431,7 @@ namespace cgl
 		boost::recursive_wrapper<Jump>
 	>;
 
-	inline double AsDouble(const Evaluated& value)
+	inline double AsDouble(const Val& value)
 	{
 		if (IsType<double>(value))
 			return As<double>(value);
@@ -474,7 +474,7 @@ namespace cgl
 		boost::recursive_wrapper<Accessor>
 	>;
 
-	bool IsEqualEvaluated(const Evaluated& value1, const Evaluated& value2);
+	bool IsEqualVal(const Val& value1, const Val& value2);
 	bool IsEqual(const Expr& value1, const Expr& value2);
 
 	void printExpr(const Expr& expr);
@@ -482,19 +482,19 @@ namespace cgl
 	struct RValue
 	{
 		RValue() = default;
-		explicit RValue(const Evaluated& value) :value(value) {}
+		explicit RValue(const Val& value) :value(value) {}
 
 		bool operator==(const RValue& other)const
 		{
-			return IsEqualEvaluated(value, other.value);
+			return IsEqualVal(value, other.value);
 		}
 
 		bool operator!=(const RValue& other)const
 		{
-			return !IsEqualEvaluated(value, other.value);
+			return !IsEqualVal(value, other.value);
 		}
 		
-		Evaluated value;
+		Val value;
 	};
 
 	class Context;
@@ -503,7 +503,7 @@ namespace cgl
 	{
 		LRValue() = default;
 
-		LRValue(const Evaluated& value) :value(RValue(value)) {}
+		LRValue(const Val& value) :value(RValue(value)) {}
 		LRValue(const RValue& value) :value(value) {}
 		LRValue(Address value) :value(value) {}
 		LRValue(Reference value) :value(value) {}
@@ -547,12 +547,12 @@ namespace cgl
 			return As<Reference>(value);
 		}
 		
-		const Evaluated& evaluated()const
+		const Val& evaluated()const
 		{
 			return As<RValue>(value).value;
 		}
 
-		Evaluated& mutableEvaluated()
+		Val& mutableVal()
 		{
 			return As<RValue&>(value).value;
 		}
@@ -565,12 +565,12 @@ namespace cgl
 			}
 			else if (isRValue() && other.isRValue())
 			{
-				return IsEqualEvaluated(evaluated(), other.evaluated());
+				return IsEqualVal(evaluated(), other.evaluated());
 			}*/
 
 			if (isRValue() && other.isRValue())
 			{
-				return IsEqualEvaluated(evaluated(), other.evaluated());
+				return IsEqualVal(evaluated(), other.evaluated());
 			}
 
 			return false;
@@ -1159,13 +1159,13 @@ namespace cgl
 	//	List() = default;
 
 	//	/*
-	//	List& append(const Evaluated& value)
+	//	List& append(const Val& value)
 	//	{
 	//		data.push_back(value);
 	//		return *this;
 	//	}
 	//	
-	//	std::vector<Evaluated>::iterator get(int index)
+	//	std::vector<Val>::iterator get(int index)
 	//	{
 	//		return data.begin() + index;
 	//	}
@@ -1299,10 +1299,10 @@ namespace cgl
 	{
 		struct Value
 		{
-			Evaluated value;
+			Val value;
 			Address address;
 			Value() = default;
-			Value(const Evaluated& value, const Address address):
+			Value(const Val& value, const Address address):
 				value(value),
 				address(address)
 			{}
@@ -1310,12 +1310,12 @@ namespace cgl
 		std::vector<Value> data;
 		PackedList() = default;
 
-		void add(const Address address, const Evaluated& evaluated)
+		void add(const Address address, const Val& evaluated)
 		{
 			data.emplace_back(evaluated, address);
 		}
 
-		void add(Context& context, const Evaluated& evaluated);
+		void add(Context& context, const Val& evaluated);
 	};
 
 	struct List
@@ -1428,11 +1428,11 @@ namespace cgl
 	struct KeyValue
 	{
 		Identifier name;
-		Evaluated value;
+		Val value;
 
 		KeyValue() = default;
 
-		KeyValue(const Identifier& name, const Evaluated& value) :
+		KeyValue(const Identifier& name, const Val& value) :
 			name(name),
 			value(value)
 		{}
@@ -1444,7 +1444,7 @@ namespace cgl
 				return false;
 			}
 
-			return IsEqualEvaluated(value, other.value);
+			return IsEqualVal(value, other.value);
 		}
 	};
 
@@ -1510,7 +1510,7 @@ namespace cgl
 
 		struct FunctionRef
 		{
-			//std::vector<boost::variant<SatReference, Evaluated>> args;
+			//std::vector<boost::variant<SatReference, Val>> args;
 			std::vector<SatExpr> args;
 
 			FunctionRef() = default;
@@ -1545,7 +1545,7 @@ namespace cgl
 				args.push_back(ref);
 			}
 
-			void appendValue(const Evaluated& value)
+			void appendValue(const Val& value)
 			{
 				args.push_back(value);
 			}
@@ -1584,7 +1584,7 @@ namespace cgl
 			references.push_back(RecordRef(key));
 		}
 
-		//void appendFunctionRef(const std::vector<Evaluated>& args)
+		//void appendFunctionRef(const std::vector<Val>& args)
 		void appendFunctionRef(const FunctionRef& ref)
 		{
 			//references.push_back(FunctionRef(args));
@@ -1710,7 +1710,7 @@ namespace cgl
 
 	//struct Record
 	//{
-	//	//std::unordered_map<std::string, Evaluated> values;
+	//	//std::unordered_map<std::string, Val> values;
 	//	std::unordered_map<std::string, Address> values;
 	//	OptimizationProblemSat problem;
 	//	std::vector<Accessor> freeVariables;
@@ -1723,12 +1723,12 @@ namespace cgl
 	//	Record() = default;
 	//	
 	//	/*
-	//	Record(const std::string& name, const Evaluated& value)
+	//	Record(const std::string& name, const Val& value)
 	//	{
 	//		append(name, value);
 	//	}
 
-	//	Record& append(const std::string& name, const Evaluated& value)
+	//	Record& append(const std::string& name, const Val& value)
 	//	{
 	//		values[name] = value;
 	//		return *this;
@@ -1792,7 +1792,7 @@ namespace cgl
 	//				return false;
 	//			}
 
-	//			//if (!IsEqualEvaluated(keyval.second, otherIt->second))
+	//			//if (!IsEqualVal(keyval.second, otherIt->second))
 	//			if (keyval.second != otherIt->second)
 	//			{
 	//				return false;
@@ -1844,7 +1844,7 @@ namespace cgl
 					return false;
 				}
 
-				//if (!IsEqualEvaluated(keyval.second, otherIt->second))
+				//if (!IsEqualVal(keyval.second, otherIt->second))
 				if (keyval.second != otherIt->second)
 				{
 					return false;
@@ -1862,10 +1862,10 @@ namespace cgl
 	{
 		struct Value
 		{
-			Evaluated value;
+			Val value;
 			Address address;
 			Value() = default;
-			Value(const Evaluated& value, const Address address) :
+			Value(const Val& value, const Address address) :
 				value(value),
 				address(address)
 			{}
@@ -1873,17 +1873,17 @@ namespace cgl
 		std::unordered_map<std::string, Value> values;
 		PackedRecord() = default;
 
-		void add(const std::string& key, const Address address, const Evaluated& evaluated)
+		void add(const std::string& key, const Address address, const Val& evaluated)
 		{
 			values.insert({ key, Value{evaluated, address} });
 		}
 
-		void add(Context& context, const std::string& key, const Evaluated& evaluated);
+		void add(Context& context, const std::string& key, const Val& evaluated);
 	};
 
 	struct Record
 	{
-		//std::unordered_map<std::string, Evaluated> values;
+		//std::unordered_map<std::string, Val> values;
 		//std::unordered_map<std::string, Address> values;
 		using Values = boost::variant<UnpackedRecord, PackedRecord>;
 		Values values;
@@ -1928,7 +1928,7 @@ namespace cgl
 		//			return false;
 		//		}
 
-		//		//if (!IsEqualEvaluated(keyval.second, otherIt->second))
+		//		//if (!IsEqualVal(keyval.second, otherIt->second))
 		//		if (keyval.second != otherIt->second)
 		//		{
 		//			return false;
@@ -2160,18 +2160,18 @@ namespace cgl
 	{
 		enum Op { Return, Break, Continue };
 
-		boost::optional<Evaluated> lhs;
+		boost::optional<Val> lhs;
 		Op op;
 
 		Jump() = default;
 
 		Jump(Op op) :op(op) {}
 
-		Jump(Op op, const Evaluated& lhs) :
+		Jump(Op op, const Val& lhs) :
 			op(op), lhs(lhs)
 		{}
 
-		static Jump MakeReturn(const Evaluated& value)
+		static Jump MakeReturn(const Val& value)
 		{
 			return Jump(Op::Return, value);
 		}
@@ -2215,7 +2215,7 @@ namespace cgl
 					return false;
 				}
 
-				return IsEqualEvaluated(lhs.value(), other.lhs.value());
+				return IsEqualVal(lhs.value(), other.lhs.value());
 			}
 			else
 			{

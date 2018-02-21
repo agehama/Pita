@@ -41,7 +41,7 @@ namespace cgl
 		return result;
 	}
 
-	boost::optional<Evaluated> Program::execute(const std::string& program)
+	boost::optional<Val> Program::execute(const std::string& program)
 	{
 		if (auto exprOpt = parse(program))
 		{
@@ -74,7 +74,7 @@ namespace cgl
 
 				if (logOutput) std::cout << "execute..." << std::endl;
 				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
-				const Evaluated result = pEnv->expand(lrvalue);
+				const Val result = pEnv->expand(lrvalue);
 				if (logOutput) std::cout << "execute succeeded" << std::endl;
 
 				if (logOutput) std::cout << "output SVG..." << std::endl;
@@ -116,7 +116,7 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cout << "execute succeeded" << std::endl;
-					//printEvaluated(evaluated.value(), pEnv, std::cout, 0);
+					//printVal(evaluated.value(), pEnv, std::cout, 0);
 
 					std::cout << "output SVG..." << std::endl;
 					std::ofstream file("result.svg");
@@ -203,9 +203,9 @@ namespace cgl
 			std::shared_ptr<Context> pEnv2 = Context::Make();
 			Eval evaluator2(pEnv2);
 
-			const Evaluated answer = pEnv->expand(boost::apply_visitor(evaluator2, expr));
+			const Val answer = pEnv->expand(boost::apply_visitor(evaluator2, expr));
 
-			return IsEqualEvaluated(result.value(), answer);
+			return IsEqualVal(result.value(), answer);
 		}
 
 		return false;

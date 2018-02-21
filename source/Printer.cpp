@@ -61,7 +61,7 @@ namespace cgl
 		{
 			/*const std::string header = std::string("(") + std::to_string(i) + "): ";
 			const auto child = ValuePrinter(m_indent + 1, header);
-			const Evaluated currentData = data[i];
+			const Val currentData = data[i];
 			boost::apply_visitor(child, currentData);*/
 
 			//const std::string header = std::string("(") + std::to_string(i) + "): ";
@@ -71,7 +71,7 @@ namespace cgl
 
 			if (pEnv)
 			{
-				const Evaluated evaluated = pEnv->expand(data[i]);
+				const Val evaluated = pEnv->expand(data[i]);
 				boost::apply_visitor(child, evaluated);
 			}
 			else
@@ -112,7 +112,7 @@ namespace cgl
 
 			if (pEnv)
 			{
-				const Evaluated evaluated = pEnv->expand(value.second);
+				const Val evaluated = pEnv->expand(value.second);
 				boost::apply_visitor(child, evaluated);
 			}
 			else
@@ -251,9 +251,9 @@ namespace cgl
 		}
 		else
 		{
-			printEvaluated(node.evaluated(), nullptr, os, m_indent);
+			printVal(node.evaluated(), nullptr, os, m_indent);
 		}
-		//printEvaluated(node.value, m_indent);
+		//printVal(node.value, m_indent);
 		//os << indent() << "Double(" << node << ")" << std::endl;
 	}
 

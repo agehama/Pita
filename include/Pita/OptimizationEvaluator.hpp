@@ -121,7 +121,7 @@ namespace cgl
 		bool operator()(const Accessor& node);
 	};
 
-	class EvalSatExpr : public boost::static_visitor<Evaluated>
+	class EvalSatExpr : public boost::static_visitor<Val>
 	{
 	public:
 		std::shared_ptr<Context> pEnv;
@@ -148,41 +148,41 @@ namespace cgl
 
 		boost::optional<double> expandFreeOpt(Address address)const;
 
-		Evaluated operator()(const LRValue& node);
+		Val operator()(const LRValue& node);
 
-		Evaluated operator()(const SatReference& node);
+		Val operator()(const SatReference& node);
 
-		Evaluated operator()(const Identifier& node);
+		Val operator()(const Identifier& node);
 
-		Evaluated operator()(const UnaryExpr& node);
+		Val operator()(const UnaryExpr& node);
 
-		Evaluated operator()(const BinaryExpr& node);
+		Val operator()(const BinaryExpr& node);
 
-		Evaluated operator()(const DefFunc& node) { CGL_Error("不正な式です"); return 0; }
+		Val operator()(const DefFunc& node) { CGL_Error("不正な式です"); return 0; }
 
-		//Evaluated operator()(const FunctionCaller& callFunc)
-		Evaluated callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		//Val operator()(const FunctionCaller& callFunc)
+		Val callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
 
-		Evaluated operator()(const Range& node) { CGL_Error("不正な式です"); return 0; }
+		Val operator()(const Range& node) { CGL_Error("不正な式です"); return 0; }
 
-		Evaluated operator()(const Lines& node);
+		Val operator()(const Lines& node);
 
-		Evaluated operator()(const If& if_statement);
+		Val operator()(const If& if_statement);
 
-		Evaluated operator()(const For& node) { CGL_Error("invalid expression"); return 0; }
+		Val operator()(const For& node) { CGL_Error("invalid expression"); return 0; }
 
-		Evaluated operator()(const Return& node) { CGL_Error("invalid expression"); return 0; }
+		Val operator()(const Return& node) { CGL_Error("invalid expression"); return 0; }
 
-		Evaluated operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return 0; }
+		Val operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return 0; }
 
-		Evaluated operator()(const KeyExpr& node);
+		Val operator()(const KeyExpr& node);
 
-		Evaluated operator()(const RecordConstractor& recordConsractor);
+		Val operator()(const RecordConstractor& recordConsractor);
 
-		Evaluated operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return 0; }
-		Evaluated operator()(const DeclSat& node) { CGL_Error("invalid expression"); return 0; }
-		Evaluated operator()(const DeclFree& node) { CGL_Error("invalid expression"); return 0; }
+		Val operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return 0; }
+		Val operator()(const DeclSat& node) { CGL_Error("invalid expression"); return 0; }
+		Val operator()(const DeclFree& node) { CGL_Error("invalid expression"); return 0; }
 
-		Evaluated operator()(const Accessor& node);
+		Val operator()(const Accessor& node);
 	};
 }

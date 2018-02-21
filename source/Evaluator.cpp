@@ -14,7 +14,7 @@ extern int constraintViolationCount;
 
 namespace cgl
 {
-	void ProgressStore::TryWrite(std::shared_ptr<Context> env, const Evaluated& value)
+	void ProgressStore::TryWrite(std::shared_ptr<Context> env, const Val& value)
 	{
 		ProgressStore& i = Instance();
 		if (i.mtx.try_lock())
@@ -44,7 +44,7 @@ namespace cgl
 		return i.pEnv;
 	}
 
-	boost::optional<Evaluated>& ProgressStore::GetEvaluated()
+	boost::optional<Val>& ProgressStore::GetVal()
 	{
 		ProgressStore& i = Instance();
 		return i.evaluated;
@@ -266,7 +266,7 @@ namespace cgl
 		return boost::none;
 	}
 
-	Evaluated ValueCloner::operator()(const List& node)
+	Val ValueCloner::operator()(const List& node)
 	{
 		auto opt = node.asUnpackedOpt();
 		if (!opt)
@@ -288,8 +288,8 @@ namespace cgl
 			}
 			else
 			{
-				const Evaluated& substance = pEnv->expand(data[i]);
-				const Evaluated clone = boost::apply_visitor(*this, substance);
+				const Val& substance = pEnv->expand(data[i]);
+				const Val clone = boost::apply_visitor(*this, substance);
 				const Address newAddress = pEnv->makeTemporaryValue(clone);
 				result.append(newAddress);
 				replaceMap[data[i]] = newAddress;
@@ -306,8 +306,8 @@ namespace cgl
 			}
 			else
 			{
-				const Evaluated& substance = pEnv->expand(data[i]);
-				const Evaluated clone = boost::apply_visitor(*this, substance);
+				const Val& substance = pEnv->expand(data[i]);
+				const Val clone = boost::apply_visitor(*this, substance);
 				const Address newAddress = pEnv->makeTemporaryValue(clone);
 				result.append(newAddress);
 				replaceMap[data[i]] = newAddress;
@@ -317,7 +317,7 @@ namespace cgl
 		return List(result);
 	}
 
-	/*Evaluated ValueCloner::operator()(const Record& node)
+	/*Val ValueCloner::operator()(const Record& node)
 	{
 		Record result;
 
@@ -329,8 +329,8 @@ namespace cgl
 			}
 			else
 			{
-				const Evaluated& substance = pEnv->expand(value.second);
-				const Evaluated clone = boost::apply_visitor(*this, substance);
+				const Val& substance = pEnv->expand(value.second);
+				const Val clone = boost::apply_visitor(*this, substance);
 				const Address newAddress = pEnv->makeTemporaryValue(clone);
 				result.append(value.first, newAddress);
 				replaceMap[value.second] = newAddress;
@@ -346,7 +346,7 @@ namespace cgl
 		return result;
 	}*/
 
-	Evaluated ValueCloner::operator()(const Record& node)
+	Val ValueCloner::operator()(const Record& node)
 	{
 		auto opt = node.asUnpackedOpt();
 		if (!opt)
@@ -366,8 +366,8 @@ namespace cgl
 			}
 			else
 			{
-				const Evaluated& substance = pEnv->expand(value.second);
-				const Evaluated clone = boost::apply_visitor(*this, substance);
+				const Val& substance = pEnv->expand(value.second);
+				const Val clone = boost::apply_visitor(*this, substance);
 				const Address newAddress = pEnv->makeTemporaryValue(clone);
 				result.append(value.first, newAddress);
 				replaceMap[value.second] = newAddress;
@@ -395,33 +395,33 @@ namespace cgl
 		return boost::none;
 	}
 
-	Evaluated ValueCloner2::operator()(const List& node)
+	Val ValueCloner2::operator()(const List& node)
 	{
 		const auto& data = node.asUnpackedOpt().value().data;
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
 			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
-			const Evaluated& substance = pEnv->expand(data[i]);
+			const Val& substance = pEnv->expand(data[i]);
 			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(data[i], boost::apply_visitor(*this, substance));
 		}
 
 		return node;
 	}
 		
-	Evaluated ValueCloner2::operator()(const Record& node)
+	Val ValueCloner2::operator()(const Record& node)
 	{
 		for (const auto& value : node.asUnpackedOpt().value().values)
 		{
 			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
-			const Evaluated& substance = pEnv->expand(value.second);
+			const Val& substance = pEnv->expand(value.second);
 			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(value.second, boost::apply_visitor(*this, substance));
 		}
 
 		return node;
 	}
 
-	Evaluated ValueCloner2::operator()(const FuncVal& node)const
+	Val ValueCloner2::operator()(const FuncVal& node)const
 	{
 		if (node.builtinFuncAddress)
 		{
@@ -487,7 +487,7 @@ namespace cgl
 		}
 	}
 
-	Evaluated Clone(std::shared_ptr<Context> pEnv, const Evaluated& value)
+	Val Clone(std::shared_ptr<Context> pEnv, const Val& value)
 	{
 		/*
 		関数値がアドレスを内部に持っている時、クローン作成の前後でその依存関係を保存する必要があるので、クローン作成は2ステップに分けて行う。
@@ -495,10 +495,10 @@ namespace cgl
 		2. 関数の持つアドレスを新しい方に付け替える		
 		*/
 		ValueCloner cloner(pEnv);
-		const Evaluated& evaluated = boost::apply_visitor(cloner, value);
+		const Val& evaluated = boost::apply_visitor(cloner, value);
 		ValueCloner2 cloner2(pEnv, cloner.replaceMap);
 		ValueCloner3 cloner3(pEnv, cloner.replaceMap);
-		Evaluated evaluated2 = boost::apply_visitor(cloner2, evaluated);
+		Val evaluated2 = boost::apply_visitor(cloner2, evaluated);
 		boost::apply_visitor(cloner3, evaluated2);
 		return evaluated2;
 	}
@@ -530,7 +530,7 @@ namespace cgl
 			//とりあえず参照先のレコードのメンバはローカル変数とおく
 			if (isInnerRecord)
 			{
-				const Evaluated& evaluated = pEnv->expand(address);
+				const Val& evaluated = pEnv->expand(address);
 				if (auto opt = AsOpt<Record>(evaluated))
 				{
 					const Record& record = opt.value();
@@ -880,7 +880,7 @@ namespace cgl
 	
 	LRValue Eval::operator()(const UnaryExpr& node)
 	{
-		const Evaluated lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs));
+		const Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs));
 
 		switch (node.op)
 		{
@@ -899,16 +899,16 @@ namespace cgl
 		const LRValue lhs_ = boost::apply_visitor(*this, node.lhs);
 		const LRValue rhs_ = boost::apply_visitor(*this, node.rhs);
 
-		Evaluated lhs;
+		Val lhs;
 		if (node.op != BinaryOp::Assign)
 		{
 			lhs = pEnv->expand(lhs_);
 			
 		}
 
-		Evaluated rhs = pEnv->expand(rhs_);
+		Val rhs = pEnv->expand(rhs_);
 
-		//const Evaluated rhs = pEnv->expand(boost::apply_visitor(*this, node.rhs));
+		//const Val rhs = pEnv->expand(boost::apply_visitor(*this, node.rhs));
 
 		switch (node.op)
 		{
@@ -1114,20 +1114,20 @@ namespace cgl
 		printExpr(funcVal.expr);
 
 		//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
-		//Evaluated result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
-		Evaluated result;
+		//Val result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
+		Val result;
 		{
-			//const Evaluated resultValue = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
+			//const Val resultValue = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
 			//result = pEnv->expandRef(pEnv->makeTemporaryValue(resultValue));
 			/*
 			EliminateScopeDependency elim(pEnv);
 			result = pEnv->makeTemporaryValue(boost::apply_visitor(elim, resultValue));
 			*/
 			result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
-			CGL_DebugLog("Function Evaluated:");
-			printEvaluated(result, nullptr);
+			CGL_DebugLog("Function Val:");
+			printVal(result, nullptr);
 		}
-		//Evaluated result = pEnv->expandObject();
+		//Val result = pEnv->expandObject();
 
 		CGL_DebugLog("");
 
@@ -1166,7 +1166,7 @@ namespace cgl
 	{
 		pEnv->enterScope();
 
-		Evaluated result;
+		Val result;
 		int i = 0;
 		for (const auto& expr : statement.exprs)
 		{
@@ -1176,7 +1176,7 @@ namespace cgl
 			//printExpr(expr);
 			CGL_DebugLog("");
 			result = pEnv->expand(boost::apply_visitor(*this, expr));
-			printEvaluated(result, pEnv);
+			printVal(result, pEnv);
 
 			CGL_DebugLog("");
 
@@ -1185,8 +1185,8 @@ namespace cgl
 			/*
 			if (IsLValue(result))
 			{
-				//const Evaluated& resultValue = pEnv->dereference(result);
-				const Evaluated resultValue = pEnv->expandRef(result);
+				//const Val& resultValue = pEnv->dereference(result);
+				const Val resultValue = pEnv->expandRef(result);
 				const bool isMacro = IsType<Jump>(resultValue);
 				if (isMacro)
 				{
@@ -1246,7 +1246,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const If& if_statement)
 	{
-		const Evaluated cond = pEnv->expand(boost::apply_visitor(*this, if_statement.cond_expr));
+		const Val cond = pEnv->expand(boost::apply_visitor(*this, if_statement.cond_expr));
 		if (!IsType<bool>(cond))
 		{
 			//条件は必ずブール値である必要がある
@@ -1256,13 +1256,13 @@ namespace cgl
 
 		if (As<bool>(cond))
 		{
-			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, if_statement.then_expr));
+			const Val result = pEnv->expand(boost::apply_visitor(*this, if_statement.then_expr));
 			return RValue(result);
 
 		}
 		else if (if_statement.else_expr)
 		{
-			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, if_statement.else_expr.value()));
+			const Val result = pEnv->expand(boost::apply_visitor(*this, if_statement.else_expr.value()));
 			return RValue(result);
 		}
 
@@ -1274,13 +1274,13 @@ namespace cgl
 
 	LRValue Eval::operator()(const For& forExpression)
 	{
-		const Evaluated startVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeStart));
-		const Evaluated endVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeEnd));
+		const Val startVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeStart));
+		const Val endVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeEnd));
 
 		//startVal <= endVal なら 1
 		//startVal > endVal なら -1
 		//を適切な型に変換して返す
-		const auto calcStepValue = [&](const Evaluated& a, const Evaluated& b)->boost::optional<std::pair<Evaluated, bool>>
+		const auto calcStepValue = [&](const Val& a, const Val& b)->boost::optional<std::pair<Val, bool>>
 		{
 			const bool a_IsInt = IsType<int>(a);
 			const bool a_IsDouble = IsType<double>(a);
@@ -1315,22 +1315,22 @@ namespace cgl
 
 			if (result_IsDouble)
 			{
-				/*const Evaluated xx = Mul(1.0, sign, *pEnv);
-				return std::pair<Evaluated, bool>(xx, isInOrder);*/
+				/*const Val xx = Mul(1.0, sign, *pEnv);
+				return std::pair<Val, bool>(xx, isInOrder);*/
 
-				//std::pair<Evaluated, bool> xa(Mul(1.0, sign, *pEnv), isInOrder);
+				//std::pair<Val, bool> xa(Mul(1.0, sign, *pEnv), isInOrder);
 
-				/*const Evaluated xx = Mul(1.0, sign, *pEnv);
-				std::pair<Evaluated, bool> xa(xx, isInOrder);
-				return boost::optional<std::pair<Evaluated, bool>>(xa);*/
+				/*const Val xx = Mul(1.0, sign, *pEnv);
+				std::pair<Val, bool> xa(xx, isInOrder);
+				return boost::optional<std::pair<Val, bool>>(xa);*/
 
-				return std::pair<Evaluated, bool>(Mul(1.0, sign, *pEnv), isInOrder);
+				return std::pair<Val, bool>(Mul(1.0, sign, *pEnv), isInOrder);
 			}
 
-			return std::pair<Evaluated, bool>(Mul(1, sign, *pEnv), isInOrder);
+			return std::pair<Val, bool>(Mul(1, sign, *pEnv), isInOrder);
 		};
 
-		const auto loopContinues = [&](const Evaluated& loopCount, bool isInOrder)->boost::optional<bool>
+		const auto loopContinues = [&](const Val& loopCount, bool isInOrder)->boost::optional<bool>
 		{
 			//isInOrder == true
 			//loopCountValue <= endVal
@@ -1338,7 +1338,7 @@ namespace cgl
 			//isInOrder == false
 			//loopCountValue > endVal
 
-			const Evaluated result = LessEqual(loopCount, endVal, *pEnv);
+			const Val result = LessEqual(loopCount, endVal, *pEnv);
 			if (!IsType<bool>(result))
 			{
 				CGL_Error("ここを通ることはないはず");
@@ -1353,12 +1353,12 @@ namespace cgl
 			CGL_Error("ループのレンジが不正");
 		}
 
-		const Evaluated step = stepOrder.value().first;
+		const Val step = stepOrder.value().first;
 		const bool isInOrder = stepOrder.value().second;
 
-		Evaluated loopCountValue = startVal;
+		Val loopCountValue = startVal;
 
-		Evaluated loopResult;
+		Val loopResult;
 
 		pEnv->enterScope();
 
@@ -1391,7 +1391,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const Return& return_statement)
 	{
-		const Evaluated lhs = pEnv->expand(boost::apply_visitor(*this, return_statement.expr));
+		const Val lhs = pEnv->expand(boost::apply_visitor(*this, return_statement.expr));
 
 		return RValue(Jump::MakeReturn(lhs));
 	}
@@ -1417,7 +1417,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const KeyExpr& keyExpr)
 	{
-		const Evaluated value = pEnv->expand(boost::apply_visitor(*this, keyExpr.expr));
+		const Val value = pEnv->expand(boost::apply_visitor(*this, keyExpr.expr));
 
 		return RValue(KeyValue(keyExpr.name, value));
 		//return LRValue(pEnv->makeTemporaryValue(KeyValue(keyExpr.name, value)));
@@ -1464,9 +1464,9 @@ namespace cgl
 			CGL_DebugLog("");
 			CGL_DebugLog("Evaluate: ");
 			printExpr(expr/*, std::cout*/);
-			Evaluated value = pEnv->expand(boost::apply_visitor(*this, expr));
+			Val value = pEnv->expand(boost::apply_visitor(*this, expr));
 			CGL_DebugLog("Result: ");
-			printEvaluated(value, pEnv);
+			printVal(value, pEnv);
 
 			//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
 			if (auto keyValOpt = AsOpt<KeyValue>(value))
@@ -1478,7 +1478,7 @@ namespace cgl
 
 				//Assign(keyVal.name, keyVal.value, *pEnv);
 
-				//識別子はEvaluatedからはずしたので、識別子に対して直接代入を行うことはできなくなった
+				//識別子はValからはずしたので、識別子に対して直接代入を行うことはできなくなった
 				//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 
 				//したがって、一度代入式を作ってからそれを評価する
@@ -1524,7 +1524,7 @@ namespace cgl
 			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
 			if (IsLValue(value))
 			{
-				const Evaluated resultValue = pEnv->expandRef(value);
+				const Val resultValue = pEnv->expandRef(value);
 				const bool isMacro = IsType<Jump>(resultValue);
 				if (isMacro)
 				{
@@ -1772,7 +1772,7 @@ namespace cgl
 
 		if (record.problem.candidateExpr)
 		{
-			const Evaluated result = pEnv->expand(boost::apply_visitor(*this, record.problem.candidateExpr.value()));
+			const Val result = pEnv->expand(boost::apply_visitor(*this, record.problem.candidateExpr.value()));
 			if (!IsType<bool>(result))
 			{
 				CGL_Error("制約式の評価結果がブール値でない");
@@ -1800,7 +1800,7 @@ namespace cgl
 			//record.append(key.name, pEnv->makeTemporaryValue(pEnv->dereference(ObjectReference(key))));
 
 			/*Address address = pEnv->findAddress(key);
-			boost::optional<const Evaluated&> opt = pEnv->expandOpt(address);
+			boost::optional<const Val&> opt = pEnv->expandOpt(address);
 			record.append(key, pEnv->makeTemporaryValue(opt.value()));*/
 
 			Address address = pEnv->findAddress(key);
@@ -1851,7 +1851,7 @@ namespace cgl
 		if (auto opt = AsOpt<Identifier>(record.original))
 		{
 			//auto originalOpt = pEnv->find(opt.value().name);
-			boost::optional<const Evaluated&> originalOpt = pEnv->dereference(pEnv->findAddress(opt.value()));
+			boost::optional<const Val&> originalOpt = pEnv->dereference(pEnv->findAddress(opt.value()));
 			if (!originalOpt)
 			{
 				//エラー：未定義のレコードを参照しようとした
@@ -1873,8 +1873,8 @@ namespace cgl
 		}
 		*/
 
-		//Evaluated originalRecordRef = boost::apply_visitor(*this, record.original);
-		//Evaluated originalRecordVal = pEnv->expandRef(originalRecordRef);
+		//Val originalRecordRef = boost::apply_visitor(*this, record.original);
+		//Val originalRecordVal = pEnv->expandRef(originalRecordRef);
 
 		/*
 		a{}を評価する手順
@@ -1905,7 +1905,7 @@ namespace cgl
 		}
 		else
 		{
-			Evaluated originalRecordVal = pEnv->expand(boost::apply_visitor(*this, record.original));
+			Val originalRecordVal = pEnv->expand(boost::apply_visitor(*this, record.original));
 			if (auto opt = AsOpt<Record>(originalRecordVal))
 			{
 				recordOpt = opt.value();
@@ -1917,7 +1917,7 @@ namespace cgl
 
 			pEnv->printContext(true);
 			CGL_DebugLog("Original:");
-			printEvaluated(originalRecordVal, pEnv);
+			printVal(originalRecordVal, pEnv);
 		}
 
 		//(1)オリジナルのレコードaのクローン(a')を作る
@@ -1931,7 +1931,7 @@ namespace cgl
 		const auto& values = unpackedOpt.value().values;
 
 		CGL_DebugLog("Clone:");
-		printEvaluated(clone, pEnv);
+		printVal(clone, pEnv);
 
 		if (pEnv->temporaryRecord)
 		{
@@ -1951,7 +1951,7 @@ namespace cgl
 
 		//(3) 追加するレコードの中身を評価する
 		Expr expr = record.adder;
-		Evaluated recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
+		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
 
 		//(4) ローカルスコープの参照値を読みレコードに上書きする
 		if (auto opt = AsOpt<Record>(recordValue))
@@ -1996,8 +1996,8 @@ namespace cgl
 
 		//(3)
 		Expr expr = record.adder;
-		//Evaluated recordValue = boost::apply_visitor(*this, expr);
-		Evaluated recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
+		//Val recordValue = boost::apply_visitor(*this, expr);
+		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
 		if (auto opt = AsOpt<Record>(recordValue))
 		{
 			CGL_DebugLog("");
@@ -2047,7 +2047,7 @@ namespace cgl
 
 		pEnv->enterScope();
 		//DeclSat自体は現在制約が満たされているかどうかを評価結果として返す
-		const Evaluated result = pEnv->expand(boost::apply_visitor(*this, closedSatExpr));
+		const Val result = pEnv->expand(boost::apply_visitor(*this, closedSatExpr));
 		pEnv->exitScope();
 
 		if (pEnv->currentRecords.empty())
@@ -2108,7 +2108,7 @@ namespace cgl
 		/*
 		ObjectReference result;
 
-		Evaluated headValue = boost::apply_visitor(*this, accessor.head);
+		Val headValue = boost::apply_visitor(*this, accessor.head);
 		if (auto opt = AsOpt<Identifier>(headValue))
 		{
 			result.headValue = opt.value();
@@ -2136,7 +2136,7 @@ namespace cgl
 		Address address;
 
 		/*
-		Evaluated headValue = boost::apply_visitor(*this, accessor.head);
+		Val headValue = boost::apply_visitor(*this, accessor.head);
 		if (auto opt = AsOpt<Address>(headValue))
 		{
 			address = opt.value();
@@ -2168,7 +2168,7 @@ namespace cgl
 		}
 		else
 		{
-			Evaluated evaluated = headValue.evaluated();
+			Val evaluated = headValue.evaluated();
 			if (auto opt = AsOpt<Record>(evaluated))
 			{
 				address = pEnv->makeTemporaryValue(opt.value());
@@ -2189,19 +2189,19 @@ namespace cgl
 
 		for (const auto& access : accessor.accesses)
 		{
-			//boost::optional<Evaluated&> objOpt = pEnv->expandOpt(address);
+			//boost::optional<Val&> objOpt = pEnv->expandOpt(address);
 			LRValue lrAddress = LRValue(address);
-			boost::optional<Evaluated&> objOpt = pEnv->mutableExpandOpt(lrAddress);
+			boost::optional<Val&> objOpt = pEnv->mutableExpandOpt(lrAddress);
 			if (!objOpt)
 			{
 				CGL_Error("参照エラー");
 			}
 
-			Evaluated& objRef = objOpt.value();
+			Val& objRef = objOpt.value();
 
 			if (auto listAccessOpt = AsOpt<ListAccess>(access))
 			{
-				Evaluated value = pEnv->expand(boost::apply_visitor(*this, listAccessOpt.value().index));
+				Val value = pEnv->expand(boost::apply_visitor(*this, listAccessOpt.value().index));
 
 				if (!IsType<List>(objRef))
 				{
@@ -2279,15 +2279,15 @@ namespace cgl
 				const FuncVal& function = As<const FuncVal&>(objRef);
 
 				/*
-				std::vector<Evaluated> args;
+				std::vector<Val> args;
 				for (const auto& expr : funcAccess.actualArguments)
 				{
 					args.push_back(pEnv->expand(boost::apply_visitor(*this, expr)));
 				}
 					
 				Expr caller = FunctionCaller(function, args);
-				//const Evaluated returnedValue = boost::apply_visitor(*this, caller);
-				const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(*this, caller));
+				//const Val returnedValue = boost::apply_visitor(*this, caller);
+				const Val returnedValue = pEnv->expand(boost::apply_visitor(*this, caller));
 				address = pEnv->makeTemporaryValue(returnedValue);
 				*/
 
@@ -2305,7 +2305,7 @@ namespace cgl
 					}
 				}
 
-				const Evaluated returnedValue = pEnv->expand(callFunction(function, args));
+				const Val returnedValue = pEnv->expand(callFunction(function, args));
 				address = pEnv->makeTemporaryValue(returnedValue);
 			}
 		}
@@ -2318,7 +2318,7 @@ namespace cgl
 	{
 		if (node.isRValue())
 		{
-			const Evaluated& val = node.evaluated();
+			const Val& val = node.evaluated();
 			if (IsType<double>(val) || IsType<int>(val) || IsType<bool>(val))
 			{
 				return false;
@@ -2466,7 +2466,7 @@ namespace cgl
 			//free変数になかった場合は評価した結果を返す
 			else
 			{
-				const Evaluated evaluated = pEnv->expand(address);
+				const Val evaluated = pEnv->expand(address);
 				return LRValue(evaluated);
 			}
 		}
@@ -2492,7 +2492,7 @@ namespace cgl
 		//free変数になかった場合は評価した結果を返す
 		else
 		{
-			const Evaluated evaluated = pEnv->expand(address);
+			const Val evaluated = pEnv->expand(address);
 			return LRValue(evaluated);
 		}
 
@@ -2599,7 +2599,7 @@ namespace cgl
 
 			//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。
 			//したがって、free変数にあるかどうかは考慮せず（free変数は冗長に指定できるのであったとしても別にエラーではない）、
-			//直接Evaluatedとして展開する
+			//直接Valとして展開する
 			//result.head = LRValue(address);
 			headAddress = address;
 		}
@@ -2640,13 +2640,13 @@ namespace cgl
 		{
 			const Address lastHeadAddress = headAddress;
 
-			boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(headAddress);
+			boost::optional<const Val&> objOpt = pEnv->expandOpt(headAddress);
 			if (!objOpt)
 			{
 				CGL_Error("参照エラー");
 			}
 
-			const Evaluated& objRef = objOpt.value();
+			const Val& objRef = objOpt.value();
 
 			if (IsType<ListAccess>(access))
 			{
@@ -2664,7 +2664,7 @@ namespace cgl
 				}
 				else
 				{
-					Evaluated value = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
+					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
 
 					if (!IsType<List>(objRef))
 					{
@@ -2757,14 +2757,14 @@ namespace cgl
 					const FuncVal& function = As<const FuncVal&>(objRef);
 
 					/*
-					std::vector<Evaluated> args;
+					std::vector<Val> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
 					args.push_back(pEnv->expand(boost::apply_visitor(evaluator, expr)));
 					}
 
 					Expr caller = FunctionCaller(function, args);
-					const Evaluated returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+					const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
 					headAddress = pEnv->makeTemporaryValue(returnedValue);
 					*/
 					std::vector<Address> args;
@@ -2781,7 +2781,7 @@ namespace cgl
 						}
 					}
 
-					const Evaluated returnedValue = pEnv->expand(evaluator.callFunction(function, args));
+					const Val returnedValue = pEnv->expand(evaluator.callFunction(function, args));
 					headAddress = pEnv->makeTemporaryValue(returnedValue);
 				}
 			}
@@ -2829,32 +2829,32 @@ namespace cgl
 		return result;
 	}
 	
-	Evaluated evalExpr(const Expr& expr)
+	Val evalExpr(const Expr& expr)
 	{
 		auto env = Context::Make();
 
 		Eval evaluator(env);
 
-		const Evaluated result = env->expand(boost::apply_visitor(evaluator, expr));
+		const Val result = env->expand(boost::apply_visitor(evaluator, expr));
 
 		//std::cout << "Context:\n";
 		//env->printContext();
 
 		//std::cout << "Result Evaluation:\n";
-		//printEvaluated(result, env);
+		//printVal(result, env);
 
 		return result;
 	}
 
-	bool IsEqualEvaluated(const Evaluated& value1, const Evaluated& value2)
+	bool IsEqualVal(const Val& value1, const Val& value2)
 	{
 		if (!SameType(value1.type(), value2.type()))
 		{
 			if ((IsType<int>(value1) || IsType<double>(value1)) && (IsType<int>(value2) || IsType<double>(value2)))
 			{
-				const Evaluated d1 = IsType<int>(value1) ? static_cast<double>(As<int>(value1)) : As<double>(value1);
-				const Evaluated d2 = IsType<int>(value2) ? static_cast<double>(As<int>(value2)) : As<double>(value2);
-				return IsEqualEvaluated(d1, d2);
+				const Val d1 = IsType<int>(value1) ? static_cast<double>(As<int>(value1)) : As<double>(value1);
+				const Val d2 = IsType<int>(value2) ? static_cast<double>(As<int>(value2)) : As<double>(value2);
+				return IsEqualVal(d1, d2);
 			}
 
 			std::cerr << "Values are not same type." << std::endl;
@@ -2922,7 +2922,7 @@ namespace cgl
 			return As<DeclFree>(value1) == As<DeclFree>(value2);
 		};*/
 
-		std::cerr << "IsEqualEvaluated: Type Error" << std::endl;
+		std::cerr << "IsEqualVal: Type Error" << std::endl;
 		return false;
 	}
 
@@ -2965,7 +2965,7 @@ namespace cgl
 		*/
 		/*if (IsType<RValue>(value1))
 		{
-			return IsEqualEvaluated(As<RValue>(value1).value, As<RValue>(value2).value);
+			return IsEqualVal(As<RValue>(value1).value, As<RValue>(value2).value);
 		}*/
 		if (IsType<LRValue>(value1))
 		{
@@ -2977,7 +2977,7 @@ namespace cgl
 			}
 			else if (lrvalue1.isRValue() && lrvalue2.isRValue())
 			{
-				return IsEqualEvaluated(lrvalue1.evaluated(), lrvalue2.evaluated());
+				return IsEqualVal(lrvalue1.evaluated(), lrvalue2.evaluated());
 			}
 			std::cerr << "Values are not same type." << std::endl;
 			return false;

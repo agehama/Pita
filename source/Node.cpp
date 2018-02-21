@@ -21,7 +21,7 @@ namespace cgl
 	{
 		return IsType<Address>(value)
 			? As<Address>(value).isValid()
-			: true; //Reference と Evaluated は常に有効であるものとする
+			: true; //Reference と Val は常に有効であるものとする
 	}
 
 	std::string LRValue::toString() const
@@ -36,7 +36,7 @@ namespace cgl
 		}
 		else
 		{
-			return std::string("Evaluated(...)");
+			return std::string("Val(...)");
 		}
 	}
 
@@ -136,7 +136,7 @@ namespace cgl
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const Evaluated val = pEnv->expand(refs[i]);
+			const Val val = pEnv->expand(refs[i]);
 			if (auto opt = AsOpt<double>(val))
 			{
 				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
@@ -196,7 +196,7 @@ namespace cgl
 		}*/
 		
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		const Evaluated evaluated = boost::apply_visitor(evaluator, candidateExpr.value());
+		const Val evaluated = boost::apply_visitor(evaluator, candidateExpr.value());
 		
 		if (IsType<double>(evaluated))
 		{
@@ -288,7 +288,7 @@ namespace cgl
 		void operator()(Jump& node) {}
 	};
 
-	void PackedList::add(Context& context, const Evaluated& evaluated)
+	void PackedList::add(Context& context, const Val& evaluated)
 	{
 		data.emplace_back(evaluated, context.makeTemporaryValue(evaluated));
 	}
@@ -305,7 +305,7 @@ namespace cgl
 		const PackedList& packedList = As<PackedList>(data);
 		for (const auto& val : packedList.data)
 		{
-			Evaluated evaluated = val.value;
+			Val evaluated = val.value;
 			if (!boost::apply_visitor(isPacked, evaluated))
 			{
 				return false;
@@ -347,7 +347,7 @@ namespace cgl
 			const PackedList& packedList = As<PackedList>(data);
 			for (const auto& val : packedList.data)
 			{
-				Evaluated evaluated = val.value;
+				Val evaluated = val.value;
 				boost::apply_visitor(packer, evaluated);
 
 				result.add(val.address, evaluated);
@@ -358,7 +358,7 @@ namespace cgl
 			const UnpackedList& unpackedList = As<UnpackedList>(data);
 			for (const Address address : unpackedList.data)
 			{
-				Evaluated evaluated = context.expand(address);
+				Val evaluated = context.expand(address);
 				boost::apply_visitor(packer, evaluated);
 
 				result.add(address, evaluated);
@@ -381,7 +381,7 @@ namespace cgl
 			{
 				const Address address = val.address;
 				
-				Evaluated evaluated = val.value;
+				Val evaluated = val.value;
 				boost::apply_visitor(unpacker, evaluated);
 
 				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);
@@ -394,7 +394,7 @@ namespace cgl
 			const UnpackedList& unpackedList = As<UnpackedList>(data);
 			for (const Address address : unpackedList.data)
 			{
-				Evaluated evaluated = context.expand(address);
+				Val evaluated = context.expand(address);
 				boost::apply_visitor(unpacker, evaluated);
 
 				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);
@@ -421,7 +421,7 @@ namespace cgl
 		return list;
 	}
 
-	void PackedRecord::add(Context& context, const std::string& key, const Evaluated& evaluated)
+	void PackedRecord::add(Context& context, const std::string& key, const Val& evaluated)
 	{
 		values.insert({ key, Value{ evaluated, context.makeTemporaryValue(evaluated) } });
 	}
@@ -484,7 +484,7 @@ namespace cgl
 			const PackedRecord& packedRecord = As<PackedRecord>(values);
 			for (const auto& keyval : packedRecord.values)
 			{
-				Evaluated evaluated = keyval.second.value;
+				Val evaluated = keyval.second.value;
 				boost::apply_visitor(packer, evaluated);
 				
 				result.add(keyval.first, keyval.second.address, evaluated);
@@ -495,7 +495,7 @@ namespace cgl
 			const UnpackedRecord& unpackedRecord = As<UnpackedRecord>(values);
 			for (const auto& keyval : unpackedRecord.values)
 			{
-				Evaluated evaluated = context.expand(keyval.second);
+				Val evaluated = context.expand(keyval.second);
 				boost::apply_visitor(packer, evaluated);
 
 				result.add(keyval.first, keyval.second, evaluated);
@@ -523,7 +523,7 @@ namespace cgl
 			{
 				const Address address = keyval.second.address;
 
-				Evaluated evaluated = keyval.second.value;
+				Val evaluated = keyval.second.value;
 				boost::apply_visitor(unpacker, evaluated);
 
 				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);
@@ -538,7 +538,7 @@ namespace cgl
 			{
 				const Address address = keyval.second;
 
-				Evaluated evaluated = context.expand(keyval.second);
+				Val evaluated = context.expand(keyval.second);
 				boost::apply_visitor(unpacker, evaluated);
 
 				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);

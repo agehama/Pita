@@ -41,7 +41,7 @@ namespace cgl
 		}
 	}
 
-	Evaluated Context::callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
+	Val Context::callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
 	{
 		if (std::shared_ptr<Context> pEnv = m_weakThis.lock())
 		{
@@ -57,7 +57,7 @@ namespace cgl
 		return m_plateausFunctions.find(functionAddress) != m_plateausFunctions.end();
 	}
 
-	const Evaluated& Context::expand(const LRValue& lrvalue)const
+	const Val& Context::expand(const LRValue& lrvalue)const
 	{
 		if (lrvalue.isLValue())
 		{
@@ -73,7 +73,7 @@ namespace cgl
 		return lrvalue.evaluated();
 	}
 
-	Evaluated& Context::mutableExpand(LRValue& lrvalue)
+	Val& Context::mutableExpand(LRValue& lrvalue)
 	{
 		if (lrvalue.isLValue())
 		{
@@ -86,10 +86,10 @@ namespace cgl
 			CGL_Error(std::string("reference error: ") + lrvalue.toString());
 		}
 
-		return lrvalue.mutableEvaluated();
+		return lrvalue.mutableVal();
 	}
 
-	boost::optional<const Evaluated&> Context::expandOpt(const LRValue& lrvalue)const
+	boost::optional<const Val&> Context::expandOpt(const LRValue& lrvalue)const
 	{
 		if (lrvalue.isLValue())
 		{
@@ -105,7 +105,7 @@ namespace cgl
 		return lrvalue.evaluated();
 	}
 
-	boost::optional<Evaluated&> Context::mutableExpandOpt(LRValue& lrvalue)
+	boost::optional<Val&> Context::mutableExpandOpt(LRValue& lrvalue)
 	{
 		if (lrvalue.isLValue())
 		{
@@ -118,7 +118,7 @@ namespace cgl
 			return boost::none;
 		}
 
-		return lrvalue.mutableEvaluated();
+		return lrvalue.mutableVal();
 	}
 
 	Address Context::evalReference(const Accessor& access)
@@ -149,7 +149,7 @@ namespace cgl
 		{
 			const auto addElementRec = [&](auto rec, Address address)->void
 			{
-				const Evaluated value = sharedThis->expand(address);
+				const Val value = sharedThis->expand(address);
 
 				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
 				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
@@ -231,7 +231,7 @@ namespace cgl
 			}
 			else
 			{
-				Evaluated evaluated = headValue.evaluated();
+				Val evaluated = headValue.evaluated();
 				if (auto opt = AsOpt<Record>(evaluated))
 				{
 					writeBuffer().push_back(makeTemporaryValue(opt.value()));
@@ -260,13 +260,13 @@ namespace cgl
 				{
 					const Address address = readBuffer()[i];
 
-					boost::optional<const Evaluated&> objOpt = expandOpt(address);
+					boost::optional<const Val&> objOpt = expandOpt(address);
 					if (!objOpt)
 					{
 						CGL_Error("参照エラー");
 					}
 
-					const Evaluated& objRef = objOpt.value();
+					const Val& objRef = objOpt.value();
 
 					if (auto listAccessOpt = AsOpt<ListAccess>(access))
 					{
@@ -291,7 +291,7 @@ namespace cgl
 						}
 						else
 						{
-							Evaluated value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
 
 							if (auto indexOpt = AsOpt<int>(value))
 							{
@@ -351,7 +351,7 @@ namespace cgl
 							}
 						}
 
-						const Evaluated returnedValue = expand(evaluator.callFunction(function, args));
+						const Val returnedValue = expand(evaluator.callFunction(function, args));
 						writeBuffer().push_back(makeTemporaryValue(returnedValue));
 					}
 				}
@@ -427,13 +427,13 @@ namespace cgl
 
 			for (const auto& access : accessor.accesses)
 			{
-				boost::optional<const Evaluated&> objOpt = pEnv->expandOpt(address);
+				boost::optional<const Val&> objOpt = pEnv->expandOpt(address);
 				if (!objOpt)
 				{
 					CGL_Error("参照エラー");
 				}
 				
-				const Evaluated& objRef = objOpt.value();
+				const Val& objRef = objOpt.value();
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
@@ -450,7 +450,7 @@ namespace cgl
 					}
 					const UnpackedList& unpackedList = unpackedOpt.value();
 
-					Evaluated value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
 					if (auto indexOpt = AsOpt<int>(value))
 					{
 						address = unpackedList.get(indexOpt.value());
@@ -584,7 +584,7 @@ namespace cgl
 
 			os << keyval.first.toString() << " : ";
 
-			printEvaluated(val, m_weakThis.lock(), os);
+			printVal(val, m_weakThis.lock(), os);
 		}
 
 		os << "References:\n";
@@ -616,7 +616,7 @@ namespace cgl
 
 			os << keyval.first.toString() << " : ";
 
-			printEvaluated(val, m_weakThis.lock(), os);
+			printVal(val, m_weakThis.lock(), os);
 		}
 
 		os << "References:\n";
@@ -652,17 +652,17 @@ namespace cgl
 				const auto& access = accessor.accesses[i];
 				const bool isLastElement = i + 1 == accessor.accesses.size();
 
-				boost::optional<Evaluated&> objOpt = mutableExpandOpt(address);
+				boost::optional<Val&> objOpt = mutableExpandOpt(address);
 				if (!objOpt)
 				{
 					CGL_Error("参照エラー");
 				}
 
-				Evaluated& objRef = objOpt.value();
+				Val& objRef = objOpt.value();
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
-					Evaluated indexValue = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+					Val indexValue = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
 
 					if (!IsType<List>(objRef))
 					{
@@ -761,7 +761,7 @@ namespace cgl
 
 	//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
 	//式の評価途中でGCは走らないようにするべきか？
-	Address Context::makeTemporaryValue(const Evaluated& value)
+	Address Context::makeTemporaryValue(const Val& value)
 	{
 		const Address address = m_values.add(value);
 
@@ -796,14 +796,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"print",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			printEvaluated(pEnv->expand(arguments[0]), pEnv, std::cout, 0);
+			printVal(pEnv->expand(arguments[0]), pEnv, std::cout, 0);
 			return 0;
 		},
 			false
@@ -811,14 +811,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"size",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Evaluated& value = pEnv->expand(arguments[0]);
+			const Val& value = pEnv->expand(arguments[0]);
 			if (auto opt = AsOpt<List>(value))
 			{
 				auto unpackedOpt = opt.value().asUnpackedOpt();
@@ -853,7 +853,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"sin",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
 			{
@@ -867,7 +867,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"cos",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
 			{
@@ -881,7 +881,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"random",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
 			{
@@ -898,7 +898,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"diff",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
 			{
@@ -912,7 +912,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"buffer",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
 			{
@@ -926,7 +926,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"area",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
 			{
@@ -940,7 +940,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"gc",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 0)
 			{
@@ -956,7 +956,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"printContext",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Evaluated
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 0)
 			{
@@ -1029,13 +1029,13 @@ namespace cgl
 
 				for (size_t i = startIndex; i < tail.size(); ++i)
 				{
-					boost::optional<const Evaluated&> objOpt = expandOpt(address);
+					boost::optional<const Val&> objOpt = expandOpt(address);
 					if (!objOpt)
 					{
 						CGL_Error("参照エラー");
 					}
 
-					const Evaluated& objRef = objOpt.value();
+					const Val& objRef = objOpt.value();
 
 					if (IsType<int>(tail[i].first))
 					{
@@ -1090,7 +1090,7 @@ namespace cgl
 	}
 
 	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
-	void CheckValue(const Evaluated& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
 
 	class ExprAddressCheker : public boost::static_visitor<void>
 	{
@@ -1357,7 +1357,7 @@ namespace cgl
 		boost::apply_visitor(cheker, expr);
 	}
 
-	void CheckValue(const Evaluated& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
 	{
 		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet);
 		boost::apply_visitor(cheker, evaluated);
@@ -1416,7 +1416,7 @@ namespace cgl
 			for (size_t i = 0; i < currentRecords.size(); ++i)
 			{
 				Record& record = currentRecords[i];
-				Evaluated evaluated = record;
+				Val evaluated = record;
 				std::unordered_set<Address> addressesDelta;
 				CheckValue(evaluated, *this, referenceableAddresses, addressesDelta);
 

@@ -394,12 +394,19 @@ namespace cgl
 					{
 						CGL_Error("オブジェクトがリストでない");
 					}
+
 					const List& list = As<const List&>(objRef);
+					auto unpackedOpt = list.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("List is packed");
+					}
+					const UnpackedList& unpackedList = unpackedOpt.value();
 
 					Evaluated indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
 					if (auto indexOpt = AsOpt<int>(indexValue))
 					{
-						headAddress = list.get(indexOpt.value());
+						headAddress = unpackedList.get(indexOpt.value());
 					}
 					else
 					{
@@ -418,10 +425,17 @@ namespace cgl
 					{
 						CGL_Error("オブジェクトがレコードでない");
 					}
+					
 					const Record& record = As<const Record&>(objRef);
+					auto unpackedOpt = record.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("Record is packed");
+					}
+					const UnpackedRecord& unpackedRecord = unpackedOpt.value();
 
-					auto it = record.values.find(recordAccess.name);
-					if (it == record.values.end())
+					auto it = unpackedRecord.values.find(recordAccess.name);
+					if (it == unpackedRecord.values.end())
 					{
 						CGL_Error("指定された識別子がレコード中に存在しない");
 					}
@@ -832,12 +846,19 @@ namespace cgl
 			++i;
 		}
 
+		auto opt = record.asUnpackedOpt();
+		if (!opt)
+		{
+			CGL_Error("Record is packed");
+		}
+		UnpackedRecord& unpackedRecord = opt.value();
+
 		for (const auto& key : keyList)
 		{
 			//pEnv->printContext(true);
 			Address address = pEnv->findAddress(key);
 			boost::optional<const Evaluated&> opt = pEnv->expandOpt(address);
-			record.append(key, pEnv->makeTemporaryValue(opt.value()));
+			unpackedRecord.append(key, pEnv->makeTemporaryValue(opt.value()));
 		}
 
 		pEnv->exitScope();
@@ -911,16 +932,22 @@ namespace cgl
 				}
 
 				const List& list = As<const List&>(objRef);
+				auto unpackedOpt = list.asUnpackedOpt();
+				if (!unpackedOpt)
+				{
+					CGL_Error("List is packed");
+				}
+				const UnpackedList& unpackedList = unpackedOpt.value();
 
-				const auto clampAddress = [&](int index)->int {return std::max(0, std::min(index, static_cast<int>(list.data.size()) - 1)); };
+				const auto clampAddress = [&](int index)->int {return std::max(0, std::min(index, static_cast<int>(unpackedList.data.size()) - 1)); };
 
 				if (auto indexOpt = AsOpt<int>(value))
 				{
-					address = list.get(clampAddress(indexOpt.value()));
+					address = unpackedList.get(clampAddress(indexOpt.value()));
 				}
 				else if (auto indexOpt = AsOpt<double>(value))
 				{
-					address = list.get(clampAddress(static_cast<int>(std::round(indexOpt.value()))));
+					address = unpackedList.get(clampAddress(static_cast<int>(std::round(indexOpt.value()))));
 				}
 				else
 				{
@@ -936,8 +963,15 @@ namespace cgl
 				}
 
 				const Record& record = As<const Record&>(objRef);
-				auto it = record.values.find(recordAccessOpt.value().name);
-				if (it == record.values.end())
+				auto unpackedOpt = record.asUnpackedOpt();
+				if (!unpackedOpt)
+				{
+					CGL_Error("Record is packed");
+				}
+				const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+				auto it = unpackedRecord.values.find(recordAccessOpt.value().name);
+				if (it == unpackedRecord.values.end())
 				{
 					CGL_Error("指定された識別子がレコード中に存在しない");
 				}

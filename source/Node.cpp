@@ -209,4 +209,348 @@ namespace cgl
 
 		CGL_Error("sat式の評価結果が不正");
 	}
+
+	class IsPacked : public boost::static_visitor<bool>
+	{
+	public:
+		IsPacked() = default;
+
+		bool operator()(bool node)const { return true; }
+		bool operator()(int node)const { return true; }
+		bool operator()(double node)const { return true; }
+		bool operator()(const CharString& node)const { return true; }
+		bool operator()(const List& node)const { return node.isPacked(); }
+		bool operator()(const KeyValue& node)const { return true; }
+		bool operator()(const Record& node)const { return node.isPacked(); }
+		bool operator()(const FuncVal& node)const { return true; }
+		bool operator()(const Jump& node)const { return true; }
+	};
+
+	class IsUnpacked : public boost::static_visitor<bool>
+	{
+	public:
+		IsUnpacked(const Context& context):
+			context(context)
+		{}
+
+		const Context& context;
+
+		bool operator()(bool node)const { return true; }
+		bool operator()(int node)const { return true; }
+		bool operator()(double node)const { return true; }
+		bool operator()(const CharString& node)const { return true; }
+		bool operator()(const List& node)const { return node.isUnpacked(context); }
+		bool operator()(const KeyValue& node)const { return true; }
+		bool operator()(const Record& node)const { return node.isUnpacked(context); }
+		bool operator()(const FuncVal& node)const { return true; }
+		bool operator()(const Jump& node)const { return true; }
+	};
+
+	//中身のアドレスを全て一つの値にまとめる
+	class ValuePacker : public boost::static_visitor<void>
+	{
+	public:
+		ValuePacker(const Context& context) :
+			context(context)
+		{}
+
+		const Context& context;
+		
+		void operator()(bool node) {}
+		void operator()(int node) {}
+		void operator()(double node) {}
+		void operator()(CharString& node) {}
+		void operator()(List& node) { node.pack(context); }
+		void operator()(KeyValue& node) {}
+		void operator()(Record& node) { node.pack(context); }
+		void operator()(FuncVal& node) {}
+		void operator()(Jump& node) {}
+	};
+
+	//中身のアドレスを全て展開する
+	class ValueUnpacker : public boost::static_visitor<void>
+	{
+	public:
+		ValueUnpacker(Context& context):
+			context(context)
+		{}
+		
+		Context& context;
+
+		void operator()(bool node) {}
+		void operator()(int node) {}
+		void operator()(double node) {}
+		void operator()(CharString& node) {}
+		void operator()(List& node) { node.unpack(context); }
+		void operator()(KeyValue& node) {}
+		void operator()(Record& node) { node.unpack(context); }
+		void operator()(FuncVal& node) {}
+		void operator()(Jump& node) {}
+	};
+
+	bool List::isPacked()const
+	{
+		if (!IsType<PackedList>(data))
+		{
+			return false;
+		}
+
+		IsPacked isPacked;
+		
+		const PackedList& packedList = As<PackedList>(data);
+		for (const auto& val : packedList.data)
+		{
+			Evaluated evaluated = val.value;
+			if (!boost::apply_visitor(isPacked, evaluated))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	bool List::isUnpacked(const Context& context)const
+	{
+		if (!IsType<UnpackedList>(data))
+		{
+			return false;
+		}
+
+		IsUnpacked isUnpacked(context);
+
+		const UnpackedList& unpackedList = As<UnpackedList>(data);
+		for (const Address address : unpackedList.data)
+		{
+			if (!boost::apply_visitor(isUnpacked, context.expand(address)))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void List::pack(const Context& context)
+	{
+		ValuePacker packer(context);
+
+		PackedList result;
+
+		if (IsType<PackedList>(data))
+		{
+			const PackedList& packedList = As<PackedList>(data);
+			for (const auto& val : packedList.data)
+			{
+				Evaluated evaluated = val.value;
+				boost::apply_visitor(packer, evaluated);
+
+				result.add(val.address, evaluated);
+			}
+		}
+		else
+		{
+			const UnpackedList& unpackedList = As<UnpackedList>(data);
+			for (const Address address : unpackedList.data)
+			{
+				Evaluated evaluated = context.expand(address);
+				boost::apply_visitor(packer, evaluated);
+
+				result.add(address, evaluated);
+			}
+		}
+
+		data = result;
+	}
+
+	void List::unpack(Context& context)
+	{
+		ValueUnpacker unpacker(context);
+
+		UnpackedList result;
+
+		if (IsType<PackedList>(data))
+		{
+			const PackedList& packedList = As<PackedList>(data);
+			for (const auto& val : packedList.data)
+			{
+				const Address address = val.address;
+				
+				Evaluated evaluated = val.value;
+				boost::apply_visitor(unpacker, evaluated);
+
+				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);
+
+				result.add(address);
+			}
+		}
+		else
+		{
+			const UnpackedList& unpackedList = As<UnpackedList>(data);
+			for (const Address address : unpackedList.data)
+			{
+				Evaluated evaluated = context.expand(address);
+				boost::apply_visitor(unpacker, evaluated);
+
+				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);
+
+				result.add(address);
+			}
+		}
+
+		data = result;
+	}
+
+
+	List List::packed(const Context& context)const
+	{
+		List list(*this);
+		list.pack(context);
+		return list;
+	}
+
+	List List::unpacked(Context& context)const
+	{
+		List list(*this);
+		list.unpack(context);
+		return list;
+	}
+
+	bool Record::isPacked()const
+	{
+		if (!IsType<PackedRecord>(values))
+		{
+			return false;
+		}
+
+		IsPacked isPacked;
+
+		const PackedRecord& packedRecord = As<PackedRecord>(values);
+		for (const auto& keyval : packedRecord.values)
+		{
+			if (!boost::apply_visitor(isPacked, keyval.second.value))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	bool Record::isUnpacked(const Context& context)const
+	{
+		if (!IsType<UnpackedRecord>(values))
+		{
+			return false;
+		}
+
+		IsUnpacked isUnpacked(context);
+
+		const UnpackedRecord& unpackedRecord = As<UnpackedRecord>(values);
+		for (const auto& keyval : unpackedRecord.values)
+		{
+			if (!boost::apply_visitor(isUnpacked, context.expand(keyval.second)))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void Record::pack(const Context& context)
+	{
+		if (isPacked())
+		{
+			return;
+		}
+
+		ValuePacker packer(context);
+
+		PackedRecord result;
+
+		if (IsType<PackedRecord>(values))
+		{
+			const PackedRecord& packedRecord = As<PackedRecord>(values);
+			for (const auto& keyval : packedRecord.values)
+			{
+				Evaluated evaluated = keyval.second.value;
+				boost::apply_visitor(packer, evaluated);
+				
+				result.add(keyval.first, keyval.second.address, evaluated);
+			}
+		}
+		else
+		{
+			const UnpackedRecord& unpackedRecord = As<UnpackedRecord>(values);
+			for (const auto& keyval : unpackedRecord.values)
+			{
+				Evaluated evaluated = context.expand(keyval.second);
+				boost::apply_visitor(packer, evaluated);
+
+				result.add(keyval.first, keyval.second, evaluated);
+			}
+		}
+
+		values = result;
+	}
+
+	void Record::unpack(Context& context)
+	{
+		if (isUnpacked(context))
+		{
+			return;
+		}
+
+		ValueUnpacker unpacker(context);
+
+		UnpackedRecord result;
+
+		if (IsType<PackedRecord>(values))
+		{
+			const PackedRecord& packedRecord = As<PackedRecord>(values);
+			for (const auto& keyval : packedRecord.values)
+			{
+				const Address address = keyval.second.address;
+
+				Evaluated evaluated = keyval.second.value;
+				boost::apply_visitor(unpacker, evaluated);
+
+				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);
+
+				result.add(keyval.first, address);
+			}
+		}
+		else
+		{
+			const UnpackedRecord& unpackedRecord = As<UnpackedRecord>(values);
+			for (const auto& keyval : unpackedRecord.values)
+			{
+				const Address address = keyval.second;
+
+				Evaluated evaluated = context.expand(keyval.second);
+				boost::apply_visitor(unpacker, evaluated);
+
+				context.TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, evaluated);
+
+				result.add(keyval.first, address);
+			}
+		}
+
+		values = result;
+	}
+
+	Record Record::packed(const Context& context)const
+	{
+		Record record(*this);
+		record.pack(context);
+		return record;
+	}
+
+	Record Record::unpacked(Context& context)const
+	{
+		Record record(*this);
+		record.unpack(context);
+		return record;
+	}
 }

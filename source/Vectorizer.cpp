@@ -12,7 +12,15 @@ namespace cgl
 {
 	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment)
 	{
-		const auto& values = record.values;
+		//const auto& values = record.values;
+		auto unpackedOpt = record.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("Record is packed");
+		}
+		const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+		const auto& values = unpackedRecord.values;
+
 		auto it = values.find(name);
 		if (it == values.end())
 		{
@@ -38,7 +46,14 @@ namespace cgl
 		double sx = 1, sy = 1;
 		double angle = 0;
 
-		for (const auto& member : record.values)
+		auto unpackedOpt = record.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("Record is packed");
+		}
+		const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+		for (const auto& member : unpackedRecord.values)
 		{
 			auto valOpt = AsOpt<Record>(pEnv->expand(member.second));
 
@@ -130,7 +145,14 @@ namespace cgl
 	{
 		output.clear();
 
-		for (const Address vertex : vertices.data)
+		auto unpackedOpt = vertices.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("List is packed");
+		}
+		const UnpackedList& unpackedList = unpackedOpt.value();
+
+		for (const Address vertex : unpackedList.data)
 		{
 			const Evaluated value = pEnv->expand(vertex);
 
@@ -160,7 +182,14 @@ namespace cgl
 		const Transform current(record, pEnv);
 		const Transform transform = parent * current;
 
-		for (const auto& member : record.values)
+		auto unpackedOpt = record.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("Record is packed");
+		}
+		const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+		for (const auto& member : unpackedRecord.values)
 		{
 			const Evaluated value = pEnv->expand(member.second);
 
@@ -178,7 +207,14 @@ namespace cgl
 			else if (member.first == "polygons" && IsType<List>(value))
 			{
 				const List& polygons = As<List>(value);
-				for (const auto& polygonAddress : polygons.data)
+				auto unpackedPolygonsOpt = polygons.asUnpackedOpt();
+				if (!unpackedPolygonsOpt)
+				{
+					CGL_Error("List is packed");
+				}
+				const UnpackedList& unpackedList = unpackedPolygonsOpt.value();
+
+				for (const auto& polygonAddress : unpackedList.data)
 				{
 					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
 
@@ -205,7 +241,14 @@ namespace cgl
 
 	void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Context> pEnv, const Transform& transform)
 	{
-		for (const Address member : list.data)
+		auto unpackedOpt = list.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("List is packed");
+		}
+		const UnpackedList& unpackedList = unpackedOpt.value();
+
+		for (const Address member : unpackedList.data)
 		{
 			const Evaluated value = pEnv->expand(member);
 
@@ -318,7 +361,14 @@ namespace cgl
 
 		std::vector<gg::Geometry*> currentLines;
 
-		for (const auto& member : record.values)
+		auto unpackedOpt = record.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("Record is packed");
+		}
+		const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+		for (const auto& member : unpackedRecord.values)
 		{
 			const cgl::Evaluated value = pEnv->expand(member.second);
 
@@ -343,7 +393,14 @@ namespace cgl
 			else if (member.first == "polygons" && IsType<List>(value))
 			{
 				const List& polygons = As<List>(value);
-				for (const auto& polygonAddress : polygons.data)
+				auto unpackedPolygonsOpt = polygons.asUnpackedOpt();
+				if (!unpackedPolygonsOpt)
+				{
+					CGL_Error("List is packed");
+				}
+				const UnpackedList& unpackedPolygonsList = unpackedPolygonsOpt.value();
+
+				for (const auto& polygonAddress : unpackedPolygonsList.data)
 				{
 					const Evaluated& polygonVertices = pEnv->expand(polygonAddress);
 
@@ -357,7 +414,14 @@ namespace cgl
 			else if (member.first == "holes" && IsType<List>(value))
 			{
 				const List& holes = As<List>(value);
-				for (const auto& holeAddress : holes.data)
+				auto unpackedHolesOpt = holes.asUnpackedOpt();
+				if (!unpackedHolesOpt)
+				{
+					CGL_Error("List is packed");
+				}
+				const UnpackedList& unpackedHolesList = unpackedHolesOpt.value();
+
+				for (const auto& holeAddress : unpackedHolesList.data)
 				{
 					const Evaluated& hole = pEnv->expand(holeAddress);
 
@@ -446,8 +510,15 @@ namespace cgl
 
 	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform)
 	{
+		auto unpackedOpt = list.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("List is packed");
+		}
+		const UnpackedList& unpackedList = unpackedOpt.value();
+
 		std::vector<gg::Geometry*> currentPolygons;
-		for (const cgl::Address member : list.data)
+		for (const cgl::Address member : unpackedList.data)
 		{
 			const cgl::Evaluated value = pEnv->expand(member);
 
@@ -483,7 +554,11 @@ namespace cgl
 	{
 		const auto coord = [&](double x, double y)
 		{
-			Record record;
+			/*Record record;
+			record.append("x", pEnv->makeTemporaryValue(x));
+			record.append("y", pEnv->makeTemporaryValue(y));
+			return record;*/
+			UnpackedRecord record;
 			record.append("x", pEnv->makeTemporaryValue(x));
 			record.append("y", pEnv->makeTemporaryValue(y));
 			return record;
@@ -491,10 +566,17 @@ namespace cgl
 
 		const auto appendCoord = [&](List& list, double x, double y)
 		{
-			list.append(pEnv->makeTemporaryValue(coord(x, y)));
+			//list.append(pEnv->makeTemporaryValue(coord(x, y)));
+			auto unpackedOpt = list.asUnpackedOpt();
+			if (!unpackedOpt)
+			{
+				CGL_Error("List is packed");
+			}
+			UnpackedList& unpackedList = unpackedOpt.value();
+			unpackedList.append(pEnv->makeTemporaryValue(Record(coord(x, y))));
 		};
 
-		Record result;
+		UnpackedRecord result;
 		{
 			List polygonList;
 			const gg::LineString* outer = poly->getExteriorRing();
@@ -508,7 +590,7 @@ namespace cgl
 		}
 		
 		{
-			List holeList;
+			UnpackedList holeList;
 			for (size_t i = 0; i < poly->getNumInteriorRing(); ++i)
 			{
 				List holeVertexList;
@@ -526,15 +608,15 @@ namespace cgl
 
 				holeList.append(pEnv->makeTemporaryValue(holeVertexList));
 			}
-			result.append("holes", pEnv->makeTemporaryValue(holeList));
+			result.append("holes", pEnv->makeTemporaryValue(List(holeList)));
 		}
 		
-		return result;
+		return Record(result);
 	}
 
 	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Context> pEnv)
 	{
-		List resultShapes;
+		UnpackedList resultShapes;
 		
 		for (size_t i = 0; i < polygons.size(); ++i)
 		{
@@ -568,7 +650,7 @@ namespace cgl
 			}
 		}
 
-		return resultShapes;
+		return List(resultShapes);
 	}
 
 	void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon)

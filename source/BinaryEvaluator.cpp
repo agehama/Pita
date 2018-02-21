@@ -5,6 +5,7 @@
 
 namespace cgl
 {
+#ifdef commentout
 	Record MargeRecord(const Record& rec1, const Record& rec2)
 	{
 		Record result;
@@ -78,6 +79,7 @@ namespace cgl
 			freeVals.insert(freeVals.end(), rec2.freeVariables.begin(), rec2.freeVariables.end());
 		}
 	}
+#endif
 
 	Evaluated Not(const Evaluated& lhs, Context& env)
 	{
@@ -638,6 +640,22 @@ namespace cgl
 			return 0;
 		}
 
-		return List::Concat(As<List>(lhs), As<List>(rhs));
+		auto unpackedLHSOpt = As<List>(lhs).asUnpackedOpt();
+		if (!unpackedLHSOpt)
+		{
+			CGL_Error("List is packed");
+		}
+		const UnpackedList& unpackedLHS = unpackedLHSOpt.value();
+
+		auto unpackedRHSOpt = As<List>(rhs).asUnpackedOpt();
+		if (!unpackedRHSOpt)
+		{
+			CGL_Error("List is packed");
+		}
+		const UnpackedList& unpackedRHS = unpackedRHSOpt.value();
+
+		return List(UnpackedList::Concat(unpackedLHS, unpackedRHS));
+
+		//return List::Concat(As<List>(lhs), As<List>(rhs));
 	}
 }

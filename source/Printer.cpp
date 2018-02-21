@@ -46,7 +46,16 @@ namespace cgl
 	void ValuePrinter::operator()(const List& node)const
 	{
 		os << indent() << "[" << std::endl;
-		const auto& data = node.data;
+
+		//const auto& data = node.data;
+		auto unpackedOpt = node.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("List is packed");
+		}
+		const UnpackedList& unpackedList = unpackedOpt.value();
+
+		const auto& data = unpackedList.data;
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
@@ -87,7 +96,14 @@ namespace cgl
 	{
 		os << indent() << "{" << std::endl;
 
-		for (const auto& value : node.values)
+		auto unpackedOpt = node.asUnpackedOpt();
+		if (!unpackedOpt)
+		{
+			CGL_Error("Record is packed");
+		}
+		const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+		for (const auto& value : unpackedRecord.values)
 		{
 			//const std::string header = value.first + ": ";
 			const std::string header = value.first + std::string("(") + value.second.toString() + "): ";

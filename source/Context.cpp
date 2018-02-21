@@ -158,17 +158,42 @@ namespace cgl
 				}
 				else if (IsType<List>(value))
 				{
-					for (Address elemAddress : As<List>(value).data)
+					const List& list = As<List>(value);
+					auto unpackedOpt = list.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("List is packed");
+					}
+					const UnpackedList& unpackedList = unpackedOpt.value();
+
+					for (Address elemAddress : unpackedList.data)
 					{
 						rec(rec, elemAddress);
 					}
+					/*for (Address elemAddress : As<List>(value).data)
+					{
+						rec(rec, elemAddress);
+					}*/
 				}
 				else if (IsType<Record>(value))
 				{
-					for (const auto& elem : As<Record>(value).values)
+					const Record& record = As<Record>(value);
+					auto unpackedOpt = record.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("Record is packed");
+					}
+					const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+					for (const auto& elem : unpackedRecord.values)
 					{
 						rec(rec, elem.second);
 					}
+
+					/*for (const auto& elem : As<Record>(value).values)
+					{
+						rec(rec, elem.second);
+					}*/
 				}
 				//それ以外のデータは特に捕捉しない
 				//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
@@ -251,10 +276,16 @@ namespace cgl
 						}
 
 						const List& list = As<const List&>(objRef);
+						auto unpackedOpt = list.asUnpackedOpt();
+						if (!unpackedOpt)
+						{
+							CGL_Error("List is packed");
+						}
+						const UnpackedList& unpackedList = unpackedOpt.value();
 
 						if (listAccessOpt.value().isArbitrary)
 						{
-							const auto& allIndices = list.data;
+							const auto& allIndices = unpackedList.data;
 
 							writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
 						}
@@ -264,7 +295,7 @@ namespace cgl
 
 							if (auto indexOpt = AsOpt<int>(value))
 							{
-								writeBuffer().push_back(list.get(indexOpt.value()));
+								writeBuffer().push_back(unpackedList.get(indexOpt.value()));
 							}
 							else
 							{
@@ -280,8 +311,15 @@ namespace cgl
 						}
 
 						const Record& record = As<const Record&>(objRef);
-						auto it = record.values.find(recordAccessOpt.value().name);
-						if (it == record.values.end())
+						auto unpackedOpt = record.asUnpackedOpt();
+						if (!unpackedOpt)
+						{
+							CGL_Error("Record is packed");
+						}
+						const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+						auto it = unpackedRecord.values.find(recordAccessOpt.value().name);
+						if (it == unpackedRecord.values.end())
 						{
 							CGL_Error("指定された識別子がレコード中に存在しない");
 						}
@@ -405,11 +443,17 @@ namespace cgl
 					}
 
 					const List& list = As<const List&>(objRef);
+					auto unpackedOpt = list.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("List is packed");
+					}
+					const UnpackedList& unpackedList = unpackedOpt.value();
 
 					Evaluated value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
 					if (auto indexOpt = AsOpt<int>(value))
 					{
-						address = list.get(indexOpt.value());
+						address = unpackedList.get(indexOpt.value());
 						deepReference.addList(indexOpt.value(), address);
 					}
 					else
@@ -425,8 +469,15 @@ namespace cgl
 					}
 
 					const Record& record = As<const Record&>(objRef);
-					auto it = record.values.find(recordAccessOpt.value().name);
-					if (it == record.values.end())
+					auto unpackedOpt = record.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("Record is packed");
+					}
+					const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+					auto it = unpackedRecord.values.find(recordAccessOpt.value().name);
+					if (it == unpackedRecord.values.end())
 					{
 						CGL_Error("指定された識別子がレコード中に存在しない");
 					}
@@ -619,20 +670,26 @@ namespace cgl
 					}
 
 					List& list = As<List&>(objRef);
+					auto unpackedOpt = list.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("List is packed");
+					}
+					UnpackedList& unpackedList = unpackedOpt.value();
 
 					if (auto indexOpt = AsOpt<int>(indexValue))
 					{
 						const int index = indexOpt.value();
 						if (isLastElement)
 						{
-							const Address oldAddress = list.data[index];
+							const Address oldAddress = unpackedList.data[index];
 							const Address newAddress = newValue.isLValue() ? newValue.address(*this) : makeTemporaryValue(newValue.evaluated());
 							changeAddress(oldAddress, newAddress);
-							list.data[index] = newAddress;
+							unpackedList.data[index] = newAddress;
 						}
 						else
 						{
-							address = list.get(index);
+							address = unpackedList.get(index);
 						}
 					}
 					else
@@ -648,8 +705,15 @@ namespace cgl
 					}
 
 					Record& record = As<Record&>(objRef);
-					auto it = record.values.find(recordAccessOpt.value().name);
-					if (it == record.values.end())
+					auto unpackedOpt = record.asUnpackedOpt();
+					if (!unpackedOpt)
+					{
+						CGL_Error("Record is packed");
+					}
+					UnpackedRecord& unpackedRecord = unpackedOpt.value();
+
+					auto it = unpackedRecord.values.find(recordAccessOpt.value().name);
+					if (it == unpackedRecord.values.end())
 					{
 						CGL_Error("指定された識別子がレコード中に存在しない");
 					}
@@ -757,11 +821,28 @@ namespace cgl
 			const Evaluated& value = pEnv->expand(arguments[0]);
 			if (auto opt = AsOpt<List>(value))
 			{
-				return static_cast<int>(opt.value().data.size());
+				auto unpackedOpt = opt.value().asUnpackedOpt();
+				if (!unpackedOpt)
+				{
+					CGL_Error("List is packed");
+				}
+				const UnpackedList& unpackedList = unpackedOpt.value();
+				
+				return static_cast<int>(unpackedList.data.size());
+
+				//return static_cast<int>(opt.value().data.size());
 			}
 			else if (auto opt = AsOpt<Record>(value))
 			{
-				return static_cast<int>(opt.value().values.size());
+				auto unpackedOpt = opt.value().asUnpackedOpt();
+				if (!unpackedOpt)
+				{
+					CGL_Error("Record is packed");
+				}
+				const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+				
+				return static_cast<int>(unpackedRecord.values.size());
+				//return static_cast<int>(opt.value().values.size());
 			}
 
 			CGL_Error("不正な式です");
@@ -964,7 +1045,17 @@ namespace cgl
 						}
 
 						const int index = As<int>(tail[i].first);
-						address = As<List>(objRef).data[index];
+
+						const List& list = As<List&>(objRef);
+						auto unpackedOpt = list.asUnpackedOpt();
+						if (!unpackedOpt)
+						{
+							CGL_Error("List is packed");
+						}
+						const UnpackedList& unpackedList = unpackedOpt.value();
+						address = unpackedList.data[index];
+						//address = As<List>(objRef).data[index];
+
 						tail[i].second = address;
 					}
 					else
@@ -975,7 +1066,17 @@ namespace cgl
 						}
 
 						const std::string name = As<std::string>(tail[i].first);
-						address = As<Record>(objRef).values.at(name);
+						
+						const Record& record = As<const Record&>(objRef);
+						auto unpackedOpt = record.asUnpackedOpt();
+						if (!unpackedOpt)
+						{
+							CGL_Error("Record is packed");
+						}
+						const UnpackedRecord& unpackedRecord = unpackedOpt.value();
+						address = unpackedRecord.values.at(name);
+						//address = As<Record>(objRef).values.at(name);
+
 						tail[i].second = address;
 					}
 				}
@@ -1183,7 +1284,14 @@ namespace cgl
 
 		void operator()(const List& node)
 		{
-			for (Address address : node.data)
+			auto unpackedOpt = node.asUnpackedOpt();
+			if (!unpackedOpt)
+			{
+				CGL_Error("List is packed");
+			}
+			const UnpackedList& unpackedList = unpackedOpt.value();
+
+			for (Address address : unpackedList.data)
 			{
 				update(address);
 			}
@@ -1193,7 +1301,14 @@ namespace cgl
 
 		void operator()(const Record& node)
 		{
-			for (const auto& keyval : node.values)
+			auto unpackedOpt = node.asUnpackedOpt();
+			if (!unpackedOpt)
+			{
+				CGL_Error("Record is packed");
+			}
+			const UnpackedRecord & unpackedRecord = unpackedOpt.value();
+
+			for (const auto& keyval : unpackedRecord.values)
 			{
 				update(keyval.second);
 			}

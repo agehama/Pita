@@ -1098,7 +1098,7 @@ namespace cgl
 			//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
 
 			//const double totalCost = penalty2;
-			std::cout << std::string("cost: ") << ToS(totalCost, 17) << "\n";
+			//std::cout << std::string("cost: ") << ToS(totalCost, 17) << "\n";
 			return totalCost;
 		};
 

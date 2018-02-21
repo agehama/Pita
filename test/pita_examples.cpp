@@ -52,7 +52,16 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 		auto start = std::chrono::system_clock::now();
 
 		Program program;
-		program.run(sourceCode, false);
+		try
+		{
+			program.run(sourceCode, false);
+		}
+		catch(const std::Exception& e)
+		{
+			std::cout << "error: " << e.what() << "\n";
+			BOOST_CHECK(false);
+			continue;
+		}
 		
 		auto end = std::chrono::system_clock::now();
 
@@ -77,7 +86,16 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		auto start = std::chrono::system_clock::now();
 
 		Program program;
-		program.run(sourceCode, false);
+		try
+		{
+			program.run(sourceCode, false);
+		}
+		catch (const std::Exception& e)
+		{
+			std::cout << "error: " << e.what() << "\n";
+			BOOST_CHECK(false);
+			continue;
+		}
 		
 		auto end = std::chrono::system_clock::now();
 

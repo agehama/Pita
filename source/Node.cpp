@@ -288,6 +288,11 @@ namespace cgl
 		void operator()(Jump& node) {}
 	};
 
+	void PackedList::add(Context& context, const Evaluated& evaluated)
+	{
+		data.emplace_back(evaluated, context.makeTemporaryValue(evaluated));
+	}
+	
 	bool List::isPacked()const
 	{
 		if (!IsType<PackedList>(data))
@@ -414,6 +419,11 @@ namespace cgl
 		List list(*this);
 		list.unpack(context);
 		return list;
+	}
+
+	void PackedRecord::add(Context& context, const std::string& key, const Evaluated& evaluated)
+	{
+		values.insert({ key, Value{ evaluated, context.makeTemporaryValue(evaluated) } });
 	}
 
 	bool Record::isPacked()const

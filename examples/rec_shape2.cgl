@@ -60,4 +60,5 @@ shapeList = (f, depth, template ->
 tree = shape{
 	depth = 50
 	a: shapeList(shapeList, depth, shape{a:diff(triangle{}, buffer(triangle{}, -0.1))}){scale = x2(100)}
+	a.b.b = 0
 }

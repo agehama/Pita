@@ -1,7 +1,7 @@
-fib = (x, fib ->
+fib = (x, f ->
 	if x <= 1
 	then 1
-	else fib(x-1, fib) + fib(x-2, fib)
+	else f(x-1, f) + f(x-2, f)
 )
 
 print(fib(23, fib))

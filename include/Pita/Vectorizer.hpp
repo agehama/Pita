@@ -56,6 +56,39 @@ namespace cgl
 		Mat3x3 mat;
 	};
 
+	struct TransformPacked
+	{
+		using Mat3x3 = Eigen::Matrix<double, 3, 3, 0, 3, 3>;
+
+		TransformPacked()
+		{
+			init();
+		}
+
+		TransformPacked(double px, double py, double sx = 1, double sy = 1, double angle = 0)
+		{
+			init(px, py, sx, sy, angle);
+		}
+
+		TransformPacked(const Mat3x3& mat) :mat(mat) {}
+
+		TransformPacked(const PackedRecord& record, std::shared_ptr<Context> pEnv);
+
+		void init(double px = 0, double py = 0, double sx = 1, double sy = 1, double angle = 0);
+
+		TransformPacked operator*(const TransformPacked& other)const
+		{
+			return static_cast<Mat3x3>(mat * other.mat);
+		}
+
+		Eigen::Vector2d product(const Eigen::Vector2d& v)const;
+
+		void printMat()const;
+
+	private:
+		Mat3x3 mat;
+	};
+
 	class BoundingRect
 	{
 	public:
@@ -130,11 +163,17 @@ namespace cgl
 
 	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
 
-	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
+	//std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
 
-	std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent = cgl::Transform());
+	//std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent = cgl::Transform());
 
 	std::vector<gg::Geometry*> GeosFromRecord(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
+
+	//std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform);
+
+	//std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& parent = cgl::TransformPacked());
+
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const Evaluated& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
 	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 

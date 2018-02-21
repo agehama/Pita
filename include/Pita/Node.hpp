@@ -1314,6 +1314,8 @@ namespace cgl
 		{
 			data.emplace_back(evaluated, address);
 		}
+
+		void add(Context& context, const Evaluated& evaluated);
 	};
 
 	struct List
@@ -1868,6 +1870,8 @@ namespace cgl
 		{
 			values.insert({ key, Value{evaluated, address} });
 		}
+
+		void add(Context& context, const std::string& key, const Evaluated& evaluated);
 	};
 
 	struct Record

@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 		{
 			program.run(sourceCode, false);
 		}
-		catch(const std::Exception& e)
+		catch(const std::exception& e)
 		{
 			std::cout << "error: " << e.what() << "\n";
 			BOOST_CHECK(false);
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		{
 			program.run(sourceCode, false);
 		}
-		catch (const std::Exception& e)
+		catch (const std::exception& e)
 		{
 			std::cout << "error: " << e.what() << "\n";
 			BOOST_CHECK(false);

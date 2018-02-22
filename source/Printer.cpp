@@ -47,16 +47,7 @@ namespace cgl
 	{
 		os << indent() << "[" << std::endl;
 
-		//const auto& data = node.data;
-		auto unpackedOpt = node.asUnpackedOpt();
-		if (!unpackedOpt)
-		{
-			CGL_Error("List is packed");
-		}
-		const UnpackedList& unpackedList = unpackedOpt.value();
-
-		const auto& data = unpackedList.data;
-
+		const auto& data = node.data;
 		for (size_t i = 0; i < data.size(); ++i)
 		{
 			/*const std::string header = std::string("(") + std::to_string(i) + "): ";
@@ -69,7 +60,7 @@ namespace cgl
 			const auto child = ValuePrinter(pEnv, os, m_indent + 1, header);
 			//os << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
 
-			if (pEnv)
+			if (pEnv && data[i].isValid())
 			{
 				const Val evaluated = pEnv->expand(data[i]);
 				boost::apply_visitor(child, evaluated);
@@ -96,21 +87,14 @@ namespace cgl
 	{
 		os << indent() << "{" << std::endl;
 
-		auto unpackedOpt = node.asUnpackedOpt();
-		if (!unpackedOpt)
-		{
-			CGL_Error("Record is packed");
-		}
-		const UnpackedRecord& unpackedRecord = unpackedOpt.value();
-
-		for (const auto& value : unpackedRecord.values)
+		for (const auto& value : node.values)
 		{
 			//const std::string header = value.first + ": ";
 			const std::string header = value.first + std::string("(") + value.second.toString() + "): ";
 
 			const auto child = ValuePrinter(pEnv, os, m_indent + 1, header);
 
-			if (pEnv)
+			if (pEnv && value.second.isValid())
 			{
 				const Val evaluated = pEnv->expand(value.second);
 				boost::apply_visitor(child, evaluated);

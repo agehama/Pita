@@ -640,7 +640,7 @@ namespace cgl
 			return 0;
 		}
 
-		auto unpackedLHSOpt = As<List>(lhs).asUnpackedOpt();
+		/*auto unpackedLHSOpt = As<List>(lhs).asUnpackedOpt();
 		if (!unpackedLHSOpt)
 		{
 			CGL_Error("List is packed");
@@ -654,8 +654,8 @@ namespace cgl
 		}
 		const UnpackedList& unpackedRHS = unpackedRHSOpt.value();
 
-		return List(UnpackedList::Concat(unpackedLHS, unpackedRHS));
+		return List(UnpackedList::Concat(unpackedLHS, unpackedRHS));*/
 
-		//return List::Concat(As<List>(lhs), As<List>(rhs));
+		return List::Concat(As<List>(lhs), As<List>(rhs));
 	}
 }

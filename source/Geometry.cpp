@@ -842,11 +842,10 @@ namespace cgl
 
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv)
 	{
-		pathRule.pack(*pEnv);
-
-		auto packedOpt = pathRule.asPackedOpt();
-		const PackedRecord& packedRecord = packedOpt.value();
-		const auto& values = packedRecord.values;
+		//pathRule.pack(*pEnv);
+		PackedRecord packedPathRule = As<PackedRecord>(pathRule.packed(*pEnv));
+		
+		const auto& values = packedPathRule.values;
 
 		auto itPoints = values.find("points");
 		auto itPasses = values.find("passes");
@@ -855,7 +854,7 @@ namespace cgl
 		int num = 10;
 		if (itPoints != values.end())
 		{
-			const Val& evaluated = itPoints->second.value;
+			const PackedVal& evaluated = itPoints->second.value;
 			if (!IsType<int>(evaluated))
 			{
 				CGL_Error("不正な式です");
@@ -875,27 +874,24 @@ namespace cgl
 				return;
 			}
 
-			const Val& evaluated = itPasses->second.value;
-			if (!IsType<List>(evaluated))
+			const PackedVal& evaluated = itPasses->second.value;
+			if (!IsType<PackedList>(evaluated))
 			{
 				CGL_Error("不正な式です");
 				return;
 			}
 
-			const List& passShapes = As<List>(evaluated);
-			auto passShapesPackedOpt = passShapes.asPackedOpt();
+			const PackedList& passShapes = As<PackedList>(evaluated);
 			
-			for (const auto& pointVal : passShapesPackedOpt.value().data)
+			for (const auto& pointVal : passShapes.data)
 			{
-				if (!IsType<Record>(pointVal.value))
+				if (!IsType<PackedRecord>(pointVal.value))
 				{
 					CGL_Error("不正な式です");
 					return;
 				}
 
-				const Record& pos = As<Record>(pointVal.value);
-				auto posPackedOpt = pos.asPackedOpt();
-				const PackedRecord& packedPosRecord = posPackedOpt.value();
+				const PackedRecord& packedPosRecord = As<PackedRecord>(pointVal.value);
 				
 				const double x = AsDouble(packedPosRecord.values.find("x")->second.value);
 				const double y = AsDouble(packedPosRecord.values.find("y")->second.value);
@@ -915,8 +911,8 @@ namespace cgl
 		std::vector<gg::Geometry*> obstacles;
 		if (itCircumvents != values.end())
 		{
-			const Val& evaluated = itCircumvents->second.value;
-			if (!IsType<List>(evaluated))
+			const PackedVal& evaluated = itCircumvents->second.value;
+			if (!IsType<PackedList>(evaluated))
 			{
 				CGL_Error("不正な式です");
 				return;
@@ -924,18 +920,18 @@ namespace cgl
 
 			obstacles = GeosFromRecordPacked(evaluated, pEnv);
 		}
-
+		
 		const auto coord = [&](double x, double y)
 		{
 			PackedRecord record;
-			record.add("x", pEnv->makeTemporaryValue(x), x);
-			record.add("y", pEnv->makeTemporaryValue(y), y);
-			return Record(record);
+			record.add("x", x);
+			record.add("y", y);
+			return record;
 		};
 		const auto appendCoord = [&](PackedList& list, double x, double y)
 		{
 			const auto record = coord(x, y);
-			list.add(pEnv->makeTemporaryValue(record), record);
+			list.add(record);
 		};
 
 		const gg::Coordinate beginPos(points.front().x(), points.front().y());
@@ -1017,6 +1013,8 @@ namespace cgl
 		//*
 		libcmaes::FitFunc func = [&](const double *x, const int N)->double
 		{
+			//std::cout << "A";
+
 			const int halfindex = N / 2;
 
 			const double rodLength = abs(x[N - 1]) + 1.0;
@@ -1033,6 +1031,7 @@ namespace cgl
 			}
 			const auto ik1Last = cs2.back();
 
+			//std::cout << "B";
 			Vector<Eigen::Vector2d> cs3;
 			//cs3.add(endPos);
 			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
@@ -1056,6 +1055,7 @@ namespace cgl
 				cs2.add(gg::Coordinate(it->x(), it->y()));
 			}
 
+			//std::cout << "C";
 			gg::LineString* ls2 = factory->createLineString(cs2);
 
 			double pathLength = ls2->getLength();
@@ -1071,24 +1071,38 @@ namespace cgl
 				penalty += distanceOp.distance();
 			}
 
+			const double ls2Length = ls2->getLength();
+
+			//std::cout << "D";
 			double penalty2 = 0;
 			for (int i = 0; i < obstacles.size(); ++i)
 			{
-				gg::Geometry* g = obstacles[i]->intersection(ls2);
-				if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				try
 				{
-					const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
-					penalty2 += intersections->getLength();
+					gg::Geometry* g = obstacles[i]->intersection(ls2);
+					//std::cout << "E";
+					if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+					{
+						//std::cout << "F";
+						const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
+						penalty2 += intersections->getLength();
+					}
+					else if (g->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+					{
+						//std::cout << "G";
+						const gg::MultiLineString* intersections = dynamic_cast<const gg::MultiLineString*>(g);
+						penalty2 += intersections->getLength();
+					}
+					else
+					{
+						//std::cout << "H";
+					}
 				}
-				else if (g->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+				catch (const std::exception& e)
 				{
-					const gg::MultiLineString* intersections = dynamic_cast<const gg::MultiLineString*>(g);
-					penalty2 += intersections->getLength();
+					penalty2 += ls2Length*ls2Length*ls2Length;
 				}
-				else
-				{
-					//std::cout << "Result type: " << g->getGeometryType();
-				}
+				
 			}
 
 			//penalty = 100 * penalty*penalty;
@@ -1098,7 +1112,9 @@ namespace cgl
 			//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
 
 			//const double totalCost = penalty2;
-			//std::cout << std::string("cost: ") << ToS(totalCost, 17) << "\n";
+			//std::cout << std::string("cost: ") << ToS(totalCost, 10) << "\n";
+			//std::cout << "H " << ToS(totalCost, 10) << "\n";
+			
 			return totalCost;
 		};
 
@@ -1157,21 +1173,31 @@ namespace cgl
 
 		//*/
 
-		result.add(*pEnv, "line", List(polygonList));
+		/*for (const auto& dat : polygonList.data)
+		{
+			if (IsType<PackedRecord>(dat.value))
+			{
+				const auto& pos = As<PackedRecord>(dat.value).values;
+				std::cout << "(" << AsDouble(pos.at("x").value) << ", " << AsDouble(pos.at("y").value) << ")\n";
+			}
+			else
+			{
+				std::cout << "Type error\n";
+			}
+		}*/
+
+		result.add("line", polygonList);
 		{
 			PackedRecord record;
-			record.add(*pEnv, "r", 0);
-			record.add(*pEnv, "g", 255);
-			record.add(*pEnv, "b", 255);
-			result.add(*pEnv, "color", Record(record));
+			record.add("r", 0);
+			record.add("g", 255);
+			record.add("b", 255);
+			result.add("color", record);
 		}
+		
+		packedPathRule.add("path", result);
 
-		auto packedPathRuleRecordOpt = pathRule.asPackedOpt();
-		PackedRecord& packedPathRuleRecord = packedPathRuleRecordOpt.value();
-
-		packedPathRuleRecord.add(*pEnv, "path", Record(result));
-
-		pathRule.unpack(*pEnv);
+		pathRule = As<Record>(packedPathRule.unpacked(*pEnv));
 	}
 
 	void GetOffsetPath(Record & pathRule, double offset, std::shared_ptr<cgl::Context> pEnv)
@@ -1180,15 +1206,8 @@ namespace cgl
 
 	void GetText(Record& textRule, std::shared_ptr<cgl::Context> pEnv)
 	{
-		//const auto& values = textRule.values;
-		auto unpackedOpt = textRule.asUnpackedOpt();
-		if (!unpackedOpt)
-		{
-			CGL_Error("Record is packed");
-		}
-		const UnpackedRecord& unpacked = unpackedOpt.value();
-		const auto& values = unpacked.values;
-
+		const auto& values = textRule.values;
+		
 		auto itStr = values.find("str");
 		auto itBaseLines = values.find("base");
 
@@ -1220,22 +1239,15 @@ namespace cgl
 			}
 			baseLineRecord = As<Record>(evaluated);
 
-			if (baseLineRecord.value().type != Record::Path)
+			if (baseLineRecord.value().type != RecordType::Path)
 			{
 				CGL_Error("不正な式です");
 				return;
 			}
 			
 			const Record& record = baseLineRecord.value();
-			auto unpackedRecordOpt = record.asUnpackedOpt();
-			if (!unpackedRecordOpt)
-			{
-				CGL_Error("Record is packed");
-			}
-			const UnpackedRecord& unpackedRecord = unpackedRecordOpt.value();
-
-			auto itPath = unpackedRecord.values.find("path");
-			if (itPath == unpackedRecord.values.end())
+			auto itPath = record.values.find("path");
+			if (itPath == record.values.end())
 			{
 				CGL_Error("不正な式です");
 				return;
@@ -1248,15 +1260,8 @@ namespace cgl
 			}
 			
 			const Record& pathRecord= As<Record>(pathVal);
-			auto unpackedPathRecordOpt = pathRecord.asUnpackedOpt();
-			if (!unpackedPathRecordOpt)
-			{
-				CGL_Error("Record is packed");
-			}
-			const UnpackedRecord& unpackedPathRecord = unpackedPathRecordOpt.value();
-
-			auto itLine = unpackedPathRecord.values.find("line");
-			if (itLine == unpackedPathRecord.values.end())
+			auto itLine = pathRecord.values.find("line");
+			if (itLine == pathRecord.values.end())
 			{
 				CGL_Error("不正な式です");
 				return;
@@ -1268,30 +1273,14 @@ namespace cgl
 				return;
 			}
 
-			//const auto vs = As<List>(lineVal).data;
-			const List& listVS = As<List>(lineVal);
-			auto unpackedVSOpt = listVS.asUnpackedOpt();
-			if (!unpackedVSOpt)
-			{
-				CGL_Error("List is packed");
-			}
-			const UnpackedList& unpackedVS = unpackedVSOpt.value();
-			const auto vs = unpackedVS.data;
-
+			const auto vs = As<List>(lineVal).data;
 			for (const auto v : vs)
 			{
 				const Val vertex = pEnv->expand(v);
 
 				const auto& pos = As<Record>(vertex);
-				auto unpackedPosOpt = pos.asUnpackedOpt();
-				if (!unpackedPosOpt)
-				{
-					CGL_Error("Record is packed");
-				}
-				const UnpackedRecord& unpackedPosRecord = unpackedPosOpt.value();
-
-				const Val xval = pEnv->expand(unpackedPosRecord.values.find("x")->second);
-				const Val yval = pEnv->expand(unpackedPosRecord.values.find("y")->second);
+				const Val xval = pEnv->expand(pos.values.find("x")->second);
+				const Val yval = pEnv->expand(pos.values.find("y")->second);
 				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
 				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
 
@@ -1314,12 +1303,12 @@ namespace cgl
 		std::u32string string = str.toString();
 		double offsetHorizontal = 0;
 
-		UnpackedList resultCharList;
+		List resultCharList;
 		if (baseLineRecord)
 		{
 			for (size_t i = 0; i < string.size(); ++i)
 			{
-				UnpackedRecord currentCharRecord;
+				Record currentCharRecord;
 
 				std::vector<gg::Geometry*> result;
 
@@ -1374,16 +1363,16 @@ namespace cgl
 
 				offsetHorizontal += font.glyphWidth(codePoint);
 
-				UnpackedRecord posRecord;
+				Record posRecord;
 				posRecord.append("x", pEnv->makeTemporaryValue(offsetX));
 				posRecord.append("y", pEnv->makeTemporaryValue(offsetY));
 
 				currentCharRecord.append("char", pEnv->makeTemporaryValue(GetShapesFromGeos(result, pEnv)));
-				currentCharRecord.append("pos", pEnv->makeTemporaryValue(Record(posRecord)));
+				currentCharRecord.append("pos", pEnv->makeTemporaryValue(posRecord));
 
 				currentCharRecord.append("angle", pEnv->makeTemporaryValue(angle));
 
-				resultCharList.append(pEnv->makeTemporaryValue(Record(currentCharRecord)));
+				resultCharList.append(pEnv->makeTemporaryValue(currentCharRecord));
 			}
 		}
 		else
@@ -1402,27 +1391,13 @@ namespace cgl
 			}
 		}
 
-		auto unpackedTextRuleOpt = textRule.asUnpackedOpt();
-		if (!unpackedTextRuleOpt)
-		{
-			CGL_Error("Record is packed");
-		}
-		UnpackedRecord& unpackedTextRuleRecord = unpackedTextRuleOpt.value();
-
-		unpackedTextRuleRecord.append("text", pEnv->makeTemporaryValue(List(resultCharList)));
+		textRule.append("text", pEnv->makeTemporaryValue(resultCharList));
 	}
 
 	void GetShapePath(Record & pathRule, std::shared_ptr<cgl::Context> pEnv)
 	{
-		//const auto& values = pathRule.values;
-		auto unpackedPathRuleOpt = pathRule.asUnpackedOpt();
-		if (!unpackedPathRuleOpt)
-		{
-			CGL_Error("Record is packed");
-		}
-		const UnpackedRecord& unpackedPathRuleRecord = unpackedPathRuleOpt.value();
-		const auto& values = unpackedPathRuleRecord.values;
-
+		const auto& values = pathRule.values;
+		
 		auto itStr = values.find("shapes");
 		auto itBaseLines = values.find("base");
 
@@ -1454,22 +1429,16 @@ namespace cgl
 			}
 			baseLineRecord = As<Record>(evaluated);
 
-			if (baseLineRecord.value().type != Record::Path)
+			if (baseLineRecord.value().type != RecordType::Path)
 			{
 				CGL_Error("不正な式です");
 				return;
 			}
 
 			const Record& record = baseLineRecord.value();
-			auto unpackedBaseLineOpt = record.asUnpackedOpt();
-			if (!unpackedBaseLineOpt)
-			{
-				CGL_Error("Record is packed");
-			}
-			const UnpackedRecord& unpackedBaseLineRecord = unpackedBaseLineOpt.value();
 
-			auto itPath = unpackedBaseLineRecord.values.find("path");
-			if (itPath == unpackedBaseLineRecord.values.end())
+			auto itPath = record.values.find("path");
+			if (itPath == record.values.end())
 			{
 				CGL_Error("不正な式です");
 				return;
@@ -1482,8 +1451,8 @@ namespace cgl
 			}
 			const Record& pathRecord = As<Record>(pathVal);
 
-			auto itLine = unpackedBaseLineRecord.values.find("line");
-			if (itLine == unpackedBaseLineRecord.values.end())
+			auto itLine = pathRecord.values.find("line");
+			if (itLine == pathRecord.values.end())
 			{
 				CGL_Error("不正な式です");
 				return;
@@ -1495,30 +1464,14 @@ namespace cgl
 				return;
 			}
 
-			//const auto vs = As<List>(lineVal).data;
-			List& lineValList = As<List&>(lineVal);
-			auto unpackedLineValListOpt = lineValList.asUnpackedOpt();
-			if (!unpackedLineValListOpt)
-			{
-				CGL_Error("List is packed");
-			}
-			UnpackedList& unpackedLineValList = unpackedLineValListOpt.value();
-			const auto& vs = unpackedLineValList.data;
-
+			const auto vs = As<List>(lineVal).data;
 			for (const auto v : vs)
 			{
 				const Val vertex = pEnv->expand(v);
 				
 				const auto& pos = As<Record>(vertex);
-				auto unpackedPosOpt = pos.asUnpackedOpt();
-				if (!unpackedPosOpt)
-				{
-					CGL_Error("Record is packed");
-				}
-				const UnpackedRecord& unpackedPos = unpackedPosOpt.value();
-
-				const Val xval = pEnv->expand(unpackedPos.values.find("x")->second);
-				const Val yval = pEnv->expand(unpackedPos.values.find("y")->second);
+				const Val xval = pEnv->expand(pos.values.find("x")->second);
+				const Val yval = pEnv->expand(pos.values.find("y")->second);
 				const double x = IsType<int>(xval) ? static_cast<double>(As<int>(xval)) : As<double>(xval);
 				const double y = IsType<int>(yval) ? static_cast<double>(As<int>(yval)) : As<double>(yval);
 

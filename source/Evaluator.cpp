@@ -268,15 +268,6 @@ namespace cgl
 
 	Val ValueCloner::operator()(const List& node)
 	{
-		auto opt = node.asUnpackedOpt();
-		if (!opt)
-		{
-			CGL_Error("List is packed");
-		}
-
-		const auto& data = opt.value().data;
-
-		/*
 		List result;
 		const auto& data = node.data;
 		
@@ -294,30 +285,12 @@ namespace cgl
 				result.append(newAddress);
 				replaceMap[data[i]] = newAddress;
 			}
-		}*/
-
-		UnpackedList result;
-
-		for (size_t i = 0; i < data.size(); ++i)
-		{
-			if (auto opt = getOpt(data[i]))
-			{
-				result.append(opt.value());
-			}
-			else
-			{
-				const Val& substance = pEnv->expand(data[i]);
-				const Val clone = boost::apply_visitor(*this, substance);
-				const Address newAddress = pEnv->makeTemporaryValue(clone);
-				result.append(newAddress);
-				replaceMap[data[i]] = newAddress;
-			}
 		}
 
-		return List(result);
+		return result;
 	}
 
-	/*Val ValueCloner::operator()(const Record& node)
+	Val ValueCloner::operator()(const Record& node)
 	{
 		Record result;
 
@@ -344,45 +317,6 @@ namespace cgl
 		result.isSatisfied = node.isSatisfied;
 
 		return result;
-	}*/
-
-	Val ValueCloner::operator()(const Record& node)
-	{
-		auto opt = node.asUnpackedOpt();
-		if (!opt)
-		{
-			CGL_Error("Record is packed");
-		}
-
-		const auto& values = opt.value().values;
-
-		UnpackedRecord result;
-
-		for (const auto& value : values)
-		{
-			if (auto opt = getOpt(value.second))
-			{
-				result.append(value.first, opt.value());
-			}
-			else
-			{
-				const Val& substance = pEnv->expand(value.second);
-				const Val clone = boost::apply_visitor(*this, substance);
-				const Address newAddress = pEnv->makeTemporaryValue(clone);
-				result.append(value.first, newAddress);
-				replaceMap[value.second] = newAddress;
-			}
-		}
-
-		Record resultRecord(result);
-
-		resultRecord.problem = node.problem;
-		resultRecord.freeVariables = node.freeVariables;
-		resultRecord.freeVariableRefs = node.freeVariableRefs;
-		resultRecord.type = node.type;
-		resultRecord.isSatisfied = node.isSatisfied;
-
-		return resultRecord;
 	}
 
 	boost::optional<Address> ValueCloner2::getOpt(Address address)const
@@ -397,7 +331,7 @@ namespace cgl
 
 	Val ValueCloner2::operator()(const List& node)
 	{
-		const auto& data = node.asUnpackedOpt().value().data;
+		const auto& data = node.data;
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
@@ -411,7 +345,7 @@ namespace cgl
 		
 	Val ValueCloner2::operator()(const Record& node)
 	{
-		for (const auto& value : node.asUnpackedOpt().value().values)
+		for (const auto& value : node.values)
 		{
 			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
 			const Val& substance = pEnv->expand(value.second);
@@ -534,22 +468,10 @@ namespace cgl
 				if (auto opt = AsOpt<Record>(evaluated))
 				{
 					const Record& record = opt.value();
-					/*
+					
 					for (const auto& keyval : record.values)
 					{
 						addLocalVariable(keyval.first);
-					}
-					*/
-					if (auto opt = record.asUnpackedOpt())
-					{
-						for (const auto& keyval : opt.value().values)
-						{
-							addLocalVariable(keyval.first);
-						}
-					}
-					else
-					{
-						CGL_Error("Record is packed");
 					}
 				}
 			}
@@ -1398,7 +1320,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const ListConstractor& listConstractor)
 	{
-		UnpackedList list;
+		List list;
 		for (const auto& expr : listConstractor.data)
 		{
 			LRValue lrvalue = boost::apply_visitor(*this, expr);
@@ -1412,7 +1334,7 @@ namespace cgl
 			}
 		}
 
-		return RValue(List(list));
+		return RValue(list);
 	}
 
 	LRValue Eval::operator()(const KeyExpr& keyExpr)
@@ -1786,13 +1708,6 @@ namespace cgl
 			}
 		}
 
-		auto opt = record.asUnpackedOpt();
-		if (!opt)
-		{
-			CGL_Error("Record is packed");
-		}
-		UnpackedRecord& unpackedRecord = opt.value();
-
 		for (const auto& key : keyList)
 		{
 			//record.append(key.name, pEnv->dereference(key));
@@ -1804,19 +1719,18 @@ namespace cgl
 			record.append(key, pEnv->makeTemporaryValue(opt.value()));*/
 
 			Address address = pEnv->findAddress(key);
-			//record.append(key, address);
-			unpackedRecord.append(key, address);
+			record.append(key, address);
 		}
 
-		if (record.type == Record::Path)
+		if (record.type == RecordType::Path)
 		{
 			GetPath(record, pEnv);
 		}
-		else if (record.type == Record::Text)
+		else if (record.type == RecordType::Text)
 		{
 			GetText(record, pEnv);
 		}
-		else if (record.type == Record::ShapePath)
+		else if (record.type == RecordType::ShapePath)
 		{
 			GetText(record, pEnv);
 		}
@@ -1888,19 +1802,19 @@ namespace cgl
 		if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("path"))
 		{
 			Record pathRecord;
-			pathRecord.type = Record::Path;
+			pathRecord.type = RecordType::Path;
 			recordOpt = pathRecord;
 		}
 		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("text"))
 		{
 			Record pathRecord;
-			pathRecord.type = Record::Text;
+			pathRecord.type = RecordType::Text;
 			recordOpt = pathRecord;
 		}
 		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("shapepath"))
 		{
 			Record pathRecord;
-			pathRecord.type = Record::ShapePath;
+			pathRecord.type = RecordType::ShapePath;
 			recordOpt = pathRecord;
 		}
 		else
@@ -1923,13 +1837,6 @@ namespace cgl
 		//(1)オリジナルのレコードaのクローン(a')を作る
 		Record clone = As<Record>(Clone(pEnv, recordOpt.value()));
 
-		auto unpackedOpt = clone.asUnpackedOpt();
-		if (!unpackedOpt)
-		{
-			CGL_Error("Record is packed");
-		}
-		const auto& values = unpackedOpt.value().values;
-
 		CGL_DebugLog("Clone:");
 		printVal(clone, pEnv);
 
@@ -1941,8 +1848,7 @@ namespace cgl
 
 		//(2) a'の各キーと値に対する参照をローカルスコープに追加する
 		pEnv->enterScope();
-		//for (auto& keyval : clone.values)
-		for (const auto& keyval : values)
+		for (auto& keyval : clone.values)
 		{
 			pEnv->makeVariable(keyval.first, keyval.second);
 			
@@ -1957,22 +1863,13 @@ namespace cgl
 		if (auto opt = AsOpt<Record>(recordValue))
 		{
 			Record& newRecord = opt.value();
-			auto newUnpackedOpt = newRecord.asUnpackedOpt();
-			if (!newUnpackedOpt)
-			{
-				CGL_Error("Record is packed");
-			}
-			UnpackedRecord& newUnpackedRecord = newUnpackedOpt.value();
-
-			//for (auto& keyval : clone.values)
-			for (const auto& keyval : values)
+			for (const auto& keyval : clone.values)
 			{
 				const Address newAddress = pEnv->findAddress(keyval.first);
 				if (newAddress.isValid() && newAddress != keyval.second)
 				{
 					CGL_DebugLog(std::string("Updated ") + keyval.first + ": " + "Address(" + keyval.second.toString() + ") -> Address(" + newAddress.toString() + ")");
-					//newRecord.values[keyval.first] = newAddress;
-					newUnpackedRecord.values[keyval.first] = newAddress;
+					newRecord.values[keyval.first] = newAddress;
 				}
 			}
 		}
@@ -2209,22 +2106,16 @@ namespace cgl
 				}
 
 				List& list = As<List&>(objRef);
-				auto unpackedOpt = list.asUnpackedOpt();
-				if (!unpackedOpt)
-				{
-					CGL_Error("List is packed");
-				}
-				UnpackedList& unpackedList = unpackedOpt.value();
 
 				if (auto indexOpt = AsOpt<int>(value))
 				{
 					const int indexValue = indexOpt.value();
-					const int listSize = static_cast<int>(unpackedList.data.size());
+					const int listSize = static_cast<int>(list.data.size());
 					const int maxIndex = listSize - 1;
 
 					if (0 <= indexValue && indexValue <= maxIndex)
 					{
-						address = unpackedList.get(indexValue);
+						address = list.get(indexValue);
 					}
 					else if (indexValue < 0 || !pEnv->isAutomaticExtendMode())
 					{
@@ -2232,11 +2123,11 @@ namespace cgl
 					}
 					else
 					{
-						while (static_cast<int>(unpackedList.data.size()) - 1 < indexValue)
+						while (static_cast<int>(list.data.size()) - 1 < indexValue)
 						{
-							unpackedList.data.push_back(pEnv->makeTemporaryValue(0));
+							list.data.push_back(pEnv->makeTemporaryValue(0));
 						}
-						address = unpackedList.get(indexValue);
+						address = list.get(indexValue);
 					}
 				}
 				else
@@ -2252,15 +2143,8 @@ namespace cgl
 				}
 
 				const Record& record = As<const Record&>(objRef);
-				auto unpackedOpt = record.asUnpackedOpt();
-				if (!unpackedOpt)
-				{
-					CGL_Error("Record is packed");
-				}
-				const UnpackedRecord& unpackedRecord = unpackedOpt.value();
-
-				auto it = unpackedRecord.values.find(recordAccessOpt.value().name);
-				if (it == unpackedRecord.values.end())
+				auto it = record.values.find(recordAccessOpt.value().name);
+				if (it == record.values.end())
 				{
 					CGL_Error("指定された識別子がレコード中に存在しない");
 				}
@@ -2672,16 +2556,10 @@ namespace cgl
 					}
 
 					const List& list = As<const List&>(objRef);
-					auto unpackedOpt = list.asUnpackedOpt();
-					if (!unpackedOpt)
-					{
-						CGL_Error("List is packed");
-					}
-					const UnpackedList& unpackedList = unpackedOpt.value();
 
 					if (auto indexOpt = AsOpt<int>(value))
 					{
-						headAddress = unpackedList.get(indexOpt.value());
+						headAddress = list.get(indexOpt.value());
 					}
 					else
 					{
@@ -2705,15 +2583,8 @@ namespace cgl
 					}
 
 					const Record& record = As<const Record&>(objRef);
-					auto unpackedOpt = record.asUnpackedOpt();
-					if (!unpackedOpt)
-					{
-						CGL_Error("Record is packed");
-					}
-					const UnpackedRecord& unpackedRecord = unpackedOpt.value();
-
-					auto it = unpackedRecord.values.find(recordAccess.name);
-					if (it == unpackedRecord.values.end())
+					auto it = record.values.find(recordAccess.name);
+					if (it == record.values.end())
 					{
 						CGL_Error("指定された識別子がレコード中に存在しない");
 					}

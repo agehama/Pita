@@ -173,7 +173,7 @@ namespace cgl
 
 	//std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& parent = cgl::TransformPacked());
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform = cgl::TransformPacked());
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
 	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 

@@ -1178,149 +1178,6 @@ namespace cgl
 		}
 	};
 
-	//struct List
-	//{
-	//	std::vector<Address> data;
-
-	//	List() = default;
-
-	//	/*
-	//	List& append(const Val& value)
-	//	{
-	//		data.push_back(value);
-	//		return *this;
-	//	}
-	//	
-	//	std::vector<Val>::iterator get(int index)
-	//	{
-	//		return data.begin() + index;
-	//	}
-
-	//	bool operator==(const List& other)const
-	//	{
-	//		if (data.size() != other.data.size())
-	//		{
-	//			return false;
-	//		}
-
-	//		for (size_t i = 0; i < data.size(); ++i)
-	//		{
-	//			if (!IsEqual(data[i], other.data[i]))
-	//			{
-	//				return false;
-	//			}
-	//		}
-
-	//		return true;
-	//	}
-	//	*/
-
-	//	List& append(const Address& address)
-	//	{
-	//		data.push_back(address);
-	//		return *this;
-	//	}
-
-	//	List& concat(const List& tail)
-	//	{
-	//		data.insert(data.end(), tail.data.begin(), tail.data.end());
-	//		return *this;
-	//	}
-
-	//	static List Concat(const List& a, const List& b)
-	//	{
-	//		List result(a);
-	//		return result.concat(b);
-	//	}
-
-	//	/*std::vector<unsigned>::iterator get(int index)
-	//	{
-	//		return data.begin() + index;
-	//	}*/
-	//	Address get(int index)const
-	//	{
-	//		return data[index];
-	//	}
-
-	//	bool operator==(const List& other)const
-	//	{
-	//		if (data.size() != other.data.size())
-	//		{
-	//			return false;
-	//		}
-
-	//		for (size_t i = 0; i < data.size(); ++i)
-	//		{
-	//			//if (!IsEqual(data[i], other.data[i]))
-
-	//			//TODO: アドレス比較ではなく値の比較にすべき(リストが環境の参照を持つ？)
-	//			//if (data[i].valueID == other.data[i].valueID)
-	//			if (data[i] == other.data[i])
-	//			{
-	//				return false;
-	//			}
-	//		}
-
-	//		return true;
-	//	}
-	//};
-
-	//struct UnpackedList
-	//{
-	//	std::vector<Address> data;
-	//	UnpackedList() = default;
-
-	//	void add(const Address address)
-	//	{
-	//		data.push_back(address);
-	//	}
-
-	//	UnpackedList& append(const Address& address)
-	//	{
-	//		data.push_back(address);
-	//		return *this;
-	//	}
-
-	//	UnpackedList& concat(const UnpackedList& tail)
-	//	{
-	//		data.insert(data.end(), tail.data.begin(), tail.data.end());
-	//		return *this;
-	//	}
-
-	//	static UnpackedList Concat(const UnpackedList& a, const UnpackedList& b)
-	//	{
-	//		UnpackedList result(a);
-	//		return result.concat(b);
-	//	}
-
-	//	Address get(int index)const
-	//	{
-	//		return data[index];
-	//	}
-
-	//	bool operator==(const UnpackedList& other)const
-	//	{
-	//		if (data.size() != other.data.size())
-	//		{
-	//			return false;
-	//		}
-
-	//		for (size_t i = 0; i < data.size(); ++i)
-	//		{
-	//			//if (!IsEqual(data[i], other.data[i]))
-
-	//			//TODO: アドレス比較ではなく値の比較にすべき(リストが環境の参照を持つ？)
-	//			//if (data[i].valueID == other.data[i].valueID)
-	//			if (data[i] == other.data[i])
-	//			{
-	//				return false;
-	//			}
-	//		}
-
-	//		return true;
-	//	}
-	//};
-
 	struct PackedList
 	{
 		struct Data
@@ -1352,8 +1209,6 @@ namespace cgl
 
 	struct List
 	{
-		//using Data = boost::variant<UnpackedList, PackedList>;
-		//Data data;
 		std::vector<Address> data;
 
 		List() = default;
@@ -1412,33 +1267,6 @@ namespace cgl
 		}
 
 		PackedVal packed(const Context& context)const;
-
-		/*bool isPacked()const;
-		bool isUnpacked(const Context& context)const;
-
-		void pack(const Context& context);
-		void unpack(Context& context);
-
-		List packed(const Context& context)const;
-		List unpacked(Context& context)const;
-
-		boost::optional<PackedList&> asPackedOpt()
-		{
-			return AsOpt<PackedList>(data);
-		}
-		boost::optional<const PackedList&> asPackedOpt()const
-		{
-			return AsOpt<PackedList>(data);
-		}
-		boost::optional<UnpackedList&> asUnpackedOpt()
-		{
-			return AsOpt<UnpackedList>(data);
-		}
-		boost::optional<const UnpackedList&> asUnpackedOpt()const
-		{
-			return AsOpt<UnpackedList>(data);
-		}*/
-
 	};
 
 	struct KeyExpr
@@ -1793,158 +1621,6 @@ namespace cgl
 		}
 	};
 
-	//struct Record
-	//{
-	//	//std::unordered_map<std::string, Val> values;
-	//	std::unordered_map<std::string, Address> values;
-	//	OptimizationProblemSat problem;
-	//	std::vector<Accessor> freeVariables;
-	//	std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
-	//	enum Type { Normal, Path, Text, ShapePath };
-	//	Type type = Normal;
-	//	bool isSatisfied = true;
-	//	Vector<Eigen::Vector2d> pathPoints;
-
-	//	Record() = default;
-	//	
-	//	/*
-	//	Record(const std::string& name, const Val& value)
-	//	{
-	//		append(name, value);
-	//	}
-
-	//	Record& append(const std::string& name, const Val& value)
-	//	{
-	//		values[name] = value;
-	//		return *this;
-	//	}
-
-	//	bool operator==(const Record& other)const
-	//	{
-	//		if (values.size() != other.values.size())
-	//		{
-	//			return false;
-	//		}
-
-	//		const auto& vs = other.values;
-
-	//		for (const auto& keyval : values)
-	//		{
-	//			const auto otherIt = vs.find(keyval.first);
-	//			if (otherIt == vs.end())
-	//			{
-	//				return false;
-	//			}
-
-	//			if (!IsEqual(keyval.second, otherIt->second))
-	//			{
-	//				return false;
-	//			}
-	//		}
-
-	//		std::cerr << "Warning: IsEqual<Record>() don't care about constraint" << std::endl;
-	//		//constraint;
-	//		//freeVariables;
-	//		return true;
-	//	}
-	//	*/
-
-	//	Record(const std::string& name, const Address& address)
-	//	{
-	//		append(name, address);
-	//	}
-
-	//	Record& append(const std::string& name, const Address& address)
-	//	{
-	//		values[name] = address;
-	//		return *this;
-	//	}
-
-	//	bool operator==(const Record& other)const
-	//	{
-	//		if (values.size() != other.values.size())
-	//		{
-	//			return false;
-	//		}
-
-	//		const auto& vs = other.values;
-
-	//		for (const auto& keyval : values)
-	//		{
-	//			const auto otherIt = vs.find(keyval.first);
-	//			if (otherIt == vs.end())
-	//			{
-	//				return false;
-	//			}
-
-	//			//if (!IsEqualVal(keyval.second, otherIt->second))
-	//			if (keyval.second != otherIt->second)
-	//			{
-	//				return false;
-	//			}
-	//		}
-
-	//		std::cerr << "Warning: IsEqual<Record>() don't care about constraint" << std::endl;
-	//		//constraint;
-	//		//freeVariables;
-	//		return true;
-	//	}
-	//};
-
-#ifdef comment
-	struct UnpackedRecord
-	{
-		std::unordered_map<std::string, Address> values;
-		UnpackedRecord() = default;
-
-		void add(const std::string& key, const Address address)
-		{
-			values.insert({ key, address });
-		}
-
-		UnpackedRecord(const std::string& name, const Address& address)
-		{
-			append(name, address);
-		}
-
-		UnpackedRecord& append(const std::string& name, const Address& address)
-		{
-			values[name] = address;
-			return *this;
-		}
-
-		bool operator==(const UnpackedRecord& other)const
-		{
-			if (values.size() != other.values.size())
-			{
-				return false;
-			}
-
-			const auto& vs = other.values;
-
-			for (const auto& keyval : values)
-			{
-				const auto otherIt = vs.find(keyval.first);
-				if (otherIt == vs.end())
-				{
-					return false;
-				}
-
-				//if (!IsEqualVal(keyval.second, otherIt->second))
-				if (keyval.second != otherIt->second)
-				{
-					return false;
-				}
-			}
-
-			std::cerr << "Warning: IsEqual<UnpackedRecord>() don't care about constraint" << std::endl;
-			//constraint;
-			//freeVariables;
-			return true;
-		}
-	};
-#endif
-
 	enum class RecordType { Normal, Path, Text, ShapePath };
 
 	struct PackedRecord
@@ -1985,10 +1661,7 @@ namespace cgl
 
 	struct Record
 	{
-		//std::unordered_map<std::string, Val> values;
 		std::unordered_map<std::string, Address> values;
-		//using Values = boost::variant<UnpackedRecord, PackedRecord>;
-		//Values values;
 
 		OptimizationProblemSat problem;
 		std::vector<Accessor> freeVariables;
@@ -2049,32 +1722,6 @@ namespace cgl
 		}
 
 		PackedVal packed(const Context& context)const;
-
-		/*bool isPacked()const;
-		bool isUnpacked(const Context& context)const;
-
-		void pack(const Context& context);
-		void unpack(Context& context);
-
-		Record packed(const Context& context)const;
-		Record unpacked(Context& context)const;
-
-		boost::optional<PackedRecord&> asPackedOpt()
-		{
-			return AsOpt<PackedRecord>(values);
-		}
-		boost::optional<const PackedRecord&> asPackedOpt()const
-		{
-			return AsOpt<PackedRecord>(values);
-		}
-		boost::optional<UnpackedRecord&> asUnpackedOpt()
-		{
-			return AsOpt<UnpackedRecord>(values);
-		}
-		boost::optional<const UnpackedRecord&> asUnpackedOpt()const
-		{
-			return AsOpt<UnpackedRecord>(values);
-		}*/
 	};
 
 	struct ListAccess

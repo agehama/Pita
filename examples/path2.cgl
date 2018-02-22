@@ -38,11 +38,11 @@ cs = {
     p: path{
         points: 10
         passes: [start.pos, end.pos]
-        circumvents: []
+        obstacles: []
         i = 0
         for yi in 1:5 do(
             for xi in 1:5 do(
-                circumvents = circumvents @ [rect{angle: 247*i, pos.x = interval*xi, pos.y = interval*yi}]
+                obstacles = obstacles @ [rect{angle: 247*i, pos.x = interval*xi, pos.y = interval*yi}]
                 i = i + 1
             )
         )

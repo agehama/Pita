@@ -848,18 +848,20 @@ namespace cgl
 
 		auto itPoints = values.find("points");
 		auto itPasses = values.find("passes");
-		auto itCircumvents = values.find("circumvents");
+		auto itCircumvents = values.find("obstacles");
 
 		int num = 10;
 		if (itPoints != values.end())
 		{
-			const PackedVal& evaluated = itPoints->second.value;
-			if (!IsType<int>(evaluated))
+			const PackedVal& numVal = itPoints->second.value;
+			if (auto numOpt = AsOpt<int>(numVal))
 			{
-				CGL_Error("不正な式です");
-				return;
+				num = numOpt.value();	
 			}
-			num = As<int>(evaluated);
+			else
+			{
+				CGL_Error("pointsが不正な式です");
+			}
 		}
 
 		auto factory = gg::GeometryFactory::create();
@@ -869,8 +871,7 @@ namespace cgl
 		{
 			if (itPasses == values.end())
 			{
-				CGL_Error("不正な式です");
-				return;
+				CGL_Error("passesが不正な式です");
 			}
 
 			const PackedVal& pathsVal = itPasses->second.value;
@@ -892,15 +893,13 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error("不正な式です");
-						return;
+						CGL_Error("passesが不正な式です");
 					}
 				}
 			}
 			else
 			{
-				CGL_Error("不正な式です");
-				return;
+				CGL_Error("passesが不正な式です");
 			}
 		}
 
@@ -911,14 +910,15 @@ namespace cgl
 		std::vector<gg::Geometry*> obstacles;
 		if (itCircumvents != values.end())
 		{
-			const PackedVal& evaluated = itCircumvents->second.value;
-			if (!IsType<PackedList>(evaluated))
+			const PackedVal& obstacleListVal = itCircumvents->second.value;
+			if (auto obstacleListOpt = AsOpt<PackedList>(obstacleListVal))
 			{
-				CGL_Error("不正な式です");
-				return;
+				obstacles = GeosFromRecordPacked(obstacleListOpt.value(), pEnv);
 			}
-
-			obstacles = GeosFromRecordPacked(evaluated, pEnv);
+			else
+			{
+				CGL_Error("obstaclesが不正な式です");
+			}
 		}
 		
 		const auto coord = [&](double x, double y)
@@ -1173,7 +1173,6 @@ namespace cgl
 
 			for (auto it = cs3.rbegin(); it != cs3.rend(); ++it)
 			{
-				//cs2.add(gg::Coordinate(it->x(), it->y()));
 				appendCoord(polygonList, it->x(), it->y());
 			}
 		}

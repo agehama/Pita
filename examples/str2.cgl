@@ -32,9 +32,9 @@ square = shape{
 
 main = text{
     rect: square{scale: {x: 400, y: 300}}
-    str: "図形記述言語"
+    str: "図形記述言語図形記述言語図形記述言語図形記述言語図形記述言語"
     base: path{
-        points: 4
+        points: 7
         passes: [rect.top(), rect.right(), rect.bottom(), rect.left()]
     }
 }

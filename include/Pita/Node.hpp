@@ -1204,8 +1204,38 @@ namespace cgl
 			data.emplace_back(value, Address());
 		}
 
+		template <typename... Args>
+		PackedList& adds(const Args&... args)
+		{
+			addsImpl(args...);
+			return *this;
+		}
+
 		Val unpacked(Context& context)const;
+
+	private:
+
+		template<typename Head>
+		void addsImpl(const Head& head)
+		{
+			add(head);
+		}
+
+		template<typename Head, typename... Tail>
+		void addsImpl(const Head& head, const Tail&... tail)
+		{
+			add(head);
+			addsImpl(tail...);
+		}
 	};
+
+	template <typename... Args>
+	static PackedList MakeList(const Args&... args)
+	{
+		PackedList instance;
+		instance.adds(args...);
+		return instance;
+	}
 
 	struct List
 	{
@@ -1656,8 +1686,38 @@ namespace cgl
 			values.insert({ key, Data(value, Address()) });
 		}
 
+		template <typename... Args>
+		PackedRecord& adds(const Args&... args)
+		{
+			addsImpl(args...);
+			return *this;
+		}
+
 		Val unpacked(Context& context)const;
+
+	private:
+
+		template<typename HeadName, typename HeadVal>
+		void addsImpl(const HeadName& headName, const HeadVal& headVal)
+		{
+			add(headName, headVal);
+		}
+
+		template<typename HeadName, typename HeadVal, typename... Tail>
+		void addsImpl(const HeadName& headName, const HeadVal& headVal, const Tail&... tail)
+		{
+			add(headName, headVal);
+			addsImpl(tail...);
+		}
 	};
+
+	template <typename... Args>
+	static PackedRecord MakeRecord(const Args&... args)
+	{
+		PackedRecord instance;
+		instance.adds(args...);
+		return instance;
+	}
 
 	struct Record
 	{

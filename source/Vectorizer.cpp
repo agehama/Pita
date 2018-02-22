@@ -41,6 +41,16 @@ namespace cgl
 		return true;
 	}
 
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record)
+	{
+		const auto& values = record.values;
+
+		auto itX = values.find("x");
+		auto itY = values.find("y");
+		
+		return std::tuple<double, double>(AsDouble(itX->second.value), AsDouble(itY->second.value));
+	}
+
 	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record, std::shared_ptr<Context> environment)
 	{
 		const auto& values = record.values;

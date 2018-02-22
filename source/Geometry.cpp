@@ -842,7 +842,6 @@ namespace cgl
 
 	void GetPath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv)
 	{
-		//pathRule.pack(*pEnv);
 		PackedRecord packedPathRule = As<PackedRecord>(pathRule.packed(*pEnv));
 		
 		const auto& values = packedPathRule.values;
@@ -874,33 +873,34 @@ namespace cgl
 				return;
 			}
 
-			const PackedVal& evaluated = itPasses->second.value;
-			if (!IsType<PackedList>(evaluated))
+			const PackedVal& pathsVal = itPasses->second.value;
+			if (auto pathListOpt = AsOpt<PackedList>(pathsVal))
+			{
+				for (const auto& pointVal : pathListOpt.value().data)
+				{
+					if (auto posRecordOpt = AsOpt<PackedRecord>(pointVal.value))
+					{
+						const auto v = ReadVec2Packed(posRecordOpt.value());
+						const double x = std::get<0>(v);
+						const double y = std::get<1>(v);
+
+						Eigen::Vector2d v2d;
+						v2d << x, y;
+						points.push_back(v2d);
+
+						originalPoints.push_back(factory->createPoint(gg::Coordinate(x, y)));
+					}
+					else
+					{
+						CGL_Error("不正な式です");
+						return;
+					}
+				}
+			}
+			else
 			{
 				CGL_Error("不正な式です");
 				return;
-			}
-
-			const PackedList& passShapes = As<PackedList>(evaluated);
-			
-			for (const auto& pointVal : passShapes.data)
-			{
-				if (!IsType<PackedRecord>(pointVal.value))
-				{
-					CGL_Error("不正な式です");
-					return;
-				}
-
-				const PackedRecord& packedPosRecord = As<PackedRecord>(pointVal.value);
-				
-				const double x = AsDouble(packedPosRecord.values.find("x")->second.value);
-				const double y = AsDouble(packedPosRecord.values.find("y")->second.value);
-
-				Eigen::Vector2d v;
-				v << x, y;
-				points.push_back(v);
-
-				originalPoints.push_back(factory->createPoint(gg::Coordinate(x, y)));
 			}
 		}
 
@@ -1033,7 +1033,6 @@ namespace cgl
 
 			//std::cout << "B";
 			Vector<Eigen::Vector2d> cs3;
-			//cs3.add(endPos);
 			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
 			for (int i = 0; i < halfindex; ++i)
 			{
@@ -1042,7 +1041,6 @@ namespace cgl
 				const double angle = x[currentIndex];
 				const double dx = rodLength * cos(angle);
 				const double dy = rodLength * sin(angle);
-				//cs3.add(gg::Coordinate(lastPos.x + dx, lastPos.y + dy));
 
 				const double lastX = lastPos.x();
 				const double lastY = lastPos.y();
@@ -1059,10 +1057,12 @@ namespace cgl
 			gg::LineString* ls2 = factory->createLineString(cs2);
 
 			double pathLength = ls2->getLength();
+			const double pathLengthSqrt = sqrt(pathLength);
 
 			const double dx = ik1Last.x - ik2Last.x();
 			const double dy = ik1Last.y - ik2Last.y();
 			const double distanceSq = dx*dx + dy*dy;
+			const double distance = sqrt(distanceSq);
 
 			double penalty = 0;
 			for (int i = 0; i < originalPoints.size(); ++i)
@@ -1070,8 +1070,6 @@ namespace cgl
 				god::DistanceOp distanceOp(ls2, originalPoints[i]);
 				penalty += distanceOp.distance();
 			}
-
-			const double ls2Length = ls2->getLength();
 
 			//std::cout << "D";
 			double penalty2 = 0;
@@ -1100,16 +1098,25 @@ namespace cgl
 				}
 				catch (const std::exception& e)
 				{
-					penalty2 += ls2Length*ls2Length*ls2Length;
+					penalty2 += pathLength;
 				}
-				
 			}
+
+			penalty2 /= pathLength;
+			penalty2 *= 100.0;
+
+			const double penaltySq = penalty*penalty;
+			const double penalty2Sq = penalty2*penalty2;
 
 			//penalty = 100 * penalty*penalty;
 			//penalty2 = 100 * penalty2*penalty2;
 
-			const double totalCost = pathLength + distanceSq + penalty*penalty + penalty2*penalty2;
-			//std::cout << std::string("path cost: ") << ToS(pathLength, 10) << ", " << ToS(penalty, 10) << ", " << ToS(penalty2, 10) << " => " << ToS(totalCost, 15) << "\n";
+			const double totalCost = pathLength + distance + penaltySq + penalty2Sq;
+			/*std::cout << std::string("cost: ") << 
+				ToS(pathLength, 10) << ", " <<
+				ToS(distance, 10) << ", " <<
+				ToS(penaltySq, 10) << ", " <<
+				ToS(penalty2Sq, 10) << " => " << ToS(totalCost, 15) << "\n";*/
 
 			//const double totalCost = penalty2;
 			//std::cout << std::string("cost: ") << ToS(totalCost, 10) << "\n";
@@ -1172,19 +1179,6 @@ namespace cgl
 		}
 
 		//*/
-
-		/*for (const auto& dat : polygonList.data)
-		{
-			if (IsType<PackedRecord>(dat.value))
-			{
-				const auto& pos = As<PackedRecord>(dat.value).values;
-				std::cout << "(" << AsDouble(pos.at("x").value) << ", " << AsDouble(pos.at("y").value) << ")\n";
-			}
-			else
-			{
-				std::cout << "Type error\n";
-			}
-		}*/
 
 		result.add("line", polygonList);
 		{

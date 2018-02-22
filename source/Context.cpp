@@ -1254,8 +1254,6 @@ namespace cgl
 
 	void Context::garbageCollect()
 	{
-		return;
-
 		std::unordered_set<Address> referenceableAddresses;
 
 		const auto isReachable = [&](const Address address)

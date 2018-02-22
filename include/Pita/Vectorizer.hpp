@@ -1,4 +1,5 @@
 #pragma once
+#include <tuple>
 #include <cfloat>
 #include <Eigen/Core>
 
@@ -22,6 +23,8 @@ namespace geos
 namespace cgl
 {
 	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment);
+
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
 
 	struct Transform
 	{
@@ -155,7 +158,6 @@ namespace cgl
 	namespace gg = geos::geom;
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
-	//namespace gt = geos::triangulate;
 
 	std::string GetGeometryType(gg::Geometry* geometry);
 
@@ -163,15 +165,7 @@ namespace cgl
 
 	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
 
-	//std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
-
-	//std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent = cgl::Transform());
-
 	std::vector<gg::Geometry*> GeosFromRecord(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
-
-	//std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform);
-
-	//std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& parent = cgl::TransformPacked());
 
 	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform = cgl::TransformPacked());
 

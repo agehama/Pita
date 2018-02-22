@@ -67,7 +67,7 @@ namespace cgl
 		}
 	}
 
-	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Context> pEnv, std::vector<Address>& freeVariables)
+	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables)
 	{
 		refs.clear();
 		invRefs.clear();
@@ -252,6 +252,18 @@ namespace cgl
 		Val operator()(const Jump& node)const { return node; }
 	};
 
+	PackedVal Packed(const Val& value, const Context& context)
+	{
+		ValuePacker packer(context);
+		return boost::apply_visitor(packer, value);
+	}
+
+	Val Unpacked(const PackedVal& packedValue, Context& context)
+	{
+		ValueUnpacker unpacker(context);
+		return boost::apply_visitor(unpacker, packedValue);
+	}
+
 	Val PackedList::unpacked(Context& context)const
 	{
 		ValueUnpacker unpacker(context);
@@ -323,6 +335,7 @@ namespace cgl
 		result.problem = problem;
 		result.freeVariables = freeVariables;
 		result.freeVariableRefs = freeVariableRefs;
+		result.freeRanges = freeRanges;
 		result.type = type;
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;
@@ -347,6 +360,7 @@ namespace cgl
 		result.problem = problem;
 		result.freeVariables = freeVariables;
 		result.freeVariableRefs = freeVariableRefs;
+		result.freeRanges = freeRanges;
 		result.type = type;
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;

@@ -322,6 +322,8 @@ namespace std
 
 namespace cgl
 {
+	class Context;
+
 	struct FuncVal;
 
 	struct UnaryExpr;
@@ -445,6 +447,9 @@ namespace cgl
 		boost::recursive_wrapper<Jump>
 	>;
 
+	PackedVal Packed(const Val& value, const Context& context);
+	Val Unpacked(const PackedVal& packedValue, Context& context);
+
 	inline double AsDouble(const Val& value)
 	{
 		if (IsType<double>(value))
@@ -522,8 +527,6 @@ namespace cgl
 		
 		Val value;
 	};
-
-	class Context;
 
 	struct LRValue
 	{
@@ -621,7 +624,16 @@ namespace cgl
 		boost::recursive_wrapper<SatFunctionReference>
 	>;
 
-	class Context;
+	struct VariableRange
+	{
+		double minimum = -100.0;
+		double maximum = +100.0;
+		VariableRange() = default;
+		VariableRange(double minimum, double maximum) :
+			minimum(minimum),
+			maximum(maximum)
+		{}
+	};
 
 	struct OptimizationProblemSat
 	{
@@ -638,7 +650,7 @@ namespace cgl
 		bool hasPlateausFunction = false;
 
 		void addConstraint(const Expr& logicExpr);
-		void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<Address>& freeVariables);
+		void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables);
 
 		bool initializeData(std::shared_ptr<Context> pEnv);
 
@@ -1588,19 +1600,19 @@ namespace cgl
 
 	struct DeclFree
 	{
-		//using Ref = boost::variant<Identifier, boost::recursive_wrapper<ObjectReference>>;
-		//using Ref = ObjectReference;
-
-		//std::vector<Ref> refs;
-
 		std::vector<Accessor> accessors;
 		std::vector<Expr> ranges;
 
 		DeclFree() = default;
 
-		void add(const Accessor& accessor)
+		void addAccessor(const Accessor& accessor)
 		{
 			accessors.push_back(accessor);
+		}
+
+		void addRange(const Expr& range)
+		{
+			ranges.push_back(range);
 		}
 
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
@@ -1611,7 +1623,6 @@ namespace cgl
 		static void AddRange(DeclFree& decl, const Expr& expr)
 		{
 			decl.ranges.push_back(expr);
-			//decl.accessors.push_back(accessor);
 		}
 
 		bool operator==(const DeclFree& other)const
@@ -1668,8 +1679,11 @@ namespace cgl
 		std::unordered_map<std::string, Data> values;
 
 		OptimizationProblemSat problem;
-		std::vector<Accessor> freeVariables;
-		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
+		
+		std::vector<Accessor> freeVariables;//var宣言で指定されたアクセッサ
+		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
+		std::vector<Expr> freeRanges;//var宣言で指定されたアクセッサの範囲
+
 		RecordType type = RecordType::Normal;
 		bool isSatisfied = true;
 		Vector<Eigen::Vector2d> pathPoints;
@@ -1724,8 +1738,12 @@ namespace cgl
 		std::unordered_map<std::string, Address> values;
 
 		OptimizationProblemSat problem;
-		std::vector<Accessor> freeVariables;
-		std::vector<Address> freeVariableRefs;//var宣言で指定された変数から辿れる全てのアドレス
+		
+		std::vector<Accessor> freeVariables;//var宣言で指定されたアクセッサ
+		//std::vector<Address> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
+		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
+		std::vector<Expr> freeRanges;//var宣言で指定されたアクセッサの範囲
+
 		RecordType type = RecordType::Normal;
 		bool isSatisfied = true;
 		Vector<Eigen::Vector2d> pathPoints;

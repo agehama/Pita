@@ -22,7 +22,7 @@ namespace cgl
 	{
 		for (size_t i = 0; i < freeVariables.size(); ++i)
 		{
-			if (freeVariables[i] == reference)
+			if (freeVariables[i].first == reference)
 			{
 				return i;
 			}

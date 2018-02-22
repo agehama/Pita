@@ -892,7 +892,6 @@ namespace cgl
 		if (baseLineRecordOpt)
 		{
 			const auto& cs = path.cs;
-			std::cout << "cs.size(): " << cs->size() << "\n";
 			const auto& distances = path.distances;
 
 			for (size_t i = 0; i < string.size(); ++i)

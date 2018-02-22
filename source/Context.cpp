@@ -185,7 +185,106 @@ namespace cgl
 		return result;
 	}
 
-	std::vector<Address> Context::expandReferences2(const Accessor & accessor)
+	std::vector<std::pair<Address, VariableRange>> Context::expandReferences(Address address, boost::optional<const PackedVal&> variableRange)
+	{
+		std::vector<std::pair<Address, VariableRange>> result;
+		if (auto sharedThis = m_weakThis.lock())
+		{
+			const auto addElementRec = [&](auto rec, Address address, boost::optional<const PackedVal&> currentVariableRange)->void
+			{
+				const Val value = sharedThis->expand(address);
+
+				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
+				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
+				{
+					VariableRange range;
+					if (currentVariableRange)
+					{
+						if (auto opt = AsOpt<PackedList>(currentVariableRange.value()))
+						{
+							const auto& rangeData = opt.value().data;
+							if (rangeData.size() == 2)
+							{
+								range.minimum = AsDouble(rangeData[0].value);
+								range.maximum = AsDouble(rangeData[1].value);
+							}
+							else CGL_Error("rangeは要素数が二つでなければなりません");
+						}
+						else CGL_Error("rangeの形が不正です");
+					}
+					result.emplace_back(address, range);
+				}
+				else if (IsType<List>(value))
+				{
+					if (currentVariableRange)
+					{
+						if (auto opt = AsOpt<PackedList>(currentVariableRange.value()))
+						{
+							const auto& rangeData = opt.value().data;
+							const auto& list = As<List>(value).data;
+
+							if (rangeData.size() != list.size())
+								CGL_Error("rangeと変数の形が対応していません");
+
+							for (size_t i = 0; i < list.size(); ++i)
+							{
+								rec(rec, list[i], rangeData[i].value);
+							}
+						}
+						else CGL_Error("rangeの形が不正です");
+					}
+					else
+					{
+						for (Address elemAddress : As<List>(value).data)
+						{
+							rec(rec, elemAddress, boost::none);
+						}
+					}
+				}
+				else if (IsType<Record>(value))
+				{
+					if (currentVariableRange)
+					{
+						if (auto opt = AsOpt<PackedRecord>(currentVariableRange.value()))
+						{
+							const auto& rangeData = opt.value().values;
+							const auto& record = As<Record>(value).values;
+
+							for (const auto& elem : record)
+							{
+								const auto rangeIt = rangeData.find(elem.first);
+								if (rangeIt == rangeData.end())
+									CGL_Error("rangeと変数の形が対応していません");
+								
+								rec(rec, elem.second, rangeIt->second.value);
+							}
+						}
+						else CGL_Error("rangeの形が不正です");
+					}
+					else
+					{
+						for (const auto& elem : As<Record>(value).values)
+						{
+							rec(rec, elem.second, boost::none);
+						}
+					}
+				}
+				//それ以外のデータは特に捕捉しない
+				//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
+			};
+
+			const auto addElement = [&](const Address address, boost::optional<const PackedVal&> currentVariableRange)
+			{
+				addElementRec(addElementRec, address, currentVariableRange);
+			};
+
+			addElement(address, variableRange);
+		}
+
+		return result;
+	}
+
+	/*std::vector<Address> Context::expandReferences2(const Accessor & accessor)
 	{
 		if (auto sharedThis = m_weakThis.lock())
 		{
@@ -325,6 +424,159 @@ namespace cgl
 			for (const Address address : readBuffer())
 			{
 				const auto expanded = expandReferences(address);
+				result.insert(result.end(), expanded.begin(), expanded.end());
+			}
+
+			return result;
+		}
+
+		CGL_Error("shared this does not exist.");
+		return {};
+	}*/
+
+	std::vector<std::pair<Address, VariableRange>> Context::expandReferences2(const Accessor & accessor, boost::optional<const PackedVal&> rangeOpt)
+	{
+		if (auto sharedThis = m_weakThis.lock())
+		{
+			Eval evaluator(sharedThis);
+
+			std::array<std::vector<Address>, 2> addressBuffer;
+			unsigned int currentWriteIndex = 0;
+			const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
+			const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
+
+			const auto writeBuffer = [&]()->std::vector<Address>& {return addressBuffer[currentWriteIndex]; };
+			const auto readBuffer = [&]()->std::vector<Address>& {return addressBuffer[nextIndex()]; };
+
+			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
+			if (headValue.isLValue())
+			{
+				writeBuffer().push_back(headValue.address(*this));
+			}
+			else
+			{
+				Val evaluated = headValue.evaluated();
+				if (auto opt = AsOpt<Record>(evaluated))
+				{
+					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+				}
+				else if (auto opt = AsOpt<List>(evaluated))
+				{
+					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+				}
+				else if (auto opt = AsOpt<FuncVal>(evaluated))
+				{
+					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+				}
+				else
+				{
+					CGL_Error("アクセッサのヘッドの評価結果が不正");
+				}
+			}
+
+			for (const auto& access : accessor.accesses)
+			{
+				flipIndex();
+
+				writeBuffer().clear();
+
+				for (int i = 0; i < readBuffer().size(); ++i)
+				{
+					const Address address = readBuffer()[i];
+
+					boost::optional<const Val&> objOpt = expandOpt(address);
+					if (!objOpt)
+					{
+						CGL_Error("参照エラー");
+					}
+
+					const Val& objRef = objOpt.value();
+
+					if (auto listAccessOpt = AsOpt<ListAccess>(access))
+					{
+						if (!IsType<List>(objRef))
+						{
+							CGL_Error("オブジェクトがリストでない");
+						}
+
+						const List& list = As<const List&>(objRef);
+
+						if (listAccessOpt.value().isArbitrary)
+						{
+							const auto& allIndices = list.data;
+
+							writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
+						}
+						else
+						{
+							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+
+							if (auto indexOpt = AsOpt<int>(value))
+							{
+								writeBuffer().push_back(list.get(indexOpt.value()));
+							}
+							else
+							{
+								CGL_Error("list[index] の index が int 型でない");
+							}
+						}
+					}
+					else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+					{
+						if (!IsType<Record>(objRef))
+						{
+							CGL_Error("オブジェクトがレコードでない");
+						}
+
+						const Record& record = As<const Record&>(objRef);
+						auto it = record.values.find(recordAccessOpt.value().name);
+						if (it == record.values.end())
+						{
+							CGL_Error("指定された識別子がレコード中に存在しない");
+						}
+
+						writeBuffer().push_back(it->second);
+					}
+					else
+					{
+						auto funcAccess = As<FunctionAccess>(access);
+
+						if (!IsType<FuncVal>(objRef))
+						{
+							CGL_Error("オブジェクトが関数でない");
+						}
+
+						const FuncVal& function = As<const FuncVal&>(objRef);
+
+						std::vector<Address> args;
+						for (const auto& expr : funcAccess.actualArguments)
+						{
+							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr));
+							if (currentArgument.isLValue())
+							{
+								args.push_back(currentArgument.address(*this));
+							}
+							else
+							{
+								args.push_back(makeTemporaryValue(currentArgument.evaluated()));
+							}
+						}
+
+						const Val returnedValue = expand(evaluator.callFunction(function, args));
+						writeBuffer().push_back(makeTemporaryValue(returnedValue));
+					}
+				}
+			}
+
+			flipIndex();
+
+			std::vector<std::pair<Address, VariableRange>> result;
+			for (const Address address : readBuffer())
+			{
+				//var での省略記法 list[*] を使った場合、readBuffer() には複数のアドレスが格納される
+				//ここで、var( list[*].pos in range ) と書いた場合はこの range と各アドレスをどう結び付けるかが自明でない
+				//とりあえず今の実装では全てのアドレスに対して同じ range を割り当てるようにしている
+				const auto expanded = expandReferences(address, rangeOpt);
 				result.insert(result.end(), expanded.begin(), expanded.end());
 			}
 
@@ -1033,9 +1285,9 @@ namespace cgl
 			update(node.address(context));
 		}
 
-		void operator()(const Identifier& node){}
+		void operator()(const Identifier& node) {}
 
-		void operator()(const SatReference& node){}
+		void operator()(const SatReference& node) {}
 
 		void operator()(const UnaryExpr& node)
 		{
@@ -1145,6 +1397,10 @@ namespace cgl
 			{
 				Expr expr = accessor;
 				boost::apply_visitor(*this, expr);
+			}
+			for (const auto& range : node.ranges)
+			{
+				boost::apply_visitor(*this, range);
 			}
 		}
 	};

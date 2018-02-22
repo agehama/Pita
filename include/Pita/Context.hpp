@@ -213,8 +213,10 @@ namespace cgl
 
 		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
 		std::vector<Address> expandReferences(Address address);
+		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange);
 
-		std::vector<Address> expandReferences2(const Accessor& access);
+		//std::vector<Address> expandReferences2(const Accessor& access);
+		std::vector<std::pair<Address, VariableRange>> expandReferences2(const Accessor& access, boost::optional<const PackedVal&> rangeOpt);
 
 		Reference bindReference(Address address);
 		Reference bindReference(const Identifier& identifier);

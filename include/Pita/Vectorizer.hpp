@@ -3,8 +3,6 @@
 #include <cfloat>
 #include <Eigen/Core>
 
-#include <geos/geom/CoordinateArraySequence.h>
-
 #include "Node.hpp"
 #include "Context.hpp"
 
@@ -14,6 +12,7 @@ namespace geos
 	{
 		class Geometry;
 		class Polygon;
+		class CoordinateArraySequence;
 	}
 	namespace operation
 	{

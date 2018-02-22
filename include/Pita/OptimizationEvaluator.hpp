@@ -15,7 +15,8 @@ namespace cgl
 
 		//free変数集合->freeに指定された変数全て
 		//std::vector<Address> freeVariables;
-		const std::vector<Address>& freeVariables;
+		//const std::vector<Address>& freeVariables;
+		const std::vector<std::pair<Address, VariableRange>>& freeVariables;
 
 		//free変数集合->freeに指定された変数が実際にsatに現れたかどうか
 		std::vector<char>& usedInSat;
@@ -41,7 +42,7 @@ namespace cgl
 		{}*/
 		SatVariableBinder(
 			std::shared_ptr<Context> pEnv, 
-			const std::vector<Address>& freeVariables, 
+			const std::vector<std::pair<Address, VariableRange>>& freeVariables,
 			std::vector<char>& usedInSat,
 			std::vector<Address>& refs,
 			std::unordered_map<Address, int>& invRefs,

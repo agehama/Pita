@@ -251,7 +251,11 @@ namespace cgl
 		for (const auto& accessor : node.accessors)
 		{
 			Expr expr = accessor;
-			result.add(boost::apply_visitor(*this, expr));
+			result.addAccessor(boost::apply_visitor(*this, expr));
+		}
+		for (const auto& range : node.ranges)
+		{
+			result.addRange(boost::apply_visitor(*this, range));
 		}
 		return result;
 	}
@@ -771,9 +775,14 @@ namespace cgl
 			const Expr closedAccessor = boost::apply_visitor(*this, expr);
 			if (!IsType<Accessor>(closedAccessor))
 			{
-				CGL_Error("aaa");
+				CGL_Error("不正な式です");
 			}
-			result.accessors.push_back(As<Accessor>(closedAccessor));
+			result.addAccessor(As<Accessor>(closedAccessor));
+		}
+		for (const auto& range : node.ranges)
+		{
+			const Expr closedRange = boost::apply_visitor(*this, range);
+			result.addRange(closedRange);
 		}
 		return result;
 	}
@@ -1378,7 +1387,7 @@ namespace cgl
 
 		//Record& record = pEnv->currentRecords.top();
 		Record& record = pEnv->currentRecords.back();
-			
+
 		int i = 0;
 
 		for (const auto& expr : recordConsractor.exprs)
@@ -1398,47 +1407,12 @@ namespace cgl
 
 				CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
 
-				//Assign(keyVal.name, keyVal.value, *pEnv);
-
-				//識別子はValからはずしたので、識別子に対して直接代入を行うことはできなくなった
-				//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
-
-				//したがって、一度代入式を作ってからそれを評価する
-				//Expr exprVal = RValue(keyVal.value);
 				Expr exprVal = LRValue(keyVal.value);
 				Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
 				boost::apply_visitor(*this, expr);
 
 				CGL_DebugLog("");
-				//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
 			}
-			/*
-			else if (auto declSatOpt = AsOpt<DeclSat>(value))
-			{
-				//record.problem.addConstraint(declSatOpt.value().expr);
-				//ここでクロージャを作る必要がある
-				ClosureMaker closureMaker(pEnv, {});
-				const Expr closedSatExpr = boost::apply_visitor(closureMaker, declSatOpt.value().expr);
-				record.problem.addConstraint(closedSatExpr);
-			}
-			*/
-			/*
-			else if (auto declFreeOpt = AsOpt<DeclFree>(value))
-			{
-				for (const auto& accessor : declFreeOpt.value().accessors)
-				{
-					ClosureMaker closureMaker(pEnv, {});
-					const Expr freeExpr = accessor;
-					const Expr closedFreeExpr = boost::apply_visitor(closureMaker, freeExpr);
-					if (!IsType<Accessor>(closedFreeExpr))
-					{
-						CGL_Error("ここは通らないはず");
-					}
-
-					record.freeVariables.push_back(As<Accessor>(closedFreeExpr));
-				}
-			}
-			*/
 
 			//valueは今は右辺値のみになっている
 			//TODO: もう一度考察する
@@ -1484,11 +1458,22 @@ namespace cgl
 			const auto& problemRefs = problem.refs;
 			const auto& freeVariables = record.freeVariables;
 
+			const auto& ranges = record.freeRanges;
+			std::vector<PackedVal> packedRanges;
+
+			bool hasRange = !ranges.empty();
+
+			for (const auto& rangeExpr : ranges)
+			{
+				packedRanges.push_back(Packed(pEnv->expand(boost::apply_visitor(*this, rangeExpr)), *pEnv));
+			}
+
 			{
 				//record.freeVariablesをもとにrecord.freeVariableRefsを構築
 				//全てのアクセッサを展開し、各変数の参照リストを作成する
 				freeVariableRefs.clear();
-				for (const auto& accessor : record.freeVariables)
+				//for (const auto& accessor : record.freeVariables)
+				for (size_t i = 0; i < record.freeVariables.size(); ++i)
 				{
 					/*
 					const Address refAddress = pEnv->evalReference(accessor);
@@ -1503,8 +1488,10 @@ namespace cgl
 						CGL_Error("accessor refers null address");
 					}
 					*/
+					const auto& accessor = record.freeVariables[i];
+					boost::optional<const PackedVal&> range = hasRange ? boost::optional<const PackedVal&>(packedRanges[i]) : boost::none;
+					const auto addresses = pEnv->expandReferences2(accessor, range);
 
-					const auto addresses = pEnv->expandReferences2(accessor);
 					freeVariableRefs.insert(freeVariableRefs.end(), addresses.begin(), addresses.end());
 				}
 
@@ -1541,7 +1528,7 @@ namespace cgl
 
 			if (!record.freeVariableRefs.empty())
 			{
-				//DeclFreeに出現する参照について、そのインデックス -> Problemのデータのインデックスを取得するマップ
+				//varのアドレス(の内実際にsatに現れるもののリスト)から、OptimizationProblemSat中の変数リストへの対応付けを行うマップを作成
 				std::unordered_map<int, int> variable2Data;
 				for (size_t freeIndex = 0; freeIndex < record.freeVariableRefs.size(); ++freeIndex)
 				{
@@ -1557,7 +1544,7 @@ namespace cgl
 
 						const auto& ref2 = problemRefs[dataIndex];
 
-						if (ref1 == ref2)
+						if (ref1.first == ref2)
 						{
 							//std::cout << "    " << freeIndex << " -> " << dataIndex << std::endl;
 
@@ -1687,7 +1674,9 @@ namespace cgl
 		CGL_DebugLog("");
 		for (size_t i = 0; i < resultxs.size(); ++i)
 		{
-			Address address = record.freeVariableRefs[i];
+			Address address = record.freeVariableRefs[i].first;
+			const auto range = record.freeVariableRefs[i].second;
+			std::cout << "Address(" << address.toString() << "): [" << range.minimum << ", " << range.maximum << "]\n";
 			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
 			//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
 		}
@@ -1995,6 +1984,13 @@ namespace cgl
 			}*/
 
 			//currentRecords.top().get().freeVariables.push_back(result.address());
+		}
+
+		for (const auto& range : node.ranges)
+		{
+			ClosureMaker closureMaker(pEnv, {});
+			const Expr closedRangeExpr = boost::apply_visitor(closureMaker, range);
+			pEnv->currentRecords.back().get().freeRanges.push_back(closedRangeExpr);
 		}
 
 		return RValue(0);

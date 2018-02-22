@@ -35,6 +35,6 @@ route = shape{
     arrow: path{
         points: 10
         passes: [rect.top(), moved(rect.right(), 50, 0), rect.bottom()]
-        circumvents: [buffer(rect, 10)]
+        obstacles: [buffer(rect, 10)]
     }
 }

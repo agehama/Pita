@@ -3,6 +3,8 @@
 #include <cfloat>
 #include <Eigen/Core>
 
+#include <geos/geom/CoordinateArraySequence.h>
+
 #include "Node.hpp"
 #include "Context.hpp"
 
@@ -22,9 +24,21 @@ namespace geos
 
 namespace cgl
 {
+	namespace gg = geos::geom;
+	namespace gob = geos::operation::buffer;
+	namespace god = geos::operation::distance;
+
 	bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment);
 
 	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
+
+	struct Path
+	{
+		std::unique_ptr<gg::CoordinateArraySequence> cs;
+		std::vector<double> distances;
+	};
+
+	Path ReadPathPacked(const PackedRecord& record);
 
 	struct Transform
 	{
@@ -155,10 +169,6 @@ namespace cgl
 
 	using PolygonsStream = std::multimap<double, std::string>;
 	
-	namespace gg = geos::geom;
-	namespace gob = geos::operation::buffer;
-	namespace god = geos::operation::distance;
-
 	std::string GetGeometryType(gg::Geometry* geometry);
 
 	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior);
@@ -172,6 +182,8 @@ namespace cgl
 	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 
 	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Context> pEnv);
+
+	PackedList GetPackedShapesFromGeos(const std::vector<gg::Geometry*>& polygons);
 
 	void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon);
 

@@ -51,6 +51,45 @@ namespace cgl
 		return std::tuple<double, double>(AsDouble(itX->second.value), AsDouble(itY->second.value));
 	}
 
+	Path ReadPathPacked(const PackedRecord& pathRecord)
+	{
+		Path resultPath;
+
+		resultPath.cs = std::make_unique<gg::CoordinateArraySequence>();
+		auto& cs = resultPath.cs;
+		auto& distances = resultPath.distances;
+
+		auto itLine = pathRecord.values.find("line");
+		if (itLine == pathRecord.values.end())
+			CGL_Error("不正な式です");
+
+		const PackedVal lineVal = itLine->second.value;
+		if (auto pointListOpt = AsOpt<PackedList>(lineVal))
+		{
+			for (const auto pointVal : pointListOpt.value().data)
+			{
+				if (auto posRecordOpt = AsOpt<PackedRecord>(pointVal.value))
+				{
+					const auto v = ReadVec2Packed(posRecordOpt.value());
+					const double x = std::get<0>(v);
+					const double y = std::get<1>(v);
+					cs->add(gg::Coordinate(x, y));
+				}
+				else CGL_Error("不正な式です");
+			}
+
+			distances.push_back(0);
+			for (int i = 1; i < cs->size(); ++i)
+			{
+				const double newDistance = cs->getAt(i - 1).distance(cs->getAt(i));
+				distances.push_back(distances.back() + newDistance);
+			}
+		}
+		else CGL_Error("不正な式です");
+
+		return std::move(resultPath);
+	}
+
 	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record, std::shared_ptr<Context> environment)
 	{
 		const auto& values = record.values;
@@ -828,6 +867,49 @@ namespace cgl
 		return result;
 	}
 
+	PackedRecord GetPolygonPacked(const gg::Polygon* poly)
+	{
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			list.add(MakeRecord("x", x, "y", y));
+		};
+
+		PackedRecord result;
+		{
+			PackedList polygonList;
+			const gg::LineString* outer = poly->getExteriorRing();
+
+			for (int i = 1; i < static_cast<int>(outer->getNumPoints()); ++i)//始点と終点は同じ座標なので最後だけ飛ばす
+			{
+				const gg::Coordinate& p = outer->getCoordinateN(i);
+				appendCoord(polygonList, p.x, p.y);
+			}
+
+			result.add("polygon", polygonList);
+		}
+
+		{
+			PackedList holeList;
+			for (size_t i = 0; i < poly->getNumInteriorRing(); ++i)
+			{
+				PackedList holeVertexList;
+				const gg::LineString* hole = poly->getInteriorRingN(i);
+
+				for (int n = static_cast<int>(hole->getNumPoints()) - 1; 0 < n; --n)
+				{
+					gg::Point* pp = hole->getPointN(n);
+					appendCoord(holeVertexList, pp->getX(), pp->getY());
+				}
+
+				holeList.add(holeVertexList);
+			}
+
+			result.add("holes", holeList);
+		}
+
+		return result;
+	}
+
 	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Context> pEnv)
 	{
 		List resultShapes;
@@ -849,6 +931,44 @@ namespace cgl
 			{
 				const Record record = GetPolygon(dynamic_cast<const gg::Polygon*>(shape), pEnv);
 				resultShapes.append(pEnv->makeTemporaryValue(record));
+				break;
+			}
+			case geos::geom::GEOS_MULTIPOINT:
+				break;
+			case geos::geom::GEOS_MULTILINESTRING:
+				break;
+			case geos::geom::GEOS_MULTIPOLYGON:
+				break;
+			case geos::geom::GEOS_GEOMETRYCOLLECTION:
+				break;
+			default:
+				break;
+			}
+		}
+
+		return resultShapes;
+	}
+
+	PackedList GetPackedShapesFromGeos(const std::vector<gg::Geometry*>& polygons)
+	{
+		PackedList resultShapes;
+
+		for (size_t i = 0; i < polygons.size(); ++i)
+		{
+			const gg::Geometry* shape = polygons[i];
+
+			gg::GeometryTypeId id;
+			switch (shape->getGeometryTypeId())
+			{
+			case geos::geom::GEOS_POINT:
+				break;
+			case geos::geom::GEOS_LINESTRING:
+				break;
+			case geos::geom::GEOS_LINEARRING:
+				break;
+			case geos::geom::GEOS_POLYGON:
+			{
+				resultShapes.add(GetPolygonPacked(dynamic_cast<const gg::Polygon*>(shape)));
 				break;
 			}
 			case geos::geom::GEOS_MULTIPOINT:

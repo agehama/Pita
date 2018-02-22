@@ -763,10 +763,35 @@ namespace cgl
 
 		const int lambda = 100;
 
-		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
+		//*
+		std::vector<double> lbounds(x0.size()), ubounds(x0.size());
+		for (size_t i = 0; i < num; ++i)
+		{
+			lbounds[i] = -3.1415926535*0.5;
+			ubounds[i] = 3.1415926535*0.5;
+		}
+		lbounds.back() = 0.0;
+		ubounds.back() = 100.0;
+
+		libcmaes::GenoPheno<libcmaes::pwqBoundStrategy, libcmaes::linScalingStrategy> gp(lbounds.data(), ubounds.data(), x0.size());
+		libcmaes::CMAParameters<libcmaes::GenoPheno<libcmaes::pwqBoundStrategy, libcmaes::linScalingStrategy>> cmaparams(x0.size(), x0.data(), sigma, -1, 0, gp);
+		//cmaparams.set_algo(aCMAES);
+		cmaparams.set_algo(IPOP_CMAES);
+		libcmaes::CMASolutions cmasols = libcmaes::cmaes<libcmaes::GenoPheno<libcmaes::pwqBoundStrategy, libcmaes::linScalingStrategy>>(func, cmaparams);
+		Eigen::VectorXd bestparameters = gp.pheno(cmasols.get_best_seen_candidate().get_x_dvec());
+		auto resultxs = x0;
+		for (size_t i = 0; i < resultxs.size(); ++i)
+		{
+			resultxs[i] = bestparameters[i];
+		}
+		//*/
+
+		/*
+		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 0);
 		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 		auto resultxs = cmasols.best_candidate().get_x();
-
+		//*/
+		
 		{
 			const double rodLength = resultxs.back();
 

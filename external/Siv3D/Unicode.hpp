@@ -17,12 +17,12 @@ namespace cgl
 {
 	namespace Unicode
 	{
-		[[nodiscard]] inline constexpr bool IsHighSurrogate(const char16_t ch) noexcept
+		inline constexpr bool IsHighSurrogate(const char16_t ch) noexcept
 		{
 			return (0xD800 <= ch) && (ch <= 0xDBFF);
 		}
 
-		[[nodiscard]] inline constexpr bool IsLowSurrogate(const char16_t ch) noexcept
+		inline constexpr bool IsLowSurrogate(const char16_t ch) noexcept
 		{
 			return (0xDC00 <= ch) && (ch <= 0xDFFF);
 		}
@@ -36,7 +36,7 @@ namespace cgl
 		/// <returns>
 		/// 変換された文字列
 		/// </returns>
-		[[nodiscard]] std::u16string UTF8ToUTF16(const std::string& str);
+		std::u16string UTF8ToUTF16(const std::string& str);
 
 		/// <summary>
 		/// UTF-8 文字列を UTF-32 文字列に変換します。
@@ -47,7 +47,7 @@ namespace cgl
 		/// <returns>
 		/// 変換された文字列
 		/// </returns>
-		[[nodiscard]] std::u32string UTF8ToUTF32(const std::string& str);
+		std::u32string UTF8ToUTF32(const std::string& str);
 
 		/// <summary>
 		/// UTF-16 文字列を UTF-8 文字列に変換します。
@@ -58,7 +58,7 @@ namespace cgl
 		/// <returns>
 		/// 変換された文字列
 		/// </returns>
-		[[nodiscard]] std::string UTF16ToUTF8(const std::u16string& str);
+		std::string UTF16ToUTF8(const std::u16string& str);
 
 		/// <summary>
 		/// UTF-16 文字列を UTF-32 文字列に変換します。
@@ -69,7 +69,7 @@ namespace cgl
 		/// <returns>
 		/// 変換された文字列
 		/// </returns>
-		[[nodiscard]] std::u32string UTF16ToUTF32(const std::u16string& str);
+		std::u32string UTF16ToUTF32(const std::u16string& str);
 
 		/// <summary>
 		/// UTF-32 文字列を UTF-8 文字列に変換します。
@@ -80,7 +80,7 @@ namespace cgl
 		/// <returns>
 		/// 変換された文字列
 		/// </returns>
-		[[nodiscard]] std::string UTF32ToUTF8(const std::u32string& str);
+		std::string UTF32ToUTF8(const std::u32string& str);
 
 		/// <summary>
 		/// UTF-32 文字列を UTF-16 文字列に変換します。
@@ -91,11 +91,11 @@ namespace cgl
 		/// <returns>
 		/// 変換された文字列
 		/// </returns>
-		[[nodiscard]] std::u16string UTF32ToUTF16(const std::u32string& str);
+		std::u16string UTF32ToUTF16(const std::u32string& str);
 
-		[[nodiscard]] size_t CountCodePoints(const std::string& str) noexcept;
+		size_t CountCodePoints(const std::string& str) noexcept;
 
-		[[nodiscard]] size_t CountCodePoints(const std::u16string& str) noexcept;
+		size_t CountCodePoints(const std::u16string& str) noexcept;
 
 		struct Translator_UTF8toUTF32
 		{
@@ -109,9 +109,9 @@ namespace cgl
 
 		public:
 
-			[[nodiscard]] bool put(char code) noexcept;
+			bool put(char code) noexcept;
 
-			[[nodiscard]] char32_t get() const noexcept
+			char32_t get() const noexcept
 			{
 				return m_result;
 			}
@@ -129,9 +129,9 @@ namespace cgl
 
 		public:
 
-			[[nodiscard]] bool put(char16_t code) noexcept;
+			bool put(char16_t code) noexcept;
 
-			[[nodiscard]] char32_t get() const noexcept
+			char32_t get() const noexcept
 			{
 				return m_result;
 			}
@@ -145,14 +145,14 @@ namespace cgl
 
 		public:
 
-			[[nodiscard]] size_t put(char32_t code) noexcept;
+			size_t put(char32_t code) noexcept;
 
-			[[nodiscard]] const std::array<char, 4>& get() const noexcept
+			const std::array<char, 4>& get() const noexcept
 			{
 				return m_buffer;
 			}
 
-			[[nodiscard]] std::array<char, 4>::const_iterator begin() const noexcept
+			std::array<char, 4>::const_iterator begin() const noexcept
 			{
 				return m_buffer.begin();
 			}
@@ -166,14 +166,14 @@ namespace cgl
 
 		public:
 
-			[[nodiscard]] size_t put(char32_t code) noexcept;
+			size_t put(char32_t code) noexcept;
 
-			[[nodiscard]] const std::array<char16_t, 2>& get() const noexcept
+			const std::array<char16_t, 2>& get() const noexcept
 			{
 				return m_buffer;
 			}
 
-			[[nodiscard]] std::array<char16_t, 2>::const_iterator begin() const noexcept
+			std::array<char16_t, 2>::const_iterator begin() const noexcept
 			{
 				return m_buffer.begin();
 			}
@@ -198,7 +198,7 @@ namespace cgl
 {
 	namespace detail
 	{
-		[[nodiscard]] inline size_t UTF8Length(const char32_t codePoint) noexcept
+		inline size_t UTF8Length(const char32_t codePoint) noexcept
 		{
 			if (codePoint < 0x80)
 			{
@@ -222,7 +222,7 @@ namespace cgl
 			}
 		}
 
-		[[nodiscard]] inline size_t UTF8Length(const std::u32string& str) noexcept
+		inline size_t UTF8Length(const std::u32string& str) noexcept
 		{
 			size_t length = 0;
 
@@ -237,7 +237,7 @@ namespace cgl
 			return length;
 		}
 
-		[[nodiscard]] static size_t UTF8Length(const std::u16string& str) noexcept
+		static size_t UTF8Length(const std::u16string& str) noexcept
 		{
 			size_t length = 0;
 
@@ -288,7 +288,7 @@ namespace cgl
 			}
 		}
 
-		[[nodiscard]] inline size_t UTF16Length(const char32_t codePoint) noexcept
+		inline size_t UTF16Length(const char32_t codePoint) noexcept
 		{
 			if (codePoint < 0x10000)
 			{
@@ -304,7 +304,7 @@ namespace cgl
 			}
 		}
 
-		[[nodiscard]] inline size_t UTF16Length(const std::u32string& str) noexcept
+		inline size_t UTF16Length(const std::u32string& str) noexcept
 		{
 			size_t length = 0;
 
@@ -319,7 +319,7 @@ namespace cgl
 			return length;
 		}
 
-		[[nodiscard]] inline size_t UTF16Length(const std::string& str) noexcept
+		inline size_t UTF16Length(const std::string& str) noexcept
 		{
 			size_t length = 0;
 
@@ -355,7 +355,7 @@ namespace cgl
 			}
 		}
 
-		[[nodiscard]] static size_t UTF32Length(const std::string& str) noexcept
+		static size_t UTF32Length(const std::string& str) noexcept
 		{
 			size_t length = 0;
 
@@ -376,7 +376,7 @@ namespace cgl
 			return length;
 		}
 
-		[[nodiscard]] static size_t UTF32Length(const std::u16string& str)
+		static size_t UTF32Length(const std::u16string& str)
 		{
 			size_t length = 0;
 

@@ -537,9 +537,9 @@ namespace cgl
 		LRValue(Address value) :value(value) {}
 		LRValue(Reference value) :value(value) {}
 
-		static LRValue Bool(bool a) { return LRValue(a); }
-		static LRValue Int(int a) { return LRValue(a); }
-		static LRValue Double(double a) { return LRValue(a); }
+		static LRValue Bool(bool a) { return LRValue(Val(a)); }
+		static LRValue Int(int a) { return LRValue(Val(a)); }
+		static LRValue Double(double a) { return LRValue(Val(a)); }
 		//static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
 		static LRValue Float(const std::u32string& str);
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }

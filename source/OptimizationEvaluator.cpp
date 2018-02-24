@@ -395,7 +395,7 @@ namespace cgl
 						CGL_Error("オブジェクトがリストでない");
 					}
 
-					const List& list = As<const List&>(objRef);
+					const List& list = As<List>(objRef);
 
 					Val indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
 					if (auto indexOpt = AsOpt<int>(indexValue))
@@ -420,7 +420,7 @@ namespace cgl
 						CGL_Error("オブジェクトがレコードでない");
 					}
 					
-					const Record& record = As<const Record&>(objRef);
+					const Record& record = As<Record>(objRef);
 					auto it = record.values.find(recordAccess.name);
 					if (it == record.values.end())
 					{
@@ -453,7 +453,7 @@ namespace cgl
 					{
 						CGL_Error("オブジェクトが関数でない");
 					}
-					const FuncVal& function = As<const FuncVal&>(objRef);
+					const FuncVal& function = As<FuncVal>(objRef);
 
 					//Case4,6への対応
 					/*
@@ -586,6 +586,7 @@ namespace cgl
 
 			case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
 			case BinaryOp::Concat: return Concat(lhs, rhs, *pEnv);
+                        default:;
 			}
 		}
 		else if (auto valOpt = AsOpt<LRValue>(node.lhs))
@@ -911,7 +912,7 @@ namespace cgl
 					CGL_Error("オブジェクトがリストでない");
 				}
 
-				const List& list = As<const List&>(objRef);
+				const List& list = As<List>(objRef);
 
 				const auto clampAddress = [&](int index)->int {return std::max(0, std::min(index, static_cast<int>(list.data.size()) - 1)); };
 
@@ -936,7 +937,7 @@ namespace cgl
 					CGL_Error("オブジェクトがレコードでない");
 				}
 
-				const Record& record = As<const Record&>(objRef);
+				const Record& record = As<Record>(objRef);
 				auto it = record.values.find(recordAccessOpt.value().name);
 				if (it == record.values.end())
 				{
@@ -955,7 +956,7 @@ namespace cgl
 					CGL_Error("オブジェクトが関数でない");
 				}
 
-				const FuncVal& function = As<const FuncVal&>(objRef);
+				const FuncVal& function = As<FuncVal>(objRef);
 
 				/*std::vector<Val> args;
 				for (const auto& expr : funcAccess.actualArguments)

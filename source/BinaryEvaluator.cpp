@@ -1,4 +1,3 @@
-#pragma once
 #include <cmath>
 #include <Pita/Node.hpp>
 #include <Pita/BinaryEvaluator.hpp>

@@ -499,7 +499,7 @@ namespace cgl
 							CGL_Error("オブジェクトがリストでない");
 						}
 
-						const List& list = As<const List&>(objRef);
+						const List& list = As<List>(objRef);
 
 						if (listAccessOpt.value().isArbitrary)
 						{
@@ -528,7 +528,7 @@ namespace cgl
 							CGL_Error("オブジェクトがレコードでない");
 						}
 
-						const Record& record = As<const Record&>(objRef);
+						const Record& record = As<Record>(objRef);
 						auto it = record.values.find(recordAccessOpt.value().name);
 						if (it == record.values.end())
 						{
@@ -546,7 +546,7 @@ namespace cgl
 							CGL_Error("オブジェクトが関数でない");
 						}
 
-						const FuncVal& function = As<const FuncVal&>(objRef);
+						const FuncVal& function = As<FuncVal>(objRef);
 
 						std::vector<Address> args;
 						for (const auto& expr : funcAccess.actualArguments)
@@ -656,7 +656,7 @@ namespace cgl
 						CGL_Error("オブジェクトがリストでない");
 					}
 
-					const List& list = As<const List&>(objRef);
+					const List& list = As<List>(objRef);
 					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
 					if (auto indexOpt = AsOpt<int>(value))
 					{
@@ -675,7 +675,7 @@ namespace cgl
 						CGL_Error("オブジェクトがレコードでない");
 					}
 
-					const Record& record = As<const Record&>(objRef);
+					const Record& record = As<Record>(objRef);
 					auto it = record.values.find(recordAccessOpt.value().name);
 					if (it == record.values.end())
 					{
@@ -869,7 +869,7 @@ namespace cgl
 						CGL_Error("オブジェクトがリストでない");
 					}
 
-					List& list = As<List&>(objRef);
+					List& list = As<List>(objRef);
 					if (auto indexOpt = AsOpt<int>(indexValue))
 					{
 						const int index = indexOpt.value();
@@ -897,7 +897,7 @@ namespace cgl
 						CGL_Error("オブジェクトがレコードでない");
 					}
 
-					Record& record = As<Record&>(objRef);
+					Record& record = As<Record>(objRef);
 					auto it = record.values.find(recordAccessOpt.value().name);
 					if (it == record.values.end())
 					{
@@ -1215,7 +1215,7 @@ namespace cgl
 
 						const int index = As<int>(tail[i].first);
 
-						const List& list = As<List&>(objRef);
+						const List& list = As<List>(objRef);
 						address = list.data[index];
 
 						tail[i].second = address;
@@ -1229,7 +1229,7 @@ namespace cgl
 
 						const std::string name = As<std::string>(tail[i].first);
 						
-						const Record& record = As<const Record&>(objRef);
+						const Record& record = As<Record>(objRef);
 						address = record.values.at(name);
 
 						tail[i].second = address;

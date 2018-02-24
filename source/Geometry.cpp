@@ -648,7 +648,7 @@ namespace cgl
 
 			const int halfindex = N / 2;
 
-			const double rodLength = abs(x[N - 1]) + 1.0;
+			const double rodLength = std::abs(x[N - 1]) + 1.0;
 
 			gg::CoordinateArraySequence cs2;
 			cs2.add(beginPos);

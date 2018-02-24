@@ -267,7 +267,7 @@ namespace cgl
 
 		bool callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar>& state, const TVector& x) override;
 
-		double value(const TVector &x)
+		double value(const TVector &x) override
 		{
 			return evaluator(x);
 		}

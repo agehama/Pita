@@ -2101,7 +2101,7 @@ namespace cgl
 					CGL_Error("オブジェクトがリストでない");
 				}
 
-				List& list = As<List&>(objRef);
+				List& list = As<List>(objRef);
 
 				if (auto indexOpt = AsOpt<int>(value))
 				{
@@ -2138,7 +2138,7 @@ namespace cgl
 					CGL_Error("オブジェクトがレコードでない");
 				}
 
-				const Record& record = As<const Record&>(objRef);
+				const Record& record = As<Record>(objRef);
 				auto it = record.values.find(recordAccessOpt.value().name);
 				if (it == record.values.end())
 				{
@@ -2156,7 +2156,7 @@ namespace cgl
 					CGL_Error("オブジェクトが関数でない");
 				}
 
-				const FuncVal& function = As<const FuncVal&>(objRef);
+				const FuncVal& function = As<FuncVal>(objRef);
 
 				/*
 				std::vector<Val> args;
@@ -2551,7 +2551,7 @@ namespace cgl
 						CGL_Error("オブジェクトがリストでない");
 					}
 
-					const List& list = As<const List&>(objRef);
+					const List& list = As<List>(objRef);
 
 					if (auto indexOpt = AsOpt<int>(value))
 					{
@@ -2578,7 +2578,7 @@ namespace cgl
 						CGL_Error("オブジェクトがレコードでない");
 					}
 
-					const Record& record = As<const Record&>(objRef);
+					const Record& record = As<Record>(objRef);
 					auto it = record.values.find(recordAccess.name);
 					if (it == record.values.end())
 					{
@@ -2621,7 +2621,7 @@ namespace cgl
 						CGL_Error("オブジェクトが関数でない");
 					}
 
-					const FuncVal& function = As<const FuncVal&>(objRef);
+					const FuncVal& function = As<FuncVal>(objRef);
 
 					/*
 					std::vector<Val> args;
@@ -2748,7 +2748,7 @@ namespace cgl
 			{
 				std::cerr << "Warning: Comparison of floating point numbers might be incorrect." << std::endl;
 				const double eps = 0.001;
-				const bool result = abs(d1 - d2) < eps;
+				const bool result = std::abs(d1 - d2) < eps;
 				std::cerr << std::setprecision(17);
 				std::cerr << "    " << d1 << " == " << d2 << " => " << (result ? "Maybe true" : "Maybe false") << std::endl;
 				std::cerr << std::setprecision(6);

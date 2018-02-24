@@ -583,7 +583,7 @@ namespace cgl
 
 		Val& mutableVal()
 		{
-			return As<RValue&>(value).value;
+			return As<RValue>(value).value;
 		}
 
 		bool operator==(const LRValue& other)const

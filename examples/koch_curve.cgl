@@ -1,0 +1,78 @@
+vec2 = (x, y -> {x: x, y: y})
+x2 = (v -> {x: v, y: v})
+
+div3 = (p, q -> {x: (q.x - p.x) / 3.0, y: (q.y - p.y) / 3.0})
+
+add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
+sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
+
+mul = (v, a -> {x: v.x * a, y: v.y * a})
+div = (v, a -> {x: v.x / a, y: v.y / a})
+
+contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
+
+sqrt = (x -> x^0.5)
+
+length = (v -> sqrt(v.x*v.x + v.y*v.y))
+setLength = (v, l -> mul(div(v, length(v)), l))
+
+shape = {
+    pos: vec2(0, 0)
+    scale: vec2(1, 1)
+    angle: 0
+}
+
+square = shape{
+    polygon: [
+        {x: -0.5, y: -0.5}
+        {x: +0.5, y: -0.5}
+        {x: +0.5, y: +0.5}
+        {x: -0.5, y: +0.5}
+    ]
+}
+
+triangle = shape{
+    polygon: [
+        {x: 0, y: -0.5773502691896}
+        {x: 0.5, y: 0.2886751345948}
+        {x: -0.5, y: 0.2886751345948}
+    ]
+}
+
+koch_template = (p, q ->
+    v = sub(p, q)
+    n = {x: -v.y, y: v.x}
+    vby3 = div3(p, q)
+    m = div(add(p, q), 2.0)
+    nby3 = setLength(n, 0.5*sqrt(3.0)*length(vby3))
+    m1 = add(p, vby3)
+    m2 = add(m1, vby3)
+    ps = [p, m1, add(m, nby3), m2, q]
+    [[ps[0], ps[1]], [ps[1], ps[2]], [ps[2], ps[3]], [ps[3], ps[4]]]
+)
+
+rec_curve = (f, depth, template, ps -> 
+    mergin = 4
+    if depth == 0
+    then {
+        line: ps
+    }
+    else {
+        ss = template(ps[0], ps[1])
+        b: [
+            f(f, depth-1, template, ss[0])
+            f(f, depth-1, template, ss[1])
+            f(f, depth-1, template, ss[2])
+            f(f, depth-1, template, ss[3])
+        ]
+    }
+)
+
+tree = shape{
+    depth =  5
+    a: shape{
+    	c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:10}])
+	scale = x2(70)
+    }
+}
+

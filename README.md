@@ -4,6 +4,8 @@ Constraint geometry processing language.
 
 ### Requirements
 - Boost 1.57
+- CMake 3.1
+- C++ compiler that supports C++14
 
 ### Build
 
@@ -15,8 +17,7 @@ Constraint geometry processing language.
 
 ### Run examples
 
-    ./pita ../Pita/examples/3rects.cgl
-    #output result.svg
+    ./pita ../Pita/examples/3rects.cgl -o 3rects.svg
 
 ### Run test
 

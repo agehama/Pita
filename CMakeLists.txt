@@ -41,6 +41,7 @@ include_directories(external/geos/capi)
 include_directories(external/geos)
 include_directories(external/libcmaes/src)
 include_directories(external/Siv3D)
+include_directories(external/cxxopts/include)
 
 #message("${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib")
 

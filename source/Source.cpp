@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 
+#include <cxxopts.hpp>
 #include <Pita/Program.hpp>
 
 extern bool calculating;
@@ -637,26 +638,90 @@ main = shape{
 	return 0;
 }
 #else
+
 int main(int argc, char* argv[])
 {
-	if (argc != 2)
+	std::string input_file, output_file;
+
+	try
 	{
-		std::cout << "usage:\n";
-		std::cout << "./core source_file\n";
-		return 0;
+		cxxopts::Options options("pita", "Pita - Constraint geometry processing language");
+		options
+			.positional_help("[input_path]")
+			.show_positional_help();
+
+		options.add_options()
+			("i,input", "Input file path", cxxopts::value<std::string>())
+			("o,output", "Output file path (if unspecified, result is printed to standard output)", cxxopts::value<std::string>())
+			("d,debug", "Print debug log")
+			("help", "Print help")
+			("licence", "Print licence")
+			("seed", "Random seed (if unspecified, seed is generated non-deterministically)", cxxopts::value<int>(), "N")
+			("constraint-timeout", "Set timeout seconds of each constraint solving", cxxopts::value<int>(), "N")
+			;
+
+		options.parse_positional({ "input" });
+
+		auto result = options.parse(argc, argv);
+
+		if(result.count("help"))
+		{
+			std::cout << options.help() << std::endl;
+			return 0;
+		}
+
+		if (result.count("input"))
+		{
+			input_file = result["input"].as<std::string>();
+		}
+		else
+		{
+			std::cout << "Input file is not specified.\n" << std::endl;
+			std::cout << options.help() << std::endl;
+			return 0;
+		}
+
+		if (result.count("output"))
+		{
+			output_file = result["output"].as<std::string>();
+		}
+
+		if (result.count("licence"))
+		{
+			std::cout << "TODO: Print licence\n" << std::endl;
+		}
+
+		if (result.count("seed"))
+		{
+			//result["seed"].as<int>();
+			std::cout << "TODO: Set seed\n" << std::endl;
+		}
+
+		if (result.count("constraint-timeout"))
+		{
+			//result["constraint-timeout"].as<int>();
+			std::cout << "TODO: Set timeout\n" << std::endl;
+		}
+	}
+	catch (const cxxopts::OptionException& e)
+	{
+		std::cerr << "Error parsing options: " << e.what() << std::endl;
+		exit(1);
 	}
 
 	ofs.open("log.txt");
 
-	const std::string filename(argv[1]);
-	std::ifstream ifs(filename);
+	std::ifstream ifs(input_file);
+	if (!ifs.is_open())
+	{
+		std::cerr << "Error file_path \"" << input_file << "\" does not exists." << std::endl;
+		return 0;
+	}
 	std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-	std::cout << sourceCode << std::endl;
-	
+
 	calculating = true;
 	cgl::Program program;
-	//program.draw(sourceCode, false);
-	program.execute1(sourceCode);
+	program.execute1(sourceCode, output_file);
 
 	return 0;
 }

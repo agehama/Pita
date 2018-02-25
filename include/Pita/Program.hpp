@@ -21,7 +21,7 @@ namespace cgl
 
 		bool draw(const std::string& program, bool logOutput = true);
 
-		void execute1(const std::string& program, bool logOutput = true);
+		void execute1(const std::string& program, const std::string& output_filename, bool logOutput = true);
 		void run(const std::string& program, bool logOutput = true);
 
 		void clear();

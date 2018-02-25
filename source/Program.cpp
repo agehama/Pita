@@ -90,14 +90,14 @@ namespace cgl
 		return false;
 	}
 
-	void Program::execute1(const std::string& program, bool logOutput)
+	void Program::execute1(const std::string& program, const std::string& output_filename, bool logOutput)
 	{
 		clear();
 
 		if (logOutput)
 		{
-			std::cout << "parse..." << std::endl;
-			std::cout << program << std::endl;
+			std::cerr << "parse..." << std::endl;
+			std::cerr << program << std::endl;
 		}
 
 		if (auto exprOpt = parse(program))
@@ -106,23 +106,30 @@ namespace cgl
 			{
 				if (logOutput)
 				{
-					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.value(), pEnv, std::cout);
+					std::cerr << "parse succeeded" << std::endl;
+					printExpr(exprOpt.value(), pEnv, std::cerr);
 				}
 
-				if (logOutput) std::cout << "execute..." << std::endl;
+				if (logOutput) std::cerr << "execute..." << std::endl;
 				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
 				evaluated = pEnv->expand(lrvalue);
 				if (logOutput)
 				{
-					std::cout << "execute succeeded" << std::endl;
+					std::cerr << "execute succeeded" << std::endl;
 					//printVal(evaluated.value(), pEnv, std::cout, 0);
 
-					std::cout << "output SVG..." << std::endl;
-					std::ofstream file("result.svg");
-					OutputSVG(file, evaluated.value(), pEnv);
-					file.close();
-					std::cout << "completed" << std::endl;
+					std::cerr << "output SVG..." << std::endl;
+					if (output_filename.empty())
+					{
+						OutputSVG(std::cout, evaluated.value(), pEnv);
+					}
+					else
+					{
+						std::ofstream file(output_filename);
+						OutputSVG(file, evaluated.value(), pEnv);
+						file.close();
+					}
+					std::cerr << "completed" << std::endl;
 				}
 
 				succeeded = true;
@@ -130,7 +137,7 @@ namespace cgl
 			catch (const cgl::Exception& e)
 			{
 				//std::cerr << "Exception: " << e.what() << std::endl;
-				std::cout << "Exception: " << e.what() << std::endl;
+				std::cerr << "Exception: " << e.what() << std::endl;
 
 				succeeded = false;
 			}

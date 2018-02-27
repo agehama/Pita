@@ -313,6 +313,26 @@ namespace cgl
 		return true;
 	}
 
+	bool ReadColor(Color& output, const Record& record, std::shared_ptr<Context> pEnv, const Transform& transform)
+	{
+		double r = 0, g = 0, b = 0;
+
+		if (!(
+			ReadDouble(r, "r", record, pEnv) &&
+			ReadDouble(g, "g", record, pEnv) &&
+			ReadDouble(b, "b", record, pEnv)
+			))
+		{
+			return false;
+		}
+
+		output.r = r;
+		output.g = g;
+		output.b = b;
+
+		return true;
+	}
+
 	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, std::shared_ptr<Context> pEnv, const TransformPacked& transform)
 	{
 		output.clear();

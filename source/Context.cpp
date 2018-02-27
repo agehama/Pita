@@ -1024,7 +1024,7 @@ namespace cgl
 			"cmaes",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
-			return 0;
+			return Val(true);
 		},
 			true
 			);

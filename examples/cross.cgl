@@ -21,5 +21,6 @@ plus = shape{
 cross = shape{
     pos = {x:256, y:256}
     a: plus{angle = 45}
+    color: {r: 255, g: 0, b: 0}
 }
 

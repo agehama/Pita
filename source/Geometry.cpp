@@ -763,7 +763,7 @@ namespace cgl
 
 		const int lambda = 100;
 
-		//*
+		/*
 		std::vector<double> lbounds(x0.size()), ubounds(x0.size());
 		for (size_t i = 0; i < num; ++i)
 		{
@@ -786,7 +786,7 @@ namespace cgl
 		}
 		//*/
 
-		/*
+		//*
 		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 0);
 		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 		auto resultxs = cmasols.best_candidate().get_x();

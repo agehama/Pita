@@ -10,6 +10,17 @@
 
 namespace cgl
 {
+	struct Color
+	{
+		int r = 0, g = 0, b = 0;
+	};
+
+	class PitaGeometry
+	{
+		gg::Geometry* shape;
+		Color color;
+	};
+
 	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
 
 	std::vector<gg::Geometry*> GeosFromRecordImpl(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent = cgl::Transform());
@@ -655,6 +666,157 @@ namespace cgl
 		return{};
 	}
 
+#ifdef comment
+	std::vector<PitaGeometry> GeosFromRecordImplDrawable(const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& parent)
+	{
+		const cgl::Transform current(record, pEnv);
+
+		const cgl::Transform transform = parent * current;
+
+		std::vector<gg::Geometry*> currentPolygons;
+		std::vector<gg::Geometry*> currentHoles;
+
+		std::vector<gg::Geometry*> currentLines;
+
+		Color color;
+
+		for (const auto& member : record.values)
+		{
+			const cgl::Val value = pEnv->expand(member.second);
+
+			if (member.first == "polygon" && cgl::IsType<cgl::List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentPolygons.push_back(ToPolygon(polygon));
+				}
+			}
+			else if (member.first == "hole" && cgl::IsType<cgl::List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentHoles.push_back(ToPolygon(polygon));
+				}
+			}
+			else if (member.first == "polygons" && IsType<List>(value))
+			{
+				const List& polygons = As<List>(value);
+				for (const auto& polygonAddress : polygons.data)
+				{
+					const Val& polygonVertices = pEnv->expand(polygonAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
+					{
+						currentPolygons.push_back(ToPolygon(polygon));
+					}
+				}
+			}
+			else if (member.first == "holes" && IsType<List>(value))
+			{
+				const List& holes = As<List>(value);
+				for (const auto& holeAddress : holes.data)
+				{
+					const Val& hole = pEnv->expand(holeAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(hole), pEnv, transform) && !polygon.empty())
+					{
+						currentHoles.push_back(ToPolygon(polygon));
+					}
+				}
+			}
+			else if (member.first == "line" && IsType<List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentLines.push_back(ToLineString(polygon));
+				}
+			}
+			else if (member.first == "color" && IsType<Record>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentLines.push_back(ToLineString(polygon));
+				}
+			}
+			else if (cgl::IsType<cgl::Record>(value))
+			{
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordImpl(cgl::As<cgl::Record>(value), pEnv, transform));
+			}
+			else if (cgl::IsType<cgl::List>(value))
+			{
+				GeosPolygonsConcat(currentPolygons, GeosFromList(cgl::As<cgl::List>(value), pEnv, transform));
+			}
+		}
+
+		//gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
+		auto factory = gg::GeometryFactory::create();
+
+		if (currentPolygons.empty())
+		{
+			return currentLines;
+		}
+		else if (currentHoles.empty())
+		{
+			currentPolygons.insert(currentPolygons.end(), currentLines.begin(), currentLines.end());
+			return currentPolygons;
+		}
+		else
+		{
+			for (int s = 0; s < currentPolygons.size(); ++s)
+			{
+				//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
+				gg::Geometry* erodeGeometry = currentPolygons[s];
+
+				for (int d = 0; d < currentHoles.size(); ++d)
+				{
+					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+					//std::cout << __FUNCTION__ << " : " << __LINE__ << std::endl;
+
+					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
+					{
+					}
+					else if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					{
+						currentPolygons.erase(currentPolygons.begin() + s);
+
+						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+						for (int i = 0; i < polygons->getNumGeometries(); ++i)
+						{
+							currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
+						}
+
+						erodeGeometry = currentPolygons[s];
+					}
+					else
+					{
+						std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+					}
+				}
+				currentPolygons[s] = erodeGeometry;
+			}
+
+			currentPolygons.insert(currentPolygons.end(), currentLines.begin(), currentLines.end());
+			return currentPolygons;
+
+		}
+	}
+
+	std::vector<PitaGeometry> GeosFromListDrawable(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform)
+	{
+
+	}
+	std::vector<PitaGeometry> GeosFromRecordDrawable(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform)
+	{
+
+	}
+#endif
+
 	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform)
 	{
 		std::vector<gg::Geometry*> currentPolygons;
@@ -1062,6 +1224,7 @@ namespace cgl
 			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << width << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << width << R"(">)" << "\n";
 
 			PolygonsStream ps;
+			//std::vector<PitaGeometry> geometries = GeosFromRecord(value, pEnv);
 			std::vector<gg::Geometry*> geometries = GeosFromRecord(value, pEnv);
 			for (gg::Geometry* geometry : geometries)
 			{

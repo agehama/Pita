@@ -562,10 +562,22 @@ namespace cgl
 	{
 		//CGL_DebugLog("Val operator()(const BinaryExpr& node)");
 
-		const Val rhs = boost::apply_visitor(*this, node.rhs);
+		const double true_cost = 0.0;
+		const double false_cost = 10000.0;
+
+		Val rhs = boost::apply_visitor(*this, node.rhs);
 		if (node.op != BinaryOp::Assign)
 		{
-			const Val lhs = boost::apply_visitor(*this, node.lhs);
+			Val lhs = boost::apply_visitor(*this, node.lhs);
+
+			if (IsType<bool>(rhs))
+			{
+				rhs = As<bool>(rhs) ? true_cost : false_cost;
+			}
+			if (IsType<bool>(lhs))
+			{
+				lhs = As<bool>(lhs) ? true_cost : false_cost;
+			}
 
 			switch (node.op)
 			{
@@ -573,7 +585,7 @@ namespace cgl
 			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
 
 			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
-			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? 1.0 : 0.0;
+			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? true_cost : false_cost;
 			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
 			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
 			case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);

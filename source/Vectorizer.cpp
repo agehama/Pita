@@ -759,6 +759,7 @@ namespace cgl
 			else if (member.first == "color" && IsType<Record>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
+				//cgl::ReadColor(color,);
 				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
 				{
 					currentLines.push_back(ToLineString(polygon));

@@ -26,7 +26,7 @@ regularTriangle = shape{
 	polygon: [
 		{x: 0, y: 0}, {x: 10, y: 10}, {x: 0, y: 10}
 	]
-	sat( cmaes(), distant(polygon[0], polygon[1], 100) & distant(polygon[1], polygon[2], 100) & distant(polygon[2], polygon[0], 100) )
+	sat( cmaes(polygon[1]) & distant(polygon[0], polygon[1], 100) & distant(polygon[1], polygon[2], 100) & distant(polygon[2], polygon[0], 100) )
 	var(polygon[1], polygon[2])
 }
 

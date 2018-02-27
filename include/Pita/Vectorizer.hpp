@@ -184,7 +184,5 @@ namespace cgl
 
 	PackedList GetPackedShapesFromGeos(const std::vector<gg::Geometry*>& polygons);
 
-	void OutputPolygonsStream(PolygonsStream& ps, const gg::Polygon* polygon);
-
 	bool OutputSVG(std::ostream& os, const Val& value, std::shared_ptr<Context> pEnv);
 }

@@ -1021,6 +1021,15 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"cmaes",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			return 0;
+		},
+			true
+			);
+
+		registerBuiltInFunction(
 			"sin",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{

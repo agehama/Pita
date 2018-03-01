@@ -1133,6 +1133,26 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"enable_gc",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			if (auto opt = AsOpt<bool>(pEnv->expand(arguments[0])))
+			{
+				m_automaticGC = opt.value();
+			}
+
+			return 0;
+		},
+			false
+			);
+		;
+
+		registerBuiltInFunction(
 			"printContext",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
@@ -1466,11 +1486,25 @@ namespace cgl
 			{
 				update(keyval.second);
 			}
-			const auto& problem = node.problem;
+
+			if (node.constraint)
+			{
+				CheckExpr(node.constraint.value(), context, reachableAddressSet, newAddressSet);
+			}
+
+			for (const auto& problem : node.problems)
+			{
+				if (problem.expr)
+				{
+					CheckExpr(problem.expr.value(), context, reachableAddressSet, newAddressSet);
+				}
+			}
+
+			/*const auto& problem = node.problem;
 			if (problem.candidateExpr)
 			{
 				CheckExpr(problem.candidateExpr.value(), context, reachableAddressSet, newAddressSet);
-			}
+			}*/
 
 			/*
 			if (problem.expr)
@@ -1519,6 +1553,11 @@ namespace cgl
 
 	void Context::garbageCollect()
 	{
+		if (!m_automaticGC)
+		{
+			return;
+		}
+
 		std::unordered_set<Address> referenceableAddresses;
 
 		const auto isReachable = [&](const Address address)

@@ -335,9 +335,9 @@ namespace cgl
 			}
 		}
 
-		result.problem = problem;
+		result.problems = problems;
 		result.freeVariables = freeVariables;
-		result.freeVariableRefs = freeVariableRefs;
+		//result.freeVariableRefs = freeVariableRefs;
 		result.freeRanges = freeRanges;
 		result.type = type;
 		result.isSatisfied = isSatisfied;
@@ -360,9 +360,9 @@ namespace cgl
 			result.add(keyval.first, keyval.second, packedValue);
 		}
 
-		result.problem = problem;
+		result.problems = problems;
 		result.freeVariables = freeVariables;
-		result.freeVariableRefs = freeVariableRefs;
+		//result.freeVariableRefs = freeVariableRefs;
 		result.freeRanges = freeRanges;
 		result.type = type;
 		result.isSatisfied = isSatisfied;

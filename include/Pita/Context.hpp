@@ -483,6 +483,7 @@ namespace cgl
 		size_t m_lastGCValueSize = 0;
 
 		bool m_automaticExtendMode = true;
+		bool m_automaticGC = true;
 
 		std::uniform_real_distribution<double> m_dist;
 		std::mt19937 m_random;

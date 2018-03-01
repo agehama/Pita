@@ -408,7 +408,10 @@ namespace cgl
 
 		for (auto& problem : node.problems)
 		{
-			problem.expr = boost::apply_visitor(replacer, problem.expr);
+			if (problem.expr)
+			{
+				problem.expr = boost::apply_visitor(replacer, problem.expr.value());
+			}
 
 			for (size_t i = 0; i < problem.refs.size(); ++i)
 			{
@@ -1518,7 +1521,7 @@ namespace cgl
 			{
 				ConstraintAppearance appearingList;
 
-				std::vector<char> usedInSat;
+				std::vector<char> usedInSat(freeVariableAddresses.size(), 0);
 				std::vector<Address> refs;
 				std::unordered_map<Address, int> invRefs;
 				bool hasPlateausFunction = false;

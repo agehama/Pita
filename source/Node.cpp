@@ -55,25 +55,26 @@ namespace cgl
 		return expr;
 	}
 
-	void OptimizationProblemSat::addConstraint(const Expr& logicExpr)
+	void OptimizationProblemSat::addUnitConstraint(const Expr& logicExpr)
 	{
-		if (candidateExpr)
+		if (expr)
 		{
-			candidateExpr = BinaryExpr(candidateExpr.value(), logicExpr, BinaryOp::And);
+			expr = BinaryExpr(expr.value(), logicExpr, BinaryOp::And);
 		}
 		else
 		{
-			candidateExpr = logicExpr;
+			expr = logicExpr;
 		}
 	}
 
-	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables)
+	//void OptimizationProblemSat::constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables)
+	void OptimizationProblemSat::constructConstraint(std::shared_ptr<Context> pEnv)
 	{
 		refs.clear();
 		invRefs.clear();
 		hasPlateausFunction = false;
 
-		if (!candidateExpr || freeVariables.empty())
+		if (!expr || freeVariableRefs.empty())
 		{
 			return;
 		}
@@ -89,27 +90,29 @@ namespace cgl
 			CGL_DebugLog("");
 		}*/
 
+		std::unordered_set<Address> appearingList;
+
 		CGL_DebugLog("freeVariables:");
-		for (const auto& val : freeVariables)
+		for (const auto& val : freeVariableRefs)
 		{
 			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
 		}
 		
-		std::vector<char> usedInSat(freeVariables.size(), 0);
+		std::vector<char> usedInSat(freeVariableRefs.size(), 0);
 		//SatVariableBinder binder(pEnv, freeVariables);
-		SatVariableBinder binder(pEnv, freeVariables, usedInSat, refs, invRefs, hasPlateausFunction);
-		if (boost::apply_visitor(binder, candidateExpr.value()))
+		SatVariableBinder binder(pEnv, freeVariableRefs, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
+		if (boost::apply_visitor(binder, expr.value()))
 		{
 			//refs = binder.refs;
 			//invRefs = binder.invRefs;
 			//hasPlateausFunction = binder.hasPlateausFunction;
 
 			//satに出てこないfreeVariablesの削除
-			for (int i = static_cast<int>(freeVariables.size()) - 1; 0 <= i; --i)
+			for (int i = static_cast<int>(freeVariableRefs.size()) - 1; 0 <= i; --i)
 			{
 				if (usedInSat[i] == 0)
 				{
-					freeVariables.erase(freeVariables.begin() + i);
+					freeVariableRefs.erase(freeVariableRefs.begin() + i);
 				}
 			}
 		}
@@ -117,7 +120,7 @@ namespace cgl
 		{
 			refs.clear();
 			invRefs.clear();
-			freeVariables.clear();
+			freeVariableRefs.clear();
 			hasPlateausFunction = false;
 		}
 
@@ -158,7 +161,7 @@ namespace cgl
 
 	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv)
 	{
-		if (!candidateExpr)
+		if (!expr)
 		{
 			return 0.0;
 		}
@@ -196,7 +199,7 @@ namespace cgl
 		}*/
 		
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		const Val evaluated = boost::apply_visitor(evaluator, candidateExpr.value());
+		const Val evaluated = boost::apply_visitor(evaluator, expr.value());
 		
 		if (IsType<double>(evaluated))
 		{

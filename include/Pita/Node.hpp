@@ -637,7 +637,8 @@ namespace cgl
 
 	struct OptimizationProblemSat
 	{
-		boost::optional<Expr> candidateExpr;
+		//boost::optional<Expr> candidateExpr;
+		boost::optional<Expr> expr;
 
 		//制約式に含まれる全ての参照にIDを振る(=参照ID)
 		//参照IDはdouble型の値に紐付けられる
@@ -647,10 +648,14 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
+		//freeVariablesから辿れる全てのアドレス
+		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//変数ID->Address
+
 		bool hasPlateausFunction = false;
 
-		void addConstraint(const Expr& logicExpr);
-		void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables);
+		void addUnitConstraint(const Expr& logicExpr);
+		//void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables);
+		void constructConstraint(std::shared_ptr<Context> pEnv);
 
 		bool initializeData(std::shared_ptr<Context> pEnv);
 
@@ -1678,10 +1683,12 @@ namespace cgl
 		};
 		std::unordered_map<std::string, Data> values;
 
-		OptimizationProblemSat problem;
+		//OptimizationProblemSat problem;
+		std::vector<OptimizationProblemSat> problems;
+		boost::optional<Expr> constraint;
 		
 		std::vector<Accessor> freeVariables;//var宣言で指定されたアクセッサ
-		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
+		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
 		std::vector<Expr> freeRanges;//var宣言で指定されたアクセッサの範囲
 
 		RecordType type = RecordType::Normal;
@@ -1737,11 +1744,12 @@ namespace cgl
 	{
 		std::unordered_map<std::string, Address> values;
 
-		OptimizationProblemSat problem;
-		
+		//OptimizationProblemSat problem;
+		std::vector<OptimizationProblemSat> problems;
+		boost::optional<Expr> constraint;
+
 		std::vector<Accessor> freeVariables;//var宣言で指定されたアクセッサ
-		//std::vector<Address> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
-		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
+		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
 		std::vector<Expr> freeRanges;//var宣言で指定されたアクセッサの範囲
 
 		RecordType type = RecordType::Normal;
@@ -1767,6 +1775,18 @@ namespace cgl
 		{
 			values[name] = address;
 			return *this;
+		}
+
+		void addConstraint(const Expr& logicExpr)
+		{
+			if (constraint)
+			{
+				constraint = BinaryExpr(constraint.value(), logicExpr, BinaryOp::And);
+			}
+			else
+			{
+				constraint = logicExpr;
+			}
 		}
 
 		bool operator==(const Record& other)const

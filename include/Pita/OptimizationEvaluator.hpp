@@ -9,42 +9,33 @@ namespace cgl
 	class SatVariableBinder : public boost::static_visitor<bool>
 	{
 	public:
-
-		//AccessorからObjectReferenceに変換するのに必要
+		//AccessorからAddressに変換するのに必要
 		std::shared_ptr<Context> pEnv;
 
 		//free変数集合->freeに指定された変数全て
-		//std::vector<Address> freeVariables;
-		//const std::vector<Address>& freeVariables;
 		const std::vector<std::pair<Address, VariableRange>>& freeVariables;
 
 		//free変数集合->freeに指定された変数が実際にsatに現れたかどうか
 		std::vector<char>& usedInSat;
 
 		//参照ID->Address
-		//std::vector<Address> refs;
 		std::vector<Address>& refs;
+		std::unordered_set<Address>& refsSet;
 
 		//Address->参照ID
-		//std::unordered_map<Address, int> invRefs;
 		std::unordered_map<Address, int>& invRefs;
 
-		//bool hasPlateausFunction = false;
 		bool& hasPlateausFunction;
 
 		//ローカル変数
 		std::set<std::string> localVariables;
 
-		/*SatVariableBinder(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
-			pEnv(pEnv),
-			freeVariables(freeVariables),
-			usedInSat(freeVariables.size(), 0)
-		{}*/
 		SatVariableBinder(
 			std::shared_ptr<Context> pEnv, 
 			const std::vector<std::pair<Address, VariableRange>>& freeVariables,
 			std::vector<char>& usedInSat,
 			std::vector<Address>& refs,
+			std::unordered_set<Address>& refsSet,
 			std::unordered_map<Address, int>& invRefs,
 			bool& hasPlateausFunction) :
 			pEnv(pEnv),
@@ -52,6 +43,7 @@ namespace cgl
 			usedInSat(usedInSat),
 			//usedInSat(freeVariables.size(), 0),
 			refs(refs),
+			refsSet(refsSet),
 			invRefs(invRefs),
 			hasPlateausFunction(hasPlateausFunction)
 		{}
@@ -80,7 +72,7 @@ namespace cgl
 			return str;
 		}*/
 
-		boost::optional<size_t> freeVariableIndex(Address reference);
+		boost::optional<size_t> freeVariableIndex(Address reference)const;
 
 		//Address -> 参照ID
 		boost::optional<int> addSatRef(Address reference);
@@ -120,6 +112,135 @@ namespace cgl
 		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
 
 		bool operator()(const Accessor& node);
+	};
+
+#ifdef commentout
+	//sat式の中のfree変数を探す
+	//SatVariableBinderはIDの紐付けまでを行うが、SatVariableSearcherは単に何が出現したか見るだけ
+	class SatVariableSearcher : public boost::static_visitor<void>
+	{
+	public:
+		//AccessorからAddressに変換するのに必要
+		std::shared_ptr<Context> pEnv;
+
+		//free変数集合->freeに指定された変数全て
+		const std::vector<std::pair<Address, VariableRange>>& freeVariables;
+
+		//実際に現れたAddressの集合
+		std::unordered_set<Address>& appearingAddresses;
+
+		//ローカル変数
+		std::unordered_set<std::string> localVariables;
+
+		SatVariableSearcher(
+			std::shared_ptr<Context> pEnv,
+			const std::vector<std::pair<Address, VariableRange>>& freeVariables,
+			std::unordered_set<Address>& appearingAddresses) :
+			pEnv(pEnv),
+			freeVariables(freeVariables),
+			appearingAddresses(appearingAddresses)
+		{}
+
+		SatVariableSearcher& addLocalVariable(const std::string& name);
+
+		bool isLocalVariable(const std::string& name)const;
+
+		boost::optional<size_t> freeVariableIndex(Address address)const;
+
+		bool addAppearance(Address reference);
+
+		void operator()(const LRValue& node);
+
+		void operator()(const Identifier& node);
+
+		void operator()(const SatReference& node) {}
+
+		void operator()(const UnaryExpr& node);
+
+		void operator()(const BinaryExpr& node);
+
+		void operator()(const DefFunc& node) { CGL_Error("invalid expression"); return false; }
+
+		void callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+
+		void operator()(const Range& node) { CGL_Error("invalid expression"); return false; }
+
+		void operator()(const Lines& node);
+
+		void operator()(const If& node);
+
+		void operator()(const For& node);
+
+		void operator()(const Return& node) { CGL_Error("invalid expression"); return false; }
+
+		void operator()(const ListConstractor& node);
+
+		void operator()(const KeyExpr& node);
+
+		void operator()(const RecordConstractor& node);
+
+		void operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return false; }
+		void operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
+		void operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
+
+		void operator()(const Accessor& node);
+	};
+#endif
+
+	//制約を上から論理積で分割する
+	class ConjunctionSeparater : public boost::static_visitor<void>
+	{
+	public:
+		ConjunctionSeparater() = default;
+
+		std::vector<Expr> conjunctions;
+
+		void operator()(const LRValue& node) { conjunctions.push_back(node); }
+
+		void operator()(const Identifier& node) { conjunctions.push_back(node); }
+
+		void operator()(const SatReference& node) { conjunctions.push_back(node); }
+
+		void operator()(const UnaryExpr& node) { conjunctions.push_back(node); }
+
+		void operator()(const BinaryExpr& node)
+		{
+			if (node.op == BinaryOp::And)
+			{
+				boost::apply_visitor(*this, node.lhs);
+				boost::apply_visitor(*this, node.rhs);
+			}
+			else
+			{
+				conjunctions.push_back(node);
+			}
+		}
+
+		void operator()(const DefFunc& node) { conjunctions.push_back(node); }
+
+		void operator()(const Range& node) { conjunctions.push_back(node); }
+
+		void operator()(const Lines& node) { conjunctions.push_back(node); }
+
+		void operator()(const If& node) { conjunctions.push_back(node); }
+
+		void operator()(const For& node) { conjunctions.push_back(node); }
+
+		void operator()(const Return& node) { conjunctions.push_back(node); }
+
+		void operator()(const ListConstractor& node) { conjunctions.push_back(node); }
+
+		void operator()(const KeyExpr& node) { conjunctions.push_back(node); }
+
+		void operator()(const RecordConstractor& node) { conjunctions.push_back(node); }
+
+		void operator()(const RecordInheritor& node) { conjunctions.push_back(node); }
+		void operator()(const DeclSat& node) { conjunctions.push_back(node); }
+		void operator()(const DeclFree& node) { conjunctions.push_back(node); }
+
+		void operator()(const Accessor& node) { conjunctions.push_back(node); }
+
+	private:
 	};
 
 	class EvalSatExpr : public boost::static_visitor<Val>

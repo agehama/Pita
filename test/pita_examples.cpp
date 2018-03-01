@@ -29,7 +29,8 @@ std::vector<std::string> exampleFiles()
 		"grid.cgl",
 		"rec_shape1.cgl",
 		"rec_shape2.cgl",
-		"rec_shape3.cgl"
+		"rec_shape3.cgl",
+		"constraint_dependency.cgl"
 	});
 
 	return filenames;

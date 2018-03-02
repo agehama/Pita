@@ -1,4 +1,5 @@
 #pragma warning(disable:4996)
+#include <iostream>
 #include <cppoptlib/meta.h>
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>
@@ -319,6 +320,7 @@ namespace cgl
 		result.freeVariables = node.freeVariables;
 		//result.freeVariableRefs = node.freeVariableRefs;
 		result.type = node.type;
+		result.constraint = node.constraint;
 		result.isSatisfied = node.isSatisfied;
 
 		return result;
@@ -1484,13 +1486,13 @@ namespace cgl
 		CGL_DebugLog("");
 
 		//各free変数の範囲をまとめたレコードを作成する
-		const auto makePackedRanges = [](std::shared_ptr<Context> pContext, const std::vector<Expr>& ranges)->std::vector<PackedVal>
+		const auto makePackedRanges = [](Eval* pEval, std::shared_ptr<Context> pContext, const std::vector<Expr>& ranges)->std::vector<PackedVal>
 		{
-			Eval evaluator(pContext);
+			//Eval evaluator(pContext);
 			std::vector<PackedVal> packedRanges;
 			for (const auto& rangeExpr : ranges)
 			{
-				packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr)), *pContext));
+				packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(*pEval, rangeExpr)), *pContext));
 			}
 			return packedRanges;
 		};
@@ -1592,11 +1594,11 @@ namespace cgl
 		//各制約に出現するAddressの集合をまとめ、独立な制約の組にグループ分けする
 		//variableAppearances = [{a, b, c}, {a, d}, {e, f}, {g, h}]
 		//constraintsGroups(variableAppearances) = [{0, 1}, {2}, {3}]
-		const auto makeConstraintsGroups = [&intersects, &intersectsToConstraintGroup](const std::vector<ConstraintAppearance>& variableAppearances)
+		const auto makeConstraintsGroups = [&intersectsToConstraintGroup](const std::vector<Expr>& unitConstraints, const std::vector<ConstraintAppearance>& variableAppearances)
 			->std::vector<ConstraintGroup>
 		{
 			std::vector<ConstraintGroup> constraintsGroups;
-			for (size_t constraintID = 0; constraintID < variableAppearances.size(); ++constraintID)
+			for (size_t constraintID = 0; constraintID < unitConstraints.size(); ++constraintID)
 			{
 				const auto& currentAppearingAddresses = variableAppearances[constraintID];
 
@@ -1645,33 +1647,39 @@ namespace cgl
 		{
 			record.problems.clear();
 
-
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
 			const auto& ranges = record.freeRanges;
 			const bool hasRange = !ranges.empty();
 
-			const std::vector<PackedVal> packedRanges = makePackedRanges(pEnv, ranges);
+			const std::vector<PackedVal> packedRanges = makePackedRanges(this, pEnv, ranges);
 
+			using FreeVariable = std::pair<Address, VariableRange>;
 			//変数ID->アドレス
-			const std::vector<std::pair<Address, VariableRange>> freeVariableAddresses = (hasRange
+			std::vector<FreeVariable> freeVariableAddresses = (hasRange
 				? makeFreeVariableAddressesRange(pEnv, record, packedRanges)
 				: makeFreeVariableAddresses(pEnv, record));
 
 			//TODO:freeVariableAddressesの重複を削除する
+			/*std::cout << "freeVariableAddresses before unique: " << freeVariableAddresses.size() << std::endl;
 
+			freeVariableAddresses.erase(std::unique(freeVariableAddresses.begin(), freeVariableAddresses.end(), 
+				[](const FreeVariable& a, const FreeVariable& b) {return a.first == b.first; }), freeVariableAddresses.end());
+
+			std::cout << "freeVariableAddresses after  unique: " << freeVariableAddresses.size() << std::endl;*/
 
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
 
+			//分解された単位制約
 			const std::vector<Expr> unitConstraints = separateUnitConstraints(record.constraint.value());
 
-			//制約ID -> ConstraintAppearance
-			std::vector<ConstraintAppearance> variableAppearances = searchFreeVariablesForEachConstraint(pEnv, unitConstraints, freeVariableAddresses);
+			//単位制約ごとの依存するfree変数の集合
+			const std::vector<ConstraintAppearance> variableAppearances = searchFreeVariablesForEachConstraint(pEnv, unitConstraints, freeVariableAddresses);
 
-			//同じfree変数への依存性を持つ制約IDの組
-			std::vector<ConstraintGroup> constraintGroups = makeConstraintsGroups(variableAppearances);
+			//同じfree変数への依存性を持つ単位制約の組
+			const std::vector<ConstraintGroup> constraintGroups = makeConstraintsGroups(unitConstraints, variableAppearances);
 
 			std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
 

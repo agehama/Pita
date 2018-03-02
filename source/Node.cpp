@@ -342,6 +342,7 @@ namespace cgl
 		result.type = type;
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;
+		result.constraint = constraint;
 		
 		return result;
 	}
@@ -367,6 +368,7 @@ namespace cgl
 		result.type = type;
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;
+		result.constraint = constraint;
 
 		return result;
 	}

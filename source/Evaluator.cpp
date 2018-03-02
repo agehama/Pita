@@ -1485,6 +1485,8 @@ namespace cgl
 
 		if (record.constraint)
 		{
+			record.problems.clear();
+
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
@@ -1506,6 +1508,9 @@ namespace cgl
 
 				freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
 			}
+
+
+			//TODO:freeVariableAddressesの重複を削除する
 
 
 			///////////////////////////////////
@@ -1604,6 +1609,10 @@ namespace cgl
 			}
 			
 			std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
+
+
+			///////////////////////////////////
+			//3. 独立した制約ごとに解く
 
 			record.problems.resize(constraintGroups.size());
 			for (size_t constraintGroupID = 0; constraintGroupID < constraintGroups.size(); ++constraintGroupID)

@@ -1738,10 +1738,10 @@ namespace cgl
 		//TODO: record.constraintには継承時のoriginalが持つ制約は含まれていないものとする
 		if (record.constraint || !original.unitConstraints.empty())
 		{
-			std::cout << "Solve Record Constraints:" << std::endl;
+			//std::cout << "Solve Record Constraints:" << std::endl;
 			record.problems.clear();
 
-			std::cout << "  1. Address expansion" << std::endl;
+			//std::cout << "  1. Address expansion" << std::endl;
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
@@ -1768,16 +1768,12 @@ namespace cgl
 			std::vector<FreeVariable> mergedFreeVariableAddresses = original.freeVariableAddresses;
 			mergedFreeVariableAddresses.insert(mergedFreeVariableAddresses.end(), adderFreeVariableAddresses_.begin(), adderFreeVariableAddresses_.end());
 
-			std::cout << "  2. Constraints separation" << std::endl;
+			//std::cout << "  2. Constraints separation" << std::endl;
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
 
-			/*
-			ここから
-			*/
-
 			//分解された単位制約
-			const std::vector<Expr> adderUnitConstraints = separateUnitConstraints(record.constraint.value());
+			const std::vector<Expr> adderUnitConstraints = record.constraint ? separateUnitConstraints(record.constraint.value()) : std::vector<Expr>();
 
 			//単位制約ごとの依存するfree変数の集合
 			std::vector<ConstraintAppearance> adderVariableAppearances;
@@ -1786,13 +1782,9 @@ namespace cgl
 				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
 			}
 
-			/*
-			ここまでの間で、boost::bad_optional_accessが飛ぶ
-			*/
-
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
-				std::cout << "  3. Dependency analysis" << std::endl;
+				//std::cout << "  3. Dependency analysis" << std::endl;
 
 				ConstraintAppearance wholeAddressesOriginal, wholeAddressesAdder;
 				for (const auto& appearance : original.variableAppearances)
@@ -1815,7 +1807,7 @@ namespace cgl
 				//ケースB: 独立でない
 				if (intersects(wholeAddressesAdder, wholeAddressesOriginal))
 				{
-					std::cout << "  Case B" << std::endl;
+					std::cout << "Case B" << std::endl;
 
 					std::vector<ConstraintGroup> mergedConstraintGroups = original.constraintGroups;
 					for (size_t adderConstraintID = 0; adderConstraintID < adderUnitConstraints.size(); ++adderConstraintID)
@@ -1841,8 +1833,6 @@ namespace cgl
 						for (size_t constraintID : currentConstraintIDs)
 						{
 							//currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
-
-							printExpr(mergedUnitConstraints[constraintID], pEnv, std::cout);
 							currentProblem.addUnitConstraint(mergedUnitConstraints[constraintID]);
 						}
 
@@ -1867,7 +1857,7 @@ namespace cgl
 				//ケースA: 独立 or originalのみ or adderのみ
 				else
 				{
-					std::cout << "  Case A" << std::endl;
+					std::cout << "Case A" << std::endl;
 					//独立な場合は、まずoriginalの制約がadderの評価によって満たされなくなっていないかを確認する
 					//満たされなくなっていた制約は解きなおす
 					for (auto& oldConstraint : original.groupConstraints)
@@ -1926,7 +1916,10 @@ namespace cgl
 						mergedConstraintGroups.push_back(newGroup);
 					}
 
-					std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
+					if (!constraintGroups.empty())
+					{
+						std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
+					}
 
 					original.freeVariableAddresses = mergedFreeVariableAddresses;
 					original.unitConstraints = mergedUnitConstraints;

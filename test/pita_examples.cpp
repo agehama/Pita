@@ -16,21 +16,21 @@ extern int constraintViolationCount;
 std::vector<std::string> exampleFiles()
 {
 	const std::vector<std::string> filenames({
-		"3rects.cgl",
-		"cross.cgl",
-		"path1.cgl",
-		"path2.cgl",
-		"skeleton.cgl",
-		"str.cgl",
-		"str2.cgl",
-		"triforce.cgl",
-		"fib1.cgl",
-		"fib2.cgl",
-		"grid.cgl",
-		"rec_shape1.cgl",
-		"rec_shape2.cgl",
-		"rec_shape3.cgl",
-		"constraint_dependency.cgl"
+		"3rects",
+		"cross",
+		"path1",
+		"path2",
+		"skeleton",
+		"str",
+		"str2",
+		"triforce",
+		"fib1",
+		"fib2",
+		"grid",
+		"rec_shape1",
+		"rec_shape2",
+		"rec_shape3",
+		"constraint_dependency"
 	});
 
 	return filenames;
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 		std::cout << "----------------------------------------------\n";
 		std::cout << "run \"" << filename << "\" ...\n";
 
-		std::ifstream ifs(filename);
+		std::ifstream ifs(filename + ".cgl");
 		std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
 		auto start = std::chrono::system_clock::now();
@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 		Program program;
 		try
 		{
-			program.run(sourceCode, false);
+			program.execute1(sourceCode, filename + ".svg", false);
 		}
 		catch(const std::exception& e)
 		{
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		std::cout << "----------------------------------------------\n";
 		std::cout << "run \"" << filename << "\" ...\n";
 
-		std::ifstream ifs(filename);
+		std::ifstream ifs(filename + ".cgl");
 		std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
 		auto start = std::chrono::system_clock::now();

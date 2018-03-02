@@ -945,8 +945,6 @@ namespace cgl
 		return p;
 	}
 
-	//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
-	//式の評価途中でGCは走らないようにするべきか？
 	Address Context::makeTemporaryValue(const Val& value)
 	{
 		const Address address = m_values.add(value);
@@ -957,6 +955,7 @@ namespace cgl
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
 			garbageCollect();
+			m_lastGCValueSize = m_values.size();
 		}
 
 		return address;
@@ -1637,6 +1636,5 @@ namespace cgl
 		const size_t postGC = m_values.size();
 
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
-		m_lastGCValueSize = m_values.size();
 	}
 }

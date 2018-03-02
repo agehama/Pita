@@ -11,6 +11,7 @@
 #include <regex>
 #include <set>
 #include <map>
+#include <unordered_set>
 #include <unordered_map>
 
 #include <boost/fusion/include/vector.hpp>
@@ -637,6 +638,7 @@ namespace cgl
 
 	struct OptimizationProblemSat
 	{
+	public:
 		//boost::optional<Expr> candidateExpr;
 		boost::optional<Expr> expr;
 
@@ -655,6 +657,10 @@ namespace cgl
 
 		void addUnitConstraint(const Expr& logicExpr);
 		//void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables);
+
+		std::vector<double> solve(std::shared_ptr<Context> pEnv, const Record currentRecord, const std::vector<Identifier>& currentKeyList);
+
+	private:
 		void constructConstraint(std::shared_ptr<Context> pEnv);
 
 		bool initializeData(std::shared_ptr<Context> pEnv);
@@ -1669,6 +1675,34 @@ namespace cgl
 
 	enum class RecordType { Normal, Path, Text, ShapePath };
 
+	using FreeVariable = std::pair<Address, VariableRange>;
+
+	//unitConstraintに出現するfree変数のAddress
+	using ConstraintAppearance = std::unordered_set<Address>;
+
+	//同じfree変数への依存性を持つ制約IDの組
+	using ConstraintGroup = std::unordered_set<size_t>;
+
+	//レコード継承時に用いるデータ
+	struct OldRecordData
+	{
+		OldRecordData() = default;
+
+		//変数ID->アドレス
+		std::vector<FreeVariable> freeVariableAddresses;
+
+		//分解された単位制約
+		std::vector<Expr> unitConstraints;
+
+		//単位制約ごとの依存するfree変数の集合
+		std::vector<ConstraintAppearance> variableAppearances;
+
+		//同じfree変数への依存性を持つ単位制約の組
+		std::vector<OptimizationProblemSat> groupConstraints;
+
+		std::vector<ConstraintGroup> constraintGroups;
+	};
+
 	struct PackedRecord
 	{
 		struct Data
@@ -1683,13 +1717,16 @@ namespace cgl
 		};
 		std::unordered_map<std::string, Data> values;
 
-		//OptimizationProblemSat problem;
 		std::vector<OptimizationProblemSat> problems;
 		boost::optional<Expr> constraint;
-		
-		std::vector<Accessor> freeVariables;//var宣言で指定されたアクセッサ
-		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
-		std::vector<Expr> freeRanges;//var宣言で指定されたアクセッサの範囲
+
+		//var宣言で指定されたアクセッサ
+		std::vector<Accessor> freeVariables;
+
+		//var宣言で指定されたアクセッサの範囲
+		std::vector<Expr> freeRanges;
+
+		OldRecordData original;
 
 		RecordType type = RecordType::Normal;
 		bool isSatisfied = true;
@@ -1744,13 +1781,17 @@ namespace cgl
 	{
 		std::unordered_map<std::string, Address> values;
 
-		//OptimizationProblemSat problem;
 		std::vector<OptimizationProblemSat> problems;
 		boost::optional<Expr> constraint;
-
-		std::vector<Accessor> freeVariables;//var宣言で指定されたアクセッサ
+		
+		//var宣言で指定されたアクセッサ
+		std::vector<Accessor> freeVariables;
 		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
-		std::vector<Expr> freeRanges;//var宣言で指定されたアクセッサの範囲
+
+		//var宣言で指定されたアクセッサの範囲
+		std::vector<Expr> freeRanges;
+
+		OldRecordData original;
 
 		RecordType type = RecordType::Normal;
 		bool isSatisfied = true;

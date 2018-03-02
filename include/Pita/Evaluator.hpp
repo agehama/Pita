@@ -255,24 +255,6 @@ namespace cgl
 		Expr operator()(const DeclFree& node);
 	};
 
-	class ConstraintProblem : public cppoptlib::Problem<double>
-	{
-	public:
-		using typename cppoptlib::Problem<double>::TVector;
-
-		std::function<double(const TVector&)> evaluator;
-		Record originalRecord;
-		std::vector<Identifier> keyList;
-		std::shared_ptr<Context> pEnv;
-
-		bool callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar>& state, const TVector& x) override;
-
-		double value(const TVector &x) override
-		{
-			return evaluator(x);
-		}
-	};
-
 	class Eval : public boost::static_visitor<LRValue>
 	{
 	public:

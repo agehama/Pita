@@ -1,10 +1,5 @@
 #pragma warning(disable:4996)
 #include <iostream>
-#include <cppoptlib/meta.h>
-#include <cppoptlib/problem.h>
-#include <cppoptlib/solver/bfgssolver.h>
-
-#include <cmaes.h>
 
 #include <Pita/Evaluator.hpp>
 #include <Pita/BinaryEvaluator.hpp>
@@ -323,6 +318,12 @@ namespace cgl
 		result.constraint = node.constraint;
 		result.isSatisfied = node.isSatisfied;
 
+		//result.unitConstraints = node.unitConstraints;
+		//result.variableAppearances = node.variableAppearances;
+		////result.constraintGroups = node.constraintGroups;
+		//result.groupConstraints = node.groupConstraints;
+		result.original = node.original;
+
 		return result;
 	}
 
@@ -425,8 +426,93 @@ namespace cgl
 					problem.invRefs[newAddress] = problem.invRefs[oldAddress];
 					problem.invRefs.erase(oldAddress);
 				}
-			}	
+			}
+
+			for (size_t i = 0; i < problem.freeVariableRefs.size(); ++i)
+			{
+				auto& currentElem = problem.freeVariableRefs[i];
+				const Address oldAddress = currentElem.first;
+				if (auto newAddressOpt = getOpt(oldAddress))
+				{
+					const Address newAddress = newAddressOpt.value();
+					currentElem.first = newAddress;
+				}
+			}
 		}
+
+		auto& original = node.original;
+
+		for (auto& currentElem : original.freeVariableAddresses)
+		{
+			const Address oldAddress = currentElem.first;
+			if (auto newAddressOpt = getOpt(oldAddress))
+			{
+				const Address newAddress = newAddressOpt.value();
+				currentElem.first = newAddress;
+			}
+		}
+
+		for (auto& unitConstraint : original.unitConstraints)
+		{
+			unitConstraint = boost::apply_visitor(replacer, unitConstraint);
+		}
+
+		if (!original.variableAppearances.empty())
+		{
+			std::vector<ConstraintAppearance> newAppearance;
+
+			for (auto& appearance : original.variableAppearances)
+			{
+				ConstraintAppearance currentAppearance;
+				for (const Address address : appearance)
+				{
+					if (auto newAddressOpt = getOpt(address))
+					{
+						currentAppearance.insert(newAddressOpt.value());
+					}
+					else
+					{
+						currentAppearance.insert(address);
+					}
+				}
+				newAppearance.push_back(currentAppearance);
+			}
+
+			original.variableAppearances = newAppearance;
+		}
+
+		for (auto& problem : original.groupConstraints)
+		{
+			if (problem.expr)
+			{
+				problem.expr = boost::apply_visitor(replacer, problem.expr.value());
+			}
+
+			for (size_t i = 0; i < problem.refs.size(); ++i)
+			{
+				const Address oldAddress = problem.refs[i];
+				if (auto newAddressOpt = getOpt(oldAddress))
+				{
+					const Address newAddress = newAddressOpt.value();
+					problem.refs[i] = newAddress;
+					problem.invRefs[newAddress] = problem.invRefs[oldAddress];
+					problem.invRefs.erase(oldAddress);
+				}
+			}
+
+			for (size_t i = 0; i < problem.freeVariableRefs.size(); ++i)
+			{
+				auto& currentElem = problem.freeVariableRefs[i];
+				const Address oldAddress = currentElem.first;
+				if (auto newAddressOpt = getOpt(oldAddress))
+				{
+					const Address newAddress = newAddressOpt.value();
+					currentElem.first = newAddress;
+				}
+			}
+		}
+
+		//constraintGroupsはただの数字だからぞのままでよい
 
 		for (auto& freeVariable : node.freeVariables)
 		{
@@ -823,28 +909,6 @@ namespace cgl
 		return result;
 	}
 
-	bool ConstraintProblem::callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar> &state, const TVector &x)
-	{
-		/*
-		Record tempRecord = originalRecord;
-
-		for (size_t i = 0; i < x.size(); ++i)
-		{
-			Address address = originalRecord.freeVariableRefs[i];
-			pEnv->assignToObject(address, x[i]);
-		}
-
-		for (const auto& key : keyList)
-		{
-			Address address = pEnv->findAddress(key);
-			tempRecord.append(key, address);
-		}
-
-		ProgressStore::TryWrite(pEnv, tempRecord);
-		*/
-		return true;
-	}
-	
 	LRValue Eval::operator()(const UnaryExpr& node)
 	{
 		const Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs));
@@ -1486,13 +1550,13 @@ namespace cgl
 		CGL_DebugLog("");
 
 		//各free変数の範囲をまとめたレコードを作成する
-		const auto makePackedRanges = [](Eval* pEval, std::shared_ptr<Context> pContext, const std::vector<Expr>& ranges)->std::vector<PackedVal>
+		const auto makePackedRanges = [](std::shared_ptr<Context> pContext, const std::vector<Expr>& ranges)->std::vector<PackedVal>
 		{
-			//Eval evaluator(pContext);
+			Eval evaluator(pContext);
 			std::vector<PackedVal> packedRanges;
 			for (const auto& rangeExpr : ranges)
 			{
-				packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(*pEval, rangeExpr)), *pContext));
+				packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr)), *pContext));
 			}
 			return packedRanges;
 		};
@@ -1535,37 +1599,32 @@ namespace cgl
 			return separater.conjunctions;
 		};
 
-		//unitConstraintに出現するfree変数のAddress
-		using ConstraintAppearance = std::unordered_set<Address>;
-
 		//それぞれのunitConstraintについて、出現するアドレスの集合を求めたものを返す
-		const auto searchFreeVariablesForEachConstraint = [](std::shared_ptr<Context> pContext, const std::vector<Expr>& unitConstraints, 
-			const std::vector<std::pair<Address, VariableRange>>& freeVariableAddresses)->std::vector<ConstraintAppearance>
+		const auto searchFreeVariablesOfConstraint = [](std::shared_ptr<Context> pContext, const Expr& constraint,
+			const std::vector<std::pair<Address, VariableRange>>& freeVariableAddresses)->ConstraintAppearance
 		{
-			std::vector<ConstraintAppearance> variableAppearances;//制約ID -> ConstraintAppearance
-			for (const auto& constraint : unitConstraints)
-			{
-				ConstraintAppearance appearingList;
+			//制約ID -> ConstraintAppearance
+			ConstraintAppearance appearingList;
 
-				std::vector<char> usedInSat(freeVariableAddresses.size(), 0);
-				std::vector<Address> refs;
-				std::unordered_map<Address, int> invRefs;
-				bool hasPlateausFunction = false;
+			std::vector<char> usedInSat(freeVariableAddresses.size(), 0);
+			std::vector<Address> refs;
+			std::unordered_map<Address, int> invRefs;
+			bool hasPlateausFunction = false;
 
-				SatVariableBinder binder(pContext, freeVariableAddresses, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
-				boost::apply_visitor(binder, constraint);
+			SatVariableBinder binder(pContext, freeVariableAddresses, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
+			boost::apply_visitor(binder, constraint);
 
-				variableAppearances.push_back(appearingList);
-			}
-			return variableAppearances;
+			return appearingList;
 		};
-
-		//同じfree変数への依存性を持つ制約IDの組
-		using ConstraintGroup = std::unordered_set<size_t>;
 
 		//二つのAddress集合が共通する要素を持っているかどうかを返す
 		const auto intersects = [](const ConstraintAppearance& addressesA, const ConstraintAppearance& addressesB)
 		{
+			if (addressesA.empty() || addressesB.empty())
+			{
+				return false;
+			}
+
 			for (const Address address : addressesA)
 			{
 				if (addressesB.find(address) != addressesB.end())
@@ -1594,300 +1653,321 @@ namespace cgl
 		//各制約に出現するAddressの集合をまとめ、独立な制約の組にグループ分けする
 		//variableAppearances = [{a, b, c}, {a, d}, {e, f}, {g, h}]
 		//constraintsGroups(variableAppearances) = [{0, 1}, {2}, {3}]
-		const auto makeConstraintsGroups = [&intersectsToConstraintGroup](const std::vector<Expr>& unitConstraints, const std::vector<ConstraintAppearance>& variableAppearances)
-			->std::vector<ConstraintGroup>
+		const auto addConstraintsGroups = [&intersectsToConstraintGroup](std::vector<ConstraintGroup>& constraintsGroups,
+			size_t unitConstraintID, const ConstraintAppearance& unitConstraintAppearance, const std::vector<ConstraintAppearance>& variableAppearances)
 		{
-			std::vector<ConstraintGroup> constraintsGroups;
-			for (size_t constraintID = 0; constraintID < unitConstraints.size(); ++constraintID)
+			std::set<size_t> currentIntersectsGroupIDs;
+			for (size_t constraintGroupID = 0; constraintGroupID < constraintsGroups.size(); ++constraintGroupID)
 			{
-				const auto& currentAppearingAddresses = variableAppearances[constraintID];
-
-				std::set<size_t> currentIntersectsGroupIDs;
-				for (size_t constraintGroupID = 0; constraintGroupID < constraintsGroups.size(); ++constraintGroupID)
+				if (intersectsToConstraintGroup(unitConstraintAppearance, constraintsGroups[constraintGroupID], variableAppearances))
 				{
-					if (intersectsToConstraintGroup(currentAppearingAddresses, constraintsGroups[constraintGroupID], variableAppearances))
-					{
-						currentIntersectsGroupIDs.insert(constraintGroupID);
-					}
-				}
-
-				if (currentIntersectsGroupIDs.empty())
-				{
-					ConstraintGroup newGroup;
-					newGroup.insert(constraintID);
-					constraintsGroups.push_back(newGroup);
-				}
-				else
-				{
-					ConstraintGroup newGroup;
-					newGroup.insert(constraintID);
-
-					for (const size_t groupID : currentIntersectsGroupIDs)
-					{
-						const auto& targetGroup = constraintsGroups[groupID];
-						for (const size_t targetConstraintID : targetGroup)
-						{
-							newGroup.insert(targetConstraintID);
-						}
-					}
-
-					for (auto it = currentIntersectsGroupIDs.rbegin(); it != currentIntersectsGroupIDs.rend(); ++it)
-					{
-						const size_t existingGroupIndex = *it;
-						constraintsGroups.erase(constraintsGroups.begin() + existingGroupIndex);
-					}
-
-					constraintsGroups.push_back(newGroup);
+					currentIntersectsGroupIDs.insert(constraintGroupID);
 				}
 			}
-			return constraintsGroups;
+
+			if (currentIntersectsGroupIDs.empty())
+			{
+				ConstraintGroup newGroup;
+				newGroup.insert(unitConstraintID);
+				constraintsGroups.push_back(newGroup);
+			}
+			else
+			{
+				ConstraintGroup newGroup;
+				newGroup.insert(unitConstraintID);
+
+				for (const size_t groupID : currentIntersectsGroupIDs)
+				{
+					const auto& targetGroup = constraintsGroups[groupID];
+					for (const size_t targetConstraintID : targetGroup)
+					{
+						newGroup.insert(targetConstraintID);
+					}
+				}
+
+				for (auto it = currentIntersectsGroupIDs.rbegin(); it != currentIntersectsGroupIDs.rend(); ++it)
+				{
+					const size_t existingGroupIndex = *it;
+					constraintsGroups.erase(constraintsGroups.begin() + existingGroupIndex);
+				}
+
+				constraintsGroups.push_back(newGroup);
+			}
 		};
 
-		if (record.constraint)
+		const auto mergeConstraintAppearance = [](ConstraintAppearance& a, const ConstraintAppearance& b)
 		{
+			for (const Address address : b)
+			{
+				a.insert(address);
+			}
+		};
+
+		const auto readResult = [](std::shared_ptr<Context> pContext, const std::vector<double>& resultxs, const OptimizationProblemSat& problem)
+		{
+			for (size_t i = 0; i < resultxs.size(); ++i)
+			{
+				Address address = problem.freeVariableRefs[i].first;
+				const auto range = problem.freeVariableRefs[i].second;
+				std::cout << "Address(" << address.toString() << "): [" << range.minimum << ", " << range.maximum << "]\n";
+				pContext->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
+				//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
+			}
+		};
+
+		const auto checkSatisfied = [](std::shared_ptr<Context> pContext, const OptimizationProblemSat& problem)
+		{
+			if (problem.expr)
+			{
+				Eval evaluator(pContext);
+				const Val result = pContext->expand(boost::apply_visitor(evaluator, problem.expr.value()));
+				if (!IsType<bool>(result))
+				{
+					CGL_Error("制約式の評価結果がブール値でない");
+				}
+
+				const bool currentConstraintIsSatisfied = As<bool>(result);
+				return currentConstraintIsSatisfied;
+			}
+
+			return true;
+		};
+
+		auto& original = record.original;
+
+		//TODO: record.constraintには継承時のoriginalが持つ制約は含まれていないものとする
+		if (record.constraint || !original.unitConstraints.empty())
+		{
+			std::cout << "Solve Record Constraints:" << std::endl;
 			record.problems.clear();
 
+			std::cout << "  1. Address expansion" << std::endl;
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
 			const auto& ranges = record.freeRanges;
 			const bool hasRange = !ranges.empty();
 
-			const std::vector<PackedVal> packedRanges = makePackedRanges(this, pEnv, ranges);
+			const std::vector<PackedVal> adderPackedRanges = makePackedRanges(pEnv, ranges);
 
-			using FreeVariable = std::pair<Address, VariableRange>;
 			//変数ID->アドレス
-			std::vector<FreeVariable> freeVariableAddresses = (hasRange
-				? makeFreeVariableAddressesRange(pEnv, record, packedRanges)
+			std::vector<FreeVariable> adderFreeVariableAddresses_ = (hasRange
+				? makeFreeVariableAddressesRange(pEnv, record, adderPackedRanges)
 				: makeFreeVariableAddresses(pEnv, record));
 
-			//TODO:freeVariableAddressesの重複を削除する
-			/*std::cout << "freeVariableAddresses before unique: " << freeVariableAddresses.size() << std::endl;
+			//TODO:freeVariableAddressesの重複を削除するべき？
+			/*
+			std::cout << "freeVariableAddresses before unique: " << freeVariableAddresses.size() << std::endl;
 
 			freeVariableAddresses.erase(std::unique(freeVariableAddresses.begin(), freeVariableAddresses.end(), 
 				[](const FreeVariable& a, const FreeVariable& b) {return a.first == b.first; }), freeVariableAddresses.end());
 
-			std::cout << "freeVariableAddresses after  unique: " << freeVariableAddresses.size() << std::endl;*/
+			std::cout << "freeVariableAddresses after  unique: " << freeVariableAddresses.size() << std::endl;
+			*/
+			
+			std::vector<FreeVariable> mergedFreeVariableAddresses = original.freeVariableAddresses;
+			mergedFreeVariableAddresses.insert(mergedFreeVariableAddresses.end(), adderFreeVariableAddresses_.begin(), adderFreeVariableAddresses_.end());
 
+			std::cout << "  2. Constraints separation" << std::endl;
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
 
+			/*
+			ここから
+			*/
+
 			//分解された単位制約
-			const std::vector<Expr> unitConstraints = separateUnitConstraints(record.constraint.value());
+			const std::vector<Expr> adderUnitConstraints = separateUnitConstraints(record.constraint.value());
 
 			//単位制約ごとの依存するfree変数の集合
-			const std::vector<ConstraintAppearance> variableAppearances = searchFreeVariablesForEachConstraint(pEnv, unitConstraints, freeVariableAddresses);
-
-			//同じfree変数への依存性を持つ単位制約の組
-			const std::vector<ConstraintGroup> constraintGroups = makeConstraintsGroups(unitConstraints, variableAppearances);
-
-			std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
-
-
-			///////////////////////////////////
-			//3. 独立した制約ごとに解く
-
-			record.problems.resize(constraintGroups.size());
-			for (size_t constraintGroupID = 0; constraintGroupID < constraintGroups.size(); ++constraintGroupID)
+			std::vector<ConstraintAppearance> adderVariableAppearances;
+			for (const auto& constraint : adderUnitConstraints)
 			{
-				auto& currentProblem = record.problems[constraintGroupID];
-				const auto& currentConstraintIDs = constraintGroups[constraintGroupID];
-				
-				for (size_t constraintID : currentConstraintIDs)
+				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
+			}
+
+			/*
+			ここまでの間で、boost::bad_optional_accessが飛ぶ
+			*/
+
+			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
+			{
+				std::cout << "  3. Dependency analysis" << std::endl;
+
+				ConstraintAppearance wholeAddressesOriginal, wholeAddressesAdder;
+				for (const auto& appearance : original.variableAppearances)
 				{
-					currentProblem.addUnitConstraint(unitConstraints[constraintID]);
+					mergeConstraintAppearance(wholeAddressesOriginal, appearance);
+				}
+				for (const auto& appearance : adderVariableAppearances)
+				{
+					mergeConstraintAppearance(wholeAddressesAdder, appearance);
 				}
 
-				const auto& problemRefs = currentProblem.refs;
+				const size_t adderOffset = original.unitConstraints.size();
 
-				currentProblem.freeVariableRefs = freeVariableAddresses;
+				std::vector<Expr> mergedUnitConstraints = original.unitConstraints;
+				mergedUnitConstraints.insert(mergedUnitConstraints.end(), adderUnitConstraints.begin(), adderUnitConstraints.end());
 
-				//展開された式をSatExprに変換する
-				//＋satの式に含まれる変数の内、freeVariableRefsに入っていないものは即時に評価して畳み込む
-				//freeVariableRefsに入っているものは最適化対象の変数としてdataに追加していく
-				//＋freeVariableRefsの変数についてはsat式に出現したかどうかを記録し削除する
-				currentProblem.constructConstraint(pEnv);
+				std::vector<ConstraintAppearance> mergedVariableAppearances = original.variableAppearances;
+				mergedVariableAppearances.insert(mergedVariableAppearances.end(), adderVariableAppearances.begin(), adderVariableAppearances.end());
 
-				//設定されたdataが参照している値を見て初期値を設定する
-				if (!currentProblem.initializeData(pEnv))
+				//ケースB: 独立でない
+				if (intersects(wholeAddressesAdder, wholeAddressesOriginal))
 				{
-					return LRValue(0);
-				}
+					std::cout << "  Case B" << std::endl;
 
-				std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
-
-				std::vector<double> resultxs;
-
-				if (!currentProblem.freeVariableRefs.empty())
-				{
-					//varのアドレス(の内実際にsatに現れるもののリスト)から、OptimizationProblemSat中の変数リストへの対応付けを行うマップを作成
-					std::unordered_map<int, int> variable2Data;
-					for (size_t freeIndex = 0; freeIndex < currentProblem.freeVariableRefs.size(); ++freeIndex)
+					std::vector<ConstraintGroup> mergedConstraintGroups = original.constraintGroups;
+					for (size_t adderConstraintID = 0; adderConstraintID < adderUnitConstraints.size(); ++adderConstraintID)
 					{
-						CGL_DebugLog(ToS(freeIndex));
-						CGL_DebugLog(std::string("Address(") + currentProblem.freeVariableRefs[freeIndex].toString() + ")");
-						const auto& ref1 = currentProblem.freeVariableRefs[freeIndex];
-
-						bool found = false;
-						for (size_t dataIndex = 0; dataIndex < problemRefs.size(); ++dataIndex)
-						{
-							CGL_DebugLog(ToS(dataIndex));
-							CGL_DebugLog(std::string("Address(") + problemRefs[dataIndex].toString() + ")");
-
-							const auto& ref2 = problemRefs[dataIndex];
-
-							if (ref1.first == ref2)
-							{
-								//std::cout << "    " << freeIndex << " -> " << dataIndex << std::endl;
-
-								found = true;
-								variable2Data[freeIndex] = dataIndex;
-								break;
-							}
-						}
-
-						//DeclFreeにあってDeclSatに無い変数は意味がない。
-						//単に無視しても良いが、恐らく入力のミスと思われるので警告を出す
-						if (!found)
-						{
-							CGL_WarnLog("freeに指定された変数が無効です");
-						}
+						addConstraintsGroups(mergedConstraintGroups, adderOffset + adderConstraintID, adderVariableAppearances[adderConstraintID], mergedVariableAppearances);
 					}
-					CGL_DebugLog("End Record MakeMap");
 
-					if (currentProblem.hasPlateausFunction)
+					std::cout << "Record constraint separated to " << std::to_string(mergedConstraintGroups.size()) << " independent constraints" << std::endl;
+
+					original.freeVariableAddresses = mergedFreeVariableAddresses;
+					original.unitConstraints = mergedUnitConstraints;
+					original.variableAppearances = mergedVariableAppearances;
+					original.constraintGroups = mergedConstraintGroups;
+					
+					original.groupConstraints.clear();
+
+					record.problems.resize(mergedConstraintGroups.size());
+					for (size_t constraintGroupID = 0; constraintGroupID < mergedConstraintGroups.size(); ++constraintGroupID)
 					{
-						std::cout << "Solve constraint by CMA-ES...\n";
+						auto& currentProblem = record.problems[constraintGroupID];
+						const auto& currentConstraintIDs = mergedConstraintGroups[constraintGroupID];
 
-						libcmaes::FitFunc func = [&](const double *x, const int N)->double
+						for (size_t constraintID : currentConstraintIDs)
 						{
-							for (int i = 0; i < N; ++i)
-							{
-								currentProblem.update(variable2Data[i], x[i]);
-							}
+							//currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 
-							{
-								for (const auto& keyval : currentProblem.invRefs)
-								{
-									pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, currentProblem.data[keyval.second]);
-								}
-							}
-
-							pEnv->switchFrontScope();
-							double result = currentProblem.eval(pEnv);
-							pEnv->switchBackScope();
-
-							CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
-
-							return result;
-						};
-
-						CGL_DebugLog("");
-
-						std::vector<double> x0(currentProblem.freeVariableRefs.size());
-						for (int i = 0; i < x0.size(); ++i)
-						{
-							x0[i] = currentProblem.data[variable2Data[i]];
-							CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
+							printExpr(mergedUnitConstraints[constraintID], pEnv, std::cout);
+							currentProblem.addUnitConstraint(mergedUnitConstraints[constraintID]);
 						}
 
-						CGL_DebugLog("");
+						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
 
-						const double sigma = 0.1;
+						//std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
 
-						const int lambda = 100;
+						std::vector<double> resultxs = currentProblem.solve(pEnv, record, keyList);
 
-						libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
-						CGL_DebugLog("");
-						libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
-						CGL_DebugLog("");
-						resultxs = cmasols.best_candidate().get_x();
-						CGL_DebugLog("");
+						readResult(pEnv, resultxs, currentProblem);
 
-						std::cout << "solved\n";
-					}
-					else
-					{
-						std::cout << "Solve constraint by BFGS...\n";
-
-						ConstraintProblem constraintProblem;
-						constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
+						const bool currentConstraintIsSatisfied = checkSatisfied(pEnv, currentProblem);
+						record.isSatisfied = record.isSatisfied && currentConstraintIsSatisfied;
+						if (!currentConstraintIsSatisfied)
 						{
-							//-1000 -> 1000
-							for (int i = 0; i < v.size(); ++i)
-							{
-								currentProblem.update(variable2Data[i], v[i]);
-								//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
-							}
-
-							{
-								for (const auto& keyval : currentProblem.invRefs)
-								{
-									pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, currentProblem.data[keyval.second]);
-								}
-							}
-
-							pEnv->switchFrontScope();
-							double result = currentProblem.eval(pEnv);
-							pEnv->switchBackScope();
-
-							CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
-							//std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
-							return result;
-						};
-						constraintProblem.originalRecord = record;
-						constraintProblem.keyList = keyList;
-						constraintProblem.pEnv = pEnv;
-
-						Eigen::VectorXd x0s(currentProblem.freeVariableRefs.size());
-						for (int i = 0; i < x0s.size(); ++i)
-						{
-							x0s[i] = currentProblem.data[variable2Data[i]];
-							//x0s[i] = (problem.data[variable2Data[i]] / 2000.0) + 0.5;
-							CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
+							++constraintViolationCount;
 						}
 
-						cppoptlib::BfgsSolver<ConstraintProblem> solver;
-						solver.minimize(constraintProblem, x0s);
-
-						resultxs.resize(x0s.size());
-						for (int i = 0; i < x0s.size(); ++i)
-						{
-							resultxs[i] = x0s[i];
-						}
-
-						//std::cout << "solved\n";
+						original.groupConstraints.push_back(currentProblem);
 					}
 				}
-
-
-				CGL_DebugLog("");
-				for (size_t i = 0; i < resultxs.size(); ++i)
+				//ケースA: 独立 or originalのみ or adderのみ
+				else
 				{
-					Address address = currentProblem.freeVariableRefs[i].first;
-					const auto range = currentProblem.freeVariableRefs[i].second;
-					std::cout << "Address(" << address.toString() << "): [" << range.minimum << ", " << range.maximum << "]\n";
-					pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
-					//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
-				}
-
-				if (currentProblem.expr)
-				{
-					const Val result = pEnv->expand(boost::apply_visitor(*this, currentProblem.expr.value()));
-					if (!IsType<bool>(result))
+					std::cout << "  Case A" << std::endl;
+					//独立な場合は、まずoriginalの制約がadderの評価によって満たされなくなっていないかを確認する
+					//満たされなくなっていた制約は解きなおす
+					for (auto& oldConstraint : original.groupConstraints)
 					{
-						CGL_Error("制約式の評価結果がブール値でない");
+						const Val result = pEnv->expand(boost::apply_visitor(*this, oldConstraint.expr.value()));
+						if (!IsType<bool>(result))
+						{
+							CGL_Error("制約式の評価結果がブール値でない");
+						}
+
+						const bool currentConstraintIsSatisfied = As<bool>(result);
+						if (!currentConstraintIsSatisfied)
+						{
+							//const auto& problemRefs = currentProblem.refs;
+
+							//currentProblem.freeVariableRefs = freeVariableAddresses;
+
+							oldConstraint.freeVariableRefs = original.freeVariableAddresses;
+
+							//TODO: SatVariableBinderをやり直す必要まではない？
+							//クローンでずれたアドレスを張り替えるだけで十分かもしれない？
+							//oldConstraint.constructConstraint(pEnv);
+
+							//std::cout << "Current constraint freeVariablesSize: " << std::to_string(oldConstraint.freeVariableRefs.size()) << std::endl;
+
+							std::vector<double> resultxs = oldConstraint.solve(pEnv, record, keyList);
+
+							readResult(pEnv, resultxs, oldConstraint);
+
+							const bool currentConstraintIsSatisfied = checkSatisfied(pEnv, oldConstraint);
+							record.isSatisfied = record.isSatisfied && currentConstraintIsSatisfied;
+							if (!currentConstraintIsSatisfied)
+							{
+								++constraintViolationCount;
+							}
+						}
 					}
 
-					const bool currentConstraintIsSatisfied = As<bool>(result);;
-					record.isSatisfied = record.isSatisfied && currentConstraintIsSatisfied;
-					//std::cout << "Constraint is " << (record.isSatisfied ? "satisfied\n" : "not satisfied\n");
-					if (!currentConstraintIsSatisfied)
+					//次に、新たに追加される制約について解く
+
+					//同じfree変数への依存性を持つ単位制約の組
+					std::vector<ConstraintGroup> constraintGroups;
+					for (size_t constraintID = 0; constraintID < adderUnitConstraints.size(); ++constraintID)
 					{
-						++constraintViolationCount;
+						addConstraintsGroups(constraintGroups, constraintID, adderVariableAppearances[constraintID], adderVariableAppearances);
+					}
+
+					std::vector<ConstraintGroup> mergedConstraintGroups = original.constraintGroups;
+					for (const auto& adderGroup : constraintGroups)
+					{
+						ConstraintGroup newGroup;
+						for (size_t adderConstraintID : adderGroup)
+						{
+							newGroup.insert(adderOffset + adderConstraintID);
+						}
+						mergedConstraintGroups.push_back(newGroup);
+					}
+
+					std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
+
+					original.freeVariableAddresses = mergedFreeVariableAddresses;
+					original.unitConstraints = mergedUnitConstraints;
+					original.variableAppearances = mergedVariableAppearances;
+					original.constraintGroups = mergedConstraintGroups;
+
+					original.groupConstraints.clear();
+
+					record.problems.resize(constraintGroups.size());
+					for (size_t constraintGroupID = 0; constraintGroupID < constraintGroups.size(); ++constraintGroupID)
+					{
+						auto& currentProblem = record.problems[constraintGroupID];
+						const auto& currentConstraintIDs = constraintGroups[constraintGroupID];
+
+						for (size_t constraintID : currentConstraintIDs)
+						{
+							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
+						}
+
+						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
+
+						std::vector<double> resultxs = currentProblem.solve(pEnv, record, keyList);
+
+						readResult(pEnv, resultxs, currentProblem);
+
+						const bool currentConstraintIsSatisfied = checkSatisfied(pEnv, currentProblem);
+						record.isSatisfied = record.isSatisfied && currentConstraintIsSatisfied;
+						if (!currentConstraintIsSatisfied)
+						{
+							++constraintViolationCount;
+						}
+
+						original.groupConstraints.push_back(currentProblem);
 					}
 				}
 			}
+
+			record.problems.clear();
+			record.constraint = boost::none;
+			record.freeVariables.clear();
+			record.freeRanges.clear();
 		}
 
 		for (const auto& key : keyList)

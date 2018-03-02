@@ -1,4 +1,14 @@
 #pragma warning(disable:4996)
+#include <functional>
+#include <thread>
+#include <mutex>
+
+#include <cppoptlib/meta.h>
+#include <cppoptlib/problem.h>
+#include <cppoptlib/solver/bfgssolver.h>
+
+#include <cmaes.h>
+
 #include <Unicode.hpp>
 
 #include <Pita/Node.hpp>
@@ -53,6 +63,46 @@ namespace cgl
 		expr = LRValue(CharString(str32));
 
 		return expr;
+	}
+
+	class ConstraintProblem : public cppoptlib::Problem<double>
+	{
+	public:
+		using typename cppoptlib::Problem<double>::TVector;
+
+		std::function<double(const TVector&)> evaluator;
+		Record originalRecord;
+		std::vector<Identifier> keyList;
+		std::shared_ptr<Context> pEnv;
+
+		bool callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar>& state, const TVector& x) override;
+
+		double value(const TVector &x) override
+		{
+			return evaluator(x);
+		}
+	};
+
+	bool ConstraintProblem::callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar> &state, const TVector &x)
+	{
+		/*
+		Record tempRecord = originalRecord;
+
+		for (size_t i = 0; i < x.size(); ++i)
+		{
+		Address address = originalRecord.freeVariableRefs[i];
+		pEnv->assignToObject(address, x[i]);
+		}
+
+		for (const auto& key : keyList)
+		{
+		Address address = pEnv->findAddress(key);
+		tempRecord.append(key, address);
+		}
+
+		ProgressStore::TryWrite(pEnv, tempRecord);
+		*/
+		return true;
 	}
 
 	void OptimizationProblemSat::addUnitConstraint(const Expr& logicExpr)
@@ -157,6 +207,164 @@ namespace cgl
 		}
 
 		return true;
+	}
+
+	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
+	{
+		constructConstraint(pEnv);
+
+		std::cout << "Current constraint freeVariablesSize: " << std::to_string(freeVariableRefs.size()) << std::endl;
+
+		if (!initializeData(pEnv))
+		{
+			CGL_Error("制約の初期化に失敗");
+		}
+
+		std::vector<double> resultxs;
+
+		if (!freeVariableRefs.empty())
+		{
+			//varのアドレス(の内実際にsatに現れるもののリスト)から、OptimizationProblemSat中の変数リストへの対応付けを行うマップを作成
+			std::unordered_map<int, int> variable2Data;
+			for (size_t freeIndex = 0; freeIndex < freeVariableRefs.size(); ++freeIndex)
+			{
+				CGL_DebugLog(ToS(freeIndex));
+				CGL_DebugLog(std::string("Address(") + freeVariableRefs[freeIndex].toString() + ")");
+				const auto& ref1 = freeVariableRefs[freeIndex];
+
+				bool found = false;
+				for (size_t dataIndex = 0; dataIndex < refs.size(); ++dataIndex)
+				{
+					CGL_DebugLog(ToS(dataIndex));
+					CGL_DebugLog(std::string("Address(") + refs[dataIndex].toString() + ")");
+
+					const auto& ref2 = refs[dataIndex];
+
+					if (ref1.first == ref2)
+					{
+						//std::cout << "    " << freeIndex << " -> " << dataIndex << std::endl;
+
+						found = true;
+						variable2Data[freeIndex] = dataIndex;
+						break;
+					}
+				}
+
+				//DeclFreeにあってDeclSatに無い変数は意味がない。
+				//単に無視しても良いが、恐らく入力のミスと思われるので警告を出す
+				if (!found)
+				{
+					CGL_WarnLog("freeに指定された変数が無効です");
+				}
+			}
+			CGL_DebugLog("End Record MakeMap");
+
+			if (hasPlateausFunction)
+			{
+				std::cout << "Solve constraint by CMA-ES...\n";
+
+				libcmaes::FitFunc func = [&](const double *x, const int N)->double
+				{
+					for (int i = 0; i < N; ++i)
+					{
+						update(variable2Data[i], x[i]);
+					}
+
+					{
+						for (const auto& keyval : invRefs)
+						{
+							pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
+						}
+					}
+
+					pEnv->switchFrontScope();
+					double result = eval(pEnv);
+					pEnv->switchBackScope();
+
+					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+
+					return result;
+				};
+
+				CGL_DebugLog("");
+
+				std::vector<double> x0(freeVariableRefs.size());
+				for (int i = 0; i < x0.size(); ++i)
+				{
+					x0[i] = data[variable2Data[i]];
+					CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
+				}
+
+				CGL_DebugLog("");
+
+				const double sigma = 0.1;
+
+				const int lambda = 100;
+
+				libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
+				CGL_DebugLog("");
+				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
+				CGL_DebugLog("");
+				resultxs = cmasols.best_candidate().get_x();
+				CGL_DebugLog("");
+
+				std::cout << "solved\n";
+			}
+			else
+			{
+				std::cout << "Solve constraint by BFGS...\n";
+
+				ConstraintProblem constraintProblem;
+				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
+				{
+					//-1000 -> 1000
+					for (int i = 0; i < v.size(); ++i)
+					{
+						update(variable2Data[i], v[i]);
+						//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
+					}
+
+					{
+						for (const auto& keyval : invRefs)
+						{
+							pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
+						}
+					}
+
+					pEnv->switchFrontScope();
+					double result = eval(pEnv);
+					pEnv->switchBackScope();
+
+					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+					//std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
+					return result;
+				};
+				constraintProblem.originalRecord = currentRecord;
+				constraintProblem.keyList = currentKeyList;
+				constraintProblem.pEnv = pEnv;
+
+				Eigen::VectorXd x0s(freeVariableRefs.size());
+				for (int i = 0; i < x0s.size(); ++i)
+				{
+					x0s[i] = data[variable2Data[i]];
+					//x0s[i] = (problem.data[variable2Data[i]] / 2000.0) + 0.5;
+					CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
+				}
+
+				cppoptlib::BfgsSolver<ConstraintProblem> solver;
+				solver.minimize(constraintProblem, x0s);
+
+				resultxs.resize(x0s.size());
+				for (int i = 0; i < x0s.size(); ++i)
+				{
+					resultxs[i] = x0s[i];
+				}
+
+				//std::cout << "solved\n";
+			}
+		}
+
+		return resultxs;
 	}
 
 	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv)
@@ -343,7 +551,13 @@ namespace cgl
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;
 		result.constraint = constraint;
-		
+
+		//result.unitConstraints = unitConstraints;
+		//result.variableAppearances = variableAppearances;
+		////result.constraintGroups = constraintGroups;
+		//result.groupConstraints = groupConstraints;
+		result.original = original;
+
 		return result;
 	}
 
@@ -369,6 +583,12 @@ namespace cgl
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;
 		result.constraint = constraint;
+
+		//result.unitConstraints = unitConstraints;
+		//result.variableAppearances = variableAppearances;
+		////result.constraintGroups = constraintGroups;
+		//result.groupConstraints = groupConstraints;
+		result.original = original;
 
 		return result;
 	}

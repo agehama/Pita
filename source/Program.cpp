@@ -117,20 +117,24 @@ namespace cgl
 				{
 					std::cerr << "execute succeeded" << std::endl;
 					//printVal(evaluated.value(), pEnv, std::cout, 0);
-
-					std::cerr << "output SVG..." << std::endl;
-					if (output_filename.empty())
-					{
-						OutputSVG(std::cout, evaluated.value(), pEnv);
-					}
-					else
-					{
-						std::ofstream file(output_filename);
-						OutputSVG(file, evaluated.value(), pEnv);
-						file.close();
-					}
-					std::cerr << "completed" << std::endl;
 				}
+
+				if (logOutput)
+					std::cerr << "output SVG..." << std::endl;
+
+				if (output_filename.empty())
+				{
+					OutputSVG(std::cout, evaluated.value(), pEnv);
+				}
+				else
+				{
+					std::ofstream file(output_filename);
+					OutputSVG(file, evaluated.value(), pEnv);
+					file.close();
+				}
+
+				if (logOutput)
+				std::cerr << "completed" << std::endl;
 
 				succeeded = true;
 			}

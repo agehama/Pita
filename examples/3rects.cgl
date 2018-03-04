@@ -24,9 +24,9 @@ square = shape{
 contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
 
 main = shape{
-    a: square{scale: {x: 30, y: 30}}
-    b: square{scale: {x: 40, y: 40}}
-    c: square{scale: {x: 50, y: 50}}
+    a: square{scale: {x: 30, y: 30}, color: {r: 255, g: 0, b: 0}}
+    b: square{scale: {x: 40, y: 40}, color: {r: 0, g: 255, b: 0}}
+    c: square{scale: {x: 50, y: 50}, color: {r: 0, g: 0, b: 255}}
 
     sat( contact(a.topRight(), b.bottomLeft()) & contact(a.bottomRight(), c.topLeft()) )
     sat( contact(b.bottomRight(), c.topRight()) )

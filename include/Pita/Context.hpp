@@ -329,7 +329,20 @@ namespace cgl
 		//bindValueIDの変数宣言式用
 		void makeVariable(const std::string& name, const Address ID)
 		{
-			localEnv().back().variables[name] = ID;
+			auto& variables = localEnv().back().variables;
+			auto it = variables.find(name);
+			
+			//変数宣言文は、最も内側のスコープにある変数に対してのみ代入文としても振舞うことができる
+			//したがってこの場合は代入文と同様にアドレスの変更も捕捉する必要がある
+			if (it != variables.end())
+			{
+				changeAddress(it->second, ID);
+				it->second = ID;
+			}
+			else
+			{
+				variables[name] = ID;
+			}
 		}
 		
 		void printContext(bool flag = false)const;

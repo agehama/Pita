@@ -1456,9 +1456,9 @@ namespace cgl
 
 	LRValue Eval::operator()(const RecordConstractor& recordConsractor)
 	{
-		CGL_DebugLog("");
-		pEnv->enterScope();
-		CGL_DebugLog("");
+		//CGL_DebugLog("");
+		//pEnv->enterScope();
+		//CGL_DebugLog("");
 
 		std::vector<Identifier> keyList;
 		/*
@@ -1466,13 +1466,15 @@ namespace cgl
 		レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアスとして定義（スコープを抜けたら元に戻る≒遮蔽）
 		*/
 
-		for (size_t i = 0; i < recordConsractor.exprs.size(); ++i)
+		/*for (size_t i = 0; i < recordConsractor.exprs.size(); ++i)
 		{
 			CGL_DebugLog(std::string("RecordExpr(") + ToS(i) + "): ");
 			printExpr(recordConsractor.exprs[i]);
-		}
+		}*/
 
 		Record newRecord;
+
+		const bool isNewScope = !static_cast<bool>(pEnv->temporaryRecord);
 
 		if (pEnv->temporaryRecord)
 		{
@@ -1482,6 +1484,8 @@ namespace cgl
 		}
 		else
 		{
+			//現在のレコードが継承でない場合のみスコープを作る
+			pEnv->enterScope();
 			pEnv->currentRecords.push_back(std::ref(newRecord));
 		}
 
@@ -1507,9 +1511,12 @@ namespace cgl
 
 				CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
 
-				Expr exprVal = LRValue(keyVal.value);
+				//代入はできないようにする
+				/*Expr exprVal = LRValue(keyVal.value);
 				Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
-				boost::apply_visitor(*this, expr);
+				boost::apply_visitor(*this, expr);*/
+
+				pEnv->bindNewValue(keyVal.name, keyVal.value);
 
 				CGL_DebugLog("");
 			}
@@ -1709,7 +1716,8 @@ namespace cgl
 			{
 				Address address = problem.freeVariableRefs[i].first;
 				const auto range = problem.freeVariableRefs[i].second;
-				std::cout << "Address(" << address.toString() << "): [" << range.minimum << ", " << range.maximum << "]\n";
+				//std::cout << "Address(" << address.toString() << "): [" << range.minimum << ", " << range.maximum << "]\n";
+				std::cout << "Address(" << address.toString() << "): " << resultxs[i] << "\n";
 				pContext->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
 				//pEnv->assignToObject(address, (resultxs[i] - 0.5)*2000.0);
 			}
@@ -1998,7 +2006,10 @@ namespace cgl
 		pEnv->currentRecords.pop_back();
 
 		//pEnv->pop();
-		pEnv->exitScope();
+		if (isNewScope)
+		{
+			pEnv->exitScope();
+		}
 
 		const Address address = pEnv->makeTemporaryValue(record);
 
@@ -2115,6 +2126,8 @@ namespace cgl
 		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
 
 		//(4) ローカルスコープの参照値を読みレコードに上書きする
+		//レコード中のコロン式はレコードの最後でkeylistを見て値が紐づけられるので問題ないが
+		//レコード中の代入式については、そのローカル環境の更新を手動でレコードに反映する必要がある
 		if (auto opt = AsOpt<Record>(recordValue))
 		{
 			Record& newRecord = opt.value();

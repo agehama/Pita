@@ -1236,23 +1236,36 @@ namespace cgl
 			//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
 			if (auto keyValOpt = AsOpt<KeyValue>(value))
 			{
+				//const auto keyVal = keyValOpt.value();
+				//keyList.push_back(keyVal.name);
+
+				////識別子はValからはずしたので、識別子に対して直接代入を行うことはできなくなった
+				////Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
+
+				////したがって、一度代入式を作ってからそれを評価する
+				//	
+				///*Expr exprVal = LRValue(keyVal.value);
+				//Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
+				//boost::apply_visitor(*this, expr);*/
+
+				//{
+				//	Address tempVal = pEnv->makeTemporaryValue(keyVal.value);
+				//	pEnv->bindValueID(keyVal.name, tempVal);
+				//	//CGL_DebugLog(std::string("bind: ") + std::string(keyVal.name) + " -> Address(" + tempVal.toString() + ")");
+				//}
 				const auto keyVal = keyValOpt.value();
 				keyList.push_back(keyVal.name);
 
-				//識別子はValからはずしたので、識別子に対して直接代入を行うことはできなくなった
-				//Assign(ObjectReference(keyVal.name), keyVal.value, *pEnv);
+				CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
 
-				//したがって、一度代入式を作ってからそれを評価する
-					
+				//代入はできないようにする
 				/*Expr exprVal = LRValue(keyVal.value);
 				Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
 				boost::apply_visitor(*this, expr);*/
 
-				{
-					Address tempVal = pEnv->makeTemporaryValue(keyVal.value);
-					pEnv->bindValueID(keyVal.name, tempVal);
-					//CGL_DebugLog(std::string("bind: ") + std::string(keyVal.name) + " -> Address(" + tempVal.toString() + ")");
-				}
+				pEnv->bindNewValue(keyVal.name, keyVal.value);
+
+				CGL_DebugLog("");
 			}
 
 			++i;

@@ -32,4 +32,3 @@ main = shape{
     sat( contact(b.bottomRight(), c.topRight()) )
     var(b.pos in {x: [0, 10], y: [20, 30]}, c.pos in {x: [-10, 10], y: [45, 55]}, c.angle in [90, 180])
 }
-

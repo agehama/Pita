@@ -1429,5 +1429,391 @@ namespace cgl
 
 		return false;
 	}
+
+	std::string getIndent(int depth)
+	{
+		std::string indent;
+		const std::string indentStr = "  ";
+		for (int i = 0; i < depth; ++i)
+		{
+			indent += indentStr;
+		}
+		return indent;
+	}
+
+	bool GeosFromList2(std::ostream& os, const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const std::string& name, int depth, const cgl::Transform& transform);
+
+	bool GeosFromRecord2(std::ostream& os, const cgl::Val& value, std::shared_ptr<cgl::Context> pEnv, const std::string& name, int depth, const cgl::Transform& transform = cgl::Transform());
+
+	bool GeosFromRecordImpl2(std::ostream& os, const cgl::Record& record, std::shared_ptr<cgl::Context> pEnv, const std::string& name, int depth, const cgl::Transform& parent)
+	{
+		const cgl::Transform current(record, pEnv);
+
+		const cgl::Transform transform = parent * current;
+
+		std::vector<PitaGeometry> wholePolygons;
+
+		std::vector<gg::Geometry*> currentPolygons;
+		std::vector<gg::Geometry*> currentHoles;
+
+		gg::Geometry* currentLine = nullptr;
+
+		//現時点では実際に描画されるデータを持っているかどうかわからないため、一旦別のストリームに保存しておく
+		std::stringstream currentStream;
+		currentStream << getIndent(depth) << "<g id=\"" << name << "\" ";
+
+		std::stringstream currentChildStream;
+
+		//Color currentColor;
+
+		bool hasShape = false;
+
+		for (const auto& member : record.values)
+		{
+			const cgl::Val value = pEnv->expand(member.second);
+
+			if (member.first == "polygon" && cgl::IsType<cgl::List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentPolygons.push_back(ToPolygon(polygon));
+				}
+			}
+			else if (member.first == "hole" && cgl::IsType<cgl::List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentHoles.push_back(ToPolygon(polygon));
+				}
+			}
+			else if (member.first == "polygons" && IsType<List>(value))
+			{
+				const List& polygons = As<List>(value);
+				for (const auto& polygonAddress : polygons.data)
+				{
+					const Val& polygonVertices = pEnv->expand(polygonAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(polygonVertices), pEnv, transform) && !polygon.empty())
+					{
+						currentPolygons.push_back(ToPolygon(polygon));
+					}
+				}
+			}
+			else if (member.first == "holes" && IsType<List>(value))
+			{
+				const List& holes = As<List>(value);
+				for (const auto& holeAddress : holes.data)
+				{
+					const Val& hole = pEnv->expand(holeAddress);
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygon(polygon, As<List>(hole), pEnv, transform) && !polygon.empty())
+					{
+						currentHoles.push_back(ToPolygon(polygon));
+					}
+				}
+			}
+			else if (member.first == "line" && IsType<List>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygon(polygon, cgl::As<cgl::List>(value), pEnv, transform) && !polygon.empty())
+				{
+					currentLine = ToLineString(polygon);
+				}
+			}
+			else if (member.first == "fill" && IsType<Record>(value))
+			{
+				Color currentColor;
+				cgl::ReadColor(currentColor, cgl::As<cgl::Record>(value), pEnv, transform);
+				currentStream << "fill=\"" << currentColor.toString() << "\" ";
+			}
+			else if (member.first == "stroke" && IsType<Record>(value))
+			{
+				Color currentColor;
+				cgl::ReadColor(currentColor, cgl::As<cgl::Record>(value), pEnv, transform);
+				currentStream << "stroke=\"" << currentColor.toString() << "\" ";
+			}
+			else if (cgl::IsType<cgl::Record>(value))
+			{
+				hasShape = GeosFromRecordImpl2(currentChildStream, cgl::As<cgl::Record>(value), pEnv, member.first, depth + 1, transform) || hasShape;
+			}
+			else if (cgl::IsType<cgl::List>(value))
+			{
+				hasShape = GeosFromList2(currentChildStream, cgl::As<cgl::List>(value), pEnv, member.first, depth + 1, transform) || hasShape;
+			}
+		}
+
+		currentStream << ">\n";
+
+		const auto writePolygon = [&depth](std::ostream& os, const gg::Polygon* polygon)
+		{
+			//穴がない場合ー＞Polygonで描画
+			if (polygon->getNumInteriorRing() == 0)
+			{
+				const gg::LineString* outer = polygon->getExteriorRing();
+
+				os << getIndent(depth+1) << "<polygon " << "points=\"";
+				for (int i = 0; i < outer->getNumPoints(); ++i)
+				{
+					const gg::Coordinate& p = outer->getCoordinateN(i);
+					os << p.x << "," << p.y << " ";
+				}
+				os << "\"/>\n";
+			}
+			//穴がある場合ー＞Pathで描画
+			else
+			{
+				os << getIndent(depth + 1) << "<path " << "d=\"";
+
+				{
+					const gg::LineString* outer = polygon->getExteriorRing();
+
+					if (outer->getNumPoints() != 0)
+					{
+						const gg::Coordinate& p = outer->getCoordinateN(0);
+						os << "M" << p.x << "," << p.y << " ";
+					}
+
+					for (int i = 1; i < outer->getNumPoints(); ++i)
+					{
+						const gg::Coordinate& p = outer->getCoordinateN(i);
+						os << "L" << p.x << "," << p.y << " ";
+					}
+					os << "z ";
+				}
+
+				for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
+				{
+					const gg::LineString* hole = polygon->getInteriorRingN(i);
+
+					if (hole->getNumPoints() != 0)
+					{
+						const gg::Coordinate& p = hole->getCoordinateN(0);
+						os << "M" << p.x << "," << p.y << " ";
+					}
+
+					for (int n = 1; n < hole->getNumPoints(); ++n)
+					{
+						gg::Point* p = hole->getPointN(n);
+						os << "L" << p->getX() << "," << p->getY() << " ";
+					}
+					os << "z ";
+				}
+
+				os << "\"/>\n";
+			}
+		};
+
+		const auto writeLine = [&depth](std::ostream& os, const gg::LineString* lineString)
+		{
+			os << getIndent(depth + 1) << "<polyline " << "fill=\"none\" points=\"";
+			//os << getIndent(depth + 1) << "<polyline " << "points=\"";
+			for (int i = 0; i < lineString->getNumPoints(); ++i)
+			{
+				const gg::Point* p = lineString->getPointN(i);
+				os << p->getX() << "," << p->getY() << " ";
+			}
+			os << "\"/>\n";
+		};
+
+		const auto writePolygons = [&wholePolygons, &writePolygon, &writeLine](std::ostream& os)->bool
+		{
+			bool hasShape = false;
+			for (const auto& geometry : wholePolygons)
+			{
+				if (geometry.shape->getGeometryTypeId() == gg::GeometryTypeId::GEOS_POLYGON)
+				{
+					hasShape = true;
+					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry.shape);
+					writePolygon(os, polygon);
+				}
+				else if (geometry.shape->getGeometryTypeId() == gg::GeometryTypeId::GEOS_MULTIPOLYGON)
+				{
+					const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(geometry.shape);
+					for (int i = 0; i < polygons->getNumGeometries(); ++i)
+					{
+						hasShape = true;
+						const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(polygons->getGeometryN(i));
+						writePolygon(os, polygon);
+					}
+				}
+				else if (geometry.shape->getGeometryTypeId() == gg::GeometryTypeId::GEOS_LINESTRING)
+				{
+					hasShape = true;
+					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(geometry.shape);
+					writeLine(os, lineString);
+				}
+			}
+			return hasShape;
+		};
+
+		const auto writeWholeData = [&]()
+		{
+			hasShape = writePolygons(currentStream) || hasShape;
+			currentStream << currentChildStream.str();
+			currentStream << getIndent(depth) << "</g>\n";
+
+			if (hasShape)
+			{
+				os << currentStream.str();
+			}
+		};
+
+		auto factory = gg::GeometryFactory::create();
+
+		if (currentPolygons.empty() && currentLine == nullptr)
+		{
+			writeWholeData();
+
+			return hasShape;
+		}
+		else if (currentPolygons.empty())
+		{
+			//パスの色はどうするか　別で指定する必要がある？
+			//図形の境界線も考慮すると、塗りつぶしの色と線の色は別の名前で指定できるようにすべき
+			wholePolygons.emplace_back(currentLine, Color());
+			writeWholeData();
+			return true;
+		}
+		else if (currentHoles.empty())
+		{
+			for (gg::Geometry* geometry : currentPolygons)
+			{
+				wholePolygons.emplace_back(geometry, Color());
+			}
+
+			if (currentLine)
+			{
+				wholePolygons.emplace_back(currentLine, Color());
+			}
+
+			writeWholeData();
+			return true;
+		}
+		else
+		{
+			for (int s = 0; s < currentPolygons.size(); ++s)
+			{
+				gg::Geometry* erodeGeometry = currentPolygons[s];
+
+				for (int d = 0; d < currentHoles.size(); ++d)
+				{
+					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+
+					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					{
+						currentPolygons.erase(currentPolygons.begin() + s);
+
+						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+						for (int i = 0; i < polygons->getNumGeometries(); ++i)
+						{
+							currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
+						}
+
+						erodeGeometry = currentPolygons[s];
+					}
+					else if (erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON
+						&& erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
+					{
+						std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+					}
+				}
+
+				currentPolygons[s] = erodeGeometry;
+			}
+
+			for (gg::Geometry* geometry : currentPolygons)
+			{
+				wholePolygons.emplace_back(geometry, Color());
+			}
+
+			if (currentLine)
+			{
+				wholePolygons.emplace_back(currentLine, Color());
+			}
+
+			writeWholeData();
+			return true;
+		}
+	}
+
+	bool GeosFromList2(std::ostream& os, const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const std::string& name, int depth, const cgl::Transform& transform)
+	{
+		std::vector<PitaGeometry> currentPolygons;
+
+		bool hasShape = false;
+		int i = 0;
+		for (const cgl::Address member : list.data)
+		{
+			const cgl::Val value = pEnv->expand(member);
+
+			std::stringstream currentName;
+			currentName << name << "[" << i << "]";
+
+			if (cgl::IsType<cgl::Record>(value))
+			{
+				hasShape = GeosFromRecordImpl2(os, cgl::As<cgl::Record>(value), pEnv, currentName.str(), depth + 1, transform) || hasShape;
+			}
+			else if (cgl::IsType<cgl::List>(value))
+			{
+				hasShape = GeosFromList2(os, cgl::As<cgl::List>(value), pEnv, currentName.str(), depth + 1, transform) || hasShape;
+			}
+
+			++i;
+		}
+
+		return hasShape;
+	}
+
+	bool GeosFromRecord2(std::ostream& os, const Val& value, std::shared_ptr<cgl::Context> pEnv, const std::string& name, int depth, const cgl::Transform& transform)
+	{
+		if (cgl::IsType<cgl::Record>(value))
+		{
+			const cgl::Record& record = cgl::As<cgl::Record>(value);
+			return GeosFromRecordImpl2(os, record, pEnv, name, depth, transform);
+		}
+		if (cgl::IsType<cgl::List>(value))
+		{
+			const cgl::List& list = cgl::As<cgl::List>(value);
+			return GeosFromList2(os, list, pEnv, name, depth, transform);
+		}
+
+		return{};
+	}
+
+	bool OutputSVG2(std::ostream& os, const Val& value, std::shared_ptr<Context> pEnv, const std::string& name)
+	{
+		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
+		if (IsType<Record>(value) && boundingBoxOpt)
+		{
+			const BoundingRect& rect = boundingBoxOpt.value();
+
+			//const auto pos = rect.pos();
+			const auto widthXY = rect.width();
+			const auto center = rect.center();
+
+			//const double width = std::max(widthXY.x(), widthXY.y());
+			//const double halfWidth = width * 0.5;
+			const double width = widthXY.x();
+			const double height = widthXY.y();
+
+			const Eigen::Vector2d pos = center - Eigen::Vector2d(width*0.5, height*0.5);
+
+			/*os << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height
+				<< R"(" viewport-fill="black" viewport-fill-opacity="0.1)"  << R"(">)" << "\n";*/
+			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height << R"(">)" << "\n";
+
+			GeosFromRecord2(os, value, pEnv, name, 0);
+
+			os << "</svg>" << "\n";
+
+			return true;
+		}
+
+		return false;
+	}
 	
 }

@@ -124,12 +124,12 @@ namespace cgl
 
 				if (output_filename.empty())
 				{
-					OutputSVG(std::cout, evaluated.value(), pEnv);
+					OutputSVG2(std::cout, evaluated.value(), pEnv, "shape");
 				}
 				else
 				{
 					std::ofstream file(output_filename);
-					OutputSVG(file, evaluated.value(), pEnv);
+					OutputSVG2(file, evaluated.value(), pEnv, "shape");
 					file.close();
 				}
 

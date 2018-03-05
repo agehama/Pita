@@ -36,5 +36,6 @@ route = shape{
         points: 10
         passes: [rect.top(), moved(rect.right(), 50, 0), rect.bottom()]
         obstacles: [buffer(rect, 10)]
+        stroke: {r: 0, g: 255, b: 0}
     }
 }

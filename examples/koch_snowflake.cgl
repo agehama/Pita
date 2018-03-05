@@ -16,10 +16,36 @@ sqrt = (x -> x^0.5)
 length = (v -> sqrt(v.x*v.x + v.y*v.y))
 setLength = (v, l -> mul(div(v, length(v)), l))
 
+transform = (pos, scale, angle, vertex -> {
+    cosT: cos(angle)
+    sinT: sin(angle)
+    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+    y: pos.y + sinT * scale.x * vertex.x + cosT * scale.y * vertex.y
+})
+
 shape = {
+    polygon: []
     pos: vec2(0, 0)
     scale: vec2(1, 1)
     angle: 0
+    p: (index->poly=@polygon, transform(@pos, @scale, @angle, poly[index]))
+}
+
+square = shape{
+    polygon: [
+        {x: -0.5, y: -0.5}
+        {x: +0.5, y: -0.5}
+        {x: +0.5, y: +0.5}
+        {x: -0.5, y: +0.5}
+    ]
+}
+
+triangle = shape{
+    polygon: [
+        {x: 0, y: -0.5773502691896}
+        {x: 0.5, y: 0.2886751345948}
+        {x: -0.5, y: 0.2886751345948}
+    ]
 }
 
 koch_template = (p, q ->
@@ -35,6 +61,7 @@ koch_template = (p, q ->
 )
 
 rec_curve = (f, depth, template, ps -> 
+    mergin = 4
     if depth == 0
     then {
         line: ps
@@ -51,10 +78,15 @@ rec_curve = (f, depth, template, ps ->
 )
 
 tree = shape{
+    tri = triangle{scale = {x: 10, y: 10}}
     depth =  5
     a: shape{
-        c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:0}])
+        l: [
+            rec_curve(rec_curve, depth, koch_template, [tri.p(0), tri.p(1)])
+            rec_curve(rec_curve, depth, koch_template, [tri.p(1), tri.p(2)])
+            rec_curve(rec_curve, depth, koch_template, [tri.p(2), tri.p(0)])
+        ]
         scale = x2(70)
     }
-    stroke: {r: 0, g: 255, b: 0}
+    stroke: {r: 91, g: 155, b: 213}
 }

@@ -30,6 +30,8 @@ std::vector<std::string> exampleFiles()
 		"rec_shape1",
 		"rec_shape2",
 		"rec_shape3",
+		"koch_curve",
+		"koch_snowflake",
 		"constraint_dependency"
 	});
 

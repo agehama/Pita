@@ -639,6 +639,8 @@ namespace cgl
 			Address address = head.address(*this);
 			deepReference.head = address;
 
+			//参照が付くという事はheadのアドレスは現時点で評価できるはずだが、その先も評価できるとは限らない
+
 			for (const auto& access : accessor.accesses)
 			{
 				boost::optional<const Val&> objOpt = pEnv->expandOpt(address);
@@ -695,10 +697,12 @@ namespace cgl
 
 			Reference reference(m_referenceID);
 
+			//std::cout << "Address(" << deepReference.head.toString() << ")" << " is binded to Reference(" << reference.toString() << ")\n";
 			m_refAddressMap[reference] = deepReference;
 			m_addressRefMap.insert({ deepReference.head, reference });
 			for (const auto& keyAddress : deepReference.tail)
 			{
+				//std::cout << "Address(" << keyAddress.second.toString() << ")" << " is binded to Reference(" << reference.toString() << ")\n";
 				m_addressRefMap.insert({ keyAddress.second, reference });
 			}
 

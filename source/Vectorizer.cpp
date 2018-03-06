@@ -40,6 +40,8 @@ namespace cgl
 
 	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, const cgl::TransformPacked& transform);
 
+	void BoundingRectListPacked(BoundingRect& output, const cgl::PackedList& list, const cgl::TransformPacked& transform);
+
 	std::vector<PitaGeometry> GeosFromListDrawable(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
 
 	std::vector<PitaGeometry> GeosFromRecordDrawable(const cgl::Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
@@ -85,6 +87,8 @@ namespace cgl
 		auto& cs = resultPath.cs;
 		auto& distances = resultPath.distances;
 
+		const TransformPacked transform(pathRecord);
+
 		auto itLine = pathRecord.values.find("line");
 		if (itLine == pathRecord.values.end())
 			CGL_Error("不正な式です");
@@ -99,7 +103,12 @@ namespace cgl
 					const auto v = ReadVec2Packed(posRecordOpt.value());
 					const double x = std::get<0>(v);
 					const double y = std::get<1>(v);
-					cs->add(gg::Coordinate(x, y));
+					//cs->add(gg::Coordinate(x, y));
+					Eigen::Vector2d xy;
+					xy << x, y;
+					const auto xy_ = transform.product(xy);
+
+					cs->add(gg::Coordinate(xy_.x(), xy_.y()));
 				}
 				else CGL_Error("不正な式です");
 			}
@@ -1085,6 +1094,81 @@ namespace cgl
 		}
 
 		return{};
+	}
+
+	void BoundingRectRecordPackedImpl(BoundingRect& output, const cgl::PackedRecord& record, const cgl::TransformPacked& parent)
+	{
+		const cgl::TransformPacked current(record);
+
+		const cgl::TransformPacked transform = parent * current;
+
+		for (const auto& member : record.values)
+		{
+			const cgl::PackedVal& value = member.second.value;
+
+			if ((member.first == "polygon" || member.first == "line") && cgl::IsType<cgl::PackedList>(value))
+			{
+				cgl::Vector<Eigen::Vector2d> polygon;
+				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
+				{
+					output.add(polygon);
+				}
+			}
+			else if (member.first == "polygons" && IsType<PackedList>(value))
+			{
+				const PackedList& polygons = As<PackedList>(value);
+				for (const auto& polygonAddress : polygons.data)
+				{
+					const PackedVal& polygonVertices = polygonAddress.value;
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygonPacked(polygon, As<PackedList>(polygonVertices), transform) && !polygon.empty())
+					{
+						output.add(polygon);
+					}
+				}
+			}
+			else if (cgl::IsType<cgl::PackedRecord>(value))
+			{
+				BoundingRectRecordPackedImpl(output, cgl::As<cgl::PackedRecord>(value), transform);
+			}
+			else if (cgl::IsType<cgl::PackedList>(value))
+			{
+				BoundingRectListPacked(output, cgl::As<cgl::PackedList>(value), transform);
+			}
+		}
+	}
+
+	void BoundingRectListPacked(BoundingRect& output, const cgl::PackedList& list, const cgl::TransformPacked& transform)
+	{
+		for (const auto& val : list.data)
+		{
+			const PackedVal& value = val.value;
+			if (cgl::IsType<cgl::PackedRecord>(value))
+			{
+				BoundingRectRecordPackedImpl(output, cgl::As<cgl::PackedRecord>(value), transform);
+			}
+			else if (cgl::IsType<cgl::PackedList>(value))
+			{
+				BoundingRectListPacked(output, cgl::As<cgl::PackedList>(value), transform);
+			}
+		}
+	}
+
+	BoundingRect BoundingRectRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform)
+	{
+		BoundingRect result;
+
+		if (cgl::IsType<cgl::PackedRecord>(value))
+		{
+			BoundingRectRecordPackedImpl(result, cgl::As<cgl::PackedRecord>(value), transform);
+		}
+		if (cgl::IsType<cgl::PackedList>(value))
+		{
+			BoundingRectListPacked(result, cgl::As<cgl::PackedList>(value), transform);
+		}
+
+		return result;
 	}
 
 	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv)

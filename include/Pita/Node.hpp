@@ -451,6 +451,16 @@ namespace cgl
 	PackedVal Packed(const Val& value, const Context& context);
 	Val Unpacked(const PackedVal& packedValue, Context& context);
 
+	inline double IsNum(const Val& value)
+	{
+		return IsType<double>(value) || IsType<int>(value);
+	}
+
+	inline double IsNum(const PackedVal& value)
+	{
+		return IsType<double>(value) || IsType<int>(value);
+	}
+
 	inline double AsDouble(const Val& value)
 	{
 		if (IsType<double>(value))

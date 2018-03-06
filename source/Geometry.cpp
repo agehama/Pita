@@ -12,6 +12,7 @@
 #include <Pita/Vectorizer.hpp>
 #include <Pita/FontShape.hpp>
 #include <Pita/Printer.hpp>
+#include <Pita/Evaluator.hpp>
 
 namespace cgl
 {
@@ -1494,6 +1495,43 @@ namespace cgl
 		return result;
 	}
 
+	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const FuncVal& function, double beginValue, double endValue, int numOfPoints)
+	{
+		Eval evaluator(pContext);
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+
+		PackedRecord pathRecord;
+		PackedList polygonList;
+
+		const double unitX = (endValue - beginValue) / (numOfPoints - 1);
+		for (int i = 0; i < numOfPoints; ++i)
+		{
+			const double x = beginValue + unitX * i;
+			const Val value = pContext->expand(evaluator.callFunction(function, { pContext->makeTemporaryValue(x) }));
+			if (!IsType<double>(value))
+			{
+				CGL_Error("Error");
+			}
+			appendCoord(polygonList, x, As<double>(value));
+		}
+
+		pathRecord.add("line", polygonList);
+
+		return pathRecord;
+	}
+
 	PackedRecord BuildText(const CharString& str, const PackedRecord& packedPathRecord)
 	{
 		Path path = packedPathRecord.values.empty() ? Path() : std::move(ReadPathPacked(packedPathRecord));
@@ -1508,6 +1546,61 @@ namespace cgl
 
 		PackedList resultCharList;
 
+		struct BaseLineOffset
+		{
+			double x = 0, y = 0;
+			double angle = 0;
+		};
+
+		const auto getOffset = [](const Path& path, double offset)
+		{
+			BaseLineOffset result;
+
+			const auto& distances = path.distances;
+			const auto& cs = path.cs;
+
+			auto it = std::upper_bound(distances.begin(), distances.end(), offset);
+			if (it == distances.end())
+			{
+				const double innerDistance = offset - distances[distances.size() - 2];
+
+				Eigen::Vector2d p0(cs->getAt(cs->size() - 2).x, cs->getAt(cs->size() - 2).y);
+				Eigen::Vector2d p1(cs->getAt(cs->size() - 1).x, cs->getAt(cs->size() - 1).y);
+
+				const Eigen::Vector2d v = (p1 - p0);
+				const double currentLineLength = sqrt(v.dot(v));
+				const double progress = innerDistance / currentLineLength;
+
+				const Eigen::Vector2d targetPos = p0 + v * progress;
+				result.x = targetPos.x();
+				result.y = targetPos.y();
+
+				const auto n = v.normalized();
+				result.angle = rad2deg * atan2(n.y(), n.x());
+			}
+			else
+			{
+				const int lineIndex = std::distance(distances.begin(), it) - 1;
+				const double innerDistance = offset - distances[lineIndex];
+
+				Eigen::Vector2d p0(cs->getAt(lineIndex).x, cs->getAt(lineIndex).y);
+				Eigen::Vector2d p1(cs->getAt(lineIndex + 1).x, cs->getAt(lineIndex + 1).y);
+
+				const Eigen::Vector2d v = (p1 - p0);
+				const double currentLineLength = sqrt(v.dot(v));
+				const double progress = innerDistance / currentLineLength;
+
+				const Eigen::Vector2d targetPos = p0 + v * progress;
+				result.x = targetPos.x();
+				result.y = targetPos.y();
+
+				const auto n = v.normalized();
+				result.angle = rad2deg * atan2(n.y(), n.x());
+			}
+
+			return result;
+		};
+
 		if(0 < path.cs->size())
 		{
 			const auto& cs = path.cs;
@@ -1518,60 +1611,25 @@ namespace cgl
 				std::vector<gg::Geometry*> result;
 
 				const int codePoint = static_cast<int>(string[i]);
+				const double currentGlyphWidth = font.glyphWidth(codePoint);
 
-				double offsetX = 0;
-				double offsetY = 0;
-
-				double angle = 0;
-
-				auto it = std::upper_bound(distances.begin(), distances.end(), offsetHorizontal);
-				if (it == distances.end())
-				{
-					const double innerDistance = offsetHorizontal - distances[distances.size() - 2];
-
-					Eigen::Vector2d p0(cs->getAt(cs->size() - 2).x, cs->getAt(cs->size() - 2).y);
-					Eigen::Vector2d p1(cs->getAt(cs->size() - 1).x, cs->getAt(cs->size() - 1).y);
-
-					const Eigen::Vector2d v = (p1 - p0);
-					const double currentLineLength = sqrt(v.dot(v));
-					const double progress = innerDistance / currentLineLength;
-
-					const Eigen::Vector2d targetPos = p0 + v * progress;
-					offsetX = targetPos.x();
-					offsetY = targetPos.y();
-
-					const auto n = v.normalized();
-					angle = rad2deg * atan2(n.y(), n.x());
-				}
-				else
-				{
-					const int lineIndex = std::distance(distances.begin(), it) - 1;
-					const double innerDistance = offsetHorizontal - distances[lineIndex];
-
-					Eigen::Vector2d p0(cs->getAt(lineIndex).x, cs->getAt(lineIndex).y);
-					Eigen::Vector2d p1(cs->getAt(lineIndex + 1).x, cs->getAt(lineIndex + 1).y);
-
-					const Eigen::Vector2d v = (p1 - p0);
-					const double currentLineLength = sqrt(v.dot(v));
-					const double progress = innerDistance / currentLineLength;
-
-					const Eigen::Vector2d targetPos = p0 + v * progress;
-					offsetX = targetPos.x();
-					offsetY = targetPos.y();
-
-					const auto n = v.normalized();
-					angle = rad2deg * atan2(n.y(), n.x());
-				}
+				const auto offsetLeft = getOffset(path, offsetHorizontal);
+				const auto offsetCenter = getOffset(path, offsetHorizontal + currentGlyphWidth * 0.5);
 
 				const auto characterPolygon = font.makePolygon(codePoint, 5, 0, 0);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
-				offsetHorizontal += font.glyphWidth(codePoint);
+				offsetHorizontal += currentGlyphWidth;
 
-				resultCharList.add(MakeRecord(
+				/*resultCharList.add(MakeRecord(
 					"char", GetPackedShapesFromGeos(result),
 					"pos", MakeRecord("x", offsetX, "y", offsetY),
 					"angle", angle
+				));*/
+				resultCharList.add(MakeRecord(
+					"char", GetPackedShapesFromGeos(result),
+					"pos", MakeRecord("x", offsetLeft.x, "y", offsetLeft.y),
+					"angle", offsetCenter.angle
 				));
 			}
 		}
@@ -1599,7 +1657,7 @@ namespace cgl
 		return result;
 	}
 
-	PackedList GetShapeOuterPath(const PackedRecord& shape)
+	PackedList GetShapeOuterPaths(const PackedRecord& shape)
 	{
 		auto geometries = GeosFromRecordPacked(shape);
 
@@ -1653,7 +1711,7 @@ namespace cgl
 		return pathList;
 	}
 
-	PackedList GetShapePath(const PackedRecord& shape)
+	PackedList GetShapePaths(const PackedRecord& shape)
 	{
 		auto geometries = GeosFromRecordPacked(shape);
 
@@ -1697,12 +1755,6 @@ namespace cgl
 					}
 				}
 
-				//for (size_t p = 0; p < exterior->getNumPoints(); ++p)
-				/*for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
-				{
-					const gg::Point* point = exterior->getPointN(p);
-					appendCoord(polygonList, point->getX(), point->getY());
-				}*/
 				pathRecord.add("line", polygonList);
 				pathList.add(pathRecord);
 			}
@@ -1731,12 +1783,6 @@ namespace cgl
 					}
 				}
 
-				//for (size_t p = 0; p < hole->getNumPoints(); ++p)
-				/*for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
-				{
-					const gg::Point* point = hole->getPointN(p);
-					appendCoord(polygonList, point->getX(), point->getY());
-				}*/
 				pathRecord.add("line", polygonList);
 				pathList.add(pathRecord);
 			}
@@ -1762,5 +1808,35 @@ namespace cgl
 		}
 
 		return pathList;
+	}
+
+	PackedRecord GetBoundingBox(const PackedRecord& shape)
+	{
+		BoundingRect boundingRect = BoundingRectRecordPacked(shape);
+
+		const double minX = boundingRect.minPos().x();
+		const double minY = boundingRect.minPos().y();
+		const double maxX = boundingRect.maxPos().x();
+		const double maxY = boundingRect.maxPos().y();
+
+		PackedRecord resultRecord;
+		/*resultRecord.adds(
+			"min", MakeRecord("x", minX, "y", minY),
+			"max", MakeRecord("x", maxX, "y", maxY),
+			"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
+			"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
+		);*/
+
+		resultRecord.adds(
+			"polygon", MakeList(
+				MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY), MakeRecord("x", maxX, "y", maxY), MakeRecord("x", minX, "y", maxY)
+			),
+			"min", MakeRecord("x", minX, "y", minY),
+			"max", MakeRecord("x", maxX, "y", maxY),
+			"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
+			"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
+		);
+
+		return resultRecord;
 	}
 }

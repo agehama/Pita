@@ -1167,6 +1167,30 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"functionPath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 4)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& func = pEnv->expand(arguments[0]);
+			const Val& beginX = pEnv->expand(arguments[1]);
+			const Val& endX = pEnv->expand(arguments[2]);
+			const Val& numOfPoints = pEnv->expand(arguments[3]);
+
+			if (!IsType<FuncVal>(func) || !IsNum(beginX) || !IsNum(endX) || !IsType<int>(numOfPoints))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return GetFunctionPath(m_weakThis.lock(), As<FuncVal>(func), AsDouble(beginX), AsDouble(endX), As<int>(numOfPoints)).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
 			"shapeOuterPath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
@@ -1182,7 +1206,7 @@ namespace cgl
 				CGL_Error("引数の型が正しくありません");
 			}
 			
-			return GetShapeOuterPath(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+			return GetShapeOuterPaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
 		},
 			true
 			);
@@ -1203,7 +1227,7 @@ namespace cgl
 				CGL_Error("引数の型が正しくありません");
 			}
 
-			return GetShapePath(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+			return GetShapePaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
 		},
 			true
 			);
@@ -1246,6 +1270,27 @@ namespace cgl
 			}
 
 			return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"boundingBox",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& arg1 = pEnv->expand(arguments[0]);
+
+			if (!IsType<Record>(arg1))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return GetBoundingBox(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
 		},
 			true
 			);

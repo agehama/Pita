@@ -155,6 +155,16 @@ namespace cgl
 			return wh.x()*wh.y();
 		}
 
+		Eigen::Vector2d minPos()const
+		{
+			return m_min;
+		}
+
+		Eigen::Vector2d maxPos()const
+		{
+			return m_max;
+		}
+
 	private:
 		Eigen::Vector2d m_min = Eigen::Vector2d(DBL_MAX, DBL_MAX);
 		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
@@ -179,6 +189,8 @@ namespace cgl
 	std::vector<gg::Geometry*> GeosFromRecord(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
 
 	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
+
+	BoundingRect BoundingRectRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
 	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 

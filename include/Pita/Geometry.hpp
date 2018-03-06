@@ -24,9 +24,13 @@ namespace cgl
 
 	PackedRecord GetOffsetPath(const PackedRecord& pathRule, double offset);
 
+	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const FuncVal& function, double beginValue, double endValue, int numOfPoints);
+
 	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord());
 
-	PackedList GetShapeOuterPath(const PackedRecord& shape);
+	PackedList GetShapeOuterPaths(const PackedRecord& shape);
 
-	PackedList GetShapePath(const PackedRecord& shape);
+	PackedList GetShapePaths(const PackedRecord& shape);
+
+	PackedRecord GetBoundingBox(const PackedRecord& shape);
 }

@@ -1573,8 +1573,50 @@ namespace cgl
 		PackedRecord result;
 		result.add("shapes", resultCharList);
 		result.add("str", str);
-		result.add("base", WritePathPacked(path));
+		//result.add("base", WritePathPacked(path));
 
 		return result;
+	}
+
+	PackedList GetOuterPath(const PackedRecord& shape)
+	{
+		auto geometries = GeosFromRecordPacked(shape);
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+
+		PackedList pathList;
+		for (size_t g = 0; g < geometries.size(); ++g)
+		{
+			const gg::Geometry* geometry = geometries[g];
+			if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
+			{
+				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+				const gg::LineString* exterior = polygon->getExteriorRing();
+
+				PackedRecord pathRecord;
+				PackedList polygonList;
+				for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+				{
+					const gg::Point* point = exterior->getPointN(p);
+					appendCoord(polygonList, point->getX(), point->getY());
+				}
+				pathRecord.add("line", polygonList);
+
+				pathList.add(pathRecord);
+			}
+		}
+
+		return pathList;
 	}
 }

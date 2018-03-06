@@ -25,4 +25,6 @@ namespace cgl
 	PackedRecord GetOffsetPath(const PackedRecord& pathRule, double offset);
 
 	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord());
+
+	PackedList GetOuterPath(const PackedRecord& shape);
 }

@@ -31,16 +31,26 @@ square = shape{
 }
 
 route = shape{
-    rect = square{scale: {x: 200, y: 100}, pos: {x: 100, y: 100}}
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
     arrow: buildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
         stroke: {r: 0, g: 255, b: 0}
     }
     arrow2: offsetPath(arrow, 100.0){
         stroke: {r: 0, g: 255, b: 255}
     }
-    t: buildText("図形記述言語", arrow2)
-    
-
-    print(arrow)
-    print(arrow2)
+    arrow3 = outerPath(rect)[0]{
+        stroke: {r: 0, g: 0, b: 255}
+    }
+    textShape = buildText("あ", arrow3){
+        scale: {x: 20, y: 20}
+    }
+    arrow4: outerPath(textShape)[0]{
+        stroke: {r: 0, g: 0, b: 255}
+    }
+    textShape2 = buildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述", arrow4){
+    }
+    arrow5: shape{
+        paths: outerPath(textShape2)
+        stroke: {r: 32, g: 255, b: 64}
+    }
 }

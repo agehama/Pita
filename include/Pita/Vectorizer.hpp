@@ -39,6 +39,8 @@ namespace cgl
 
 	Path ReadPathPacked(const PackedRecord& record);
 
+	PackedRecord WritePathPacked(const Path& path);
+
 	struct Transform
 	{
 		using Mat3x3 = Eigen::Matrix<double, 3, 3, 0, 3, 3>;
@@ -88,7 +90,7 @@ namespace cgl
 
 		TransformPacked(const Mat3x3& mat) :mat(mat) {}
 
-		TransformPacked(const PackedRecord& record, std::shared_ptr<Context> pEnv);
+		TransformPacked(const PackedRecord& record);
 
 		void init(double px = 0, double py = 0, double sx = 1, double sy = 1, double angle = 0);
 
@@ -176,7 +178,7 @@ namespace cgl
 
 	std::vector<gg::Geometry*> GeosFromRecord(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform = cgl::TransformPacked());
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
 	Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 

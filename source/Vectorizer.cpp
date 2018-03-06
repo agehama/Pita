@@ -38,7 +38,7 @@ namespace cgl
 
 	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
 
-	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform);
+	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, const cgl::TransformPacked& transform);
 
 	std::vector<PitaGeometry> GeosFromListDrawable(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
 
@@ -116,7 +116,35 @@ namespace cgl
 		return std::move(resultPath);
 	}
 
-	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record, std::shared_ptr<Context> environment)
+	PackedRecord WritePathPacked(const Path& path)
+	{
+		PackedRecord result;
+		auto& cs = path.cs;
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+		
+		PackedList polygonList;
+		for (size_t i = 0; i < cs->size(); ++i)
+		{
+			appendCoord(polygonList, cs->getX(i), cs->getY(i));
+		}
+
+		result.add("line", polygonList);
+		return result;
+	}
+
+	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record)
 	{
 		const auto& values = record.values;
 
@@ -200,7 +228,7 @@ namespace cgl
 		std::cout << ")\n";
 	}
 
-	TransformPacked::TransformPacked(const PackedRecord& record, std::shared_ptr<Context> pEnv)
+	TransformPacked::TransformPacked(const PackedRecord& record)
 	{
 		double px = 0, py = 0;
 		double sx = 1, sy = 1;
@@ -216,18 +244,18 @@ namespace cgl
 				const PackedRecord& childRecord = valOpt.value();
 				if (member.first == "pos")
 				{
-					ReadDoublePacked(px, "x", childRecord, pEnv);
-					ReadDoublePacked(py, "y", childRecord, pEnv);
+					ReadDoublePacked(px, "x", childRecord);
+					ReadDoublePacked(py, "y", childRecord);
 				}
 				else if (member.first == "scale")
 				{
-					ReadDoublePacked(sx, "x", childRecord, pEnv);
-					ReadDoublePacked(sy, "y", childRecord, pEnv);
+					ReadDoublePacked(sx, "x", childRecord);
+					ReadDoublePacked(sy, "y", childRecord);
 				}
 			}
 			else if (member.first == "angle")
 			{
-				ReadDoublePacked(angle, "angle", record, pEnv);
+				ReadDoublePacked(angle, "angle", record);
 			}
 		}
 
@@ -348,7 +376,7 @@ namespace cgl
 		return true;
 	}
 
-	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, std::shared_ptr<Context> pEnv, const TransformPacked& transform)
+	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform)
 	{
 		output.clear();
 
@@ -360,7 +388,7 @@ namespace cgl
 			{
 				double x = 0, y = 0;
 				const PackedRecord& pos = As<PackedRecord>(value);
-				if (!ReadDoublePacked(x, "x", pos, pEnv) || !ReadDoublePacked(y, "y", pos, pEnv))
+				if (!ReadDoublePacked(x, "x", pos) || !ReadDoublePacked(y, "y", pos))
 				{
 					return false;
 				}
@@ -900,9 +928,9 @@ namespace cgl
 		return{};
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& parent)
+	std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, const cgl::TransformPacked& parent)
 	{
-		const cgl::TransformPacked current(record, pEnv);
+		const cgl::TransformPacked current(record);
 
 		const cgl::TransformPacked transform = parent * current;
 
@@ -918,7 +946,7 @@ namespace cgl
 			if (member.first == "polygon" && cgl::IsType<cgl::PackedList>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), pEnv, transform) && !polygon.empty())
+				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
 				{
 					currentPolygons.push_back(ToPolygon(polygon));
 				}
@@ -926,7 +954,7 @@ namespace cgl
 			else if (member.first == "hole" && cgl::IsType<cgl::PackedList>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), pEnv, transform) && !polygon.empty())
+				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
 				{
 					currentHoles.push_back(ToPolygon(polygon));
 				}
@@ -939,7 +967,7 @@ namespace cgl
 					const PackedVal& polygonVertices = polygonAddress.value;
 
 					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(polygonVertices), pEnv, transform) && !polygon.empty())
+					if (ReadPolygonPacked(polygon, As<PackedList>(polygonVertices), transform) && !polygon.empty())
 					{
 						currentPolygons.push_back(ToPolygon(polygon));
 					}
@@ -953,7 +981,7 @@ namespace cgl
 					const PackedVal& hole = holeAddress.value;
 
 					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(holes), pEnv, transform) && !polygon.empty())
+					if (ReadPolygonPacked(polygon, As<PackedList>(holes), transform) && !polygon.empty())
 					{
 						currentHoles.push_back(ToPolygon(polygon));
 					}
@@ -962,18 +990,18 @@ namespace cgl
 			else if (member.first == "line" && IsType<PackedList>(value))
 			{
 				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), pEnv, transform) && !polygon.empty())
+				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
 				{
 					currentLines.push_back(ToLineString(polygon));
 				}
 			}
 			else if (cgl::IsType<cgl::PackedRecord>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pEnv, transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), transform));
 			}
 			else if (cgl::IsType<cgl::PackedList>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), pEnv, transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), transform));
 			}
 		}
 
@@ -1027,7 +1055,7 @@ namespace cgl
 		}
 	}
 
-	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform)
+	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, const cgl::TransformPacked& transform)
 	{
 		std::vector<gg::Geometry*> currentPolygons;
 		for (const auto& val : list.data)
@@ -1035,25 +1063,25 @@ namespace cgl
 			const PackedVal& value = val.value;
 			if (cgl::IsType<cgl::PackedRecord>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pEnv, transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), transform));
 			}
 			else if (cgl::IsType<cgl::PackedList>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), pEnv, transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), transform));
 			}
 		}
 		return currentPolygons;
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<cgl::Context> pEnv, const cgl::TransformPacked& transform)
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform)
 	{
 		if (cgl::IsType<cgl::PackedRecord>(value))
 		{
-			return GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pEnv, transform);
+			return GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), transform);
 		}
 		if (cgl::IsType<cgl::PackedList>(value))
 		{
-			return GeosFromListPacked(cgl::As<cgl::PackedList>(value), pEnv, transform);
+			return GeosFromListPacked(cgl::As<cgl::PackedList>(value), transform);
 		}
 
 		return{};

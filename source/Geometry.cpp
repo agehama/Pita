@@ -544,7 +544,7 @@ namespace cgl
 			const PackedVal& obstacleListVal = itCircumvents->second.value;
 			if (auto obstacleListOpt = AsOpt<PackedList>(obstacleListVal))
 			{
-				obstacles = GeosFromRecordPacked(obstacleListOpt.value(), pEnv);
+				obstacles = GeosFromRecordPacked(obstacleListOpt.value());
 			}
 			else
 			{
@@ -849,10 +849,6 @@ namespace cgl
 		pathRule = As<Record>(packedPathRule.unpacked(*pEnv));
 	}
 
-	void GetOffsetPath(Record & pathRule, double offset, std::shared_ptr<cgl::Context> pEnv)
-	{
-	}
-
 	void GetText(Record& textRule, std::shared_ptr<cgl::Context> pEnv)
 	{
 		PackedRecord packedTextRule = As<PackedRecord>(textRule.packed(*pEnv));
@@ -1130,5 +1126,455 @@ namespace cgl
 
 		const auto result = builder.textToPolygon(str, 5);
 		return GetShapesFromGeos(result, pEnv);
+	}
+
+	PackedRecord BuildPath(const PackedList& passes, int numOfPoints, const PackedList& obstacleList)
+	{
+		auto factory = gg::GeometryFactory::create();
+
+		std::vector<gg::Point*> originalPoints;
+		Vector<Eigen::Vector2d> points;
+		{
+			if (passes.data.size() < 2)
+			{
+				CGL_Error("buildPathの第一引数には通る点を二点以上指定する必要があります");
+			}
+
+			for (const auto& pointVal : passes.data)
+			{
+				if (auto posRecordOpt = AsOpt<PackedRecord>(pointVal.value))
+				{
+					const auto v = ReadVec2Packed(posRecordOpt.value());
+					const double x = std::get<0>(v);
+					const double y = std::get<1>(v);
+
+					Eigen::Vector2d v2d;
+					v2d << x, y;
+					points.push_back(v2d);
+
+					originalPoints.push_back(factory->createPoint(gg::Coordinate(x, y)));
+				}
+				else
+				{
+					CGL_Error("passesが不正な式です");
+				}
+			}
+		}
+
+
+		std::vector<double> angles1(numOfPoints / 2);
+		std::vector<double> angles2(numOfPoints / 2);
+
+		std::vector<gg::Geometry*> obstacles = GeosFromRecordPacked(obstacleList);
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+
+		const gg::Coordinate beginPos(points.front().x(), points.front().y());
+		const gg::Coordinate endPos(points.back().x(), points.back().y());
+
+		points.erase(points.end() - 1);
+		points.erase(points.begin());
+		originalPoints.erase(originalPoints.end() - 1);
+		originalPoints.erase(originalPoints.begin());
+
+		PackedRecord result;
+		PackedList polygonList;
+
+
+		//*
+		libcmaes::FitFunc func = [&](const double *x, const int N)->double
+		{
+			//std::cout << "A";
+
+			const int halfindex = N / 2;
+
+			const double rodLength = std::abs(x[N - 1]) + 1.0;
+
+			gg::CoordinateArraySequence cs2;
+			cs2.add(beginPos);
+			for (int i = 0; i < halfindex; ++i)
+			{
+				const auto& lastPos = cs2.back();
+				const double angle = x[i];
+				const double dx = rodLength * cos(angle);
+				const double dy = rodLength * sin(angle);
+				cs2.add(gg::Coordinate(lastPos.x + dx, lastPos.y + dy));
+			}
+			const auto ik1Last = cs2.back();
+
+			//std::cout << "B";
+			Vector<Eigen::Vector2d> cs3;
+			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
+			for (int i = 0; i < halfindex; ++i)
+			{
+				const int currentIndex = i + halfindex;
+				const auto& lastPos = cs3.back();
+				const double angle = x[currentIndex];
+				const double dx = rodLength * cos(angle);
+				const double dy = rodLength * sin(angle);
+
+				const double lastX = lastPos.x();
+				const double lastY = lastPos.y();
+				cs3.push_back(Eigen::Vector2d(lastX + dx, lastY + dy));
+			}
+			const auto ik2Last = cs3.back();
+
+			for (auto it = cs3.rbegin(); it != cs3.rend(); ++it)
+			{
+				cs2.add(gg::Coordinate(it->x(), it->y()));
+			}
+
+			//std::cout << "C";
+			gg::LineString* ls2 = factory->createLineString(cs2);
+
+			double pathLength = ls2->getLength();
+			const double pathLengthSqrt = sqrt(pathLength);
+
+			const double dx = ik1Last.x - ik2Last.x();
+			const double dy = ik1Last.y - ik2Last.y();
+			const double distanceSq = dx * dx + dy * dy;
+			const double distance = sqrt(distanceSq);
+
+			double penalty = 0;
+			for (int i = 0; i < originalPoints.size(); ++i)
+			{
+				god::DistanceOp distanceOp(ls2, originalPoints[i]);
+				penalty += distanceOp.distance();
+			}
+
+			//std::cout << "D";
+			double penalty2 = 0;
+			for (int i = 0; i < obstacles.size(); ++i)
+			{
+				try
+				{
+					gg::Geometry* g = obstacles[i]->intersection(ls2);
+					//std::cout << "E";
+					if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
+					{
+						//std::cout << "F";
+						const gg::LineString* intersections = dynamic_cast<const gg::LineString*>(g);
+						penalty2 += intersections->getLength();
+					}
+					else if (g->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+					{
+						//std::cout << "G";
+						const gg::MultiLineString* intersections = dynamic_cast<const gg::MultiLineString*>(g);
+						penalty2 += intersections->getLength();
+					}
+					else
+					{
+						//std::cout << "H";
+					}
+				}
+				catch (const std::exception& e)
+				{
+					penalty2 += pathLength;
+				}
+			}
+
+			penalty2 /= pathLength;
+			penalty2 *= 100.0;
+
+			const double penaltySq = penalty * penalty;
+			const double penalty2Sq = penalty2 * penalty2;
+
+			//penalty = 100 * penalty*penalty;
+			//penalty2 = 100 * penalty2*penalty2;
+
+			const double totalCost = pathLength + distance + penaltySq + penalty2Sq;
+			/*std::cout << std::string("cost: ") <<
+			ToS(pathLength, 10) << ", " <<
+			ToS(distance, 10) << ", " <<
+			ToS(penaltySq, 10) << ", " <<
+			ToS(penalty2Sq, 10) << " => " << ToS(totalCost, 15) << "\n";*/
+
+			//const double totalCost = penalty2;
+			//std::cout << std::string("cost: ") << ToS(totalCost, 10) << "\n";
+			//std::cout << "H " << ToS(totalCost, 10) << "\n";
+
+			return totalCost;
+		};
+
+		std::vector<double> x0(numOfPoints + 1, 0.0);
+		x0.back() = 10;
+
+		const double sigma = 0.1;
+
+		const int lambda = 100;
+
+		/*
+		std::vector<double> lbounds(x0.size()), ubounds(x0.size());
+		for (size_t i = 0; i < num; ++i)
+		{
+		lbounds[i] = -3.1415926535*0.5;
+		ubounds[i] = 3.1415926535*0.5;
+		}
+		lbounds.back() = 0.0;
+		ubounds.back() = 100.0;
+
+		libcmaes::GenoPheno<libcmaes::pwqBoundStrategy, libcmaes::linScalingStrategy> gp(lbounds.data(), ubounds.data(), x0.size());
+		libcmaes::CMAParameters<libcmaes::GenoPheno<libcmaes::pwqBoundStrategy, libcmaes::linScalingStrategy>> cmaparams(x0.size(), x0.data(), sigma, -1, 0, gp);
+		//cmaparams.set_algo(aCMAES);
+		cmaparams.set_algo(IPOP_CMAES);
+		libcmaes::CMASolutions cmasols = libcmaes::cmaes<libcmaes::GenoPheno<libcmaes::pwqBoundStrategy, libcmaes::linScalingStrategy>>(func, cmaparams);
+		Eigen::VectorXd bestparameters = gp.pheno(cmasols.get_best_seen_candidate().get_x_dvec());
+		auto resultxs = x0;
+		for (size_t i = 0; i < resultxs.size(); ++i)
+		{
+		resultxs[i] = bestparameters[i];
+		}
+		//*/
+
+		//*
+		libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
+		libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
+		auto resultxs = cmasols.best_candidate().get_x();
+		//*/
+
+		{
+			const double rodLength = resultxs.back();
+
+			const int halfindex = numOfPoints / 2;
+			{
+				double lastX = beginPos.x;
+				double lastY = beginPos.y;
+
+				appendCoord(polygonList, beginPos.x, beginPos.y);
+				for (int i = 0; i < halfindex; ++i)
+				{
+					const double angle = resultxs[i];
+					const double dx = rodLength * cos(angle);
+					const double dy = rodLength * sin(angle);
+					lastX += dx;
+					lastY += dy;
+					appendCoord(polygonList, lastX, lastY);
+				}
+			}
+
+			Vector<Eigen::Vector2d> cs3;
+			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
+			for (int i = 0; i < halfindex; ++i)
+			{
+				const int currentIndex = i + halfindex;
+				const auto& lastPos = cs3.back();
+				const double angle = resultxs[currentIndex];
+				const double dx = rodLength * cos(angle);
+				const double dy = rodLength * sin(angle);
+
+				const double lastX = lastPos.x();
+				const double lastY = lastPos.y();
+				cs3.push_back(Eigen::Vector2d(lastX + dx, lastY + dy));
+			}
+
+			for (auto it = cs3.rbegin(); it != cs3.rend(); ++it)
+			{
+				appendCoord(polygonList, it->x(), it->y());
+			}
+		}
+
+		//*/
+
+		result.add("line", polygonList);
+		{
+			PackedRecord record;
+			record.add("r", 0);
+			record.add("g", 255);
+			record.add("b", 255);
+			result.add("stroke", record);
+		}
+		result.type = RecordType::Path;
+
+		return result;
+	}
+
+	PackedRecord GetOffsetPath(const PackedRecord& packedPathRecord, double offset)
+	{
+		Path originalPath = std::move(ReadPathPacked(packedPathRecord));
+
+		auto factory = gg::GeometryFactory::create();
+
+		gg::PrecisionModel model(gg::PrecisionModel::Type::FLOATING);
+
+		//gob::BufferParameters param(10, gob::BufferParameters::CAP_ROUND, gob::BufferParameters::JOIN_BEVEL, 10.0);
+		gob::BufferParameters param(10, gob::BufferParameters::CAP_FLAT, gob::BufferParameters::JOIN_BEVEL, 10.0);
+
+		gob::OffsetCurveBuilder builder(&model, param);
+
+		std::vector<gg::CoordinateSequence*> resultLines;
+
+		const bool isLeftSide = 0.0 <= offset;
+		//builder.getLineCurve(&points, 15.0, result);
+		builder.getSingleSidedLineCurve(originalPath.cs.get(), std::abs(offset), resultLines, isLeftSide, !isLeftSide);
+
+		//builder.getSingleSidedLineCurve(originalPath.cs.get(), offset, resultLines, true, false);
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+
+		PackedRecord result;
+		PackedList polygonList;
+		for (size_t i = 0; i < resultLines.size(); ++i)
+		{
+			const auto line = resultLines[i];
+			for (size_t p = 0; p < line->getSize(); ++p)
+			{
+				appendCoord(polygonList, line->getX(p), line->getY(p));
+			}
+		}
+
+		//getSingleSidedLineCurveがClosedPathを返すので最後の点を消す
+		polygonList.data.pop_back();
+
+		//getSingleSidedLineCurveに左と右を指定したとき方向が逆になるので合わせる
+		if (!isLeftSide)
+		{
+			std::reverse(polygonList.data.begin(), polygonList.data.end());
+
+			/*std::cout << "\n";
+			std::cout << "post:\n";
+			for (const auto& pos : polygonList.data)
+			{
+				if (auto opt = AsOpt<PackedRecord>(pos.value))
+				{
+					auto& posRecord = opt.value().values;
+					std::cout << AsDouble(posRecord.at("x").value) << ", " << AsDouble(posRecord.at("y").value) << "\n";
+				}
+				else
+				{
+					CGL_Error("error");
+				}
+			}*/
+		}
+
+		result.add("line", polygonList);
+
+		return result;
+	}
+
+	PackedRecord BuildText(const CharString& str, const PackedRecord& packedPathRecord)
+	{
+		Path path = packedPathRecord.values.empty() ? Path() : std::move(ReadPathPacked(packedPathRecord));
+
+		auto factory = gg::GeometryFactory::create();
+
+		FontBuilder font;
+		//cgl::FontBuilder font("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
+
+		std::u32string string = str.toString();
+		double offsetHorizontal = 0;
+
+		PackedList resultCharList;
+
+		if(0 < path.cs->size())
+		{
+			const auto& cs = path.cs;
+			const auto& distances = path.distances;
+
+			for (size_t i = 0; i < string.size(); ++i)
+			{
+				std::vector<gg::Geometry*> result;
+
+				const int codePoint = static_cast<int>(string[i]);
+
+				double offsetX = 0;
+				double offsetY = 0;
+
+				double angle = 0;
+
+				auto it = std::upper_bound(distances.begin(), distances.end(), offsetHorizontal);
+				if (it == distances.end())
+				{
+					const double innerDistance = offsetHorizontal - distances[distances.size() - 2];
+
+					Eigen::Vector2d p0(cs->getAt(cs->size() - 2).x, cs->getAt(cs->size() - 2).y);
+					Eigen::Vector2d p1(cs->getAt(cs->size() - 1).x, cs->getAt(cs->size() - 1).y);
+
+					const Eigen::Vector2d v = (p1 - p0);
+					const double currentLineLength = sqrt(v.dot(v));
+					const double progress = innerDistance / currentLineLength;
+
+					const Eigen::Vector2d targetPos = p0 + v * progress;
+					offsetX = targetPos.x();
+					offsetY = targetPos.y();
+
+					const auto n = v.normalized();
+					angle = rad2deg * atan2(n.y(), n.x());
+				}
+				else
+				{
+					const int lineIndex = std::distance(distances.begin(), it) - 1;
+					const double innerDistance = offsetHorizontal - distances[lineIndex];
+
+					Eigen::Vector2d p0(cs->getAt(lineIndex).x, cs->getAt(lineIndex).y);
+					Eigen::Vector2d p1(cs->getAt(lineIndex + 1).x, cs->getAt(lineIndex + 1).y);
+
+					const Eigen::Vector2d v = (p1 - p0);
+					const double currentLineLength = sqrt(v.dot(v));
+					const double progress = innerDistance / currentLineLength;
+
+					const Eigen::Vector2d targetPos = p0 + v * progress;
+					offsetX = targetPos.x();
+					offsetY = targetPos.y();
+
+					const auto n = v.normalized();
+					angle = rad2deg * atan2(n.y(), n.x());
+				}
+
+				const auto characterPolygon = font.makePolygon(codePoint, 5, 0, 0);
+				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
+
+				offsetHorizontal += font.glyphWidth(codePoint);
+
+				resultCharList.add(MakeRecord(
+					"char", GetPackedShapesFromGeos(result),
+					"pos", MakeRecord("x", offsetX, "y", offsetY),
+					"angle", angle
+				));
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < string.size(); ++i)
+			{
+				std::vector<gg::Geometry*> result;
+
+				const int codePoint = static_cast<int>(string[i]);
+				const auto characterPolygon = font.makePolygon(codePoint, 5, offsetHorizontal);
+				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
+
+				offsetHorizontal += font.glyphWidth(codePoint);
+
+				resultCharList.add(GetPackedShapesFromGeos(result));
+			}
+		}
+
+		PackedRecord result;
+		result.add("shapes", resultCharList);
+		result.add("str", str);
+		result.add("base", WritePathPacked(path));
+
+		return result;
 	}
 }

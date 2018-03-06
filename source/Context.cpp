@@ -1078,6 +1078,95 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"buildPath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 2 && arguments.size() != 3)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& passesVal = pEnv->expand(arguments[0]);
+			const Val& numVal = pEnv->expand(arguments[1]);
+
+			auto obstaclesValOpt = arguments.size() == 3 ? boost::optional<const Val&>(pEnv->expand(arguments[2])) : boost::none;
+
+			if (!IsType<List>(passesVal) || !IsType<int>(numVal))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+			if (obstaclesValOpt && !IsType<List>(obstaclesValOpt.value()))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			if (obstaclesValOpt)
+			{
+				return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal), As<PackedList>(As<List>(obstaclesValOpt.value()).packed(*this))).unpacked(*this);
+			}
+			return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal)).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"buildText",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1 && arguments.size() != 2)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+			//buildText(str, basePath)
+
+			const Val& strVal = pEnv->expand(arguments[0]);
+			auto baseLineOpt = arguments.size() == 2 ? boost::optional<const Val&>(pEnv->expand(arguments[1])) : boost::none;
+
+			if (!IsType<CharString&>(strVal))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+			if (baseLineOpt && !IsType<Record>(baseLineOpt.value()))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			if (baseLineOpt)
+			{
+				return BuildText(As<CharString>(strVal), As<PackedRecord>(As<Record>(baseLineOpt.value()).packed(*this))).unpacked(*this);
+			}
+			return BuildText(As<CharString>(strVal)).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"offsetPath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& arg1 = pEnv->expand(arguments[0]);
+			const Val& arg2 = pEnv->expand(arguments[1]);
+
+			if (!IsType<Record>(arg1))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+			if (!IsType<double>(arg2) && !IsType<int>(arg2))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return GetOffsetPath(As<PackedRecord>(As<Record>(arg1).packed(*this)), AsDouble(arg2)).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
 			"diff",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{

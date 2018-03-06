@@ -1985,7 +1985,7 @@ namespace cgl
 			record.append(key, address);
 		}
 
-		if (record.type == RecordType::Path)
+		/*if (record.type == RecordType::Path)
 		{
 			GetPath(record, pEnv);
 		}
@@ -1996,7 +1996,7 @@ namespace cgl
 		else if (record.type == RecordType::ShapePath)
 		{
 			GetText(record, pEnv);
-		}
+		}*/
 
 		pEnv->printContext();
 

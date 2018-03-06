@@ -17,10 +17,18 @@ namespace cgl
 	{
 		double sum = 0;
 
-		for (int i = 0; i < closedPath.size(); ++i)
+		for (int i = 0; i + 1< closedPath.size(); ++i)
 		{
 			const auto& p1 = closedPath[i];
-			const auto& p2 = closedPath[(i + 1) % closedPath.size()];
+			//const auto& p2 = closedPath[(i + 1) % closedPath.size()];
+			const auto& p2 = closedPath[i + 1];
+
+			sum += (p2.x() - p1.x())*(p2.y() + p1.y());
+		}
+
+		{
+			const auto& p1 = closedPath[closedPath.size() - 1];
+			const auto& p2 = closedPath[0];
 
 			sum += (p2.x() - p1.x())*(p2.y() + p1.y());
 		}

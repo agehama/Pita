@@ -15,6 +15,27 @@
 
 namespace cgl
 {
+	bool IsClockWise(const gg::LineString* closedPath)
+	{
+		double sum = 0;
+
+		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
+		{
+			const gg::Point* p1 = closedPath->getPointN(p);
+			const gg::Point* p2 = closedPath->getPointN(p+1);
+
+			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+		}
+		{
+			const gg::Point*  p1 = closedPath->getPointN(closedPath->getNumPoints() - 1);
+			const gg::Point*  p2 = closedPath->getPointN(0);
+
+			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+		}
+
+		return sum < 0.0;
+	}
+
 	class PathConstraintProblem : public cppoptlib::Problem<double>
 	{
 	public:
@@ -1578,7 +1599,7 @@ namespace cgl
 		return result;
 	}
 
-	PackedList GetOuterPath(const PackedRecord& shape)
+	PackedList GetShapeOuterPath(const PackedRecord& shape)
 	{
 		auto geometries = GeosFromRecordPacked(shape);
 
@@ -1606,14 +1627,137 @@ namespace cgl
 
 				PackedRecord pathRecord;
 				PackedList polygonList;
-				for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+
+				if (IsClockWise(exterior))
+				{
+					for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+					{
+						const gg::Point* point = exterior->getPointN(p);
+						appendCoord(polygonList, point->getX(), point->getY());
+					}
+				}
+				else
+				{
+					for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
+					{
+						const gg::Point* point = exterior->getPointN(p);
+						appendCoord(polygonList, point->getX(), point->getY());
+					}
+				}
+
+				pathRecord.add("line", polygonList);
+				pathList.add(pathRecord);
+			}
+		}
+
+		return pathList;
+	}
+
+	PackedList GetShapePath(const PackedRecord& shape)
+	{
+		auto geometries = GeosFromRecordPacked(shape);
+
+		PackedList pathList;
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+
+		const auto appendPolygon = [&](const gg::Polygon* polygon)
+		{
+			{
+				const gg::LineString* exterior = polygon->getExteriorRing();
+
+				PackedRecord pathRecord;
+				PackedList polygonList;
+
+				if (IsClockWise(exterior))
+				{
+					for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+					{
+						const gg::Point* point = exterior->getPointN(p);
+						appendCoord(polygonList, point->getX(), point->getY());
+					}
+				}
+				else
+				{
+					for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
+					{
+						const gg::Point* point = exterior->getPointN(p);
+						appendCoord(polygonList, point->getX(), point->getY());
+					}
+				}
+
+				//for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+				/*for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
 				{
 					const gg::Point* point = exterior->getPointN(p);
 					appendCoord(polygonList, point->getX(), point->getY());
-				}
+				}*/
 				pathRecord.add("line", polygonList);
-
 				pathList.add(pathRecord);
+			}
+
+			for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
+			{
+				const gg::LineString* hole = polygon->getInteriorRingN(i);
+
+				PackedRecord pathRecord;
+				PackedList polygonList;
+				
+				if (IsClockWise(hole))
+				{
+					for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
+					{
+						const gg::Point* point = hole->getPointN(p);
+						appendCoord(polygonList, point->getX(), point->getY());
+					}
+				}
+				else
+				{
+					for (size_t p = 0; p < hole->getNumPoints(); ++p)
+					{
+						const gg::Point* point = hole->getPointN(p);
+						appendCoord(polygonList, point->getX(), point->getY());
+					}
+				}
+
+				//for (size_t p = 0; p < hole->getNumPoints(); ++p)
+				/*for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
+				{
+					const gg::Point* point = hole->getPointN(p);
+					appendCoord(polygonList, point->getX(), point->getY());
+				}*/
+				pathRecord.add("line", polygonList);
+				pathList.add(pathRecord);
+			}
+		};
+
+		for (size_t g = 0; g < geometries.size(); ++g)
+		{
+			const gg::Geometry* geometry = geometries[g];
+			if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
+			{
+				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+				appendPolygon(polygon);
+			}
+			else if (geometry->getGeometryTypeId() == gg::GEOS_MULTIPOLYGON)
+			{
+				const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(geometry);
+				for (size_t poly = 0; poly < polygons->getNumGeometries(); ++poly)
+				{
+					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(polygons->getGeometryN(poly));
+					appendPolygon(polygon);
+				}
 			}
 		}
 

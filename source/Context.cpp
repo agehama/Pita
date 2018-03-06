@@ -1167,7 +1167,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"outerPath",
+			"shapeOuterPath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1182,7 +1182,28 @@ namespace cgl
 				CGL_Error("引数の型が正しくありません");
 			}
 			
-			return GetOuterPath(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+			return GetShapeOuterPath(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"shapePath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& arg1 = pEnv->expand(arguments[0]);
+
+			if (!IsType<Record>(arg1))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return GetShapePath(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
 		},
 			true
 			);

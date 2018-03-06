@@ -981,7 +981,7 @@ namespace cgl
 					const PackedVal& hole = holeAddress.value;
 
 					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(holes), transform) && !polygon.empty())
+					if (ReadPolygonPacked(polygon, As<PackedList>(hole), transform) && !polygon.empty())
 					{
 						currentHoles.push_back(ToPolygon(polygon));
 					}

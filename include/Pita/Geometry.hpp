@@ -26,5 +26,7 @@ namespace cgl
 
 	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord());
 
-	PackedList GetOuterPath(const PackedRecord& shape);
+	PackedList GetShapeOuterPath(const PackedRecord& shape);
+
+	PackedList GetShapePath(const PackedRecord& shape);
 }

@@ -38,19 +38,20 @@ route = shape{
     arrow2: offsetPath(arrow, 100.0){
         stroke: {r: 0, g: 255, b: 255}
     }
-    arrow3 = outerPath(rect)[0]{
+    arrow3 = shapeOuterPath(rect)[0]{
         stroke: {r: 0, g: 0, b: 255}
     }
-    textShape = buildText("あ", arrow3){
+    textShape = shape{
+        a: buffer(buildText("図", arrow2){
         scale: {x: 20, y: 20}
+    }, 20)
     }
-    arrow4: outerPath(textShape)[0]{
+    arrow4: shape{
+        paths: shapePath(textShape)
         stroke: {r: 0, g: 0, b: 255}
     }
-    textShape2 = buildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述", arrow4){
-    }
-    arrow5: shape{
-        paths: outerPath(textShape2)
-        stroke: {r: 32, g: 255, b: 64}
-    }
+    ts: []
+    for i in 0:size(arrow4.paths)-1 do(
+        ts[i] = buildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita", arrow4.paths[i])
+    )
 }

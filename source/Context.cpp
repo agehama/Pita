@@ -1261,6 +1261,28 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"deformShapeByPath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0]);
+			const Val& path = pEnv->expand(arguments[1]);
+
+			if (!IsType<Record>(shape) || !IsType<Record>(path))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return GetDeformedShape(As<PackedRecord>(As<Record>(shape).packed(*this)), As<PackedRecord>(As<Record>(path).packed(*this))).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
 			"area",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
@@ -1283,14 +1305,14 @@ namespace cgl
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0]);
+			const Val& shape = pEnv->expand(arguments[0]);
 
-			if (!IsType<Record>(arg1))
+			if (!IsType<Record>(shape))
 			{
 				CGL_Error("引数の型が正しくありません");
 			}
 
-			return GetBoundingBox(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+			return GetBoundingBox(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
 		},
 			true
 			);

@@ -14,6 +14,77 @@
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
 
+namespace
+{
+	inline int Combination(int n, int k)
+	{
+		if (k > n) return 0;
+		if (k * 2 > n) k = n - k;
+		if (k == 0) return 1;
+
+		int result = n;
+		for (int i = 2; i <= k; ++i)
+		{
+			result *= (n - i + 1);
+			result /= i;
+		}
+
+		return result;
+	}
+
+	inline double BernsteinBasis(int i, int n, double t)
+	{
+		const int coef = Combination(n, i);
+		return coef * pow(t, i)*pow(1 - t, n - i);
+	}
+
+	inline double Lerp(double x0, double x1, double t)
+	{
+		return x0 + (x1 - x0)*t;
+	}
+
+	class LinearBernstein
+	{
+	public:
+		using LinearFunction = std::vector<double>;
+
+		LinearBernstein() = default;
+
+		void initialize(int n, int quality = 100)
+		{
+			m_n = n;
+			m_quality = quality;
+
+			m_functions.resize(n + 1);
+			for (int i = 0; i <= n; ++i)
+			{
+				auto& function = m_functions[i];
+				function.resize(quality);
+
+				for (int d = 0; d < quality; ++d)
+				{
+					const double t = 1.0*d / (quality - 1);
+					function[d] = BernsteinBasis(i, n, t);
+				}
+			}
+		}
+
+		double operator()(int i, double t)const
+		{
+			const double p = t * m_quality;
+			const int index = static_cast<int>(p);
+			const double remainder = p - index;
+
+			return Lerp(m_functions[i][index], m_functions[i][index + 1], remainder);
+		}
+
+	private:
+		std::vector<LinearFunction> m_functions;
+		int m_n;
+		int m_quality;
+	};
+}
+
 namespace cgl
 {
 	bool IsClockWise(const gg::LineString* closedPath)
@@ -36,6 +107,287 @@ namespace cgl
 
 		return sum < 0.0;
 	}
+
+	class Deformer
+	{
+	public:
+		Deformer() = default;
+
+		void initialize(const BoundingRect& boundingRect, const std::vector<std::vector<double>>& dataX, const std::vector<std::vector<double>>& dataY)
+		{
+			/*initialScope = scope;
+			yNum = ynum;
+			xNum = xnum;
+			xs = std::vector<std::vector<double>>(ynum, std::vector<double>(xnum, 0));
+			ys = std::vector<std::vector<double>>(ynum, std::vector<double>(xnum, 0));
+
+			const Vec2 pos = scope.pos;
+			const Vec2 size = scope.size;
+
+			for (int y = 0; y < ynum; ++y)
+			{
+			const double progressY = 1.0*y / (ynum - 1);
+			for (int x = 0; x < xnum; ++x)
+			{
+			const double progressX = 1.0*x / (xnum - 1);
+			ys[y][x] = pos.y + size.y*progressY;
+			xs[y][x] = pos.x + size.x*progressX;
+			}
+			}*/
+
+			m_boundingRect = boundingRect;
+
+			xs = dataX;
+			ys = dataY;
+
+			const int yNum = dataX.size();
+			const int xNum = dataX.front().size();
+
+			m_bernsteinX.initialize(xNum - 1);
+			m_bernsteinY.initialize(yNum - 1);
+		}
+
+		/*void update()
+		{
+		if (Input::MouseL.pressed)
+		{
+		const Vec2 p = Mouse::PosF();
+		const Vec2 d = Mouse::DeltaF();
+
+		const double unitW = initialScope.w / (static_cast<int>(xNum) - 1);
+		const double unitH = initialScope.h / (static_cast<int>(yNum) - 1);
+		const double unitDist = Sqrt(unitW*unitW + unitH * unitH);
+
+		for (int y = 0; y < yNum; ++y)
+		{
+		for (int x = 0; x < xNum; ++x)
+		{
+		const double distY = ys[y][x] - p.y;
+		const double distX = xs[y][x] - p.x;
+		const double dist = Sqrt(distY*distY + distX * distX);
+		const double weight = NormalPDF(dist / unitDist, 0.4);
+
+		ys[y][x] += d.y*weight;
+		xs[y][x] += d.x*weight;
+		}
+		}
+		}
+		}*/
+
+		/*void draw()
+		{
+		const Color color = Color(64, 64, 64);
+		for (int y = 0; y < yNum; ++y)
+		{
+		for (int x = 0; x + 1 < xNum; ++x)
+		{
+		const double py0 = ys[y][x];
+		const double py1 = ys[y][x + 1];
+		const double px0 = xs[y][x];
+		const double px1 = xs[y][x + 1];
+
+		Line(px0, py0, px1, py1).draw(1.0, color);
+		}
+		}
+		for (int y = 0; y + 1 < yNum; ++y)
+		{
+		for (int x = 0; x < xNum; ++x)
+		{
+		const double py0 = ys[y][x];
+		const double py1 = ys[y + 1][x];
+		const double px0 = xs[y][x];
+		const double px1 = xs[y + 1][x];
+
+		Line(px0, py0, px1, py1).draw(1.0, color);
+		}
+		}
+		}*/
+
+		/*
+		Image FFD(const Image& image, const Vec2& pos)
+		{
+			Image result(Window::Size(), Palette::White);
+
+			for (int y = 0; y < image.height; ++y)
+			{
+				const double v = 1.0*(pos.y + y) / (static_cast<int>(result.height) - 1);
+
+				for (int x = 0; x < image.width; ++x)
+				{
+					const double u = 1.0*(pos.x + x) / (static_cast<int>(result.width) - 1);
+
+					const auto get = [&](double tX, double tY, const std::vector<std::vector<double>>& dataX, const std::vector<std::vector<double>>& dataY)
+					{
+						const int nX = dataX.front().size() - 1;
+						const int nY = dataX.size() - 1;
+
+						double sumX = 0.0;
+						double sumY = 0.0;
+
+						for (int yi = 0; yi <= nY; ++yi)
+						{
+							//const double bY = BernsteinBasis(yi, nY, tY);
+							const double bY = m_bernsteinY(yi, tY);
+							for (int xi = 0; xi <= nX; ++xi)
+							{
+								//const double bX = BernsteinBasis(xi, nX, tX);
+								const double bX = m_bernsteinX(xi, tX);
+								const double coef = bX * bY;
+
+								const double dY = dataY[yi][xi];
+								const double dX = dataX[yi][xi];
+
+								sumX += coef * dX;
+								sumY += coef * dY;
+							}
+						}
+
+						return Vec2(sumX, sumY);
+					};
+
+					const Vec2 pos_ = get(u, v, xs, ys);
+					const Point p = pos_.asPoint();
+
+					if (Rect(0, 0, result.width, result.height).contains(p))
+					{
+						const auto c = image[y][x];
+						result[p.y][p.x] = result[p.y + 1][p.x] = result[p.y][p.x + 1] = result[p.y + 1][p.x + 1] = c;
+					}
+				}
+			}
+
+			return result;
+		}*/
+
+		std::vector<gg::Geometry*> FFD(const std::vector<gg::Geometry*>& originalShape)
+		{
+			const auto getUV = [&](double x, double y)->Eigen::Vector2d
+			{
+				const auto pos = m_boundingRect.pos();
+				const auto size = m_boundingRect.width();
+
+				const double dx = x - pos.x();
+				const double dy = y - pos.y();
+
+				Eigen::Vector2d uv;
+				uv << (dx / size.x()), 1.0-(dy / size.y());
+				return uv;
+			};
+
+			const auto get = [&](double tX, double tY, const std::vector<std::vector<double>>& dataX, const std::vector<std::vector<double>>& dataY)
+			{
+				const int nX = dataX.front().size() - 1;
+				const int nY = dataX.size() - 1;
+
+				double sumX = 0.0;
+				double sumY = 0.0;
+
+				for (int yi = 0; yi <= nY; ++yi)
+				{
+					//const double bY = BernsteinBasis(yi, nY, tY);
+					const double bY = m_bernsteinY(yi, tY);
+					for (int xi = 0; xi <= nX; ++xi)
+					{
+						//const double bX = BernsteinBasis(xi, nX, tX);
+						const double bX = m_bernsteinX(xi, tX);
+						const double coef = bX * bY;
+
+						const double dY = dataY[yi][xi];
+						const double dX = dataX[yi][xi];
+
+						sumX += coef * dX;
+						sumY += coef * dY;
+					}
+				}
+
+				Eigen::Vector2d pos;
+				pos << sumX, sumY;
+				return pos;
+			};
+
+			auto factory = gg::GeometryFactory::create();
+
+			std::vector<gg::Geometry*> result;
+			for (const gg::Geometry* geometry : originalShape)
+			{
+				if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
+				{
+					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+					const gg::LineString* exterior = polygon->getExteriorRing();
+
+					gg::CoordinateArraySequence newExterior;
+					for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+					{
+						const gg::Point* point = exterior->getPointN(p);
+
+						const auto uv = getUV(point->getX(), point->getY());
+
+						const auto newPos = get(uv.x(), uv.y(), xs, ys);
+						newExterior.add(gg::Coordinate(newPos.x(), newPos.y()));
+					}
+
+					std::vector<gg::Geometry*>* holes = new std::vector<gg::Geometry*>;
+					for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
+					{
+						const gg::LineString* hole = polygon->getInteriorRingN(i);
+
+						gg::CoordinateArraySequence newInterior;
+						//for (size_t p = 0; p < hole->getNumPoints(); ++p)
+						for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
+						{
+							const gg::Point* point = hole->getPointN(p);
+
+							const auto uv = getUV(point->getX(), point->getY());
+
+							const auto newPos = get(uv.x(), uv.y(), xs, ys);
+							newInterior.add(gg::Coordinate(newPos.x(), newPos.y()));
+						}
+
+						//holes.push_back(factory->createLinearRing(newInterior));
+						holes->push_back(factory->createLinearRing(newInterior));
+
+						/*
+						PackedRecord pathRecord;
+						PackedList polygonList;
+
+						if (IsClockWise(hole))
+						{
+							for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
+							{
+								const gg::Point* point = hole->getPointN(p);
+								appendCoord(polygonList, point->getX(), point->getY());
+							}
+						}
+						else
+						{
+							for (size_t p = 0; p < hole->getNumPoints(); ++p)
+							{
+								const gg::Point* point = hole->getPointN(p);
+								appendCoord(polygonList, point->getX(), point->getY());
+							}
+						}
+
+						pathRecord.add("line", polygonList);
+						pathList.add(pathRecord);
+						*/
+					}
+					
+					//result.push_back(factory->createPolygon(factory->createLinearRing(newExterior), {}));
+					result.push_back(factory->createPolygon(factory->createLinearRing(newExterior), holes));
+				}
+			}
+
+			return result;
+		}
+
+	private:
+		BoundingRect m_boundingRect;
+		std::vector<std::vector<double>> xs;
+		std::vector<std::vector<double>> ys;
+		int yNum, xNum;
+
+		LinearBernstein m_bernsteinX, m_bernsteinY;
+	};
 
 	class PathConstraintProblem : public cppoptlib::Problem<double>
 	{
@@ -1421,12 +1773,9 @@ namespace cgl
 		return result;
 	}
 
-	PackedRecord GetOffsetPath(const PackedRecord& packedPathRecord, double offset)
+	PackedRecord GetOffsetPathImpl(const Path& originalPath, double offset)
 	{
-		Path originalPath = std::move(ReadPathPacked(packedPathRecord));
-
 		auto factory = gg::GeometryFactory::create();
-
 		gg::PrecisionModel model(gg::PrecisionModel::Type::FLOATING);
 
 		//gob::BufferParameters param(10, gob::BufferParameters::CAP_ROUND, gob::BufferParameters::JOIN_BEVEL, 10.0);
@@ -1435,12 +1784,23 @@ namespace cgl
 		gob::OffsetCurveBuilder builder(&model, param);
 
 		std::vector<gg::CoordinateSequence*> resultLines;
+		bool isClosedPath = false;
+		if (originalPath.empty())
+		{
+			CGL_Error("Original Path is Empty");
+		}
+
+		if (2 <= originalPath.cs->size())
+		{
+			const auto front = originalPath.cs->front();
+			const auto back = originalPath.cs->back();
+
+			isClosedPath = (front.x == back.x && front.y == back.y);
+		}
 
 		const bool isLeftSide = 0.0 <= offset;
 		//builder.getLineCurve(&points, 15.0, result);
 		builder.getSingleSidedLineCurve(originalPath.cs.get(), std::abs(offset), resultLines, isLeftSide, !isLeftSide);
-
-		//builder.getSingleSidedLineCurve(originalPath.cs.get(), offset, resultLines, true, false);
 
 		const auto coord = [&](double x, double y)
 		{
@@ -1455,7 +1815,6 @@ namespace cgl
 			list.add(record);
 		};
 
-		PackedRecord result;
 		PackedList polygonList;
 		for (size_t i = 0; i < resultLines.size(); ++i)
 		{
@@ -1467,32 +1826,27 @@ namespace cgl
 		}
 
 		//getSingleSidedLineCurveがClosedPathを返すので最後の点を消す
-		polygonList.data.pop_back();
+		if (!isClosedPath)
+		{
+			polygonList.data.pop_back();
+		}
 
 		//getSingleSidedLineCurveに左と右を指定したとき方向が逆になるので合わせる
 		if (!isLeftSide)
 		{
 			std::reverse(polygonList.data.begin(), polygonList.data.end());
-
-			/*std::cout << "\n";
-			std::cout << "post:\n";
-			for (const auto& pos : polygonList.data)
-			{
-				if (auto opt = AsOpt<PackedRecord>(pos.value))
-				{
-					auto& posRecord = opt.value().values;
-					std::cout << AsDouble(posRecord.at("x").value) << ", " << AsDouble(posRecord.at("y").value) << "\n";
-				}
-				else
-				{
-					CGL_Error("error");
-				}
-			}*/
 		}
 
+		PackedRecord result;
 		result.add("line", polygonList);
-
 		return result;
+	}
+
+	PackedRecord GetOffsetPath(const PackedRecord& packedPathRecord, double offset)
+	{
+		Path originalPath = std::move(ReadPathPacked(packedPathRecord));
+
+		return GetOffsetPathImpl(originalPath, offset);
 	}
 
 	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const FuncVal& function, double beginValue, double endValue, int numOfPoints)
@@ -1546,62 +1900,7 @@ namespace cgl
 
 		PackedList resultCharList;
 
-		struct BaseLineOffset
-		{
-			double x = 0, y = 0;
-			double angle = 0;
-		};
-
-		const auto getOffset = [](const Path& path, double offset)
-		{
-			BaseLineOffset result;
-
-			const auto& distances = path.distances;
-			const auto& cs = path.cs;
-
-			auto it = std::upper_bound(distances.begin(), distances.end(), offset);
-			if (it == distances.end())
-			{
-				const double innerDistance = offset - distances[distances.size() - 2];
-
-				Eigen::Vector2d p0(cs->getAt(cs->size() - 2).x, cs->getAt(cs->size() - 2).y);
-				Eigen::Vector2d p1(cs->getAt(cs->size() - 1).x, cs->getAt(cs->size() - 1).y);
-
-				const Eigen::Vector2d v = (p1 - p0);
-				const double currentLineLength = sqrt(v.dot(v));
-				const double progress = innerDistance / currentLineLength;
-
-				const Eigen::Vector2d targetPos = p0 + v * progress;
-				result.x = targetPos.x();
-				result.y = targetPos.y();
-
-				const auto n = v.normalized();
-				result.angle = rad2deg * atan2(n.y(), n.x());
-			}
-			else
-			{
-				const int lineIndex = std::distance(distances.begin(), it) - 1;
-				const double innerDistance = offset - distances[lineIndex];
-
-				Eigen::Vector2d p0(cs->getAt(lineIndex).x, cs->getAt(lineIndex).y);
-				Eigen::Vector2d p1(cs->getAt(lineIndex + 1).x, cs->getAt(lineIndex + 1).y);
-
-				const Eigen::Vector2d v = (p1 - p0);
-				const double currentLineLength = sqrt(v.dot(v));
-				const double progress = innerDistance / currentLineLength;
-
-				const Eigen::Vector2d targetPos = p0 + v * progress;
-				result.x = targetPos.x();
-				result.y = targetPos.y();
-
-				const auto n = v.normalized();
-				result.angle = rad2deg * atan2(n.y(), n.x());
-			}
-
-			return result;
-		};
-
-		if(0 < path.cs->size())
+		if(!path.empty())
 		{
 			const auto& cs = path.cs;
 			const auto& distances = path.distances;
@@ -1613,8 +1912,8 @@ namespace cgl
 				const int codePoint = static_cast<int>(string[i]);
 				const double currentGlyphWidth = font.glyphWidth(codePoint);
 
-				const auto offsetLeft = getOffset(path, offsetHorizontal);
-				const auto offsetCenter = getOffset(path, offsetHorizontal + currentGlyphWidth * 0.5);
+				const auto offsetLeft = path.getOffset(offsetHorizontal);
+				const auto offsetCenter = path.getOffset(offsetHorizontal + currentGlyphWidth * 0.5);
 
 				const auto characterPolygon = font.makePolygon(codePoint, 5, 0, 0);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
@@ -1838,5 +2137,125 @@ namespace cgl
 		);
 
 		return resultRecord;
+	}
+
+	PackedList GetDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
+	{
+		//return MakeList(shape);
+
+		BoundingRect boundingRect = BoundingRectRecordPacked(shape);
+
+		const double eps = std::max(boundingRect.width().x(), boundingRect.width().y())*0.01;
+		const double minX = boundingRect.minPos().x() - eps;
+		const double minY = boundingRect.minPos().y() - eps;
+		const double maxX = boundingRect.maxPos().x() + eps;
+		const double maxY = boundingRect.maxPos().y() + eps;
+
+		const double aspect = (maxY - minY) / (maxX - minX);
+
+		/*const int xNum = 15;
+		const int yNum = static_cast<int>(xNum * aspect + 0.5);
+		std::cout << "yNum: " << yNum << "\n";*/
+		/*const int xNum = 10;
+		const int yNum = 4;*/
+		const int xNum = 20;
+		const int yNum = 5;
+		std::cout << "yNum: " << yNum << "\n";
+
+		std::vector<Path> targetPaths;
+		targetPaths.push_back(std::move(ReadPathPacked(targetPathRecord)));
+
+		//const Path& targetBottomPath = targetPaths.front();
+		const double maxWidth = targetPaths.front().length();
+		const double maxHeight = maxWidth * aspect;
+
+		std::cout << "originalWidth: " << maxX - minX << "\n";
+		std::cout << "originalHeight: " << maxY - minY << "\n";
+
+		std::cout << "maxWidth: " << maxWidth << "\n";
+		std::cout << "maxHeight: " << maxHeight << "\n";
+
+		const double unitY = maxHeight / (yNum - 1);
+		for (int i = 1; i < yNum; ++i)
+		{
+			const double currentHeight = i * unitY;
+			const auto offsetPath = GetOffsetPathImpl(targetPaths.front(), -currentHeight);
+			targetPaths.push_back(std::move(ReadPathPacked(offsetPath)));
+		}
+
+		PackedList packedList;
+		for (const auto& path : targetPaths)
+		{
+			packedList.add(WritePathPacked(path));
+		}
+		//packedList.add(resultRecord);
+		//return packedList;
+
+		/*PackedRecord resultRecord;
+		{
+			const double minX = boundingRect.minPos().x();
+			const double minY = boundingRect.minPos().y();
+			const double maxX = boundingRect.maxPos().x();
+			const double maxY = boundingRect.maxPos().y();
+
+			resultRecord.adds(
+				"polygon", MakeList(
+					MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY), MakeRecord("x", maxX, "y", maxY), MakeRecord("x", minX, "y", maxY)
+				),
+				"min", MakeRecord("x", minX, "y", minY),
+				"max", MakeRecord("x", maxX, "y", maxY),
+				"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
+				"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
+			);
+		}
+
+		*/
+
+		//Path targetPath = std::move(ReadPathPacked(targetPathRecord));
+		//const double height = targetPath.length()*aspect;
+
+		//Path targetPathTop = std::move(ReadPathPacked(GetOffsetPathImpl(targetPath, -height)));
+
+		Deformer deformer;
+
+		std::vector<std::vector<double>> xs;
+		std::vector<std::vector<double>> ys;
+
+		xs = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
+		ys = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
+
+		for (int y = 0; y < yNum; ++y)
+		{
+			const auto frontPos = targetPaths[y].cs->front();
+			const auto backPos = targetPaths[y].cs->back();
+
+			xs[y].front() = frontPos.x;
+			xs[y].back() = backPos.x;
+			ys[y].front() = frontPos.y;
+			ys[y].back() = backPos.y;
+		}
+
+		const double unitX = maxWidth / (xNum - 1);
+		for (int x = 1; x + 1 < xNum; ++x)
+		{
+			const double currentX = x * unitX;
+
+			for (int y = 0; y < yNum; ++y)
+			{
+				const auto currentPos = targetPaths[y].getOffset(currentX);
+
+				xs[y][x] = currentPos.x;
+				ys[y][x] = currentPos.y;
+			}
+		}
+
+		deformer.initialize(boundingRect, xs, ys);
+
+		auto geometries = GeosFromRecordPacked(shape);
+		const auto result = deformer.FFD(geometries);
+		//return GetPackedShapesFromGeos(result);
+
+		packedList.add(GetPackedShapesFromGeos(result));
+		return packedList;
 	}
 }

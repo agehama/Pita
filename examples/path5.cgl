@@ -1,0 +1,77 @@
+transform = (pos, scale, angle, vertex -> {
+    cosT: cos(angle)
+    sinT: sin(angle)
+    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
+})
+
+shape = {
+    pos: {x:0, y:0}
+    scale: {x:1, y:1}
+    angle: 0
+    globalPos: (p->transform(@pos, @scale, @angle, p))
+}
+
+m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
+
+moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
+
+vec2 = (x,y->{x:x,y:y})
+
+square = shape{
+    polygon: [
+        {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
+    ]
+    topLeft:     (->globalPos( polygon[0] ))
+    topRight:    (->globalPos( polygon[1] ))
+    bottomRight: (->globalPos( polygon[2] ))
+    bottomLeft:  (->globalPos( polygon[3] ))
+    top:         (->globalPos( m(polygon[0], polygon[1]) ))
+    bottom:      (->globalPos( m(polygon[2], polygon[3]) ))
+    left:        (->globalPos( m(polygon[0], polygon[3]) ))
+    right:       (->globalPos( m(polygon[1], polygon[2]) ))
+}
+
+triangle = shape{
+    polygon: [
+        {x: 0, y: -0.5773502691896}
+        {x: 0.5, y: 0.2886751345948}
+        {x: -0.5, y: 0.2886751345948}
+    ]
+}
+
+hexagon = shape{
+    r = 0.5
+    polygon: [
+        vec2(r*cos(0),r*sin(0))
+        vec2(r*cos(60),r*sin(60))
+        vec2(r*cos(120),r*sin(120))
+        vec2(r*cos(180),r*sin(180))
+        vec2(r*cos(240),r*sin(240))
+        vec2(r*cos(300),r*sin(300))
+    ]
+}
+
+route = shape{
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+    tri = hexagon{scale: {x:100, y:100}}
+    arrow: buildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
+        stroke: {r: 0, g: 255, b: 0}
+    }
+    arrow2: offsetPath(arrow, 100.0){
+        stroke: {r: 0, g: 255, b: 255}
+    }
+    arrow3: functionPath(sin, 0, 360*2, 100){
+        scale: {x: 2, y: 100}
+        stroke: {r: 255, g: 0, b: 0}
+    }
+    arrow4: offsetPath(arrow3, -100){
+        stroke: {r: 255, g: 128, b: 128}
+    }
+    arrow5: shapeOuterPath(tri)[0]{
+        stroke: {r: 0, g: 0, b: 255}
+    }
+    arrow6: offsetPath(arrow5, -20){
+        stroke: {r: 128, g: 128, b: 255}
+    }
+}

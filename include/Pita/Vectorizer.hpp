@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include <cfloat>
+#include <numeric>
 #include <Eigen/Core>
 
 #include "Node.hpp"
@@ -31,10 +32,29 @@ namespace cgl
 
 	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
 
+	struct BaseLineOffset
+	{
+		double x = 0, y = 0;
+		double angle = 0;
+	};
+
 	struct Path
 	{
 		std::unique_ptr<gg::CoordinateArraySequence> cs;
 		std::vector<double> distances;
+
+		double length()const
+		{
+			return distances.back();
+			//return std::accumulate(distances.begin(), distances.end(), 0.0);
+		}
+
+		bool empty()const
+		{
+			return distances.empty();
+		}
+
+		BaseLineOffset getOffset(double offset)const;
 	};
 
 	Path ReadPathPacked(const PackedRecord& record);

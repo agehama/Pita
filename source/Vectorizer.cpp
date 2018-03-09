@@ -7,6 +7,7 @@
 #include <Pita/Node.hpp>
 #include <Pita/Context.hpp>
 #include <Pita/Vectorizer.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
@@ -35,6 +36,52 @@ namespace cgl
 		gg::Geometry* shape;
 		Color color;
 	};
+
+	BaseLineOffset Path::getOffset(double offset)const
+	{
+		BaseLineOffset result;
+
+		auto it = std::upper_bound(distances.begin(), distances.end(), offset);
+		if (it == distances.end())
+		{
+			const double innerDistance = offset - distances[distances.size() - 2];
+
+			Eigen::Vector2d p0(cs->getAt(cs->size() - 2).x, cs->getAt(cs->size() - 2).y);
+			Eigen::Vector2d p1(cs->getAt(cs->size() - 1).x, cs->getAt(cs->size() - 1).y);
+
+			const Eigen::Vector2d v = (p1 - p0);
+			const double currentLineLength = sqrt(v.dot(v));
+			const double progress = innerDistance / currentLineLength;
+
+			const Eigen::Vector2d targetPos = p0 + v * progress;
+			result.x = targetPos.x();
+			result.y = targetPos.y();
+
+			const auto n = v.normalized();
+			result.angle = rad2deg * atan2(n.y(), n.x());
+		}
+		else
+		{
+			const int lineIndex = std::distance(distances.begin(), it) - 1;
+			const double innerDistance = offset - distances[lineIndex];
+
+			Eigen::Vector2d p0(cs->getAt(lineIndex).x, cs->getAt(lineIndex).y);
+			Eigen::Vector2d p1(cs->getAt(lineIndex + 1).x, cs->getAt(lineIndex + 1).y);
+
+			const Eigen::Vector2d v = (p1 - p0);
+			const double currentLineLength = sqrt(v.dot(v));
+			const double progress = innerDistance / currentLineLength;
+
+			const Eigen::Vector2d targetPos = p0 + v * progress;
+			result.x = targetPos.x();
+			result.y = targetPos.y();
+
+			const auto n = v.normalized();
+			result.angle = rad2deg * atan2(n.y(), n.x());
+		}
+
+		return result;
+	}
 
 	std::vector<gg::Geometry*> GeosFromList(const cgl::List& list, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform);
 
@@ -1788,6 +1835,7 @@ namespace cgl
 			//図形の境界線も考慮すると、塗りつぶしの色と線の色は別の名前で指定できるようにすべき
 			wholePolygons.emplace_back(currentLine, Color());
 			writeWholeData();
+
 			return true;
 		}
 		else if (currentHoles.empty())
@@ -1803,6 +1851,7 @@ namespace cgl
 			}
 
 			writeWholeData();
+
 			return true;
 		}
 		else
@@ -1813,8 +1862,19 @@ namespace cgl
 
 				for (int d = 0; d < currentHoles.size(); ++d)
 				{
-					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
 
+					gg::Geometry* testGeometry;
+					try
+					{
+						testGeometry = erodeGeometry->difference(currentHoles[d]);
+						erodeGeometry = testGeometry;
+					}
+					catch (const std::exception& e)
+					{
+						//std::cout << "error: " << e.what() << "\n";
+						continue;
+					}
+					
 					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 					{
 						currentPolygons.erase(currentPolygons.begin() + s);
@@ -1848,6 +1908,7 @@ namespace cgl
 			}
 
 			writeWholeData();
+
 			return true;
 		}
 	}

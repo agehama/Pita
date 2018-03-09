@@ -33,4 +33,6 @@ namespace cgl
 	PackedList GetShapePaths(const PackedRecord& shape);
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape);
+
+	PackedList GetDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
 }

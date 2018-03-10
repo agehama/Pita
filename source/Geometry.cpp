@@ -16,13 +16,29 @@
 
 namespace
 {
-	inline int Combination(int n, int k)
+	/*inline long long Combination(int n, int k)
 	{
 		if (k > n) return 0;
 		if (k * 2 > n) k = n - k;
 		if (k == 0) return 1;
 
-		int result = n;
+		long long result = n;
+		for (int i = 2; i <= k; ++i)
+		{
+			result *= (n - i + 1);
+			result /= i;
+		}
+
+		return result;
+	}*/
+
+	inline double Combination(int n, int k)
+	{
+		if (k > n) return 0;
+		if (k * 2 > n) k = n - k;
+		if (k == 0) return 1;
+
+		double result = n;
 		for (int i = 2; i <= k; ++i)
 		{
 			result *= (n - i + 1);
@@ -34,7 +50,7 @@ namespace
 
 	inline double BernsteinBasis(int i, int n, double t)
 	{
-		const int coef = Combination(n, i);
+		const double coef = Combination(n, i);
 		return coef * pow(t, i)*pow(1 - t, n - i);
 	}
 
@@ -270,11 +286,19 @@ namespace cgl
 				const double dy = y - pos.y();
 
 				Eigen::Vector2d uv;
-				uv << (dx / size.x()), 1.0-(dy / size.y());
+				uv << (dx / size.x()), 1.0 - (dy / size.y());
+				/*if (!(0.0 < uv.x() && uv.x() < 1.0 && 0.0 < uv.y() && uv.y() < 1.0))
+				{
+					std::cout << "m_boundingRect.pos(): (" << pos.x() << ", " << pos.y() << ")\n";
+					std::cout << "m_boundingRect.width(): (" << size.x() << ", " << size.y() << ")\n";
+					std::cout << "(dx, dy): (" << dx << ", " << dy << ")\n";
+					std::cout << "(u, v): (" << (dx / size.x()) << ", " << 1.0 - (dy / size.y()) << ")\n";
+					CGL_Error("out of range");
+				}*/
 				return uv;
 			};
 
-			const auto get = [&](double tX, double tY, const std::vector<std::vector<double>>& dataX, const std::vector<std::vector<double>>& dataY)
+			const auto get = [&](double tX, double tY, const std::vector<std::vector<double>>& dataX, const std::vector<std::vector<double>>& dataY,bool debug)
 			{
 				const int nX = dataX.front().size() - 1;
 				const int nY = dataX.size() - 1;
@@ -300,7 +324,34 @@ namespace cgl
 					}
 				}
 
+				//itv sumX(0.0);
+				//itv sumY(0.0);
+
+				//for (int yi = 0; yi <= nY; ++yi)
+				//{
+				//	const itv bY(BernsteinBasis2(yi, nY, itv(tY)));
+				//	//const double bY = m_bernsteinY(yi, tY);
+				//	for (int xi = 0; xi <= nX; ++xi)
+				//	{
+				//		const itv bX(BernsteinBasis2(xi, nX, itv(tX)));
+				//		//const double bX = m_bernsteinX(xi, tX);
+				//		const itv coef = bX * bY;
+
+				//		const itv dY(dataY[yi][xi]);
+				//		const itv dX(dataX[yi][xi]);
+
+				//		sumX += coef * dX;
+				//		sumY += coef * dY;
+				//	}
+				//}
+
+				/*if (debug)
+				{
+					std::cout<<"width: " << std::max(width(sumX), width(sumY)) << "\n";
+				}*/
+
 				Eigen::Vector2d pos;
+				//pos << mid(sumX), mid(sumY);
 				pos << sumX, sumY;
 				return pos;
 			};
@@ -308,22 +359,61 @@ namespace cgl
 			auto factory = gg::GeometryFactory::create();
 
 			std::vector<gg::Geometry*> result;
-			for (const gg::Geometry* geometry : originalShape)
+			
+			
+			//for (const gg::Geometry* geometry : originalShape)
+			for (int shapei=0;shapei<originalShape.size();++shapei)
 			{
+				bool debugPrint = false;
+				if (shapei + 18 == originalShape.size())
+				{
+					//continue;
+					debugPrint = true;
+				}
+
+				const gg::Geometry* geometry = originalShape[shapei];
 				if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 				{
 					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+					
 					const gg::LineString* exterior = polygon->getExteriorRing();
 
 					gg::CoordinateArraySequence newExterior;
-					for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+					/*for (size_t p = 0; p < exterior->getNumPoints(); ++p)
 					{
 						const gg::Point* point = exterior->getPointN(p);
 
 						const auto uv = getUV(point->getX(), point->getY());
 
-						const auto newPos = get(uv.x(), uv.y(), xs, ys);
+						const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
+
+						if (debugPrint)
+						{
+							//std::cout << "uv(" << uv.x() << ", " << uv.y() << "), pos(" << newPos.x() << ", " << newPos.y() << ")\n";
+						}
+
 						newExterior.add(gg::Coordinate(newPos.x(), newPos.y()));
+						//newExterior.add(gg::Coordinate(point->getX(), point->getY()));
+					}
+					*/
+					for (size_t p = 0; p + 1 < exterior->getNumPoints(); ++p)
+					{
+						const gg::Point* p0 = exterior->getPointN(p);
+						const gg::Point* p1 = exterior->getPointN(p + 1);
+
+						const int num = 5;
+						for (int sub = 0; sub < num; ++sub)
+						{
+							const double progress = 1.0 * sub / (num - 1);
+							const double x = p0->getX() + (p1->getX() - p0->getX())*progress;
+							const double y = p0->getY() + (p1->getY() - p0->getY())*progress;
+
+							const auto uv = getUV(x, y);
+
+							const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
+
+							newExterior.add(gg::Coordinate(newPos.x(), newPos.y()));
+						}
 					}
 
 					std::vector<gg::Geometry*>* holes = new std::vector<gg::Geometry*>;
@@ -339,8 +429,10 @@ namespace cgl
 
 							const auto uv = getUV(point->getX(), point->getY());
 
-							const auto newPos = get(uv.x(), uv.y(), xs, ys);
+							const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
+
 							newInterior.add(gg::Coordinate(newPos.x(), newPos.y()));
+							//newInterior.add(gg::Coordinate(point->getX(), point->getY()));
 						}
 
 						//holes.push_back(factory->createLinearRing(newInterior));
@@ -2141,15 +2233,17 @@ namespace cgl
 
 	PackedList GetDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
 	{
-		//return MakeList(shape);
+		const bool debugDraw = false;
+		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape);
 
-		BoundingRect boundingRect = BoundingRectRecordPacked(shape);
+		const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.02;
+		const double minX = originalBoundingRect.minPos().x() - eps;
+		const double minY = originalBoundingRect.minPos().y() - eps;
+		const double maxX = originalBoundingRect.maxPos().x() + eps;
+		//const double maxY = originalBoundingRect.maxPos().y() + eps;
+		const double maxY = originalBoundingRect.maxPos().y();
 
-		const double eps = std::max(boundingRect.width().x(), boundingRect.width().y())*0.01;
-		const double minX = boundingRect.minPos().x() - eps;
-		const double minY = boundingRect.minPos().y() - eps;
-		const double maxX = boundingRect.maxPos().x() + eps;
-		const double maxY = boundingRect.maxPos().y() + eps;
+		const BoundingRect boundingRect(minX, minY, maxX, maxY);
 
 		const double aspect = (maxY - minY) / (maxX - minX);
 
@@ -2158,22 +2252,21 @@ namespace cgl
 		std::cout << "yNum: " << yNum << "\n";*/
 		/*const int xNum = 10;
 		const int yNum = 4;*/
-		const int xNum = 20;
+		const int xNum = 40;
 		const int yNum = 5;
-		std::cout << "yNum: " << yNum << "\n";
 
 		std::vector<Path> targetPaths;
 		targetPaths.push_back(std::move(ReadPathPacked(targetPathRecord)));
 
-		//const Path& targetBottomPath = targetPaths.front();
 		const double maxWidth = targetPaths.front().length();
 		const double maxHeight = maxWidth * aspect;
 
-		std::cout << "originalWidth: " << maxX - minX << "\n";
-		std::cout << "originalHeight: " << maxY - minY << "\n";
+		//std::cout << "yNum: " << yNum << "\n";
+		//std::cout << "originalWidth: " << maxX - minX << "\n";
+		//std::cout << "originalHeight: " << maxY - minY << "\n";
 
-		std::cout << "maxWidth: " << maxWidth << "\n";
-		std::cout << "maxHeight: " << maxHeight << "\n";
+		//std::cout << "maxWidth: " << maxWidth << "\n";
+		//std::cout << "maxHeight: " << maxHeight << "\n";
 
 		const double unitY = maxHeight / (yNum - 1);
 		for (int i = 1; i < yNum; ++i)
@@ -2184,32 +2277,50 @@ namespace cgl
 		}
 
 		PackedList packedList;
-		for (const auto& path : targetPaths)
+		if (debugDraw)
 		{
-			packedList.add(WritePathPacked(path));
+			for (const auto& path : targetPaths)
+			{
+				packedList.add(WritePathPacked(path));
+			}
 		}
-		//packedList.add(resultRecord);
-		//return packedList;
 
-		/*PackedRecord resultRecord;
+		const auto makeSquare = [](double x, double y)
 		{
-			const double minX = boundingRect.minPos().x();
-			const double minY = boundingRect.minPos().y();
-			const double maxX = boundingRect.maxPos().x();
-			const double maxY = boundingRect.maxPos().y();
-
-			resultRecord.adds(
+			return MakeRecord(
 				"polygon", MakeList(
-					MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY), MakeRecord("x", maxX, "y", maxY), MakeRecord("x", minX, "y", maxY)
+					MakeRecord("x", -0.5, "y", -0.5), MakeRecord("x", +0.5, "y", -0.5), MakeRecord("x", +0.5, "y", +0.5), MakeRecord("x", -0.5, "y", +0.5)
 				),
-				"min", MakeRecord("x", minX, "y", minY),
-				"max", MakeRecord("x", maxX, "y", maxY),
-				"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
-				"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
+				"pos", MakeRecord("x", x, "y", y),
+				"scale", MakeRecord("x", 3, "y", 3),
+				"fill", MakeRecord("r", 0, "g", 0, "b", 0)
+			);
+		};
+
+		const auto makeLine = [](double x0, double y0, double x1, double y1)
+		{
+			return MakeRecord(
+				"line", MakeList(
+					MakeRecord("x", x0, "y", y0), MakeRecord("x", x1, "y", y1)
+				),
+				"stroke", MakeRecord("r", 0, "g", 0, "b", 0)
+			);
+		};
+
+		if (debugDraw)
+		{
+			packedList.add(
+				MakeRecord(
+					"polygon", MakeList(
+						MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY), MakeRecord("x", maxX, "y", maxY), MakeRecord("x", minX, "y", maxY)
+					),
+					"min", MakeRecord("x", minX, "y", minY),
+					"max", MakeRecord("x", maxX, "y", maxY),
+					"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
+					"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
+				)
 			);
 		}
-
-		*/
 
 		//Path targetPath = std::move(ReadPathPacked(targetPathRecord));
 		//const double height = targetPath.length()*aspect;
@@ -2233,19 +2344,42 @@ namespace cgl
 			xs[y].back() = backPos.x;
 			ys[y].front() = frontPos.y;
 			ys[y].back() = backPos.y;
+
+			if (debugDraw)
+			{
+				packedList.add(makeSquare(frontPos.x, frontPos.y));
+				packedList.add(makeSquare(backPos.x, backPos.y));
+			}
 		}
 
-		const double unitX = maxWidth / (xNum - 1);
+		//法線との交差判定により格子点の位置を求める
+		const double dX = 1.0 / (xNum - 1);
 		for (int x = 1; x + 1 < xNum; ++x)
 		{
-			const double currentX = x * unitX;
+			const double currentProgress = x * dX;
+			const double currentBaseOffset = targetPaths.front().length()*currentProgress;
 
-			for (int y = 0; y < yNum; ++y)
+			const auto basePos = targetPaths.front().getOffset(currentBaseOffset);
+			xs[0][x] = basePos.x;
+			ys[0][x] = basePos.y;
+			if (debugDraw)
 			{
-				const auto currentPos = targetPaths[y].getOffset(currentX);
+				packedList.add(makeSquare(basePos.x, basePos.y));
+			}
 
-				xs[y][x] = currentPos.x;
-				ys[y][x] = currentPos.y;
+			for (int y = 1; y < yNum; ++y)
+			{
+				const double currentHeight = y * unitY;
+				const double currentX = basePos.x + basePos.nx * currentHeight;
+				const double currentY = basePos.y + basePos.ny * currentHeight;
+
+				xs[y][x] = currentX;
+				ys[y][x] = currentY;
+				if (debugDraw)
+				{
+					packedList.add(makeSquare(currentX, currentY));
+					packedList.add(makeLine(basePos.x, basePos.y, currentX, currentY));
+				}
 			}
 		}
 

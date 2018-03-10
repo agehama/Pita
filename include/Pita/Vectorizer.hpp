@@ -35,6 +35,7 @@ namespace cgl
 	struct BaseLineOffset
 	{
 		double x = 0, y = 0;
+		double nx = 0, ny = 0;
 		double angle = 0;
 	};
 
@@ -132,6 +133,11 @@ namespace cgl
 	public:
 
 		BoundingRect() = default;
+
+		BoundingRect(double min_x, double min_y, double max_x, double max_y) :
+			m_min(min_x, min_y),
+			m_max(max_x, max_y)
+		{}
 
 		BoundingRect(const Vector<Eigen::Vector2d>& vs)
 		{

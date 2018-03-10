@@ -59,6 +59,8 @@ namespace cgl
 
 			const auto n = v.normalized();
 			result.angle = rad2deg * atan2(n.y(), n.x());
+			result.nx = n.y();
+			result.ny = -n.x();
 		}
 		else
 		{
@@ -78,6 +80,8 @@ namespace cgl
 
 			const auto n = v.normalized();
 			result.angle = rad2deg * atan2(n.y(), n.x());
+			result.nx = n.y();
+			result.ny = -n.x();
 		}
 
 		return result;

@@ -57,12 +57,11 @@ route = shape{
     tri = hexagon{scale: {x:100, y:100}}
     textShape= buildText("図形記述言語Pita"){
     }
-    arrow3: functionPath(sin, 0, 180, 100){
-        scale: {x: 2, y: 75}
-        stroke: {r: 255, g: 0, b: 0}
+    arrow3: functionPath(sin, 0, 360, 100){
+        scale: {x: 2, y:100}
+        stroke: {r: 255, g: 128, b: 128}
     }
     result: shape{
         a:deformShapeByPath(textShape, arrow3)
-        stroke: {r: 255, g: 128, b: 128}
     }
 }

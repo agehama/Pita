@@ -443,14 +443,19 @@ namespace cgl
 
 	Val Sin(const Val& lhs)
 	{
-		if (IsType<int>(lhs))
+		if (IsNum(lhs))
+		{
+			return std::sin(AsDouble(lhs));
+		}
+
+		/*if (IsType<int>(lhs))
 		{
 			return std::sin(deg2rad*As<int>(lhs));
 		}
 		else if (IsType<double>(lhs))
 		{
 			return std::sin(deg2rad*As<double>(lhs));
-		}
+		}*/
 
 		CGL_Error("不正な式です");
 		return 0;
@@ -458,14 +463,19 @@ namespace cgl
 
 	Val Cos(const Val& lhs)
 	{
-		if (IsType<int>(lhs))
+		if (IsNum(lhs))
+		{
+			return std::cos(AsDouble(lhs));
+		}
+
+		/*if (IsType<int>(lhs))
 		{
 			return std::cos(deg2rad*As<int>(lhs));
 		}
 		else if (IsType<double>(lhs))
 		{
 			return std::cos(deg2rad*As<double>(lhs));
-		}
+		}*/
 
 		CGL_Error("不正な式です");
 		return 0;

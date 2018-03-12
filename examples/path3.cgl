@@ -1,6 +1,6 @@
 transform = (pos, scale, angle, vertex -> {
-    cosT: cos(angle)
-    sinT: sin(angle)
+    cosT: cos(rad(angle))
+    sinT: sin(rad(angle))
     x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
     y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
 })
@@ -31,7 +31,7 @@ square = shape{
 }
 
 route = shape{
-    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: rad(30)}
     arrow: buildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
         stroke: {r: 0, g: 255, b: 0}
     }

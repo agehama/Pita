@@ -1033,6 +1033,46 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"rad",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& value = pEnv->expand(arguments[0]);
+			if (!IsNum(value))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return deg2rad * AsDouble(value);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"deg",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& value = pEnv->expand(arguments[0]);
+			if (!IsNum(value))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return rad2deg * AsDouble(value);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"sin",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
@@ -1073,6 +1113,35 @@ namespace cgl
 			const double x1 = AsDouble(expand(arguments[1]));
 			const double x01 = m_dist(m_random);
 			return x0 + (x1 - x0)*x01;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"randomSeed",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 0 && arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			if (arguments.empty())
+			{
+				std::random_device randomDevice;
+				m_random.seed(randomDevice());
+			}
+			else
+			{
+				const Val& value = expand(arguments[0]);
+				if (!IsType<int>(value))
+				{
+					CGL_Error("引数の型が正しくありません");
+				}
+				m_random.seed(As<int>(value));
+			}
+
+			return 0;
 		},
 			false
 			);

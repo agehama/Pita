@@ -1,0 +1,121 @@
+randomSeed()
+transform = (pos, scale, angle, vertex -> {
+    cosT: cos(rad(angle))
+    sinT: sin(rad(angle))
+    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
+})
+
+shape = {
+    pos: {x:0, y:0}
+    scale: {x:1, y:1}
+    angle: 0
+    globalPos: (p->transform(@pos, @scale, @angle, p))
+}
+
+m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
+
+moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
+
+vec2 = (x,y->{x:x,y:y})
+
+rgb = (r, g, b -> {r:r, g:g, b:b})
+
+getParallelotope = (f, df, xmin, xmax ->
+    xmid = (xmin + xmax)*0.5
+    divnum = 100
+    
+    amid = 1.0*(f(xmax) - f(xmin)) / (xmax - xmin)
+    amin = amid
+    amax = amid
+
+    dx = 1.0*(xmax - xmin) / divnum
+    for i in 0:divnum do(
+        a = df(xmin + i*dx)
+        if(a < amin)then(amin = a)
+        if(amax < a)then(amax = a)
+    )
+
+    xhalf = xmax - xmid
+
+    ymid = f(xmid)
+    ywidth = (amax - amin)*xhalf
+    ywidth_half = ywidth*0.5
+    
+    ycenter_left = ymid - xhalf*amid
+    ycenter_right = ymid + xhalf*amid
+
+    shape{
+        polygon: [
+            vec2(xmid - xhalf, ymid - xhalf*amax)
+            vec2(xmid - xhalf, ymid - xhalf*amin)
+            vec2(xmid + xhalf, ymid + xhalf*amax)
+            vec2(xmid + xhalf, ymid + xhalf*amin)
+        ]
+        width: ywidth
+        left: xmin
+        right: xmax
+    }
+)
+
+hexagon = shape{
+    r = 0.5
+    polygon: [
+        vec2(r*cos(rad(0)),r*sin(rad(0)))
+        vec2(r*cos(rad(60)),r*sin(rad(60)))
+        vec2(r*cos(rad(120)),r*sin(rad(120)))
+        vec2(r*cos(rad(180)),r*sin(rad(180)))
+        vec2(r*cos(rad(240)),r*sin(rad(240)))
+        vec2(r*cos(rad(300)),r*sin(rad(300)))
+    ]
+}
+
+add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
+sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
+
+mul = (v, a -> {x: v.x * a, y: v.y * a})
+div = (v, a -> {x: v.x / a, y: v.y / a})
+
+sqrt = (x -> x^0.5)
+length = (v -> sqrt(v.x*v.x + v.y*v.y))
+setLength = (v, l -> mul(div(v, length(v)), l))
+normalize = (v -> setLength(v, 1.0))
+
+parallel = (a0, a1, b0, b1 ->
+    a = normalize(sub(a1, a0))
+    b = normalize(sub(b1, b0))
+    a.x == -b.x & a.y == -b.y
+)
+
+polygons = [
+    {x: 0, y: 0}, {x: 10, y: 5}
+    {x: 15, y: 10}, {x: 10, y: 20}
+    {x: 7, y: 25}, {x: 4, y: 20}
+]
+
+randomVec2 = (min, max -> vec2(random(min,max),random(min,max)))
+
+makePoly = (->
+    hex1 = hexagon
+    jitter = 0.25
+    [
+        add(hex1.polygon[0], randomVec2(-jitter,jitter))
+        add(hex1.polygon[1], randomVec2(-jitter,jitter))
+        add(hex1.polygon[2], randomVec2(-jitter,jitter))
+        add(hex1.polygon[3], randomVec2(-jitter,jitter))
+        add(hex1.polygon[4], randomVec2(-jitter,jitter))
+        add(hex1.polygon[5], randomVec2(-jitter,jitter))
+])
+
+hex = shape{
+	polygon: makePoly()
+    sat( cmaes(polygon[4]) & parallel(polygon[0], polygon[1], polygon[3], polygon[4]) )
+    sat( parallel(polygon[1], polygon[2], polygon[4], polygon[5]) )
+    sat( parallel(polygon[2], polygon[3], polygon[5], polygon[0]) )
+    var( polygon[4], polygon[5])
+}
+
+main = shape{
+    a: hex{}
+    scale: {x: 100, y: 100}
+}

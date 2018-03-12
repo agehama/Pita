@@ -18,6 +18,52 @@ moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
 
 vec2 = (x,y->{x:x,y:y})
 
+rgb = (r, g, b -> {r:r, g:g, b:b})
+
+getParallelotope = (f, df, xmin, xmax ->
+    xmid = (xmin + xmax)*0.5
+    divnum = 100
+    
+    amid = 1.0*(f(xmax) - f(xmin)) / (xmax - xmin)
+    amin = amid
+    amax = amid
+
+    dx = 1.0*(xmax - xmin) / divnum
+    for i in 0:divnum do(
+        a = df(xmin + i*dx)
+        if(a < amin)then(amin = a)
+        if(amax < a)then(amax = a)
+    )
+
+    xhalf = xmax - xmid
+
+    ymid = f(xmid)
+    ywidth = (amax - amin)*xhalf
+    ywidth_half = ywidth*0.5
+    
+    ycenter_left = ymid - xhalf*amid
+    ycenter_right = ymid + xhalf*amid
+
+    shape{
+        polygon: [
+            vec2(xmin, ycenter_left + ywidth_half)
+            vec2(xmax, ycenter_right + ywidth_half)
+            vec2(xmax, ycenter_right - ywidth_half)
+            vec2(xmin, ycenter_left - ywidth_half)
+        ]
+        ls: [
+            {
+                line: [vec2(xmid - xhalf, ymid - xhalf*amin), vec2(xmid + xhalf, ymid + xhalf*amin)]
+                stroke: rgb(0,255,255)
+            }
+            {
+                line: [vec2(xmid - xhalf, ymid - xhalf*amax), vec2(xmid + xhalf, ymid + xhalf*amax)]
+                stroke: rgb(0,255,0)
+            }
+        ]
+    }
+)
+
 square = shape{
     polygon: [
         {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
@@ -53,25 +99,13 @@ hexagon = shape{
 }
 
 route = shape{
-    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
-    tri = hexagon{scale: {x:100, y:100}}
-    arrow: buildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
-        stroke: {r: 0, g: 255, b: 0}
+    begin = rad(0)
+    end = rad(90)
+    b: functionPath(sin, begin, end, 100){
+        stroke: rgb(255,0,0)
     }
-    arrow2: offsetPath(arrow, 100.0){
-        stroke: {r: 0, g: 255, b: 255}
+    a: getParallelotope(sin, cos, begin, end){
+        fill: rgb(64,64,64)
     }
-    arrow3: functionPath(sin, rad(0), rad(360*2), 100){
-        scale: {x: 2, y: 100}
-        stroke: {r: 255, g: 0, b: 0}
-    }
-    arrow4: offsetPath(arrow3, -100){
-        stroke: {r: 255, g: 128, b: 128}
-    }
-    arrow5: shapeOuterPath(tri)[0]{
-        stroke: {r: 0, g: 0, b: 255}
-    }
-    arrow6: offsetPath(arrow5, -20){
-        stroke: {r: 128, g: 128, b: 255}
-    }
+    scale: {x:200, y:-100}
 }

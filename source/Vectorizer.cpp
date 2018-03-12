@@ -1972,10 +1972,11 @@ namespace cgl
 			const auto widthXY = rect.width();
 			const auto center = rect.center();
 
+			const double margin = 5.0;
 			//const double width = std::max(widthXY.x(), widthXY.y());
 			//const double halfWidth = width * 0.5;
-			const double width = widthXY.x();
-			const double height = widthXY.y();
+			const double width = widthXY.x() + margin;
+			const double height = widthXY.y() + margin;
 
 			const Eigen::Vector2d pos = center - Eigen::Vector2d(width*0.5, height*0.5);
 

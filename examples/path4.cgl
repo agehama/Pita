@@ -1,6 +1,6 @@
 transform = (pos, scale, angle, vertex -> {
-    cosT: cos(angle)
-    sinT: sin(angle)
+    cosT: cos(rad(angle))
+    sinT: sin(rad(angle))
     x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
     y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
 })
@@ -38,7 +38,7 @@ route = shape{
     arrow2: offsetPath(arrow, 100.0){
         stroke: {r: 0, g: 255, b: 255}
     }
-    arrow3 = functionPath(sin, 0, 360*2, 100){
+    arrow3 = functionPath(sin, rad(0), rad(360*2), 100){
         scale: {x: 2, y: 100}
         stroke: {r: 255, g: 0, b: 0}
     }

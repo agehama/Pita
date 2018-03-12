@@ -962,10 +962,19 @@ namespace cgl
 	Val EvalSatExpr::operator()(const UnaryExpr& node)
 	{
 		//CGL_DebugLog("Val operator()(const UnaryExpr& node)");
-		//if (node.op == UnaryOp::Not)
+		if (node.op == UnaryOp::Not)
 		{
-			CGL_Error("TODO: sat宣言中の単項演算子は未対応です");
+			CGL_Error("TODO: sat宣言中のnot演算子は未対応です");
 		}
+
+		Val lhs = boost::apply_visitor(*this, node.lhs);
+		switch (node.op)
+		{
+		case UnaryOp::Plus: return lhs;
+		case UnaryOp::Minus:  return Minus(lhs, *pEnv);
+		}
+
+		CGL_Error("TODO: 未対応");
 
 		return 0;
 	}

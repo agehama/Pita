@@ -1100,6 +1100,8 @@ namespace cgl
 		Expr rangeEnd;
 		Expr doExpr;
 
+		bool asList = false;
+
 		For() = default;
 
 		For(const Identifier& loopCounter, const Expr& rangeStart, const Expr& rangeEnd, const Expr& doExpr) :
@@ -1126,9 +1128,11 @@ namespace cgl
 			forExpression.rangeEnd = rangeEnd;
 		}
 
-		static void SetDo(For& forExpression, const Expr& doExpr)
+		static void SetDo(For& forExpression, const Expr& doExpr, bool isList)
 		{
 			forExpression.doExpr = doExpr;
+
+			forExpression.asList = isList;
 		}
 
 		bool operator==(const For& other)const

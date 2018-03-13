@@ -1321,40 +1321,17 @@ namespace cgl
 
 			if (!((a_IsInt || a_IsDouble) && (b_IsInt || b_IsDouble)))
 			{
-				//エラー：ループのレンジが不正な型（整数か実数に評価できる必要がある）
-				//std::cerr << "Error(" << __LINE__ << ")\n";
-				//return boost::none;
 				CGL_Error("ループのレンジが不正な型（整数か実数に評価できる必要がある）");
 			}
 
 			const bool result_IsDouble = a_IsDouble || b_IsDouble;
-			//const auto lessEq = LessEqual(a, b, *pEnv);
-			//if (!IsType<bool>(lessEq))
-			//{
-			//	//エラー：aとbの比較に失敗した
-			//	//一応確かめているだけでここを通ることはないはず
-			//	//LessEqualの実装ミス？
-			//	//std::cerr << "Error(" << __LINE__ << ")\n";
-			//	//return boost::none;
-			//	CGL_Error("LessEqualの実装ミス？");
-			//}
 
-			//const bool isInOrder = As<bool>(lessEq);
 			const bool isInOrder = LessEqual(a, b, *pEnv);
 
 			const int sign = isInOrder ? 1 : -1;
 
 			if (result_IsDouble)
 			{
-				/*const Val xx = Mul(1.0, sign, *pEnv);
-				return std::pair<Val, bool>(xx, isInOrder);*/
-
-				//std::pair<Val, bool> xa(Mul(1.0, sign, *pEnv), isInOrder);
-
-				/*const Val xx = Mul(1.0, sign, *pEnv);
-				std::pair<Val, bool> xa(xx, isInOrder);
-				return boost::optional<std::pair<Val, bool>>(xa);*/
-
 				return std::pair<Val, bool>(Mul(1.0, sign, *pEnv), isInOrder);
 			}
 
@@ -1393,6 +1370,7 @@ namespace cgl
 
 		pEnv->enterScope();
 
+		PackedList loopResults;
 		while (true)
 		{
 			const auto isLoopContinuesOpt = loopContinues(loopCountValue, isInOrder);
@@ -1411,11 +1389,21 @@ namespace cgl
 
 			loopResult = pEnv->expand(boost::apply_visitor(*this, forExpression.doExpr));
 
+			if (forExpression.asList)
+			{
+				loopResults.add(Packed(loopResult, *pEnv));
+			}
+
 			//ループカウンタの更新
 			loopCountValue = Add(loopCountValue, step, *pEnv);
 		}
 
 		pEnv->exitScope();
+
+		if (forExpression.asList)
+		{
+			return RValue(Unpacked(loopResults, *pEnv));
+		}
 
 		return RValue(loopResult);
 	}

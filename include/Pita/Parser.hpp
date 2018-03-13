@@ -145,8 +145,9 @@ namespace cgl
 
 			for_expr = lit("for") >> s >> id[_val = Call(For::Make, _1)] >> s >> lit("in")
 				>> s >> general_expr[Call(For::SetRangeStart, _val, _1)] >> s >> lit(":")
-				>> s >> general_expr[Call(For::SetRangeEnd, _val, _1)] >> s >> lit("do")
-				>> s >> general_expr[Call(For::SetDo, _val, _1)];
+				>> s >> general_expr[Call(For::SetRangeEnd, _val, _1)] >> s >>
+				(lit("do") >> s >> general_expr[Call(For::SetDo, _val, _1, false)]) |
+				(lit("list") >> s >> general_expr[Call(For::SetDo, _val, _1, true)]);
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 

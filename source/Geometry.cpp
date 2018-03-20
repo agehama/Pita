@@ -373,7 +373,6 @@ namespace cgl
 
 			std::vector<gg::Geometry*> result;
 
-			
 			//for (const gg::Geometry* geometry : originalShape)
 			for (int shapei=0;shapei<originalShape.size();++shapei)
 			{

@@ -202,7 +202,7 @@ namespace cgl
 	public:
 		Identifier() = default;
 
-		Identifier(const std::string& name_) :
+		explicit Identifier(const std::string& name_) :
 			name(name_)
 		{}
 
@@ -219,6 +219,11 @@ namespace cgl
 		}
 
 		operator const std::string&()const
+		{
+			return name;
+		}
+
+		const std::string& toString()const
 		{
 			return name;
 		}
@@ -359,38 +364,41 @@ namespace cgl
 	struct FunctionAccess;
 
 	struct Accessor;
-	
+
 	struct DeclSat;
 	struct DeclFree;
 
 	struct Jump;
 
-	struct SatReference
+	struct Import;
+
+	/*struct SatReference
 	{
-		int refID;
+	int refID;
 
-		SatReference() = default;
+	SatReference() = default;
 
-		explicit SatReference(int refID)
-			:refID(refID)
-		{}
+	explicit SatReference(int refID)
+	:refID(refID)
+	{}
 
-		bool operator==(const SatReference& other)const
-		{
-			return refID == other.refID;
-		}
+	bool operator==(const SatReference& other)const
+	{
+	return refID == other.refID;
+	}
 
-		bool operator!=(const SatReference& other)const
-		{
-			return refID != other.refID;
-		}
-	};
+	bool operator!=(const SatReference& other)const
+	{
+	return refID != other.refID;
+	}
+	};*/
 
 	struct CharString
 	{
 	public:
 		CharString() = default;
-		CharString(const std::u32string& str) :str(str) {}
+
+		explicit CharString(const std::u32string& str) :str(str) {}
 
 		bool operator==(const CharString& other)const
 		{
@@ -491,7 +499,8 @@ namespace cgl
 	using Expr = boost::variant<
 		boost::recursive_wrapper<LRValue>,
 		Identifier,
-		SatReference,
+
+		boost::recursive_wrapper<Import>,
 
 		boost::recursive_wrapper<UnaryExpr>,
 		boost::recursive_wrapper<BinaryExpr>,
@@ -535,7 +544,7 @@ namespace cgl
 		{
 			return !IsEqualVal(value, other.value);
 		}
-		
+
 		Val value;
 	};
 
@@ -586,7 +595,7 @@ namespace cgl
 		{
 			return As<Reference>(value);
 		}
-		
+
 		const Val& evaluated()const
 		{
 			return As<RValue>(value).value;
@@ -601,11 +610,11 @@ namespace cgl
 		{
 			/*if (isLValue() && other.isLValue())
 			{
-				return address() == other.address();
+			return address() == other.address();
 			}
 			else if (isRValue() && other.isRValue())
 			{
-				return IsEqualVal(evaluated(), other.evaluated());
+			return IsEqualVal(evaluated(), other.evaluated());
 			}*/
 
 			if (isRValue() && other.isRValue())
@@ -629,7 +638,6 @@ namespace cgl
 
 	using SatExpr = boost::variant<
 		double,
-		SatReference,
 		boost::recursive_wrapper<SatUnaryExpr>,
 		boost::recursive_wrapper<SatBinaryExpr>,
 		boost::recursive_wrapper<SatFunctionReference>
@@ -646,6 +654,34 @@ namespace cgl
 		{}
 	};
 
+	struct Import
+	{
+	public:
+		Import() = default;
+
+		explicit Import(const std::u32string& filePath);
+
+		Import(const std::u32string& file, const Identifier& name);
+
+		LRValue eval(std::shared_ptr<Context> pContext)const;
+
+		static Import Make(const std::u32string& filePath)
+		{
+			return Import(filePath);
+		}
+
+		static void SetName(Import& node, const Identifier& name);
+
+		bool operator==(const Import& other)const
+		{
+			return false;
+		}
+
+	private:
+		boost::optional<Expr> originalParseTree;
+		boost::optional<Identifier> name;
+	};
+
 	struct OptimizationProblemSat
 	{
 	public:
@@ -660,7 +696,7 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
-		//freeVariablesから辿れる全てのアドレス
+												 //freeVariablesから辿れる全てのアドレス
 		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//変数ID->Address
 
 		bool hasPlateausFunction = false;
@@ -691,7 +727,7 @@ namespace cgl
 		SatUnaryExpr() = default;
 
 		SatUnaryExpr(const SatExpr& lhs, UnaryOp op) :
-			lhs(lhs), 
+			lhs(lhs),
 			op(op)
 		{}
 	};
@@ -935,7 +971,7 @@ namespace cgl
 		std::vector<Identifier> arguments;
 		Expr expr;
 		boost::optional<Address> builtinFuncAddress;
-		
+
 		FuncVal() = default;
 
 		explicit FuncVal(Address builtinFuncAddress) :
@@ -1043,7 +1079,7 @@ namespace cgl
 			return IsEqual(expr, other.expr);
 		}
 	};
-	
+
 	struct If
 	{
 		Expr cond_expr;
@@ -1084,7 +1120,7 @@ namespace cgl
 			if (b1)
 			{
 				return IsEqual(cond_expr, other.cond_expr)
-					&& IsEqual(then_expr, other.then_expr) 
+					&& IsEqual(then_expr, other.then_expr)
 					&& IsEqual(else_expr.value(), other.else_expr.value());
 			}
 
@@ -1490,7 +1526,6 @@ namespace cgl
 
 		struct FunctionRef
 		{
-			//std::vector<boost::variant<SatReference, Val>> args;
 			std::vector<SatExpr> args;
 
 			FunctionRef() = default;
@@ -1507,7 +1542,7 @@ namespace cgl
 				{
 					/*if (!IsEqual(args[i], other.args[i]))
 					{
-						return false;
+					return false;
 					}*/
 				}
 
@@ -1519,18 +1554,6 @@ namespace cgl
 				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
 			}
 
-			/*
-			void appendRef(const SatReference& ref)
-			{
-				args.push_back(ref);
-			}
-
-			void appendValue(const Val& value)
-			{
-				args.push_back(value);
-			}
-			*/
-			
 			void appendExpr(const SatExpr& value)
 			{
 				args.push_back(value);
@@ -1576,7 +1599,7 @@ namespace cgl
 			//if (!(headValue == other.headValue))
 			/*if (!(funcName == other.funcName))
 			{
-				return false;
+			return false;
 			}*/
 			if (!(headAddress == other.headAddress))
 			{
@@ -1654,30 +1677,30 @@ namespace cgl
 		{
 			/*if (refs.size() != other.refs.size())
 			{
-				return false;
+			return false;
 			}
 
 			for (size_t i = 0; i < refs.size(); ++i)
 			{
-				if (!SameType(refs[i].type(), other.refs[i].type()))
-				{
-					return false;
-				}
+			if (!SameType(refs[i].type(), other.refs[i].type()))
+			{
+			return false;
+			}
 
-				if (IsType<Identifier>(refs[i]))
-				{
-					if (As<Identifier>(refs[i]) != As<Identifier>(other.refs[i]))
-					{
-						return false;
-					}
-				}
-				else if (IsType<ObjectReference>(refs[i]))
-				{
-					if (!(As<ObjectReference>(refs[i]) == As<ObjectReference>(other.refs[i])))
-					{
-						return false;
-					}
-				}
+			if (IsType<Identifier>(refs[i]))
+			{
+			if (As<Identifier>(refs[i]) != As<Identifier>(other.refs[i]))
+			{
+			return false;
+			}
+			}
+			else if (IsType<ObjectReference>(refs[i]))
+			{
+			if (!(As<ObjectReference>(refs[i]) == As<ObjectReference>(other.refs[i])))
+			{
+			return false;
+			}
+			}
 			}*/
 
 			std::cerr << "Warning: IsEqual<DeclFree>() don't care about accessors" << std::endl;
@@ -1797,7 +1820,7 @@ namespace cgl
 
 		std::vector<OptimizationProblemSat> problems;
 		boost::optional<Expr> constraint;
-		
+
 		//var宣言で指定されたアクセッサ
 		std::vector<Accessor> freeVariables;
 		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
@@ -1895,7 +1918,7 @@ namespace cgl
 		{
 			listAccess.isArbitrary = true;
 		}
-		
+
 		bool operator==(const ListAccess& other)const
 		{
 			return index == other.index;
@@ -1954,7 +1977,7 @@ namespace cgl
 					return false;
 				}
 			}
-			
+
 			return true;
 		}
 	};
@@ -2187,11 +2210,11 @@ namespace cgl
 		{
 			/*if (IsType<Identifier>(original) && IsType<Identifier>(other.original))
 			{
-				return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
+			return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
 			}
 			if (IsType<Record>(original) && IsType<Record>(other.original))
 			{
-				return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
+			return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
 			}*/
 
 			return IsEqual(original, other.original) && adder == other.adder;
@@ -2202,5 +2225,5 @@ namespace cgl
 	};
 
 	Expr BuildString(const std::u32string& str);
-	
+
 }

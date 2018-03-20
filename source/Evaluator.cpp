@@ -911,6 +911,11 @@ namespace cgl
 		return result;
 	}
 
+	LRValue Eval::operator()(const Import& node)
+	{
+		return node.eval(pEnv);
+	}
+
 	LRValue Eval::operator()(const UnaryExpr& node)
 	{
 		const Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs));
@@ -2055,19 +2060,19 @@ namespace cgl
 		(5) レコードをマージする //ローカル変数などの変更処理
 		*/
 
-		if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("path"))
+		if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("path"))
 		{
 			Record pathRecord;
 			pathRecord.type = RecordType::Path;
 			recordOpt = pathRecord;
 		}
-		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("text"))
+		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("text"))
 		{
 			Record pathRecord;
 			pathRecord.type = RecordType::Text;
 			recordOpt = pathRecord;
 		}
-		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original) == std::string("shapepath"))
+		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("shapepath"))
 		{
 			Record pathRecord;
 			pathRecord.type = RecordType::ShapePath;
@@ -2544,428 +2549,6 @@ namespace cgl
 		return false;
 	}
 
-
-	boost::optional<size_t> Expr2SatExpr::freeVariableIndex(Address reference)
-	{
-		for (size_t i = 0; i < freeVariables.size(); ++i)
-		{
-			if (freeVariables[i] == reference)
-			{
-				return i;
-			}
-		}
-
-		return boost::none;
-	}
-
-	boost::optional<SatReference> Expr2SatExpr::getSatRef(Address reference)
-	{
-		for (size_t i = 0; i < refs.size(); ++i)
-		{
-			if (refs[i] == reference)
-			{
-				return SatReference(refID_Offset + i);
-				//return refs[i];
-			}
-		}
-
-		return boost::none;
-	}
-
-	boost::optional<SatReference> Expr2SatExpr::addSatRef(Address reference)
-	{
-		if (auto indexOpt = freeVariableIndex(reference))
-		{
-			//以前に出現して登録済みのfree変数はそのまま返す
-			if (auto satRefOpt = getSatRef(reference))
-			{
-				return satRefOpt;
-			}
-
-			//初めて出現したfree変数は登録してから返す
-			usedInSat[indexOpt.value()] = 1;
-			SatReference satRef(refID_Offset + static_cast<int>(refs.size()));
-			refs.push_back(reference);
-			return satRef;
-		}
-
-		return boost::none;
-	}
-				
-	Expr Expr2SatExpr::operator()(const LRValue& node)
-	{
-		if (node.isRValue())
-		{
-			return node;
-		}
-		else
-		{
-			const Address address = node.address(*pEnv);
-
-			if (!address.isValid())
-			{
-				CGL_Error("識別子が定義されていません");
-			}
-
-			//free変数にあった場合は制約用の参照値を返す
-			if (auto satRefOpt = addSatRef(address))
-			{
-				return satRefOpt.value();
-			}
-			//free変数になかった場合は評価した結果を返す
-			else
-			{
-				const Val evaluated = pEnv->expand(address);
-				return LRValue(evaluated);
-			}
-		}
-
-		CGL_Error("ここは通らないはず");
-		return LRValue(0);
-	}
-
-	//ここにIdentifierが残っている時点でClosureMakerにローカル変数だと判定された変数のはず
-	Expr Expr2SatExpr::operator()(const Identifier& node)
-	{
-		Address address = pEnv->findAddress(node);
-		if (!address.isValid())
-		{
-			CGL_Error("識別子が定義されていません");
-		}
-
-		//free変数にあった場合は制約用の参照値を返す
-		if (auto satRefOpt = addSatRef(address))
-		{
-			return satRefOpt.value();
-		}
-		//free変数になかった場合は評価した結果を返す
-		else
-		{
-			const Val evaluated = pEnv->expand(address);
-			return LRValue(evaluated);
-		}
-
-		CGL_Error("ここは通らないはず");
-		return LRValue(0);
-	}
-
-	Expr Expr2SatExpr::operator()(const UnaryExpr& node)
-	{
-		const Expr lhs = boost::apply_visitor(*this, node.lhs);
-
-		switch (node.op)
-		{
-		case UnaryOp::Not:     return UnaryExpr(lhs, UnaryOp::Not);
-		case UnaryOp::Minus:   return UnaryExpr(lhs, UnaryOp::Minus);
-		case UnaryOp::Plus:    return lhs;
-		case UnaryOp::Dynamic: return lhs;
-		}
-
-		CGL_Error("invalid expression");
-		return LRValue(0);
-	}
-
-	Expr Expr2SatExpr::operator()(const BinaryExpr& node)
-	{
-		const Expr lhs = boost::apply_visitor(*this, node.lhs);
-		const Expr rhs = boost::apply_visitor(*this, node.rhs);
-
-		if (node.op != BinaryOp::Assign)
-		{
-			return BinaryExpr(lhs, rhs, node.op);
-		}
-
-		CGL_Error("invalid expression");
-		return LRValue(0);
-	}
-
-	Expr Expr2SatExpr::operator()(const Lines& node)
-	{
-		Lines result;
-		for (const auto& expr : node.exprs)
-		{
-			result.add(boost::apply_visitor(*this, expr));
-		}
-		return result;
-	}
-
-	Expr Expr2SatExpr::operator()(const If& node)
-	{
-		If result;
-		result.cond_expr = boost::apply_visitor(*this, node.cond_expr);
-		result.then_expr = boost::apply_visitor(*this, node.then_expr);
-		if (node.else_expr)
-		{
-			result.else_expr = boost::apply_visitor(*this, node.else_expr.value());
-		}
-
-		return result;
-	}
-
-	Expr Expr2SatExpr::operator()(const For& node)
-	{
-		For result;
-		result.loopCounter = node.loopCounter;
-		result.rangeEnd = node.rangeEnd;
-		result.rangeStart = node.rangeStart;
-		result.doExpr = boost::apply_visitor(*this, node.doExpr);
-		result.asList = node.asList;
-		return result;
-	}
-
-	Expr Expr2SatExpr::operator()(const ListConstractor& node)
-	{
-		ListConstractor result;
-		for (const auto& expr : node.data)
-		{
-			result.add(boost::apply_visitor(*this, expr));
-		}
-		return result;
-	}
-
-	Expr Expr2SatExpr::operator()(const RecordConstractor& node)
-	{
-		RecordConstractor result;
-		for (const auto& expr : node.exprs)
-		{
-			result.add(boost::apply_visitor(*this, expr));
-		}
-		return result;
-	}
-
-	Expr Expr2SatExpr::operator()(const Accessor& node)
-	{
-		Address headAddress;
-		const Expr& head = node.head;
-
-		//headがsat式中のローカル変数
-		if (IsType<Identifier>(head))
-		{
-			Address address = pEnv->findAddress(As<Identifier>(head));
-			if (!address.isValid())
-			{
-				CGL_Error("識別子が定義されていません");
-			}
-
-			//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。
-			//したがって、free変数にあるかどうかは考慮せず（free変数は冗長に指定できるのであったとしても別にエラーではない）、
-			//直接Valとして展開する
-			//result.head = LRValue(address);
-			headAddress = address;
-		}
-		//headがアドレス値
-		else if (IsType<LRValue>(head))
-		{
-			const LRValue& headAddressValue = As<LRValue>(head);
-			if (!headAddressValue.isLValue())
-			{
-				CGL_Error("sat式中のアクセッサの先頭部が不正な値です");
-			}
-
-			const Address address = headAddressValue.address(*pEnv);
-
-			//↑のIdentifierと同様に直接展開する
-			//result.head = LRValue(address);
-			headAddress = address;
-		}
-		else
-		{
-			CGL_Error("sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
-		}
-
-		Eval evaluator(pEnv);
-
-		Accessor result;
-
-		//TODO: アクセッサはfree変数を持たない間、それ自身がfree変数指定されるまでのアドレスを畳み込む
-		bool selfDependsOnFreeVariables = false;
-		bool childDependsOnFreeVariables = false;
-		{
-			HasFreeVariables searcher(pEnv, freeVariables);
-			const Expr headExpr = LRValue(headAddress);
-			selfDependsOnFreeVariables = boost::apply_visitor(searcher, headExpr);
-		}
-
-		for (const auto& access : node.accesses)
-		{
-			const Address lastHeadAddress = headAddress;
-
-			boost::optional<const Val&> objOpt = pEnv->expandOpt(headAddress);
-			if (!objOpt)
-			{
-				CGL_Error("参照エラー");
-			}
-
-			const Val& objRef = objOpt.value();
-
-			if (IsType<ListAccess>(access))
-			{
-				const ListAccess& listAccess = As<ListAccess>(access);
-
-				{
-					HasFreeVariables searcher(pEnv, freeVariables);
-					childDependsOnFreeVariables = childDependsOnFreeVariables || boost::apply_visitor(searcher, listAccess.index);
-				}
-
-				if (childDependsOnFreeVariables)
-				{
-					Expr accessIndex = boost::apply_visitor(*this, listAccess.index);
-					result.add(ListAccess(accessIndex));
-				}
-				else
-				{
-					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
-
-					if (!IsType<List>(objRef))
-					{
-						CGL_Error("オブジェクトがリストでない");
-					}
-
-					const List& list = As<List>(objRef);
-
-					if (auto indexOpt = AsOpt<int>(value))
-					{
-						headAddress = list.get(indexOpt.value());
-					}
-					else
-					{
-						CGL_Error("list[index] の index が int 型でない");
-					}
-				}
-			}
-			else if (IsType<RecordAccess>(access))
-			{
-				const RecordAccess& recordAccess = As<RecordAccess>(access);
-
-				if (childDependsOnFreeVariables)
-				{
-					result.add(access);
-				}
-				else
-				{
-					if (!IsType<Record>(objRef))
-					{
-						CGL_Error("オブジェクトがレコードでない");
-					}
-
-					const Record& record = As<Record>(objRef);
-					auto it = record.values.find(recordAccess.name);
-					if (it == record.values.end())
-					{
-						CGL_Error("指定された識別子がレコード中に存在しない");
-					}
-
-					headAddress = it->second;
-				}
-			}
-			else
-			{
-				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
-
-				{
-					//TODO: HasFreeVariablesの実装は不完全で、アクセッサが関数呼び出しでさらにその引数がfree変数の場合に対応していない
-					//      一度式を評価して、その過程でfree変数で指定したアドレスへのアクセスが発生するかどうかで見るべき
-					//      AddressAppearanceCheckerのようなものを作る(Evalの簡易版)
-					//inline bool HasFreeVariables::operator()(const Accessor& node)
-
-					HasFreeVariables searcher(pEnv, freeVariables);
-					for (const auto& arg : funcAccess.actualArguments)
-					{
-						childDependsOnFreeVariables = childDependsOnFreeVariables || boost::apply_visitor(searcher, arg);
-					}
-				}
-
-				if (childDependsOnFreeVariables)
-				{
-					FunctionAccess resultAccess;
-					for (const auto& arg : funcAccess.actualArguments)
-					{
-						resultAccess.add(boost::apply_visitor(*this, arg));
-					}
-					result.add(resultAccess);
-				}
-				else
-				{
-					if (!IsType<FuncVal>(objRef))
-					{
-						CGL_Error("オブジェクトが関数でない");
-					}
-
-					const FuncVal& function = As<FuncVal>(objRef);
-
-					/*
-					std::vector<Val> args;
-					for (const auto& expr : funcAccess.actualArguments)
-					{
-					args.push_back(pEnv->expand(boost::apply_visitor(evaluator, expr)));
-					}
-
-					Expr caller = FunctionCaller(function, args);
-					const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
-					headAddress = pEnv->makeTemporaryValue(returnedValue);
-					*/
-					std::vector<Address> args;
-					for (const auto& expr : funcAccess.actualArguments)
-					{
-						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
-						if (lrvalue.isLValue())
-						{
-							args.push_back(lrvalue.address(*pEnv));
-						}
-						else
-						{
-							args.push_back(pEnv->makeTemporaryValue(lrvalue.evaluated()));
-						}
-					}
-
-					const Val returnedValue = pEnv->expand(evaluator.callFunction(function, args));
-					headAddress = pEnv->makeTemporaryValue(returnedValue);
-				}
-			}
-
-			if (lastHeadAddress != headAddress && !selfDependsOnFreeVariables)
-			{
-				HasFreeVariables searcher(pEnv, freeVariables);
-				const Expr headExpr = LRValue(headAddress);
-				selfDependsOnFreeVariables = boost::apply_visitor(searcher, headExpr);
-			}
-		}
-
-		/*
-		selfDependsOnFreeVariablesとchildDependsOnFreeVariablesが両方true : エラー
-		selfDependsOnFreeVariablesがtrue  : アクセッサ本体がfree（アクセッサを評価すると必ず単一のdouble型になる）
-		childDependsOnFreeVariablesがtrue : アクセッサの引数がfree（リストインデックスか関数引数）
-		*/
-		if (selfDependsOnFreeVariables && childDependsOnFreeVariables)
-		{
-			CGL_Error("sat式中のアクセッサについて、本体と引数の両方をfree変数に指定することはできません");
-		}
-		else if (selfDependsOnFreeVariables)
-		{
-			if (!result.accesses.empty())
-			{
-				CGL_Error("ここは通らないはず");
-			}
-
-			if (auto satRefOpt = addSatRef(headAddress))
-			{
-				return satRefOpt.value();
-			}
-			else
-			{
-				CGL_Error("ここは通らないはず");
-			}
-		}
-		/*else if (childDependsOnFreeVariables)
-		{
-		CGL_Error("TODO: アクセッサの引数のfree変数指定は未対応");
-		}*/
-
-		result.head = LRValue(headAddress);
-
-		return result;
-	}
-	
 	Val evalExpr(const Expr& expr)
 	{
 		auto env = Context::Make();
@@ -3123,9 +2706,10 @@ namespace cgl
 		{
 			return As<Identifier>(value1) == As<Identifier>(value2);
 		}
-		else if (IsType<SatReference>(value1))
+		else if (IsType<Import>(value1))
 		{
-			return As<SatReference>(value1) == As<SatReference>(value2);
+			//return As<SatReference>(value1) == As<SatReference>(value2);
+			return false;
 		}
 		else if (IsType<UnaryExpr>(value1))
 		{

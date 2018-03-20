@@ -299,13 +299,6 @@ namespace cgl
 		os << node;
 	}
 
-	void PrintSatExpr::operator()(const SatReference& node)const
-	{
-		//os << "$" << node.refID;
-		//CGL_DebugLog(ToS("$") + ToS(node.refID));
-		os << "$" << node.refID;
-	}
-
 	void PrintSatExpr::operator()(const SatUnaryExpr& node)const
 	{
 		switch (node.op)
@@ -393,9 +386,9 @@ namespace cgl
 		os << indent() << "Identifier(" << static_cast<std::string>(node) << ")" << std::endl;
 	}
 
-	void Printer::operator()(const SatReference& node)const
+	void Printer::operator()(const Import& node)const
 	{
-		os << indent() << "SatReference(" << node.refID << ")" << std::endl;
+		os << indent() << "Import(" << ")" << std::endl;
 	}
 
 	void Printer::operator()(const UnaryExpr& node)const
@@ -666,7 +659,7 @@ namespace cgl
 		os << static_cast<std::string>(node);
 	}
 
-	void Printer2::operator()(const SatReference& node)const
+	void Printer2::operator()(const Import& node)const
 	{}
 
 	void Printer2::operator()(const UnaryExpr& node)const

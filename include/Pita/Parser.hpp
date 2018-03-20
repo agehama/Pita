@@ -1,8 +1,11 @@
 #pragma once
+#include <filesystem>
+
 #define BOOST_RESULT_OF_USE_DECLTYPE
 #define BOOST_SPIRIT_USE_PHOENIX_V3
 #define BOOST_SPIRIT_UNICODE
 
+#include <boost/optional.hpp>
 #include <boost/regex/pending/unicode_iterator.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
@@ -11,6 +14,11 @@
 
 namespace cgl
 {
+	namespace filesystem = std::experimental::filesystem;
+
+	//パース時のみ使用
+	extern std::stack<filesystem::path> workingDirectories;
+
 	inline auto MakeUnaryExpr(UnaryOp op)
 	{
 		return boost::phoenix::bind([](const auto & e, UnaryOp op) {return UnaryExpr(e, op); }, boost::spirit::_1, op);
@@ -100,6 +108,7 @@ namespace cgl
 		qi::rule<Iterator, RecordInheritor(), Skipper> record_inheritor;
 
 		qi::rule<Iterator, ListConstractor(), Skipper> list_maker;
+		qi::rule<Iterator, Import(), Skipper> import_expr;
 		qi::rule<Iterator, For(), Skipper> for_expr;
 		qi::rule<Iterator, If(), Skipper> if_expr;
 		qi::rule<Iterator, Return(), Skipper> return_expr;
@@ -135,6 +144,7 @@ namespace cgl
 
 			general_expr =
 				if_expr[_val = _1]
+				| import_expr[_val = _1]
 				| return_expr[_val = _1]
 				| logic_expr[_val = _1];
 
@@ -148,6 +158,8 @@ namespace cgl
 				>> s >> general_expr[Call(For::SetRangeEnd, _val, _1)] >> s >>
 				((lit("do") >> s >> general_expr[Call(For::SetDo, _val, _1, false)]) |
 				(lit("list") >> s >> general_expr[Call(For::SetDo, _val, _1, true)]));
+
+			import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] >> '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
@@ -282,4 +294,35 @@ namespace cgl
 			s = *(encode::space);
 		}
 	};
+
+	inline boost::optional<Expr> Parse(const std::string& program)
+	{
+		boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
+
+		Lines lines;
+
+		SpaceSkipper<IteratorT> skipper;
+		Parser<IteratorT, SpaceSkipperT> grammer;
+
+		auto it = tbegin;
+		if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
+		{
+			//std::cerr << "Syntax Error: parse failed\n";
+			std::cout << "Syntax Error: parse failed\n";
+			workingDirectories.pop();
+			return boost::none;
+		}
+
+		if (it != tend)
+		{
+			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
+			std::cout << "Syntax Error: ramains input\n";
+			workingDirectories.pop();
+			return boost::none;
+		}
+
+		Expr result = lines;
+		workingDirectories.pop();
+		return result;
+	}
 }

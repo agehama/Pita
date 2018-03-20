@@ -1586,7 +1586,7 @@ namespace cgl
 
 		void operator()(const Identifier& node) {}
 
-		void operator()(const SatReference& node) {}
+		void operator()(const Import& node) {}
 
 		void operator()(const UnaryExpr& node)
 		{

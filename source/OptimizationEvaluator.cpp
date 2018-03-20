@@ -940,7 +940,7 @@ namespace cgl
 		return node.evaluated();
 	}
 
-	Val EvalSatExpr::operator()(const SatReference& node)
+	Val EvalSatExpr::operator()(const Import& node)
 	{
 		CGL_Error("不正な式");
 		return 0;

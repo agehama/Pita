@@ -81,7 +81,7 @@ namespace cgl
 
 		bool operator()(const Identifier& node);
 
-		bool operator()(const SatReference& node) { return true; }
+		bool operator()(const Import& node) { return false; }
 
 		bool operator()(const UnaryExpr& node);
 
@@ -199,7 +199,7 @@ namespace cgl
 
 		void operator()(const Identifier& node) { conjunctions.push_back(node); }
 
-		void operator()(const SatReference& node) { conjunctions.push_back(node); }
+		void operator()(const Import& node) { conjunctions.push_back(node); }
 
 		void operator()(const UnaryExpr& node) { conjunctions.push_back(node); }
 
@@ -272,7 +272,7 @@ namespace cgl
 
 		Val operator()(const LRValue& node);
 
-		Val operator()(const SatReference& node);
+		Val operator()(const Import& node);
 
 		Val operator()(const Identifier& node);
 

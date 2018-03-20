@@ -11,39 +11,41 @@ int constraintViolationCount;
 
 namespace cgl
 {
-	boost::optional<Expr> Program::parse(const std::string& program)
-	{
-		using namespace cgl;
+	std::stack<filesystem::path> workingDirectories;
 
-		boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
+	//boost::optional<Expr> Program::parse(const std::string& program)
+	//{
+	//	using namespace cgl;
 
-		Lines lines;
+	//	boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
 
-		SpaceSkipper<IteratorT> skipper;
-		Parser<IteratorT, SpaceSkipperT> grammer;
+	//	Lines lines;
 
-		auto it = tbegin;
-		if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
-		{
-			//std::cerr << "Syntax Error: parse failed\n";
-			std::cout << "Syntax Error: parse failed\n";
-			return boost::none;
-		}
+	//	SpaceSkipper<IteratorT> skipper;
+	//	Parser<IteratorT, SpaceSkipperT> grammer;
 
-		if (it != tend)
-		{
-			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
-			std::cout << "Syntax Error: ramains input\n";
-			return boost::none;
-		}
+	//	auto it = tbegin;
+	//	if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
+	//	{
+	//		//std::cerr << "Syntax Error: parse failed\n";
+	//		std::cout << "Syntax Error: parse failed\n";
+	//		return boost::none;
+	//	}
 
-		Expr result = lines;
-		return result;
-	}
+	//	if (it != tend)
+	//	{
+	//		//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
+	//		std::cout << "Syntax Error: ramains input\n";
+	//		return boost::none;
+	//	}
+
+	//	Expr result = lines;
+	//	return result;
+	//}
 
 	boost::optional<Val> Program::execute(const std::string& program)
 	{
-		if (auto exprOpt = parse(program))
+		if (auto exprOpt = Parse(program))
 		{
 			try
 			{
@@ -62,7 +64,7 @@ namespace cgl
 	{
 		if (logOutput) std::cout << "parse..." << std::endl;
 
-		if (auto exprOpt = parse(program))
+		if (auto exprOpt = Parse(program))
 		{
 			try
 			{
@@ -100,7 +102,7 @@ namespace cgl
 			std::cerr << program << std::endl;
 		}
 
-		if (auto exprOpt = parse(program))
+		if (auto exprOpt = Parse(program))
 		{
 			try
 			{
@@ -112,9 +114,7 @@ namespace cgl
 				}
 
 				if (logOutput) std::cerr << "execute..." << std::endl;
-				std::cout << __LINE__ << std::endl;
 				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
-				std::cout << __LINE__ << std::endl;
 				evaluated = pEnv->expand(lrvalue);
 				if (logOutput)
 				{
@@ -125,7 +125,6 @@ namespace cgl
 				if (logOutput)
 					std::cerr << "output SVG..." << std::endl;
 
-				std::cout << __LINE__ << std::endl;
 				if (output_filename.empty())
 				{
 					OutputSVG2(std::cout, evaluated.value(), pEnv, "shape");
@@ -136,7 +135,6 @@ namespace cgl
 					OutputSVG2(file, evaluated.value(), pEnv, "shape");
 					file.close();
 				}
-				std::cout << __LINE__ << std::endl;
 
 				if (logOutput)
 				std::cerr << "completed" << std::endl;
@@ -175,7 +173,7 @@ namespace cgl
 			std::cout << program << std::endl;
 		}
 
-		if (auto exprOpt = parse(program))
+		if (auto exprOpt = Parse(program))
 		{
 			try
 			{

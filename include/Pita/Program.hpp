@@ -15,7 +15,7 @@ namespace cgl
 			evaluator(pEnv)
 		{}
 
-		boost::optional<Expr> parse(const std::string& program);
+		//boost::optional<Expr> parse(const std::string& program);
 
 		boost::optional<Val> execute(const std::string& program);
 

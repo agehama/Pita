@@ -127,8 +127,6 @@ namespace cgl
 
 		void operator()(double node)const;
 
-		void operator()(const SatReference& node)const;
-
 		void operator()(const SatUnaryExpr& node)const;
 
 		void operator()(const SatBinaryExpr& node)const;
@@ -155,7 +153,7 @@ namespace cgl
 
 		void operator()(const Identifier& node)const;
 
-		void operator()(const SatReference& node)const;
+		void operator()(const Import& node)const;
 
 		void operator()(const UnaryExpr& node)const;
 
@@ -211,7 +209,7 @@ namespace cgl
 
 		void operator()(const Identifier& node)const;
 
-		void operator()(const SatReference& node)const;
+		void operator()(const Import& node)const;
 
 		void operator()(const UnaryExpr& node)const;
 

@@ -8,6 +8,7 @@
 
 #include <cxxopts.hpp>
 #include <Pita/Program.hpp>
+#include <Pita/Parser.hpp>
 
 extern bool calculating;
 
@@ -718,6 +719,11 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+	const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(input_file)).parent_path();
+	std::cout << "currentDirectory: " << currentDirectory.string() << std::endl;
+
+	cgl::workingDirectories.emplace(currentDirectory);
 
 	calculating = true;
 	cgl::Program program;

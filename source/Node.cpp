@@ -14,6 +14,8 @@
 #include <Pita/Node.hpp>
 #include <Pita/Context.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
+#include <Pita/Parser.hpp>
+#include <Pita/Evaluator.hpp>
 
 namespace cgl
 {
@@ -55,6 +57,75 @@ namespace cgl
 		return IsType<Address>(value)
 			? As<Address>(value)
 			: env.getReference(As<Reference>(value));
+	}
+
+	Import::Import(const std::u32string& filePath)
+	{
+		const std::string u8FilePath = Unicode::UTF32ToUTF8(filePath);
+		const auto path = cgl::filesystem::path(u8FilePath);
+
+		std::string sourceCode;
+
+		if (path.is_absolute())
+		{
+			std::ifstream ifs(u8FilePath);
+			if (!ifs.is_open())
+			{
+				CGL_Error(std::string() + "Error: import file \"" + u8FilePath + "\" does not exists.");
+			}
+
+			sourceCode = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+			cgl::workingDirectories.emplace(path.parent_path());
+		}
+		else
+		{
+			const auto currentDirectory = workingDirectories.top();
+			const auto currentFilePath = currentDirectory / path;
+
+			std::ifstream ifs(currentFilePath.string());
+			if (!ifs.is_open())
+			{
+				CGL_Error(std::string() + "Error: import file \"" + currentFilePath.string() + "\" does not exists.");
+			}
+
+			sourceCode = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+			cgl::workingDirectories.emplace(currentFilePath.parent_path());
+		}
+
+		if (auto opt = Parse(sourceCode))
+		{
+			originalParseTree = opt;
+		}
+		else
+		{
+			CGL_Error("Parse failed.");
+		}
+	}
+
+	Import::Import(const std::u32string& file, const Identifier& name)
+	{
+
+	}
+
+	LRValue Import::eval(std::shared_ptr<Context> pContext)const
+	{
+		if(!originalParseTree)
+		{
+			CGL_Error("ファイルのimportに失敗");
+		}
+
+		if (name)
+		{
+
+		}
+
+		Eval evaluator(pContext);
+		return boost::apply_visitor(evaluator, originalParseTree.value());
+	}
+
+	void Import::SetName(Import& node, const Identifier& name)
+	{
+
 	}
 
 	Expr BuildString(const std::u32string& str32)

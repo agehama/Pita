@@ -494,6 +494,38 @@ namespace cgl
 	{
 		os << indent() << "For(" << std::endl;
 
+		{
+			const auto child = Printer(pEnv, os, m_indent + 1);
+			os << child.indent() << "loopCounter: " << forExpression.loopCounter.toString() << std::endl;
+		}
+
+		{
+			const auto child = Printer(pEnv, os, m_indent + 1);
+			os << child.indent() << "RangeStart(" << std::endl;
+
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), forExpression.rangeStart);
+
+			os << child.indent() << ")" << std::endl;
+		}
+
+		{
+			const auto child = Printer(pEnv, os, m_indent + 1);
+			os << child.indent() << "RangeEnd(" << std::endl;
+
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), forExpression.rangeEnd);
+
+			os << child.indent() << ")" << std::endl;
+		}
+
+		{
+			const auto child = Printer(pEnv, os, m_indent + 1);
+			os << child.indent() << "Do(" << std::endl;
+
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), forExpression.doExpr);
+
+			os << child.indent() << ")" << std::endl;
+		}
+
 		os << indent() << ")" << std::endl;
 	}
 

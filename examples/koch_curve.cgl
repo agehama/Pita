@@ -51,11 +51,10 @@ rec_curve = (f, depth, template, ps ->
     }
 )
 
-tree = shape{
-    depth =  5
+tree = (depth -> shape{
     a: shape{
         c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:0}])
         scale = x2(70)
     }
     stroke: {r: 0, g: 255, b: 0}
-}
+})

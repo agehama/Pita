@@ -31,7 +31,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("参照エラー");
+				CGL_Error(std::string() + "Address(" + key.toString() + ") is not binded.");
 			}
 			return it->second;
 		}
@@ -41,9 +41,22 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("参照エラー");
+				CGL_Error(std::string() + "Address(" + key.toString() + ") is not binded.");
 			}
 			return it->second;
+		}
+
+		void bind(Address key, const ValueType& value)
+		{
+			auto it = m_values.find(key);
+			if (it != m_values.end())
+			{
+				it->second = value;
+			}
+			else
+			{
+				m_values.emplace(key, value);
+			}
 		}
 
 		typename ValueList::iterator at(Address key)
@@ -64,6 +77,11 @@ namespace cgl
 		typename ValueList::const_iterator end()const
 		{
 			return m_values.cend();
+		}
+
+		typename ValueList::const_iterator find(const Address address)const
+		{
+			return m_values.find(address);
 		}
 
 		void gc(const std::unordered_set<Address>& ramainAddresses)
@@ -104,7 +122,7 @@ namespace cgl
 
 	class Context
 	{
-	public:	
+	public:
 		using LocalContext = std::vector<Scope>;
 
 		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
@@ -350,7 +368,8 @@ namespace cgl
 
 		void TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(Address address, const Val& newValue)
 		{
-			m_values[address] = newValue;
+			//m_values[address] = newValue;
+			m_values.bind(address, newValue);
 		}
 
 		/*

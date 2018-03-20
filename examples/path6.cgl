@@ -12,7 +12,7 @@ shape = {
     globalPos: (p->transform(@pos, @scale, @angle, p))
 }
 
-m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
+mid = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
 
 moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
 
@@ -26,10 +26,10 @@ square = shape{
     topRight:    (->globalPos( polygon[1] ))
     bottomRight: (->globalPos( polygon[2] ))
     bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( m(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( m(polygon[2], polygon[3]) ))
-    left:        (->globalPos( m(polygon[0], polygon[3]) ))
-    right:       (->globalPos( m(polygon[1], polygon[2]) ))
+    top:         (->globalPos( mid(polygon[0], polygon[1]) ))
+    bottom:      (->globalPos( mid(polygon[2], polygon[3]) ))
+    left:        (->globalPos( mid(polygon[0], polygon[3]) ))
+    right:       (->globalPos( mid(polygon[1], polygon[2]) ))
 }
 
 triangle = shape{

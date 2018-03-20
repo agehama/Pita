@@ -164,9 +164,10 @@ namespace cgl
 		}
 	}
 
-	Import::Import(const std::u32string& file, const Identifier& name)
+	Import::Import(const std::u32string& importFile, const Identifier& importName):
+		Import(importFile)
 	{
-
+		name = importName;
 	}
 
 	LRValue Import::eval(std::shared_ptr<Context> pContext)const
@@ -176,11 +177,27 @@ namespace cgl
 			CGL_Error("ファイルのimportに失敗");
 		}
 
-		const Expr importParseTree = ToImportForm(originalParseTree.value());
+		if (name)
+		{
+			const Expr importParseTree = BinaryExpr(name.value(), ToImportForm(originalParseTree.value()), BinaryOp::Assign);
+			printExpr(importParseTree, pContext, std::cout);
+			Eval evaluator(pContext);
+			return boost::apply_visitor(evaluator, importParseTree);
+		}
 
-		Eval evaluator(pContext);
-		return boost::apply_visitor(evaluator, importParseTree);
+		if (IsType<Lines>(originalParseTree.value()))
+		{
+			Eval evaluator(pContext);
 
+			LRValue result;
+			const auto& lines = As<Lines>(originalParseTree.value());
+			for (const auto& expr : lines.exprs)
+			{
+				result = boost::apply_visitor(evaluator, expr);
+			}
+
+			return result;
+		}
 		//if (name)
 		//{
 
@@ -211,9 +228,9 @@ namespace cgl
 		CGL_Error("ファイルのimportに失敗");
 	}
 
-	void Import::SetName(Import& node, const Identifier& name)
+	void Import::SetName(Import& node, const Identifier& importName)
 	{
-
+		node.name = importName;
 	}
 
 	Expr BuildString(const std::u32string& str32)

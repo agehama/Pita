@@ -605,7 +605,7 @@ namespace cgl
 			return LRValue(address);
 		}
 
-		CGL_Error("識別子が定義されていません");
+		CGL_Error(std::string() + "識別子\"" + node.toString() + "\"が定義されていません");
 		return LRValue(0);
 	}
 
@@ -789,7 +789,7 @@ namespace cgl
 	Expr ClosureMaker::operator()(const RecordConstractor& node)
 	{
 		RecordConstractor result;
-			
+
 		if (isInnerRecord)
 		{
 			isInnerRecord = false;

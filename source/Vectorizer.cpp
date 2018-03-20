@@ -1989,13 +1989,10 @@ namespace cgl
 
 	bool OutputSVG2(std::ostream& os, const Val& value, std::shared_ptr<Context> pEnv, const std::string& name)
 	{
-		std::cout << __LINE__ << std::endl;
 		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
-		std::cout << __LINE__ << std::endl;
 		if (IsType<Record>(value) && boundingBoxOpt)
 		{
 			const BoundingRect& rect = boundingBoxOpt.value();
-			std::cout << __LINE__ << std::endl;
 			//const auto pos = rect.pos();
 			const auto widthXY = rect.width();
 			const auto center = rect.center();
@@ -2010,11 +2007,8 @@ namespace cgl
 
 			/*os << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height
 				<< R"(" viewport-fill="black" viewport-fill-opacity="0.1)"  << R"(">)" << "\n";*/
-			
 			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height << R"(">)" << "\n";
-			std::cout << __LINE__ << std::endl;
 			GeosFromRecord2(os, value, pEnv, name, 0);
-			std::cout << __LINE__ << std::endl;
 			os << "</svg>" << "\n";
 
 			return true;

@@ -1613,7 +1613,10 @@ namespace cgl
 			}
 		}
 
-		void operator()(const DefFunc& node) {/*boost::apply_visitor(*this, node.expr);*/ }
+		void operator()(const DefFunc& node)
+		{
+			//boost::apply_visitor(*this, node.expr);
+		}
 
 		void operator()(const If& node)
 		{
@@ -1875,7 +1878,6 @@ namespace cgl
 		}
 
 		{
-
 			for (size_t i = 0; i < currentRecords.size(); ++i)
 			{
 				Record& record = currentRecords[i];
@@ -1899,12 +1901,25 @@ namespace cgl
 		{
 			referenceableAddresses.emplace(keyval.first);
 		}
-		
+
+		//std::cout << "Address(44) " << (referenceableAddresses.find(Address(44)) == referenceableAddresses.end() ? "does not exist." : "exists.") << std::endl;
+		//printContext(std::cout);
 		const size_t prevGC = m_values.size();
 
 		m_values.gc(referenceableAddresses);
 
 		const size_t postGC = m_values.size();
+
+		//printContext(std::cout);
+
+		/*if (m_values.find(Address(44)) == m_values.end())
+		{
+			std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ vec2 is deleted";
+		}
+		else
+		{
+			std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ vec2 is remain";
+		}*/
 
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
 	}

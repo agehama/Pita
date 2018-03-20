@@ -14,6 +14,8 @@
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
 
+#define DBG (std::cout << __FUNCTION__ << ": " << __LINE__ << std::endl)
+
 namespace
 {
 	/*inline long long Combination(int n, int k)
@@ -287,14 +289,14 @@ namespace cgl
 
 				Eigen::Vector2d uv;
 				uv << (dx / size.x()), 1.0 - (dy / size.y());
-				/*if (!(0.0 < uv.x() && uv.x() < 1.0 && 0.0 < uv.y() && uv.y() < 1.0))
+				if (!(0.0 < uv.x() && uv.x() < 1.0 && 0.0 < uv.y() && uv.y() < 1.0))
 				{
 					std::cout << "m_boundingRect.pos(): (" << pos.x() << ", " << pos.y() << ")\n";
 					std::cout << "m_boundingRect.width(): (" << size.x() << ", " << size.y() << ")\n";
 					std::cout << "(dx, dy): (" << dx << ", " << dy << ")\n";
 					std::cout << "(u, v): (" << (dx / size.x()) << ", " << 1.0 - (dy / size.y()) << ")\n";
-					CGL_Error("out of range");
-				}*/
+					CGL_Error("UV is out of range in FFD.");
+				}
 				return uv;
 			};
 
@@ -303,6 +305,13 @@ namespace cgl
 				const int nX = dataX.front().size() - 1;
 				const int nY = dataX.size() - 1;
 
+				/*if (debug)
+				{
+					std::cout << "dataSizeX: (" << dataX.front().size() << ", " << dataX.size() << ")" << std::endl;
+					std::cout << "dataSizeY: (" << dataY.front().size() << ", " << dataY.size() << ")" << std::endl;
+					std::cout << "(u, v): (" << tX << ", " << tY << ")" << std::endl;
+				}*/
+
 				double sumX = 0.0;
 				double sumY = 0.0;
 
@@ -310,6 +319,10 @@ namespace cgl
 				{
 					//const double bY = BernsteinBasis(yi, nY, tY);
 					const double bY = m_bernsteinY(yi, tY);
+					/*if (debug)
+					{
+						std::cout << "(yi): (" << yi << ")" << std::endl;
+					}*/
 					for (int xi = 0; xi <= nX; ++xi)
 					{
 						//const double bX = BernsteinBasis(xi, nX, tX);
@@ -359,7 +372,7 @@ namespace cgl
 			auto factory = gg::GeometryFactory::create();
 
 			std::vector<gg::Geometry*> result;
-			
+
 			
 			//for (const gg::Geometry* geometry : originalShape)
 			for (int shapei=0;shapei<originalShape.size();++shapei)
@@ -374,6 +387,7 @@ namespace cgl
 				const gg::Geometry* geometry = originalShape[shapei];
 				if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 				{
+					
 					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
 					
 					const gg::LineString* exterior = polygon->getExteriorRing();
@@ -466,6 +480,37 @@ namespace cgl
 					
 					//result.push_back(factory->createPolygon(factory->createLinearRing(newExterior), {}));
 					result.push_back(factory->createPolygon(factory->createLinearRing(newExterior), holes));
+				}
+				else if(geometry->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					
+					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(geometry);
+					
+					gg::CoordinateArraySequence newPoints;
+					for (size_t p = 0; p + 1 < lineString->getNumPoints(); ++p)
+					{
+						
+						const gg::Point* p0 = lineString->getPointN(p);
+						const gg::Point* p1 = lineString->getPointN(p + 1);
+						
+
+						const int num = 5;
+						for (int sub = 0; sub < num; ++sub)
+						{
+							//debugPrint = shapei == 0 && p == 0 && sub == 0;
+							const double progress = 1.0 * sub / (num - 1);
+							const double x = p0->getX() + (p1->getX() - p0->getX())*progress;
+							const double y = p0->getY() + (p1->getY() - p0->getY())*progress;
+
+							const auto uv = getUV(x, y);
+							const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
+							newPoints.add(gg::Coordinate(newPos.x(), newPos.y()));
+						}
+						
+					}
+
+					result.push_back(factory->createLineString(newPoints));
+					
 				}
 			}
 
@@ -1991,16 +2036,16 @@ namespace cgl
 		double offsetHorizontal = 0;
 
 		PackedList resultCharList;
-
+		
 		if(!path.empty())
 		{
 			const auto& cs = path.cs;
 			const auto& distances = path.distances;
-
+			
 			for (size_t i = 0; i < string.size(); ++i)
 			{
 				std::vector<gg::Geometry*> result;
-
+				
 				const int codePoint = static_cast<int>(string[i]);
 				const double currentGlyphWidth = font.glyphWidth(codePoint);
 
@@ -2039,7 +2084,7 @@ namespace cgl
 				resultCharList.add(GetPackedShapesFromGeos(result));
 			}
 		}
-
+		
 		PackedRecord result;
 		result.add("shapes", resultCharList);
 		result.add("str", str);
@@ -2233,18 +2278,21 @@ namespace cgl
 
 	PackedList GetDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
 	{
+		//return PackedList();
+		
 		const bool debugDraw = false;
 		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape);
 
 		const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.02;
+		//const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.05;
+		//const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0;
 		const double minX = originalBoundingRect.minPos().x() - eps;
 		const double minY = originalBoundingRect.minPos().y() - eps;
 		const double maxX = originalBoundingRect.maxPos().x() + eps;
-		//const double maxY = originalBoundingRect.maxPos().y() + eps;
-		const double maxY = originalBoundingRect.maxPos().y();
+		const double maxY = originalBoundingRect.maxPos().y() + eps;
+		//const double maxY = originalBoundingRect.maxPos().y();
 
 		const BoundingRect boundingRect(minX, minY, maxX, maxY);
-
 		const double aspect = (maxY - minY) / (maxX - minX);
 
 		/*const int xNum = 15;
@@ -2257,7 +2305,6 @@ namespace cgl
 
 		std::vector<Path> targetPaths;
 		targetPaths.push_back(std::move(ReadPathPacked(targetPathRecord)));
-
 		const double maxWidth = targetPaths.front().length();
 		const double maxHeight = maxWidth * aspect;
 
@@ -2267,7 +2314,7 @@ namespace cgl
 
 		//std::cout << "maxWidth: " << maxWidth << "\n";
 		//std::cout << "maxHeight: " << maxHeight << "\n";
-
+		
 		const double unitY = maxHeight / (yNum - 1);
 		for (int i = 1; i < yNum; ++i)
 		{
@@ -2275,7 +2322,7 @@ namespace cgl
 			const auto offsetPath = GetOffsetPathImpl(targetPaths.front(), -currentHeight);
 			targetPaths.push_back(std::move(ReadPathPacked(offsetPath)));
 		}
-
+		
 		PackedList packedList;
 		if (debugDraw)
 		{
@@ -2306,7 +2353,7 @@ namespace cgl
 				"stroke", MakeRecord("r", 0, "g", 0, "b", 0)
 			);
 		};
-
+		
 		if (debugDraw)
 		{
 			packedList.add(
@@ -2334,7 +2381,7 @@ namespace cgl
 
 		xs = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
 		ys = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
-
+		
 		for (int y = 0; y < yNum; ++y)
 		{
 			const auto frontPos = targetPaths[y].cs->front();
@@ -2351,7 +2398,7 @@ namespace cgl
 				packedList.add(makeSquare(backPos.x, backPos.y));
 			}
 		}
-
+		
 		//法線との交差判定により格子点の位置を求める
 		const double dX = 1.0 / (xNum - 1);
 		for (int x = 1; x + 1 < xNum; ++x)
@@ -2382,14 +2429,16 @@ namespace cgl
 				}
 			}
 		}
-
+		
 		deformer.initialize(boundingRect, xs, ys);
-
+		
 		auto geometries = GeosFromRecordPacked(shape);
+		
 		const auto result = deformer.FFD(geometries);
 		//return GetPackedShapesFromGeos(result);
-
+		
 		packedList.add(GetPackedShapesFromGeos(result));
+		
 		return packedList;
 	}
 }

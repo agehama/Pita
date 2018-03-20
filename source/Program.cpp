@@ -107,11 +107,14 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
+					//printExpr2(exprOpt.value(), pEnv, std::cerr);
 					printExpr(exprOpt.value(), pEnv, std::cerr);
 				}
 
 				if (logOutput) std::cerr << "execute..." << std::endl;
+				std::cout << __LINE__ << std::endl;
 				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
+				std::cout << __LINE__ << std::endl;
 				evaluated = pEnv->expand(lrvalue);
 				if (logOutput)
 				{
@@ -122,6 +125,7 @@ namespace cgl
 				if (logOutput)
 					std::cerr << "output SVG..." << std::endl;
 
+				std::cout << __LINE__ << std::endl;
 				if (output_filename.empty())
 				{
 					OutputSVG2(std::cout, evaluated.value(), pEnv, "shape");
@@ -132,6 +136,7 @@ namespace cgl
 					OutputSVG2(file, evaluated.value(), pEnv, "shape");
 					file.close();
 				}
+				std::cout << __LINE__ << std::endl;
 
 				if (logOutput)
 				std::cerr << "completed" << std::endl;
@@ -141,7 +146,13 @@ namespace cgl
 			catch (const cgl::Exception& e)
 			{
 				//std::cerr << "Exception: " << e.what() << std::endl;
-				std::cerr << "Exception: " << e.what() << std::endl;
+				std::cerr << "CGL Exception: " << e.what() << std::endl;
+
+				succeeded = false;
+			}
+			catch (const std::exception& other)
+			{
+				std::cerr << "Error: " << other.what() << std::endl;
 
 				succeeded = false;
 			}

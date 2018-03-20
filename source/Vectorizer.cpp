@@ -1318,6 +1318,29 @@ namespace cgl
 		return result;
 	}
 
+	PackedRecord GetLineStringPacked(const gg::LineString* line)
+	{
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			list.add(MakeRecord("x", x, "y", y));
+		};
+
+		PackedRecord result;
+		{
+			PackedList polygonList;
+
+			for (int i = 1; i < static_cast<int>(line->getNumPoints()); ++i)//始点と終点は同じ座標なので最後だけ飛ばす
+			{
+				const gg::Coordinate& p = line->getCoordinateN(i);
+				appendCoord(polygonList, p.x, p.y);
+			}
+
+			result.add("line", polygonList);
+		}
+
+		return result;
+	}
+
 	List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Context> pEnv)
 	{
 		List resultShapes;
@@ -1371,7 +1394,10 @@ namespace cgl
 			case geos::geom::GEOS_POINT:
 				break;
 			case geos::geom::GEOS_LINESTRING:
+			{
+				resultShapes.add(GetLineStringPacked(dynamic_cast<const gg::LineString*>(shape)));
 				break;
+			}
 			case geos::geom::GEOS_LINEARRING:
 				break;
 			case geos::geom::GEOS_POLYGON:
@@ -1963,11 +1989,13 @@ namespace cgl
 
 	bool OutputSVG2(std::ostream& os, const Val& value, std::shared_ptr<Context> pEnv, const std::string& name)
 	{
+		std::cout << __LINE__ << std::endl;
 		auto boundingBoxOpt = GetBoundingBox(value, pEnv);
+		std::cout << __LINE__ << std::endl;
 		if (IsType<Record>(value) && boundingBoxOpt)
 		{
 			const BoundingRect& rect = boundingBoxOpt.value();
-
+			std::cout << __LINE__ << std::endl;
 			//const auto pos = rect.pos();
 			const auto widthXY = rect.width();
 			const auto center = rect.center();
@@ -1982,10 +2010,11 @@ namespace cgl
 
 			/*os << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height
 				<< R"(" viewport-fill="black" viewport-fill-opacity="0.1)"  << R"(">)" << "\n";*/
+			
 			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height << R"(">)" << "\n";
-
+			std::cout << __LINE__ << std::endl;
 			GeosFromRecord2(os, value, pEnv, name, 0);
-
+			std::cout << __LINE__ << std::endl;
 			os << "</svg>" << "\n";
 
 			return true;

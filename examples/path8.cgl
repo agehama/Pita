@@ -1,0 +1,142 @@
+transform = (pos, scale, angle, vertex -> {
+    cosT: cos(rad(angle))
+    sinT: sin(rad(angle))
+    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
+    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
+})
+
+shape = {
+    pos: {x:0, y:0}
+    scale: {x:1, y:1}
+    angle: 0
+    globalPos: (p->transform(@pos, @scale, @angle, p))
+}
+
+mid = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
+
+moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
+
+vec2 = (x,y->{x:x,y:y})
+x2 = (v -> {x: v, y: v})
+
+rgb = (r, g, b -> {r:r, g:g, b:b})
+
+div3 = (p, q -> {x: (q.x - p.x) / 3.0, y: (q.y - p.y) / 3.0})
+
+add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
+sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
+
+mul = (v, a -> {x: v.x * a, y: v.y * a})
+div = (v, a -> {x: v.x / a, y: v.y / a})
+
+contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
+
+sqrt = (x -> x^0.5)
+
+length = (v -> sqrt(v.x*v.x + v.y*v.y))
+setLength = (v, l -> mul(div(v, length(v)), l))
+
+koch_template = (p, q ->
+    v = sub(p, q)
+    n = {x: -v.y, y: v.x}
+    vby3 = div3(p, q)
+    m = div(add(p, q), 2.0)
+    nby3 = setLength(n, 0.5*sqrt(3.0)*length(vby3))
+    m1 = add(p, vby3)
+    m2 = add(m1, vby3)
+    ps = [p, m1, add(m, nby3), m2, q]
+    [[ps[0], ps[1]], [ps[1], ps[2]], [ps[2], ps[3]], [ps[3], ps[4]]]
+)
+
+rec_curve = (f, depth, template, ps -> 
+    mergin = 4
+    if depth == 0
+    then {
+        line: ps
+    }
+    else {
+        ss = template(ps[0], ps[1])
+        b: [
+            f(f, depth-1, template, ss[0])
+            f(f, depth-1, template, ss[1])
+            f(f, depth-1, template, ss[2])
+            f(f, depth-1, template, ss[3])
+        ]
+    }
+)
+
+square = shape{
+    polygon: [
+        {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
+    ]
+    topLeft:     (->globalPos( polygon[0] ))
+    topRight:    (->globalPos( polygon[1] ))
+    bottomRight: (->globalPos( polygon[2] ))
+    bottomLeft:  (->globalPos( polygon[3] ))
+    top:         (->globalPos( mid(polygon[0], polygon[1]) ))
+    bottom:      (->globalPos( mid(polygon[2], polygon[3]) ))
+    left:        (->globalPos( mid(polygon[0], polygon[3]) ))
+    right:       (->globalPos( mid(polygon[1], polygon[2]) ))
+}
+
+triangle = shape{
+    polygon: [
+        {x: 0, y: -0.5773502691896}
+        {x: 0.5, y: 0.2886751345948}
+        {x: -0.5, y: 0.2886751345948}
+    ]
+}
+
+hexagon = shape{
+    r = 0.5
+    polygon: [
+        vec2(r*cos(rad(0)),r*sin(rad(60)))
+        vec2(r*cos(rad(60)),r*sin(rad(60)))
+        vec2(r*cos(rad(120)),r*sin(rad(120)))
+        vec2(r*cos(rad(180)),r*sin(rad(180)))
+        vec2(r*cos(rad(240)),r*sin(rad(240)))
+        vec2(r*cos(rad(300)),r*sin(rad(300)))
+    ]
+}
+
+arcPath = (r, begin, end, num -> {
+    delta = 1.0*(end - begin)/num
+    line: (for i in 0:num list(
+        angle = begin + delta*i
+        vec2(r*cos(angle), r*sin(angle))
+    ))
+})
+
+route = shape{
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+    tri = hexagon{scale: {x:100, y:100}}
+    textShape = buildText("図形記述言語Pita"){
+    }
+    depth =  5
+    koch_shape= shape{
+        c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:0}])
+        scale = x2(70)
+    }
+    arrow3= functionPath(sin, rad(180), rad(360), 100){
+        scale: {x: 200, y:100}
+        stroke: {r: 255, g: 128, b: 128}
+    }
+    arc1 = arcPath(300, rad(0), rad(120), 10)
+    arc2 = arcPath(300, rad(120), rad(240), 10)
+    arc3 = arcPath(300, rad(240), rad(360), 10)
+    result1: shape{
+        a:deformShapeByPath(koch_shape, arc1)
+        stroke: {r: 0, g: 128, b: 128}
+    }
+    result2: shape{
+        a:deformShapeByPath(koch_shape, arc2)
+        stroke: {r: 0, g: 128, b: 128}
+    }
+    result3: shape{
+        a:deformShapeByPath(koch_shape, arc3)
+        stroke: {r: 0, g: 128, b: 128}
+    }
+    result4: arcPath(260, rad(0), rad(360), 50){
+        stroke: {r: 0, g: 128, b: 128}
+    }
+}

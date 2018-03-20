@@ -152,6 +152,7 @@ namespace cgl
 		result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
 		result.loopCounter = node.loopCounter;
 		result.doExpr = boost::apply_visitor(*this, node.doExpr);
+		result.asList = node.asList;
 		return result;
 	}
 
@@ -751,6 +752,7 @@ namespace cgl
 		child.addLocalVariable(node.loopCounter);
 		result.doExpr = boost::apply_visitor(child, node.doExpr);
 		result.loopCounter = node.loopCounter;
+		result.asList = node.asList;
 
 		return result;
 	}
@@ -2707,6 +2709,7 @@ namespace cgl
 		result.rangeEnd = node.rangeEnd;
 		result.rangeStart = node.rangeStart;
 		result.doExpr = boost::apply_visitor(*this, node.doExpr);
+		result.asList = node.asList;
 		return result;
 	}
 

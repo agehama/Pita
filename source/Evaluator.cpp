@@ -564,7 +564,6 @@ namespace cgl
 		return evaluated2;
 	}
 
-
 	ClosureMaker& ClosureMaker::addLocalVariable(const std::string& name)
 	{
 		localVariables.insert(name);
@@ -807,8 +806,8 @@ namespace cgl
 			{
 				result.exprs.push_back(boost::apply_visitor(child, expr));
 			}
-		}			
-			
+		}
+
 		return result;
 	}
 

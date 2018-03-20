@@ -144,7 +144,6 @@ namespace cgl
 
 			general_expr =
 				if_expr[_val = _1]
-				| import_expr[_val = _1]
 				| return_expr[_val = _1]
 				| logic_expr[_val = _1];
 
@@ -270,6 +269,7 @@ namespace cgl
 				| int_[_val = Call(LRValue::Int, _1)]
 				| lit("true")[_val = Call(LRValue::Bool, true)]
 				| lit("false")[_val = Call(LRValue::Bool, false)]
+				| import_expr[_val = _1]
 				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
 				| '\"' >> char_string[_val = Call(BuildString, _1)] >> '\"'
 				| constraints[_val = _1]

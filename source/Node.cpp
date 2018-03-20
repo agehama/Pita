@@ -16,6 +16,7 @@
 #include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/Parser.hpp>
 #include <Pita/Evaluator.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
@@ -57,6 +58,67 @@ namespace cgl
 		return IsType<Address>(value)
 			? As<Address>(value)
 			: env.getReference(As<Reference>(value));
+	}
+
+	class ExprImportForm : public boost::static_visitor<Expr>
+	{
+	public:
+		ExprImportForm(bool isTopLevel)
+			:isTopLevel(isTopLevel)
+		{}
+
+		bool isTopLevel;
+
+		Expr operator()(const Lines& node)const
+		{
+			if (!isTopLevel)
+			{
+				return node;
+			}
+
+			RecordConstractor result;
+			for (const auto& expr : node.exprs)
+			{
+				result.add(boost::apply_visitor(ExprImportForm(false), expr));
+			}
+
+			return result;
+		}
+
+		Expr operator()(const BinaryExpr& node)const
+		{
+			if (node.op != BinaryOp::Assign)
+			{
+				return node;
+			}
+
+			KeyExpr keyExpr(As<Identifier>(node.lhs));
+			KeyExpr::SetExpr(keyExpr, node.rhs);
+			return keyExpr;
+		}
+
+		Expr operator()(const LRValue& node)const { return node; }
+		Expr operator()(const Identifier& node)const { return node; }
+		Expr operator()(const Import& node)const { return node; }
+		Expr operator()(const UnaryExpr& node)const { return node; }
+		Expr operator()(const Range& node)const { return node; }
+		Expr operator()(const DefFunc& node)const { return node; }
+		Expr operator()(const If& node)const { return node; }
+		Expr operator()(const For& node)const { return node; }
+		Expr operator()(const Return& node)const { return node; }
+		Expr operator()(const ListConstractor& node)const { return node; }
+		Expr operator()(const KeyExpr& node)const { return node; }
+		Expr operator()(const RecordConstractor& node)const { return node; }
+		Expr operator()(const RecordInheritor& node)const { return node; }
+		Expr operator()(const Accessor& node)const { return node; }
+		Expr operator()(const DeclSat& node)const { return node; }
+		Expr operator()(const DeclFree& node)const { return node; }
+	};
+
+	Expr ToImportForm(const Expr& expr)
+	{
+		ExprImportForm converter(true);
+		return boost::apply_visitor(converter, expr);
 	}
 
 	Import::Import(const std::u32string& filePath)
@@ -114,13 +176,39 @@ namespace cgl
 			CGL_Error("ファイルのimportに失敗");
 		}
 
-		if (name)
-		{
-
-		}
+		const Expr importParseTree = ToImportForm(originalParseTree.value());
 
 		Eval evaluator(pContext);
-		return boost::apply_visitor(evaluator, originalParseTree.value());
+		return boost::apply_visitor(evaluator, importParseTree);
+
+		//if (name)
+		//{
+
+		//}
+
+		//if (IsType<Lines>(originalParseTree.value()))
+		//{
+		//	Eval evaluator(pContext);
+
+		//	LRValue result;
+		//	const auto& lines = As<Lines>(originalParseTree.value());
+		//	for (const auto& expr : lines.exprs)
+		//	{
+		//		//std::cout << "====================================================================================" << std::endl;
+		//		//printExpr(expr, pContext, std::cout);
+		//		result = boost::apply_visitor(evaluator, expr);
+		//		//pContext->printContext(std::cout);
+		//		//std::cout << "------------------------------------------------------------------------------------" << std::endl;
+		//	}
+
+		//	//std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
+		//	//pContext->printContext(std::cout);
+
+		//	//printVal(pContext->expand(result), pContext, std::cout);
+		//	return result;
+		//}
+
+		CGL_Error("ファイルのimportに失敗");
 	}
 
 	void Import::SetName(Import& node, const Identifier& name)

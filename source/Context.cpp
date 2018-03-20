@@ -813,7 +813,7 @@ namespace cgl
 	{
 		os << "Print Context Begin:\n";
 
-		os << "Values:\n";
+		/*os << "Values:\n";
 		for (const auto& keyval : m_values)
 		{
 			const auto& val = keyval.second;
@@ -821,7 +821,7 @@ namespace cgl
 			os << keyval.first.toString() << " : ";
 
 			printVal(val, m_weakThis.lock(), os);
-		}
+		}*/
 
 		os << "References:\n";
 		for (size_t d = 0; d < localEnv().size(); ++d)

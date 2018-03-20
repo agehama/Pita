@@ -1,1 +1,6 @@
-import "3rects.cgl"
+koch_curve = import "koch_curve.cgl"
+
+main = koch_curve.tree{
+    scale: {x: 2, y:3}
+    stroke: {r: 0, g: 0, b: 0}
+}

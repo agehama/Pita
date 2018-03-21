@@ -1,51 +1,19 @@
-transform = (pos, scale, angle, vertex -> {
-    cosT: cos(rad(angle))
-    sinT: sin(rad(angle))
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
-})
-
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-    globalPos: (p->transform(@pos, @scale, @angle, p))
-}
-
-m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
-
-moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
-
-square = shape{
-    polygon: [
-        {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
-    ]
-    topLeft:     (->globalPos( polygon[0] ))
-    topRight:    (->globalPos( polygon[1] ))
-    bottomRight: (->globalPos( polygon[2] ))
-    bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( m(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( m(polygon[2], polygon[3]) ))
-    left:        (->globalPos( m(polygon[0], polygon[3]) ))
-    right:       (->globalPos( m(polygon[1], polygon[2]) ))
-}
-
 route = shape{
     rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
-    arrow: buildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
+    arrow: BuildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
         stroke: {r: 0, g: 255, b: 0}
     }
-    arrow2: offsetPath(arrow, 100.0){
+    arrow2: OffsetPath(arrow, 100.0){
         stroke: {r: 0, g: 255, b: 255}
     }
-    arrow3 = functionPath(sin, rad(0), rad(360*2), 100){
+    arrow3 = FunctionPath(Sin, 0, 360*2, 100){
         scale: {x: 2, y: 100}
         stroke: {r: 255, g: 0, b: 0}
     }
-    textShape: buildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita ", arrow3){
+    textShape: BuildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita ", arrow3){
     }
     bound: shape{
-        a: shapeOuterPath(boundingBox(textShape))
+        a: ShapeOuterPath(BoundingBox(textShape))
         stroke: {r: 0, g: 255, b: 0}
     }
 }

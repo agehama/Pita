@@ -1383,10 +1383,19 @@ namespace cgl
 			name(name)
 		{}
 
+		KeyExpr(const Identifier& name, const Expr& expr) :
+			name(name), expr(expr)
+		{}
+
 		static KeyExpr Make(const Identifier& name)
 		{
 			return KeyExpr(name);
 		}
+
+		/*static KeyExpr Make2(const Identifier& name, const Expr& expr)
+		{
+			return KeyExpr(name, expr);
+		}*/
 
 		static void SetExpr(KeyExpr& keyval, const Expr& expr)
 		{

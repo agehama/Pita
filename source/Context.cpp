@@ -984,7 +984,7 @@ namespace cgl
 		m_random.seed(1);
 
 		registerBuiltInFunction(
-			"print",
+			"Print",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -999,7 +999,23 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"size",
+			"PrintContext",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 0)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			printContext(std::cout);
+
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Size",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1024,7 +1040,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"cmaes",
+			"Cmaes",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			return Val(true);
@@ -1033,7 +1049,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"rad",
+			"Rad",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1053,7 +1069,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"deg",
+			"Deg",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1073,7 +1089,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"sin",
+			"Sin",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1081,13 +1097,19 @@ namespace cgl
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			return Sin(pEnv->expand(arguments[0]));
+			const Val& x = pEnv->expand(arguments[0]);
+			if (!IsNum(x))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return std::sin(deg2rad*AsDouble(x));
 		},
 			false
 			);
 
 		registerBuiltInFunction(
-			"cos",
+			"Cos",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1095,13 +1117,59 @@ namespace cgl
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			return Cos(pEnv->expand(arguments[0]));
+			const Val& x = pEnv->expand(arguments[0]);
+			if (!IsNum(x))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return std::cos(deg2rad*AsDouble(x));
 		},
 			false
 			);
 
 		registerBuiltInFunction(
-			"random",
+			"SinRad",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(arguments[0]);
+			if (!IsNum(x))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return std::sin(AsDouble(x));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"CosRad",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_Error("引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(arguments[0]);
+			if (!IsNum(x))
+			{
+				CGL_Error("引数の型が正しくありません");
+			}
+
+			return std::cos(AsDouble(x));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Random",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
@@ -1118,7 +1186,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"randomSeed",
+			"RandomSeed",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 0 && arguments.size() != 1)
@@ -1147,7 +1215,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"buildPath",
+			"BuildPath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2 && arguments.size() != 3)
@@ -1179,7 +1247,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"buildText",
+			"BuildText",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1 && arguments.size() != 2)
@@ -1210,7 +1278,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"offsetPath",
+			"OffsetPath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
@@ -1236,7 +1304,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"functionPath",
+			"FunctionPath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 4)
@@ -1260,7 +1328,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"shapeOuterPath",
+			"ShapeOuterPath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1281,7 +1349,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"shapePath",
+			"ShapePath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1302,7 +1370,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"diff",
+			"Diff",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
@@ -1316,7 +1384,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"buffer",
+			"Buffer",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
@@ -1330,7 +1398,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"deformShapeByPath",
+			"DeformShapeByPath",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 2)
@@ -1352,7 +1420,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"area",
+			"Area",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1366,7 +1434,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"boundingBox",
+			"BoundingBox",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1387,7 +1455,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"gc",
+			"GC",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 0)
@@ -1403,7 +1471,7 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"enable_gc",
+			"EnableGC",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
 		{
 			if (arguments.size() != 1)
@@ -1421,22 +1489,6 @@ namespace cgl
 			false
 			);
 		;
-
-		registerBuiltInFunction(
-			"printContext",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
-		{
-			if (arguments.size() != 0)
-			{
-				CGL_Error("引数の数が正しくありません");
-			}
-
-			printContext(std::cout);
-
-			return 0;
-		},
-			false
-			);
 	}
 
 	void Context::changeAddress(Address addressFrom, Address addressTo)

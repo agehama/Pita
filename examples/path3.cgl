@@ -1,57 +1,26 @@
-transform = (pos, scale, angle, vertex -> {
-    cosT: cos(rad(angle))
-    sinT: sin(rad(angle))
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
-})
-
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-    globalPos: (p->transform(@pos, @scale, @angle, p))
-}
-
-m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
-
-moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
-
-square = shape{
-    polygon: [
-        {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
-    ]
-    topLeft:     (->globalPos( polygon[0] ))
-    topRight:    (->globalPos( polygon[1] ))
-    bottomRight: (->globalPos( polygon[2] ))
-    bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( m(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( m(polygon[2], polygon[3]) ))
-    left:        (->globalPos( m(polygon[0], polygon[3]) ))
-    right:       (->globalPos( m(polygon[1], polygon[2]) ))
-}
 
 route = shape{
-    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: rad(30)}
-    arrow: buildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+    arrow: BuildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
         stroke: {r: 0, g: 255, b: 0}
     }
-    arrow2: offsetPath(arrow, 100.0){
+    arrow2: OffsetPath(arrow, 100.0){
         stroke: {r: 0, g: 255, b: 255}
     }
-    arrow3 = shapeOuterPath(rect)[0]{
+    arrow3 = ShapeOuterPath(rect)[0]{
         stroke: {r: 0, g: 0, b: 255}
     }
     textShape = shape{
-        a: buffer(buildText("図", arrow2){
+        a: Buffer(BuildText("図", arrow2){
         scale: {x: 20, y: 20}
     }, 20)
     }
     arrow4: shape{
-        paths: shapePath(textShape)
+        paths: ShapePath(textShape)
         stroke: {r: 0, g: 0, b: 255}
     }
     ts: []
-    for i in 0:size(arrow4.paths)-1 do(
-        ts[i] = buildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita", arrow4.paths[i])
+    for i in 0:Size(arrow4.paths)-1 do(
+        ts[i] = BuildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita", arrow4.paths[i])
     )
 }

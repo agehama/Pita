@@ -1,6 +1,6 @@
 transform = (pos, scale, angle, vertex -> {
-    cosT: cos(rad(angle))
-    sinT: sin(rad(angle))
+    cosT: Cos(angle)
+    sinT: Sin(angle)
     x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
     y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
 })
@@ -43,25 +43,25 @@ triangle = shape{
 hexagon = shape{
     r = 0.5
     polygon: [
-        vec2(r*cos(rad(0)),r*sin(rad(0)))
-        vec2(r*cos(rad(60)),r*sin(rad(60)))
-        vec2(r*cos(rad(120)),r*sin(rad(120)))
-        vec2(r*cos(rad(180)),r*sin(rad(180)))
-        vec2(r*cos(rad(240)),r*sin(rad(240)))
-        vec2(r*cos(rad(300)),r*sin(rad(300)))
+        vec2(r*Cos(0),r*Sin(0))
+        vec2(r*Cos(60),r*Sin(60))
+        vec2(r*Cos(120),r*Sin(120))
+        vec2(r*Cos(180),r*Sin(180))
+        vec2(r*Cos(240),r*Sin(240))
+        vec2(r*Cos(300),r*Sin(300))
     ]
 }
 
 route = shape{
     rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
     tri = hexagon{scale: {x:100, y:100}}
-    textShape= buildText("図形記述言語Pita"){
+    textShape= BuildText("図形記述言語Pita"){
     }
-    arrow3: functionPath(sin, rad(0), rad(360), 100){
+    arrow3: FunctionPath(Sin, 0, 360, 100){
         scale: {x: 2, y:100}
         stroke: {r: 255, g: 128, b: 128}
     }
     result: shape{
-        a:deformShapeByPath(textShape, arrow3)
+        a:DeformShapeByPath(textShape, arrow3)
     }
 }

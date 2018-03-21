@@ -115,6 +115,7 @@ namespace cgl
 		qi::rule<Iterator, DefFunc(), Skipper> def_func;
 		qi::rule<Iterator, Arguments(), Skipper> arguments;
 		qi::rule<Iterator, Identifier(), Skipper> id;
+		qi::rule<Iterator, KeyExpr(), Skipper> key_expr;
 		//qi::rule<Iterator, std::string(), Skipper> char_string;
 		qi::rule<Iterator, std::u32string(), Skipper> char_string;
 		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
@@ -197,8 +198,12 @@ namespace cgl
 				;
 
 			//= ^ -> は右結合
-
-			arith_expr = (basic_arith_expr[_val = _1] >> -(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)]));
+			arith_expr = (basic_arith_expr[_val = _1] | key_expr[_val = _1]) >> -(
+				(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)])
+				);
+			key_expr = id[_val = Call(KeyExpr::Make, _1)] >> -(
+				(s >> ':' >> s >> basic_arith_expr[Call(KeyExpr::SetExpr, _val, _1)])
+				);
 
 			basic_arith_expr = term[_val = _1] >>
 				*(

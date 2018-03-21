@@ -4,38 +4,38 @@ import "koch_curve.cgl" as koch_curve
 arcPath = (r, begin, end, num -> 
 {
     delta = 1.0*(end - begin)/num
-    line: (for i in 0:num list(
+    line: for i in 0:num list(
         angle = begin + delta*i
-        vec2(r*cos(angle), r*sin(angle))
-    ))
+        vec2(r*Cos(angle), r*Sin(angle))
+    )
 })
 
 main = shape{
     rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
     tri = hexagon{scale: {x:100, y:100}}
-    textShape = buildText("図形記述言語Pita"){
+    textShape = BuildText("図形記述言語Pita"){
     }
     koch_shape = koch_curve.tree(5)
-    arrow3= functionPath(sin, rad(180), rad(360), 100){
+    arrow3= FunctionPath(Sin, 180, 360, 100){
         scale: {x: 200, y:100}
         stroke: {r: 255, g: 128, b: 128}
     }
-    arc1 = arcPath(300, rad(0), rad(120), 10)
-    arc2 = arcPath(300, rad(120), rad(240), 10)
-    arc3 = arcPath(300, rad(240), rad(360), 10)
+    arc1 = arcPath(300, 0, 120, 10)
+    arc2 = arcPath(300, 120, 240, 10)
+    arc3 = arcPath(300, 240, 360, 10)
     result1: shape{
-        a:deformShapeByPath(koch_shape, arc1)
+        a:DeformShapeByPath(koch_shape, arc1)
         stroke: {r: 0, g: 128, b: 128}
     }
     result2: shape{
-        a:deformShapeByPath(koch_shape, arc2)
+        a:DeformShapeByPath(koch_shape, arc2)
         stroke: {r: 0, g: 128, b: 128}
     }
     result3: shape{
-        a:deformShapeByPath(koch_shape, arc3)
+        a:DeformShapeByPath(koch_shape, arc3)
         stroke: {r: 0, g: 128, b: 128}
     }
-    result4: arcPath(260, rad(0), rad(360), 50){
+    result4: arcPath(260, 0, 360, 50){
         stroke: {r: 0, g: 128, b: 128}
     }
 }

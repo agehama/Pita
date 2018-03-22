@@ -1,4 +1,4 @@
-import "path6.cgl"
+import "common.cgl"
 import "koch_curve.cgl" as koch_curve
 
 arcPath = (r, begin, end, num -> 

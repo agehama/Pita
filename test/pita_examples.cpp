@@ -91,7 +91,8 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		Program program;
 		try
 		{
-			program.run(sourceCode, false);
+			//program.run(sourceCode, false);
+			program.execute1(sourceCode, filename + ".svg", false);
 		}
 		catch (const std::exception& e)
 		{

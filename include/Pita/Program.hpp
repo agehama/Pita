@@ -15,18 +15,16 @@ namespace cgl
 			evaluator(pEnv)
 		{}
 
-		//boost::optional<Expr> parse(const std::string& program);
+		//boost::optional<Val> execute(const std::string& program);
 
-		boost::optional<Val> execute(const std::string& program);
+		//bool draw(const std::string& program, bool logOutput = true);
 
-		bool draw(const std::string& program, bool logOutput = true);
-
-		void execute1(const std::string& program, const std::string& output_filename, bool logOutput = true);
-		void run(const std::string& program, bool logOutput = true);
+		void execute1(const std::string& input_filename, const std::string& output_filename, bool logOutput = true);
+		//void run(const std::string& program, bool logOutput = true);
 
 		void clear();
 
-		bool test(const std::string& program, const Expr& expr);
+		bool test(const std::string& input_filepath, const Expr& expr);
 
 		std::shared_ptr<Context> getContext()
 		{

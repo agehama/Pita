@@ -261,43 +261,43 @@ namespace cgl
 
 		Eval(std::shared_ptr<Context> pEnv) :pEnv(pEnv) {}
 
-		LRValue operator()(const LRValue& node) { return node; }
+		virtual LRValue operator()(const LRValue& node) { return node; }
 
-		LRValue operator()(const Identifier& node) { return pEnv->findAddress(node); }
+		virtual LRValue operator()(const Identifier& node) { return pEnv->findAddress(node); }
 
-		LRValue operator()(const Import& node);
+		virtual LRValue operator()(const Import& node);
 
-		LRValue operator()(const UnaryExpr& node);
+		virtual LRValue operator()(const UnaryExpr& node);
 
-		LRValue operator()(const BinaryExpr& node);
+		virtual LRValue operator()(const BinaryExpr& node);
 
-		LRValue operator()(const DefFunc& defFunc);
-		
-		LRValue callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		virtual LRValue operator()(const DefFunc& defFunc);
 
-		LRValue operator()(const Range& range) { return RValue(0); }
+		virtual LRValue callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
 
-		LRValue operator()(const Lines& statement);
+		virtual LRValue operator()(const Range& range) { return RValue(0); }
 
-		LRValue operator()(const If& if_statement);
+		virtual LRValue operator()(const Lines& statement);
 
-		LRValue operator()(const For& forExpression);
+		virtual LRValue operator()(const If& if_statement);
 
-		LRValue operator()(const Return& return_statement);
+		virtual LRValue operator()(const For& forExpression);
 
-		LRValue operator()(const ListConstractor& listConstractor);
+		virtual LRValue operator()(const Return& return_statement);
 
-		LRValue operator()(const KeyExpr& keyExpr);
+		virtual LRValue operator()(const ListConstractor& listConstractor);
 
-		LRValue operator()(const RecordConstractor& recordConsractor);
+		virtual LRValue operator()(const KeyExpr& keyExpr);
 
-		LRValue operator()(const RecordInheritor& record);
+		virtual LRValue operator()(const RecordConstractor& recordConsractor);
 
-		LRValue operator()(const DeclSat& node);
+		virtual LRValue operator()(const RecordInheritor& record);
 
-		LRValue operator()(const DeclFree& node);
+		virtual LRValue operator()(const DeclSat& node);
 
-		LRValue operator()(const Accessor& accessor);
+		virtual LRValue operator()(const DeclFree& node);
+
+		virtual LRValue operator()(const Accessor& accessor);
 
 	private:
 		std::shared_ptr<Context> pEnv;

@@ -712,7 +712,7 @@ int main(int argc, char* argv[])
 
 	ofs.open("log.txt");
 
-	std::ifstream ifs(input_file);
+	/*std::ifstream ifs(input_file);
 	if (!ifs.is_open())
 	{
 		std::cerr << "Error file_path \"" << input_file << "\" does not exists." << std::endl;
@@ -725,9 +725,15 @@ int main(int argc, char* argv[])
 
 	cgl::workingDirectories.emplace(currentDirectory);
 
+	cgl::alreadyImportedFiles.emplace(cgl::filesystem::canonical(cgl::filesystem::path(input_file)));
+
 	calculating = true;
 	cgl::Program program;
-	program.execute1(sourceCode, output_file);
+	program.execute1(sourceCode, output_file);*/
+
+	calculating = true;
+	cgl::Program program;
+	program.execute1(input_file, output_file);
 
 	return 0;
 }

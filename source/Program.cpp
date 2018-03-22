@@ -11,8 +11,6 @@ int constraintViolationCount;
 
 namespace cgl
 {
-	std::stack<filesystem::path> workingDirectories;
-
 	//boost::optional<Expr> Program::parse(const std::string& program)
 	//{
 	//	using namespace cgl;
@@ -43,6 +41,7 @@ namespace cgl
 	//	return result;
 	//}
 
+	/*
 	boost::optional<Val> Program::execute(const std::string& program)
 	{
 		if (auto exprOpt = Parse(program))
@@ -91,18 +90,19 @@ namespace cgl
 
 		return false;
 	}
+	*/
 
-	void Program::execute1(const std::string& program, const std::string& output_filename, bool logOutput)
+	//void Program::execute1(const std::string& program, const std::string& output_filename, bool logOutput)
+	void Program::execute1(const std::string& filepath, const std::string& output_filename, bool logOutput)
 	{
 		clear();
 
 		if (logOutput)
 		{
-			std::cerr << "parse..." << std::endl;
-			std::cerr << program << std::endl;
+			std::cerr << "Parse \"" << filepath << "\" ..." << std::endl;
 		}
 
-		if (auto exprOpt = Parse(program))
+		if (auto exprOpt = Parse1(filepath))
 		{
 			try
 			{
@@ -163,6 +163,7 @@ namespace cgl
 		calculating = false;
 	}
 
+	/*
 	void Program::run(const std::string& program, bool logOutput)
 	{
 		clear();
@@ -205,6 +206,7 @@ namespace cgl
 
 		calculating = false;
 	}
+	*/
 
 	void Program::clear()
 	{
@@ -214,11 +216,11 @@ namespace cgl
 		succeeded = false;
 	}
 
-	bool Program::test(const std::string& program, const Expr& expr)
+	bool Program::test(const std::string& input_filepath, const Expr& expr)
 	{
 		clear();
 
-		if (auto result = execute(program))
+		/*if (auto result = execute1(input_filepath, "", false))
 		{
 			std::shared_ptr<Context> pEnv2 = Context::Make();
 			Eval evaluator2(pEnv2);
@@ -226,7 +228,7 @@ namespace cgl
 			const Val answer = pEnv->expand(boost::apply_visitor(evaluator2, expr));
 
 			return IsEqualVal(result.value(), answer);
-		}
+		}*/
 
 		return false;
 	}

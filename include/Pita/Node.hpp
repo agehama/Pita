@@ -57,6 +57,8 @@ extern std::ofstream ofs;
 #define CGL_TagDebug (std::string("[Debug]   |> "))
 #define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
 
+#define CGL_DBG (std::cout << std::string(CGL_FileName) << " - "<< __FUNCTION__ << ": " << __LINE__ << std::endl)
+
 #ifdef CGL_EnableLogOutput
 #define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))
 #define CGL_WarnLog(message)  (cgl::Log(std::cerr, CGL_TagWarn  + CGL_FileDesc + message))
@@ -677,9 +679,29 @@ namespace cgl
 			return false;
 		}
 
+		const std::string& getImportPath()const
+		{
+			return importPath;
+		}
+
+		const std::string& getImportName()const
+		{
+			return importName;
+		}
+
+		size_t getSeed()const
+		{
+			return seed;
+		}
+
 	private:
-		boost::optional<Expr> originalParseTree;
-		boost::optional<Identifier> name;
+		void updateHash();
+
+		//boost::optional<Expr> originalParseTree;
+		//boost::optional<Identifier> name;
+		std::string importPath;
+		std::string importName;
+		size_t seed;
 	};
 
 	struct OptimizationProblemSat

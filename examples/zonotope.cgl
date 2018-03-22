@@ -1,25 +1,4 @@
 randomSeed()
-transform = (pos, scale, angle, vertex -> {
-    cosT: cos(rad(angle))
-    sinT: sin(rad(angle))
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
-})
-
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-    globalPos: (p->transform(@pos, @scale, @angle, p))
-}
-
-m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
-
-moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
-
-vec2 = (x,y->{x:x,y:y})
-
-rgb = (r, g, b -> {r:r, g:g, b:b})
 
 getParallelotope = (f, df, xmin, xmax ->
     xmid = (xmin + xmax)*0.5
@@ -58,18 +37,6 @@ getParallelotope = (f, df, xmin, xmax ->
     }
 )
 
-hexagon = shape{
-    r = 0.5
-    polygon: [
-        vec2(r*cos(rad(0)),r*sin(rad(0)))
-        vec2(r*cos(rad(60)),r*sin(rad(60)))
-        vec2(r*cos(rad(120)),r*sin(rad(120)))
-        vec2(r*cos(rad(180)),r*sin(rad(180)))
-        vec2(r*cos(rad(240)),r*sin(rad(240)))
-        vec2(r*cos(rad(300)),r*sin(rad(300)))
-    ]
-}
-
 add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
 sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
 
@@ -93,23 +60,23 @@ polygons = [
     {x: 7, y: 25}, {x: 4, y: 20}
 ]
 
-randomVec2 = (min, max -> vec2(random(min,max),random(min,max)))
+randomVec2 = (min, max -> vec2(random(min,max), random(min,max)))
 
 makePoly = (->
     hex1 = hexagon
     jitter = 0.25
     [
-        add(hex1.polygon[0], randomVec2(-jitter,jitter))
-        add(hex1.polygon[1], randomVec2(-jitter,jitter))
-        add(hex1.polygon[2], randomVec2(-jitter,jitter))
-        add(hex1.polygon[3], randomVec2(-jitter,jitter))
-        add(hex1.polygon[4], randomVec2(-jitter,jitter))
-        add(hex1.polygon[5], randomVec2(-jitter,jitter))
+        add(hex1.polygon[0], randomVec2(-jitter, jitter))
+        add(hex1.polygon[1], randomVec2(-jitter, jitter))
+        add(hex1.polygon[2], randomVec2(-jitter, jitter))
+        add(hex1.polygon[3], randomVec2(-jitter, jitter))
+        add(hex1.polygon[4], randomVec2(-jitter, jitter))
+        add(hex1.polygon[5], randomVec2(-jitter, jitter))
 ])
 
 hex = shape{
 	polygon: makePoly()
-    sat( cmaes(polygon[4]) & parallel(polygon[0], polygon[1], polygon[3], polygon[4]) )
+    sat( Cmaes(polygon[4]) & parallel(polygon[0], polygon[1], polygon[3], polygon[4]) )
     sat( parallel(polygon[1], polygon[2], polygon[4], polygon[5]) )
     sat( parallel(polygon[2], polygon[3], polygon[5], polygon[0]) )
     var( polygon[4], polygon[5])

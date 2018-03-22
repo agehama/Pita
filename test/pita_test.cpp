@@ -14,7 +14,8 @@ BOOST_AUTO_TEST_CASE(test_case1)
 a = 1
 +2
 )";
-	program.run(test1, false);
+	//program.run(test1, false);
+	program.execute1(test1, "", false);
 	BOOST_CHECK(program.isSucceeded());
 	auto opt = program.asIntOpt();
 	if (opt)

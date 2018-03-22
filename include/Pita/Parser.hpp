@@ -1,4 +1,6 @@
 #pragma once
+#include <stack>
+#include <set>
 #include <filesystem>
 
 #define BOOST_RESULT_OF_USE_DECLTYPE
@@ -18,6 +20,9 @@ namespace cgl
 
 	//パース時のみ使用
 	extern std::stack<filesystem::path> workingDirectories;
+	//extern std::set<filesystem::path> alreadyImportedFiles;
+
+	extern std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 
 	inline auto MakeUnaryExpr(UnaryOp op)
 	{
@@ -198,12 +203,11 @@ namespace cgl
 				;
 
 			//= ^ -> は右結合
-			arith_expr = (basic_arith_expr[_val = _1] | key_expr[_val = _1]) >> -(
+			arith_expr = (key_expr[_val = _1] | basic_arith_expr[_val = _1]) >> -(
 				(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)])
 				);
-			key_expr = id[_val = Call(KeyExpr::Make, _1)] >> -(
-				(s >> ':' >> s >> basic_arith_expr[Call(KeyExpr::SetExpr, _val, _1)])
-				);
+
+			key_expr = id[_val = Call(KeyExpr::Make, _1)] >> s >> ':' >> s >> basic_arith_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
 			basic_arith_expr = term[_val = _1] >>
 				*(
@@ -300,34 +304,6 @@ namespace cgl
 		}
 	};
 
-	inline boost::optional<Expr> Parse(const std::string& program)
-	{
-		boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
-
-		Lines lines;
-
-		SpaceSkipper<IteratorT> skipper;
-		Parser<IteratorT, SpaceSkipperT> grammer;
-
-		auto it = tbegin;
-		if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
-		{
-			//std::cerr << "Syntax Error: parse failed\n";
-			std::cout << "Syntax Error: parse failed\n";
-			workingDirectories.pop();
-			return boost::none;
-		}
-
-		if (it != tend)
-		{
-			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
-			std::cout << "Syntax Error: ramains input\n";
-			workingDirectories.pop();
-			return boost::none;
-		}
-
-		Expr result = lines;
-		workingDirectories.pop();
-		return result;
-	}
+	//boost::optional<Expr> Parse(const std::string& program);
+	boost::optional<Expr> Parse1(const std::string& filename);
 }

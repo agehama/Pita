@@ -3,6 +3,8 @@
 #include <thread>
 #include <mutex>
 
+#include <boost/functional/hash.hpp>
+
 #include <cppoptlib/meta.h>
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>
@@ -130,6 +132,19 @@ namespace cgl
 
 		if (path.is_absolute())
 		{
+			const std::string pathStr = filesystem::canonical(path).string();
+
+			importPath = pathStr;
+
+			/*if (alreadyImportedFiles.find(filesystem::canonical(path)) != alreadyImportedFiles.end())
+			{
+				std::cout << "File \"" << path.string() << "\" has been already imported.\n";
+				originalParseTree = boost::none;
+				return;
+			}
+
+			alreadyImportedFiles.emplace(filesystem::canonical(path));
+
 			std::ifstream ifs(u8FilePath);
 			if (!ifs.is_open())
 			{
@@ -137,12 +152,23 @@ namespace cgl
 			}
 
 			sourceCode = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-			cgl::workingDirectories.emplace(path.parent_path());
+			cgl::workingDirectories.emplace(path.parent_path());*/
 		}
 		else
 		{
 			const auto currentDirectory = workingDirectories.top();
 			const auto currentFilePath = currentDirectory / path;
+			const std::string pathStr = filesystem::canonical(currentFilePath).string();
+
+			importPath = pathStr;
+			/*if (alreadyImportedFiles.find(filesystem::canonical(currentFilePath)) != alreadyImportedFiles.end())
+			{
+				std::cout << "File \"" << filesystem::canonical(currentFilePath).string() << "\" has been already imported.\n";
+				originalParseTree = boost::none;
+				return;
+			}
+
+			alreadyImportedFiles.emplace(filesystem::canonical(currentFilePath));
 
 			std::ifstream ifs(currentFilePath.string());
 			if (!ifs.is_open())
@@ -151,30 +177,66 @@ namespace cgl
 			}
 
 			sourceCode = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-			cgl::workingDirectories.emplace(currentFilePath.parent_path());
+			cgl::workingDirectories.emplace(currentFilePath.parent_path());*/
 		}
 
-		if (auto opt = Parse(sourceCode))
+		/*if (auto opt = Parse(sourceCode))
 		{
 			originalParseTree = opt;
 		}
 		else
 		{
 			CGL_Error("Parse failed.");
-		}
+		}*/
+		updateHash();
 	}
 
-	Import::Import(const std::u32string& importFile, const Identifier& importName):
-		Import(importFile)
+	Import::Import(const std::u32string& path, const Identifier& name):
+		Import(path)
 	{
-		name = importName;
+		//name = importName;
+		importName = name;
+		updateHash();
 	}
 
 	LRValue Import::eval(std::shared_ptr<Context> pContext)const
 	{
-		if(!originalParseTree)
+		auto it = importedParseTrees.find(seed);
+		if (it == importedParseTrees.end() || !it->second)
 		{
 			CGL_Error("ファイルのimportに失敗");
+			return RValue(0);
+		}
+
+		if (!importName.empty())
+		{
+			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(it->second.value()), BinaryOp::Assign);
+			printExpr(importParseTree, pContext, std::cout);
+			Eval evaluator(pContext);
+			return boost::apply_visitor(evaluator, importParseTree);
+		}
+
+		if (IsType<Lines>(it->second.value()))
+		{
+			Eval evaluator(pContext);
+
+			LRValue result;
+			const auto& lines = As<Lines>(it->second.value());
+			for (const auto& expr : lines.exprs)
+			{
+				result = boost::apply_visitor(evaluator, expr);
+			}
+
+			return result;
+		}
+
+		CGL_Error("ファイルのimportに失敗");
+
+		/*
+		if(!originalParseTree)
+		{
+			//CGL_Error("ファイルのimportに失敗");
+			return RValue(0);
 		}
 
 		if (name)
@@ -226,11 +288,21 @@ namespace cgl
 		//}
 
 		CGL_Error("ファイルのimportに失敗");
+
+		*/
 	}
 
-	void Import::SetName(Import& node, const Identifier& importName)
+	void Import::SetName(Import& node, const Identifier& name)
 	{
-		node.name = importName;
+		node.importName = name;
+		node.updateHash();
+	}
+
+	void Import::updateHash()
+	{
+		seed = 0;
+		boost::hash_combine(seed, importPath);
+		boost::hash_combine(seed, importName);
 	}
 
 	Expr BuildString(const std::u32string& str32)

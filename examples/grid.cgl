@@ -1,36 +1,6 @@
 vec2 = (x, y -> {x: x, y: y})
 x2 = (v -> {x: v, y: v})
 
-contact = (p1, p2 -> (p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) == 0)
-
-shape = {
-    pos: vec2(0, 0)
-    scale: vec2(1, 1)
-    angle: 0
-    getPos: (p ->
-        cosT = cos(@angle)
-        sinT = sin(@angle), {
-            x: @pos.x + cosT * @scale.x * p.x - sinT * @scale.y * p.y
-            y: @pos.y + sinT * @scale.x * p.x + cosT * @scale.y * p.y
-        }
-    )
-}
-
-square = shape{
-    polygon: [
-        {x: -0.5, y: -0.5}
-        {x: +0.5, y: -0.5}
-        {x: +0.5, y: +0.5}
-        {x: -0.5, y: +0.5}
-    ]
-    p: [
-        (->getPos(polygon[0]))
-        (->getPos(polygon[1]))
-        (->getPos(polygon[2]))
-        (->getPos(polygon[3]))
-    ]
-}
-
 main = shape{
 	ss: []
 	rect = square{scale: x2(20)}
@@ -39,7 +9,7 @@ main = shape{
 	for yi in 0:9 do(
 		for xi in 0:9 do(
 			ss[i] = 
-				(if random(0,1) < 0.3
+				(if Random(0,1) < 0.3
 				then rect{
 					pos.x = interval*xi
 					pos.y = interval*yi

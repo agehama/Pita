@@ -1,24 +1,4 @@
-transform = (pos, scale, angle, vertex -> {
-    cosT: cos(rad(angle))
-    sinT: sin(rad(angle))
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
-})
-
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-    globalPos: (p->transform(@pos, @scale, @angle, p))
-}
-
-m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
-
-moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
-
-vec2 = (x,y->{x:x,y:y})
-
-rgb = (r, g, b -> {r:r, g:g, b:b})
+import "common.cgl"
 
 getParallelotope = (f, df, xmin, xmax ->
     xmid = (xmin + xmax)*0.5
@@ -57,76 +37,42 @@ getParallelotope = (f, df, xmin, xmax ->
     }
 )
 
-square = shape{
-    polygon: [
-        {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
-    ]
-    topLeft:     (->globalPos( polygon[0] ))
-    topRight:    (->globalPos( polygon[1] ))
-    bottomRight: (->globalPos( polygon[2] ))
-    bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( m(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( m(polygon[2], polygon[3]) ))
-    left:        (->globalPos( m(polygon[0], polygon[3]) ))
-    right:       (->globalPos( m(polygon[1], polygon[2]) ))
-}
-
-triangle = shape{
-    polygon: [
-        {x: 0, y: -0.5773502691896}
-        {x: 0.5, y: 0.2886751345948}
-        {x: -0.5, y: 0.2886751345948}
-    ]
-}
-
-hexagon = shape{
-    r = 0.5
-    polygon: [
-        vec2(r*cos(0),r*sin(0))
-        vec2(r*cos(60),r*sin(60))
-        vec2(r*cos(120),r*sin(120))
-        vec2(r*cos(180),r*sin(180))
-        vec2(r*cos(240),r*sin(240))
-        vec2(r*cos(300),r*sin(300))
-    ]
-}
-
 route = shape{
-    f = (x->0.5*x + sin(x + 0.5*cos(2*x)) + 2.0*cos(x/3.0))
-    df = (x->0.5 - 0.6666666666666666*sin(x/3.0) + cos(x + 0.5*cos(2*x))*(1.0 - 2.0*cos(x)*sin(x)))
-    f = sin
-    df = cos
-    begin = rad(0)
-    end = rad(300)
-    z: functionPath(f, begin, end, 100){
-        stroke: rgb(0,0,0)
+    f = (x -> 0.5*x + Sin(x + 0.5*Cos(2*x)) + 2.0*Cos(x/3.0))
+    df = (x -> 0.5 - 0.6666666666666666*Sin(x/3.0) + Cos(x + 0.5*Cos(2*x))*(1.0 - 2.0*Cos(x)*Sin(x)))
+    f = SinRad
+    df = CosRad
+    begin = Rad(0)
+    end = Rad(300)
+    z: FunctionPath(f, begin, end, 100){
+        stroke: rgb(0, 0, 0)
     }
     ps = []
-    mid = (begin + end)*0.5
-    ps = ps @ [getParallelotope(f, df, begin, mid)]
-    ps = ps @ [getParallelotope(f, df, mid, end)]
-    if(false)then(
+    midX = (begin + end)*0.5
+    ps = ps @ [getParallelotope(f, df, begin, midX)]
+    ps = ps @ [getParallelotope(f, df, midX, end)]
+    if(true)then(
         for n in 0:6 do(
-        maxWidth = 0
-        maxWidthIndex = 0
-        for i in 0:size(ps)-1 do(
-            if(maxWidth < ps[i].width)then(
-                maxWidth = ps[i].width
-                maxWidthIndex = i
+            maxWidth = 0
+            maxWidthIndex = 0
+            for i in 0:Size(ps)-1 do(
+                if(maxWidth < ps[i].width)then(
+                    maxWidth = ps[i].width
+                    maxWidthIndex = i
+                )
             )
-        )
-        currentLeft = ps[maxWidthIndex].left
-        currentRight = ps[maxWidthIndex].right
-        currentMid = (currentLeft+currentRight)*0.5
-        ps = ps @ [getParallelotope(f, df, currentLeft, currentMid)]
-        ps = ps @ [getParallelotope(f, df, currentMid, currentRight)]
-        ps[maxWidthIndex] = {width:0}
+            currentLeft = ps[maxWidthIndex].left
+            currentRight = ps[maxWidthIndex].right
+            currentMid = (currentLeft+currentRight)*0.5
+            ps = ps @ [getParallelotope(f, df, currentLeft, currentMid)]
+            ps = ps @ [getParallelotope(f, df, currentMid, currentRight)]
+            ps[maxWidthIndex] = {width:0}
         )
     )
     pss: []
-    for i in 0:size(ps)-1 do(
-        pss[i] = shapeOuterPath(ps[i])
+    for i in 0:Size(ps)-1 do(
+        pss[i] = ShapeOuterPath(ps[i])
     )
-    stroke: rgb(83,162,246)
+    stroke: rgb(83, 162, 246)
     scale: {x:200, y:-100}
 }

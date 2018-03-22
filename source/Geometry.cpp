@@ -14,8 +14,6 @@
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
 
-#define DBG (std::cout << __FUNCTION__ << ": " << __LINE__ << std::endl)
-
 namespace
 {
 	/*inline long long Combination(int n, int k)

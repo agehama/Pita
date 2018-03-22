@@ -32,24 +32,24 @@ getParallelotope = (f, df, xmin, xmax ->
         ls: [
             {
                 line: [vec2(xmid - xhalf, ymid - xhalf*amin), vec2(xmid + xhalf, ymid + xhalf*amin)]
-                stroke: rgb(0,255,255)
+                stroke: rgb(0, 255, 255)
             }
             {
                 line: [vec2(xmid - xhalf, ymid - xhalf*amax), vec2(xmid + xhalf, ymid + xhalf*amax)]
-                stroke: rgb(0,255,0)
+                stroke: rgb(0, 255, 0)
             }
         ]
     }
 )
 
 route = shape{
-    begin = rad(0)
-    end = rad(90)
-    b: functionPath(sin, begin, end, 100){
-        stroke: rgb(255,0,0)
+    begin = 0
+    end = 90
+    b: FunctionPath(Sin, begin, end, 100){
+        stroke: rgb(255, 0, 0)
     }
-    a: getParallelotope(sin, cos, begin, end){
-        fill: rgb(64,64,64)
+    a: getParallelotope(Sin, Cos, begin, end){
+        fill: rgb(64, 64, 64)
     }
     scale: {x:200, y:-100}
 }

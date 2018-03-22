@@ -1,61 +1,10 @@
-transform = (pos, scale, angle, vertex -> {
-    cosT: Cos(angle)
-    sinT: Sin(angle)
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
-})
 
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-    globalPos: (p->transform(@pos, @scale, @angle, p))
-}
-
-mid = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
-
-moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
-
-vec2 = (x,y->{x:x,y:y})
-
-square = shape{
-    polygon: [
-        {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
-    ]
-    topLeft:     (->globalPos( polygon[0] ))
-    topRight:    (->globalPos( polygon[1] ))
-    bottomRight: (->globalPos( polygon[2] ))
-    bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( mid(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( mid(polygon[2], polygon[3]) ))
-    left:        (->globalPos( mid(polygon[0], polygon[3]) ))
-    right:       (->globalPos( mid(polygon[1], polygon[2]) ))
-}
-
-triangle = shape{
-    polygon: [
-        {x: 0, y: -0.5773502691896}
-        {x: 0.5, y: 0.2886751345948}
-        {x: -0.5, y: 0.2886751345948}
-    ]
-}
-
-hexagon = shape{
-    r = 0.5
-    polygon: [
-        vec2(r*Cos(0),r*Sin(0))
-        vec2(r*Cos(60),r*Sin(60))
-        vec2(r*Cos(120),r*Sin(120))
-        vec2(r*Cos(180),r*Sin(180))
-        vec2(r*Cos(240),r*Sin(240))
-        vec2(r*Cos(300),r*Sin(300))
-    ]
-}
+import "common.cgl"
 
 route = shape{
     rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
     tri = hexagon{scale: {x:100, y:100}}
-    textShape= BuildText("図形記述言語Pita"){
+    textShape = BuildText("図形記述言語Pita"){
     }
     arrow3: FunctionPath(Sin, 0, 360, 100){
         scale: {x: 2, y:100}

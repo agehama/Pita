@@ -769,6 +769,11 @@ namespace cgl
 		localEnv().back().variables[name] = ID;
 	}
 
+	bool Context::existsInCurrentScope(const std::string& name)const
+	{
+		return localEnv().back().variables.find(name) != localEnv().back().variables.end();
+	}
+
 #ifdef CGL_EnableLogOutput
 	void Context::printContext(bool flag)const
 	{

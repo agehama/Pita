@@ -36,9 +36,9 @@ tree = shape{
     depth =  5
     a: shape{
         l: [
-            rec_curve(rec_curve, depth, koch_template, [tri.p(0), tri.p(1)])
-            rec_curve(rec_curve, depth, koch_template, [tri.p(1), tri.p(2)])
-            rec_curve(rec_curve, depth, koch_template, [tri.p(2), tri.p(0)])
+            rec_curve(rec_curve, depth, koch_template, [tri.p0(), tri.p1()])
+            rec_curve(rec_curve, depth, koch_template, [tri.p2(), tri.p2()])
+            rec_curve(rec_curve, depth, koch_template, [tri.p2(), tri.p0()])
         ]
         scale = x2(70)
     }

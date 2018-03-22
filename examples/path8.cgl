@@ -13,9 +13,8 @@ arcPath = (r, begin, end, num ->
 main = shape{
     rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
     tri = hexagon{scale: {x:100, y:100}}
-    textShape = BuildText("図形記述言語Pita"){
-    }
-    koch_shape = koch_curve.tree(5)
+    
+    koch_shape = koch_curve.curve(5)
     arrow3= FunctionPath(Sin, 180, 360, 100){
         scale: {x: 200, y:100}
         stroke: {r: 255, g: 128, b: 128}
@@ -39,3 +38,4 @@ main = shape{
         stroke: {r: 0, g: 128, b: 128}
     }
 }
+

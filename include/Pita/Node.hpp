@@ -697,8 +697,6 @@ namespace cgl
 	private:
 		void updateHash();
 
-		//boost::optional<Expr> originalParseTree;
-		//boost::optional<Identifier> name;
 		std::string importPath;
 		std::string importName;
 		size_t seed;

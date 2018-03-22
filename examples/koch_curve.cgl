@@ -31,7 +31,7 @@ rec_curve = (f, depth, template, ps ->
     }
 )
 
-tree = (depth -> shape{
+curve = (depth -> shape{
     a: shape{
         c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:0}])
         scale = x2(70)
@@ -39,4 +39,16 @@ tree = (depth -> shape{
     stroke: rgb(0, 0, 0)
 })
 
-main = tree(5)
+snowflake = (depth -> shape{
+    tri = square{scale = {x: 10, y: 10}}
+    a: shape{
+        l: [
+            rec_curve(rec_curve, depth, koch_template, [tri.topLeft(), tri.topRight()])
+        ]
+        scale = x2(70)
+    }
+    stroke: rgb(0, 0, 0)
+})
+
+
+main = snowflake(5)

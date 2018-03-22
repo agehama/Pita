@@ -1,5 +1,5 @@
 transform = (pos, scale, angle, vertex -> 
-    cosT: Cos(angle), sinT: Sin(angle)
+    cosT= Cos(angle), sinT= Sin(angle)
     {
         x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
         y: pos.y + sinT * scale.x * vertex.x + cosT * scale.y * vertex.y
@@ -53,7 +53,10 @@ triangle = shape{
         {x: 0.5, y: 0.2886751345948}
         {x: -0.5, y: 0.2886751345948}
     ]
-    p: (index->globalPos( polygon[index] ))
+    p: (index -> globalPos( polygon[index] ))
+    p0: (->globalPos( polygon[0] ))
+    p1: (->globalPos( polygon[1] ))
+    p2: (->globalPos( polygon[2] ))
 }
 
 hexagon = shape{

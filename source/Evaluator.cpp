@@ -1440,12 +1440,25 @@ namespace cgl
 		return RValue(list);
 	}
 
-	LRValue Eval::operator()(const KeyExpr& keyExpr)
+	LRValue Eval::operator()(const KeyExpr& node)
 	{
-		const Val value = pEnv->expand(boost::apply_visitor(*this, keyExpr.expr));
+		/*const Val value = pEnv->expand(boost::apply_visitor(*this, node.expr));
 
-		return RValue(KeyValue(keyExpr.name, value));
-		//return LRValue(pEnv->makeTemporaryValue(KeyValue(keyExpr.name, value)));
+		return RValue(KeyValue(node.name, value));*/
+
+		//node.name
+		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
+		Val rhs = pEnv->expand(rhs_);
+		if (pEnv->existsInCurrentScope(node.name))
+		{
+			CGL_Error(":演算子による変数への再代入は行えません");
+		}
+		else
+		{
+			pEnv->bindNewValue(node.name, rhs);
+		}
+
+		return RValue(rhs);
 	}
 
 	LRValue Eval::operator()(const RecordConstractor& recordConsractor)
@@ -1490,9 +1503,9 @@ namespace cgl
 
 		for (const auto& expr : recordConsractor.exprs)
 		{
+			/*
 			CGL_DebugLog("");
 			CGL_DebugLog("Evaluate: ");
-			printExpr(expr/*, std::cout*/);
 			Val value = pEnv->expand(boost::apply_visitor(*this, expr));
 			CGL_DebugLog("Result: ");
 			printVal(value, pEnv);
@@ -1505,15 +1518,18 @@ namespace cgl
 
 				CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
 
-				//代入はできないようにする
-				/*Expr exprVal = LRValue(keyVal.value);
-				Expr expr = BinaryExpr(keyVal.name, exprVal, BinaryOp::Assign);
-				boost::apply_visitor(*this, expr);*/
-
 				pEnv->bindNewValue(keyVal.name, keyVal.value);
 
 				CGL_DebugLog("");
 			}
+			*/
+
+			if (IsType<KeyExpr>(expr))
+			{
+				keyList.push_back(As<KeyExpr>(expr).name);
+			}
+
+			Val value = pEnv->expand(boost::apply_visitor(*this, expr));
 
 			//valueは今は右辺値のみになっている
 			//TODO: もう一度考察する

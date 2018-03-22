@@ -344,6 +344,8 @@ namespace cgl
 		}*/
 		void bindValueID(const std::string& name, const Address ID);
 
+		bool existsInCurrentScope(const std::string& name)const;
+
 		//bindValueIDの変数宣言式用
 		void makeVariable(const std::string& name, const Address ID)
 		{

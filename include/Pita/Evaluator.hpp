@@ -92,10 +92,12 @@ namespace cgl
 	class ValueCloner : public boost::static_visitor<Val>
 	{
 	public:
-		ValueCloner(std::shared_ptr<Context> pEnv) :
-			pEnv(pEnv)
+		ValueCloner(std::shared_ptr<Context> pEnv, const LocationInfo& info) :
+			pEnv(pEnv),
+			info(info)
 		{}
 
+		const LocationInfo info;
 		std::shared_ptr<Context> pEnv;
 		std::unordered_map<Address, Address> replaceMap;
 
@@ -123,11 +125,13 @@ namespace cgl
 	class ValueCloner2 : public boost::static_visitor<Val>
 	{
 	public:
-		ValueCloner2(std::shared_ptr<Context> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
+		ValueCloner2(std::shared_ptr<Context> pEnv, const std::unordered_map<Address, Address>& replaceMap, const LocationInfo& info) :
 			pEnv(pEnv),
-			replaceMap(replaceMap)
+			replaceMap(replaceMap),
+			info(info)
 		{}
 
+		const LocationInfo info;
 		std::shared_ptr<Context> pEnv;
 		const std::unordered_map<Address, Address>& replaceMap;
 
@@ -186,7 +190,7 @@ namespace cgl
 		void operator()(Jump& node) {}
 	};
 
-	Val Clone(std::shared_ptr<Context> pEnv, const Val& value);
+	Val Clone(std::shared_ptr<Context> pEnv, const Val& value, const LocationInfo& info);
 
 	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
 	//外側のスコープを参照する識別子をアドレスに置き換えた式を返す
@@ -351,7 +355,7 @@ namespace cgl
 		bool operator()(const Accessor& node);
 	};
 
-	Val evalExpr(const Expr& expr);
+	boost::optional<const Val&> evalExpr(const Expr& expr);
 
 	bool IsEqualVal(const Val& value1, const Val& value2);
 

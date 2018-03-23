@@ -89,7 +89,7 @@ namespace cgl
 
 		bool operator()(const DefFunc& node) { CGL_Error("invalid expression"); return false; }
 		
-		bool callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		bool callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info);
 
 		bool operator()(const Range& node) { CGL_Error("invalid expression"); return false; }
 
@@ -282,8 +282,7 @@ namespace cgl
 
 		Val operator()(const DefFunc& node) { CGL_Error("不正な式です"); return 0; }
 
-		//Val operator()(const FunctionCaller& callFunc)
-		Val callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		Val callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info);
 
 		Val operator()(const Range& node) { CGL_Error("不正な式です"); return 0; }
 

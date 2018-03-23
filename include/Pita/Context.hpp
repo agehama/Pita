@@ -125,7 +125,8 @@ namespace cgl
 	public:
 		using LocalContext = std::vector<Scope>;
 
-		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
+		//using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
+		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&, const LocationInfo& info)>;
 
 		Address makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
 
@@ -152,7 +153,7 @@ namespace cgl
 
 		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction);
 
-		Val callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments);
+		Val callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments, const LocationInfo& info);
 		bool isPlateausBuiltInFunction(Address functionAddress);
 
 		/*
@@ -219,9 +220,9 @@ namespace cgl
 			return 0;
 		}*/
 
-		const Val& expand(const LRValue& lrvalue)const;
+		const Val& expand(const LRValue& lrvalue, const LocationInfo& info)const;
 
-		Val& mutableExpand(LRValue& lrvalue);
+		Val& mutableExpand(LRValue& lrvalue, const LocationInfo& info);
 
 		boost::optional<const Val&> expandOpt(const LRValue& lrvalue)const;
 
@@ -230,15 +231,15 @@ namespace cgl
 		Address evalReference(const Accessor& access);
 
 		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
-		std::vector<Address> expandReferences(Address address);
-		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange);
+		std::vector<Address> expandReferences(Address address, const LocationInfo& info);
+		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info);
 
 		//std::vector<Address> expandReferences2(const Accessor& access);
-		std::vector<std::pair<Address, VariableRange>> expandReferences2(const Accessor& access, boost::optional<const PackedVal&> rangeOpt);
+		std::vector<std::pair<Address, VariableRange>> expandReferences2(const Accessor& access, boost::optional<const PackedVal&> rangeOpt, const LocationInfo& info);
 
 		Reference bindReference(Address address);
 		Reference bindReference(const Identifier& identifier);
-		Reference bindReference(const Accessor& accessor);
+		Reference bindReference(const Accessor& accessor, const LocationInfo& info);
 		Address getReference(Reference reference)const;
 		Reference cloneReference(Reference reference, const std::unordered_map<Address, Address>& addressReplaceMap);
 		
@@ -388,7 +389,7 @@ namespace cgl
 		}*/
 
 		//Accessorの示すリスト or レコードの持つアドレスを書き換える
-		void assignToAccessor(const Accessor& accessor, const LRValue& newValue);
+		void assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info);
 
 		static std::shared_ptr<Context> Make();
 

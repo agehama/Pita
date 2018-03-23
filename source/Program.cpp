@@ -115,7 +115,7 @@ namespace cgl
 
 				if (logOutput) std::cerr << "execute..." << std::endl;
 				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
-				evaluated = pEnv->expand(lrvalue);
+				evaluated = pEnv->expand(lrvalue, LocationInfo());
 				if (logOutput)
 				{
 					std::cerr << "execute succeeded" << std::endl;
@@ -127,12 +127,12 @@ namespace cgl
 
 				if (output_filename.empty())
 				{
-					OutputSVG2(std::cout, evaluated.value(), pEnv, "shape");
+					OutputSVG2(std::cout, Packed(evaluated.value(), *pEnv), "shape");
 				}
 				else
 				{
 					std::ofstream file(output_filename);
-					OutputSVG2(file, evaluated.value(), pEnv, "shape");
+					OutputSVG2(file, Packed(evaluated.value(), *pEnv), "shape");
 					file.close();
 				}
 

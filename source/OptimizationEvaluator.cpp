@@ -129,7 +129,7 @@ namespace cgl
 		return a || b;
 	}
 	
-	bool SatVariableBinder::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
+	bool SatVariableBinder::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info)
 	{
 		//std::cout << getIndent() << typeid(funcVal).name() << std::endl;
 
@@ -172,7 +172,7 @@ namespace cgl
 			bool result = false;
 			for (Address argument : expandedArguments)
 			{
-				const auto addresses = pEnv->expandReferences(argument);
+				const auto addresses = pEnv->expandReferences(argument, info);
 				for (Address address : addresses)
 				{
 					result = static_cast<bool>(addSatRef(address)) || result;
@@ -398,7 +398,7 @@ namespace cgl
 
 					const List& list = As<List>(objRef);
 
-					Val indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index));
+					Val indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index), node);
 					if (auto indexOpt = AsOpt<int>(indexValue))
 					{
 						headAddress = list.get(indexOpt.value());
@@ -481,14 +481,14 @@ namespace cgl
 							arguments.push_back(pEnv->makeTemporaryValue(lrvalue.evaluated()));
 						}
 					}
-					isDeterministic = !callFunction(function, arguments) && isDeterministic;
+					isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
 
 					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
 					if (isDeterministic)
 					{
 						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
 						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
-						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments));
+						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
 					}
 				}
@@ -927,15 +927,13 @@ namespace cgl
 
 	Val EvalSatExpr::operator()(const LRValue& node)
 	{
-		//CGL_DebugLog("Val operator()(const LRValue& node)");
 		if (node.isLValue())
 		{
 			if (auto opt = expandFreeOpt(node.address(*pEnv)))
 			{
 				return opt.value();
 			}
-			//CGL_DebugLog(std::string("address: ") + node.address().toString());
-			return pEnv->expand(node.address(*pEnv));
+			return pEnv->expand(node.address(*pEnv), node);
 		}
 		return node.evaluated();
 	}
@@ -948,20 +946,16 @@ namespace cgl
 
 	Val EvalSatExpr::operator()(const Identifier& node)
 	{
-		//CGL_DebugLog("Val operator()(const Identifier& node)");
-		//pEnv->printContext(true);
-		//CGL_DebugLog(std::string("find Identifier(") + std::string(node) + ")");
 		const Address address = pEnv->findAddress(node);
 		if (auto opt = expandFreeOpt(address))
 		{
 			return opt.value();
 		}
-		return pEnv->expand(address);
+		return pEnv->expand(address, node);
 	}
 
 	Val EvalSatExpr::operator()(const UnaryExpr& node)
 	{
-		//CGL_DebugLog("Val operator()(const UnaryExpr& node)");
 		if (node.op == UnaryOp::Not)
 		{
 			CGL_Error("TODO: sat宣言中のnot演算子は未対応です");
@@ -981,8 +975,6 @@ namespace cgl
 
 	Val EvalSatExpr::operator()(const BinaryExpr& node)
 	{
-		//CGL_DebugLog("Val operator()(const BinaryExpr& node)");
-
 		const double true_cost = 0.0;
 		const double false_cost = 10000.0;
 
@@ -1019,7 +1011,7 @@ namespace cgl
 
 			case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
 			case BinaryOp::Concat: return Concat(lhs, rhs, *pEnv);
-                        default:;
+			default:;
 			}
 		}
 		else if (auto valOpt = AsOpt<LRValue>(node.lhs))
@@ -1054,7 +1046,7 @@ namespace cgl
 				if (lhs.isValid())
 				{
 					//pEnv->assignToObject(address, rhs);
-					pEnv->assignToAccessor(accessorOpt.value(), LRValue(rhs));
+					pEnv->assignToAccessor(accessorOpt.value(), LRValue(rhs), node);
 					return rhs;
 				}
 				else
@@ -1072,54 +1064,11 @@ namespace cgl
 		return 0;
 	}
 
-	Val EvalSatExpr::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
+	Val EvalSatExpr::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info)
 	{
-		//CGL_DebugLog("Val operator()(const FunctionCaller& callFunc)");
-
-		/*
-		std::vector<Address> expandedArguments(callFunc.actualArguments.size());
-		for (size_t i = 0; i < expandedArguments.size(); ++i)
-		{
-			expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
-		}
-
-		FuncVal funcVal;
-
-		if (auto opt = AsOpt<FuncVal>(callFunc.funcRef))
-		{
-			funcVal = opt.value();
-		}
-		else
-		{
-			const Address funcAddress = pEnv->findAddress(As<Identifier>(callFunc.funcRef));
-			if (funcAddress.isValid())
-			{
-				if (auto funcOpt = pEnv->expandOpt(funcAddress))
-				{
-					if (IsType<FuncVal>(funcOpt.value()))
-					{
-						funcVal = As<FuncVal>(funcOpt.value());
-					}
-					else
-					{
-						CGL_Error("指定された変数名に紐つけられた値が関数でない");
-					}
-				}
-				else
-				{
-					CGL_Error("ここは通らないはず");
-				}
-			}
-			else
-			{
-				CGL_Error("指定された変数名に値が紐つけられていない");
-			}
-		}
-		*/
-
 		if (funcVal.builtinFuncAddress)
 		{
-			return pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.value(), expandedArguments);
+			return pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.value(), expandedArguments, info);
 		}
 
 		if (funcVal.arguments.size() != expandedArguments.size())
@@ -1127,15 +1076,9 @@ namespace cgl
 			CGL_Error("仮引数の数と実引数の数が合っていない");
 		}
 
-		//CGL_DebugLog("");
-
 		pEnv->switchFrontScope();
 
-		//CGL_DebugLog("");
-
 		pEnv->enterScope();
-
-		//CGL_DebugLog("");
 
 		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 		{
@@ -1143,46 +1086,23 @@ namespace cgl
 			//CGL_DebugLog(std::string("bind: ") + std::string(funcVal.arguments[i]) + " -> Address(" + expandedArguments[i].toString() + ")");
 		}
 
-		//CGL_DebugLog("");
-
-		//CGL_DebugLog("Function Definition:");
-		//boost::apply_visitor(Printer(), funcVal.expr);
-
 		Val result;
 		{
 			//関数も通常の関数ではなく、制約を表す関数であるはずなので、評価はEvalではなく*thisで行う
-
-			result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
-			//CGL_DebugLog("Function Val:");
-			//printVal(result, nullptr);
+			result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr), info);
 		}
-		//Val result = pEnv->expandObject();
-
-		//CGL_DebugLog("");
 
 		//(4)関数を抜ける時に、仮引数は全て解放される
 		pEnv->exitScope();
 
-		//CGL_DebugLog("");
-
 		//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
 		pEnv->switchBackScope();
-
-		//CGL_DebugLog("");
 
 		return result;
 	}
 
 	Val EvalSatExpr::operator()(const Lines& node)
 	{
-		//CGL_DebugLog("Val operator()(const Lines& node)");
-		/*if (node.exprs.size() != 1)
-		{
-			CGL_Error("不正な式です"); return 0;
-		}
-
-		return boost::apply_visitor(*this, node.exprs.front());*/
-
 		pEnv->enterScope();
 
 		Val result;
@@ -1202,7 +1122,7 @@ namespace cgl
 		Eval evaluator(pEnv);
 
 		//if式の条件式は制約が満たされているかどうかを評価するべき
-		const Val cond = pEnv->expand(boost::apply_visitor(evaluator, if_statement.cond_expr));
+		const Val cond = pEnv->expand(boost::apply_visitor(evaluator, if_statement.cond_expr), if_statement);
 		if (!IsType<bool>(cond))
 		{
 			CGL_Error("条件は必ずブール値である必要がある");
@@ -1211,11 +1131,11 @@ namespace cgl
 		//thenとelseは制約が満たされるまでの距離を計算する
 		if (As<bool>(cond))
 		{
-			return pEnv->expand(boost::apply_visitor(*this, if_statement.then_expr));
+			return pEnv->expand(boost::apply_visitor(*this, if_statement.then_expr), if_statement);
 		}
 		else if (if_statement.else_expr)
 		{
-			return pEnv->expand(boost::apply_visitor(*this, if_statement.else_expr.value()));
+			return pEnv->expand(boost::apply_visitor(*this, if_statement.else_expr.value()), if_statement);
 		}
 
 		return 0;
@@ -1223,7 +1143,6 @@ namespace cgl
 
 	Val EvalSatExpr::operator()(const KeyExpr& node)
 	{
-		//CGL_DebugLog("Val operator()(const KeyExpr& node)");
 		const Val value = boost::apply_visitor(*this, node.expr);
 		return KeyValue(node.name, value);
 	}
@@ -1240,7 +1159,7 @@ namespace cgl
 
 		for (const auto& expr : recordConsractor.exprs)
 		{
-			Val value = pEnv->expand(boost::apply_visitor(*this, expr));
+			Val value = pEnv->expand(boost::apply_visitor(*this, expr), recordConsractor);
 
 			//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
 			if (auto keyValOpt = AsOpt<KeyValue>(value))
@@ -1420,7 +1339,7 @@ namespace cgl
 					args.push_back(pEnv->makeTemporaryValue(boost::apply_visitor(*this, expr)));
 				}
 
-				const Val returnedValue = callFunction(function, args);
+				const Val returnedValue = callFunction(function, args, node);
 				address = pEnv->makeTemporaryValue(returnedValue);
 			}
 		}
@@ -1429,6 +1348,6 @@ namespace cgl
 		{
 			return opt.value();
 		}
-		return pEnv->expand(address);
+		return pEnv->expand(address, node);
 	}
 }

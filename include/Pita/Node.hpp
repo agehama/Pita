@@ -66,6 +66,7 @@ extern std::ofstream ofs;
 #define CGL_TagWarn  (std::string("[Warning] |> "))
 #define CGL_TagDebug (std::string("[Debug]   |> "))
 #define CGL_Error(message) (throw cgl::Exception(message + CGL_FileDesc))
+#define CGL_ErrorInternal(message) (throw cgl::Exception(std::string("内部エラー: ") + message + " | " + CGL_FileDesc))
 #define CGL_ErrorNode(info, message) (throw cgl::Exception(info.getInfo() + " " + message + " | " + CGL_FileDesc, info))
 #define CGL_ErrorNodeInternal(info, message) (throw cgl::Exception(std::string("内部エラー: ") + message + ", " + info.getInfo() + " | " + CGL_FileDesc, info))
 

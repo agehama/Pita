@@ -41,11 +41,11 @@ namespace cgl
 		}
 	}
 
-	Val Context::callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments)
+	Val Context::callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments, const LocationInfo& info)
 	{
 		if (std::shared_ptr<Context> pEnv = m_weakThis.lock())
 		{
-			return m_functions[functionAddress](pEnv, arguments);
+			return m_functions[functionAddress](pEnv, arguments, info);
 		}
 			
 		CGL_Error("ここは通らないはず");
@@ -57,7 +57,7 @@ namespace cgl
 		return m_plateausFunctions.find(functionAddress) != m_plateausFunctions.end();
 	}
 
-	const Val& Context::expand(const LRValue& lrvalue)const
+	const Val& Context::expand(const LRValue& lrvalue, const LocationInfo& info)const
 	{
 		if (lrvalue.isLValue())
 		{
@@ -67,13 +67,13 @@ namespace cgl
 				return it->second;
 			}
 
-			CGL_Error(std::string("reference error: ") + lrvalue.toString());
+			CGL_ErrorNode(info, std::string("値") + lrvalue.toString() + "の参照に失敗しました。");
 		}
 
 		return lrvalue.evaluated();
 	}
 
-	Val& Context::mutableExpand(LRValue& lrvalue)
+	Val& Context::mutableExpand(LRValue& lrvalue, const LocationInfo& info)
 	{
 		if (lrvalue.isLValue())
 		{
@@ -83,7 +83,7 @@ namespace cgl
 				return it->second;
 			}
 
-			CGL_Error(std::string("reference error: ") + lrvalue.toString());
+			CGL_ErrorNode(info, std::string("値") + lrvalue.toString() + "の参照に失敗しました。");
 		}
 
 		return lrvalue.mutableVal();
@@ -142,14 +142,14 @@ namespace cgl
 	}
 
 	//オブジェクトの中にある全ての値への参照をリストで取得する
-	std::vector<Address> Context::expandReferences(Address address)
+	std::vector<Address> Context::expandReferences(Address address, const LocationInfo& info)
 	{
 		std::vector<Address> result;
 		if (auto sharedThis = m_weakThis.lock())
 		{
 			const auto addElementRec = [&](auto rec, Address address)->void
 			{
-				const Val value = sharedThis->expand(address);
+				const Val value = sharedThis->expand(address, info);
 
 				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
 				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
@@ -185,14 +185,14 @@ namespace cgl
 		return result;
 	}
 
-	std::vector<std::pair<Address, VariableRange>> Context::expandReferences(Address address, boost::optional<const PackedVal&> variableRange)
+	std::vector<std::pair<Address, VariableRange>> Context::expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info)
 	{
 		std::vector<std::pair<Address, VariableRange>> result;
 		if (auto sharedThis = m_weakThis.lock())
 		{
 			const auto addElementRec = [&](auto rec, Address address, boost::optional<const PackedVal&> currentVariableRange)->void
 			{
-				const Val value = sharedThis->expand(address);
+				const Val value = sharedThis->expand(address, info);
 
 				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
 				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
@@ -434,7 +434,7 @@ namespace cgl
 		return {};
 	}*/
 
-	std::vector<std::pair<Address, VariableRange>> Context::expandReferences2(const Accessor & accessor, boost::optional<const PackedVal&> rangeOpt)
+	std::vector<std::pair<Address, VariableRange>> Context::expandReferences2(const Accessor & accessor, boost::optional<const PackedVal&> rangeOpt, const LocationInfo& info)
 	{
 		if (auto sharedThis = m_weakThis.lock())
 		{
@@ -509,7 +509,7 @@ namespace cgl
 						}
 						else
 						{
-							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index), info);
 
 							if (auto indexOpt = AsOpt<int>(value))
 							{
@@ -551,7 +551,7 @@ namespace cgl
 						std::vector<Address> args;
 						for (const auto& expr : funcAccess.actualArguments)
 						{
-							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr));
+							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr), info);
 							if (currentArgument.isLValue())
 							{
 								args.push_back(currentArgument.address(*this));
@@ -562,7 +562,7 @@ namespace cgl
 							}
 						}
 
-						const Val returnedValue = expand(evaluator.callFunction(accessor, function, args));
+						const Val returnedValue = expand(evaluator.callFunction(accessor, function, args), info);
 						writeBuffer().push_back(makeTemporaryValue(returnedValue));
 					}
 				}
@@ -576,7 +576,7 @@ namespace cgl
 				//var での省略記法 list[*] を使った場合、readBuffer() には複数のアドレスが格納される
 				//ここで、var( list[*].pos in range ) と書いた場合はこの range と各アドレスをどう結び付けるかが自明でない
 				//とりあえず今の実装では全てのアドレスに対して同じ range を割り当てるようにしている
-				const auto expanded = expandReferences(address, rangeOpt);
+				const auto expanded = expandReferences(address, rangeOpt, info);
 				result.insert(result.end(), expanded.begin(), expanded.end());
 			}
 
@@ -622,7 +622,7 @@ namespace cgl
 		*/
 	}
 
-	Reference Context::bindReference(const Accessor& accessor)
+	Reference Context::bindReference(const Accessor& accessor, const LocationInfo& info)
 	{
 		if(auto pEnv = m_weakThis.lock())
 		{
@@ -659,7 +659,7 @@ namespace cgl
 					}
 
 					const List& list = As<List>(objRef);
-					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index), info);
 					if (auto indexOpt = AsOpt<int>(value))
 					{
 						address = list.get(indexOpt.value());
@@ -843,7 +843,7 @@ namespace cgl
 		os << "Print Context End:\n";
 	}
 
-	void Context::assignToAccessor(const Accessor& accessor, const LRValue& newValue)
+	void Context::assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info)
 	{
 		if (auto pEnv = m_weakThis.lock())
 		{
@@ -871,7 +871,7 @@ namespace cgl
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
-					Val indexValue = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+					Val indexValue = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index), info);
 
 					if (!IsType<List>(objRef))
 					{
@@ -990,14 +990,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Print",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			printVal(pEnv->expand(arguments[0]), pEnv, std::cout, 0);
+			printVal(pEnv->expand(arguments[0], info), pEnv, std::cout, 0);
 			return 0;
 		},
 			false
@@ -1005,7 +1005,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"PrintContext",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 0)
 			{
@@ -1021,14 +1021,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Size",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0]);
+			const Val& value = pEnv->expand(arguments[0], info);
 			if (auto opt = AsOpt<List>(value))
 			{
 				return static_cast<int>(opt.value().data.size());
@@ -1046,7 +1046,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Cmaes",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			return Val(true);
 		},
@@ -1055,14 +1055,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Rad",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0]);
+			const Val& value = pEnv->expand(arguments[0], info);
 			if (!IsNum(value))
 			{
 				CGL_Error("引数の型が正しくありません");
@@ -1075,14 +1075,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Deg",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0]);
+			const Val& value = pEnv->expand(arguments[0], info);
 			if (!IsNum(value))
 			{
 				CGL_Error("引数の型が正しくありません");
@@ -1095,14 +1095,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Sin",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0]);
+			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
 				CGL_Error("引数の型が正しくありません");
@@ -1115,14 +1115,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Cos",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0]);
+			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
 				CGL_Error("引数の型が正しくありません");
@@ -1135,14 +1135,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"SinRad",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0]);
+			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
 				CGL_Error("引数の型が正しくありません");
@@ -1155,14 +1155,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"CosRad",
-			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0]);
+			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
 				CGL_Error("引数の型が正しくありません");
@@ -1175,15 +1175,15 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Random",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 2)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const double x0 = AsDouble(expand(arguments[0]));
-			const double x1 = AsDouble(expand(arguments[1]));
+			const double x0 = AsDouble(expand(arguments[0], info));
+			const double x1 = AsDouble(expand(arguments[1], info));
 			const double x01 = m_dist(m_random);
 			return x0 + (x1 - x0)*x01;
 		},
@@ -1192,7 +1192,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"RandomSeed",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 0 && arguments.size() != 1)
 			{
@@ -1206,7 +1206,7 @@ namespace cgl
 			}
 			else
 			{
-				const Val& value = expand(arguments[0]);
+				const Val& value = expand(arguments[0], info);
 				if (!IsType<int>(value))
 				{
 					CGL_Error("引数の型が正しくありません");
@@ -1221,17 +1221,17 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"BuildPath",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 2 && arguments.size() != 3)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& passesVal = pEnv->expand(arguments[0]);
-			const Val& numVal = pEnv->expand(arguments[1]);
+			const Val& passesVal = pEnv->expand(arguments[0], info);
+			const Val& numVal = pEnv->expand(arguments[1], info);
 
-			auto obstaclesValOpt = arguments.size() == 3 ? boost::optional<const Val&>(pEnv->expand(arguments[2])) : boost::none;
+			auto obstaclesValOpt = arguments.size() == 3 ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
 
 			if (!IsType<List>(passesVal) || !IsType<int>(numVal))
 			{
@@ -1253,7 +1253,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"BuildText",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1 && arguments.size() != 2)
 			{
@@ -1261,8 +1261,8 @@ namespace cgl
 			}
 			//buildText(str, basePath)
 
-			const Val& strVal = pEnv->expand(arguments[0]);
-			auto baseLineOpt = arguments.size() == 2 ? boost::optional<const Val&>(pEnv->expand(arguments[1])) : boost::none;
+			const Val& strVal = pEnv->expand(arguments[0], info);
+			auto baseLineOpt = arguments.size() == 2 ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
 
 			if (!IsType<CharString&>(strVal))
 			{
@@ -1284,15 +1284,15 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"OffsetPath",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 2)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0]);
-			const Val& arg2 = pEnv->expand(arguments[1]);
+			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg2 = pEnv->expand(arguments[1], info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1310,38 +1310,38 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"FunctionPath",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 4)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& func = pEnv->expand(arguments[0]);
-			const Val& beginX = pEnv->expand(arguments[1]);
-			const Val& endX = pEnv->expand(arguments[2]);
-			const Val& numOfPoints = pEnv->expand(arguments[3]);
+			const Val& func = pEnv->expand(arguments[0], info);
+			const Val& beginX = pEnv->expand(arguments[1], info);
+			const Val& endX = pEnv->expand(arguments[2], info);
+			const Val& numOfPoints = pEnv->expand(arguments[3], info);
 
 			if (!IsType<FuncVal>(func) || !IsNum(beginX) || !IsNum(endX) || !IsType<int>(numOfPoints))
 			{
 				CGL_Error("引数の型が正しくありません");
 			}
 
-			return GetFunctionPath(m_weakThis.lock(), As<FuncVal>(func), AsDouble(beginX), AsDouble(endX), As<int>(numOfPoints)).unpacked(*this);
+			return GetFunctionPath(m_weakThis.lock(), info, As<FuncVal>(func), AsDouble(beginX), AsDouble(endX), As<int>(numOfPoints)).unpacked(*this);
 		},
 			true
 			);
 
 		registerBuiltInFunction(
 			"ShapeOuterPath",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0]);
+			const Val& arg1 = pEnv->expand(arguments[0], info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1355,14 +1355,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"ShapePath",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0]);
+			const Val& arg1 = pEnv->expand(arguments[0], info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1376,43 +1376,43 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Diff",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 2)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			return ShapeDifference(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
+			return Unpacked(ShapeDifference(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
 		},
 			true
 			);
 
 		registerBuiltInFunction(
 			"Buffer",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 2)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			return ShapeBuffer(pEnv->expand(arguments[0]), pEnv->expand(arguments[1]), m_weakThis.lock());
+			return Unpacked(ShapeBuffer(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
 		},
 			true
 			);
 
 		registerBuiltInFunction(
 			"DeformShapeByPath",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 2)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0]);
-			const Val& path = pEnv->expand(arguments[1]);
+			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& path = pEnv->expand(arguments[1], info);
 
 			if (!IsType<Record>(shape) || !IsType<Record>(path))
 			{
@@ -1426,28 +1426,28 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"Area",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			return ShapeArea(pEnv->expand(arguments[0]), m_weakThis.lock());
+			return ShapeArea(Packed(pEnv->expand(arguments[0], info), *this));
 		},
 			true
 			);
 
 		registerBuiltInFunction(
 			"BoundingBox",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0]);
+			const Val& shape = pEnv->expand(arguments[0], info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1461,7 +1461,7 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"GC",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 0)
 			{
@@ -1477,14 +1477,14 @@ namespace cgl
 
 		registerBuiltInFunction(
 			"EnableGC",
-			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments)->Val
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1)
 			{
 				CGL_Error("引数の数が正しくありません");
 			}
 
-			if (auto opt = AsOpt<bool>(pEnv->expand(arguments[0])))
+			if (auto opt = AsOpt<bool>(pEnv->expand(arguments[0], info)))
 			{
 				m_automaticGC = opt.value();
 			}
@@ -1627,7 +1627,16 @@ namespace cgl
 			{
 				reachableAddressSet.emplace(address);
 				newAddressSet.emplace(address);
-				CheckValue(context.expand(LRValue(address)), context, reachableAddressSet, newAddressSet);
+				//CheckValue(context.expand(LRValue(address)), context, reachableAddressSet, newAddressSet);
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					CheckValue(opt.value(), context, reachableAddressSet, newAddressSet);
+				}
+				else
+				{
+					CGL_ErrorInternal("不正なアドレスを参照しました。");
+				}
 			}
 		}
 
@@ -1788,7 +1797,17 @@ namespace cgl
 			{
 				reachableAddressSet.emplace(address);
 				newAddressSet.emplace(address);
-				boost::apply_visitor(*this, context.expand(LRValue(address)));
+
+				//boost::apply_visitor(*this, context.expand(LRValue(address)));
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					boost::apply_visitor(*this, opt.value());
+				}
+				else
+				{
+					CGL_ErrorInternal("不正なアドレスを参照しました。");
+				}
 			}
 		}
 		

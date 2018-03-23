@@ -445,7 +445,12 @@ namespace cgl
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const Val val = pEnv->expand(refs[i]);
+			const auto opt = pEnv->expandOpt(refs[i]);
+			if (!opt)
+			{
+				CGL_Error("参照エラー");
+			}
+			const Val& val = opt.value();
 			if (auto opt = AsOpt<double>(val))
 			{
 				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
@@ -766,8 +771,12 @@ namespace cgl
 
 		for (const Address address : data)
 		{
-			const Val& value = context.expand(address);
-			const PackedVal packedValue = boost::apply_visitor(packer, value);
+			const auto& opt = context.expandOpt(address);
+			if (!opt)
+			{
+				CGL_Error("参照エラー");
+			}
+			const PackedVal packedValue = boost::apply_visitor(packer, opt.value());
 
 			result.add(address, packedValue);
 		}
@@ -825,8 +834,12 @@ namespace cgl
 
 		for (const auto& keyval : values)
 		{
-			const Val& value = context.expand(keyval.second);
-			const PackedVal packedValue = boost::apply_visitor(packer, value);
+			const auto& opt = context.expandOpt(keyval.second);
+			if (!opt)
+			{
+				CGL_Error("参照エラー");
+			}
+			const PackedVal packedValue = boost::apply_visitor(packer, opt.value());
 
 			result.add(keyval.first, keyval.second, packedValue);
 		}

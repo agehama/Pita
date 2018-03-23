@@ -62,8 +62,11 @@ namespace cgl
 
 			if (pEnv && data[i].isValid())
 			{
-				const Val evaluated = pEnv->expand(data[i]);
-				boost::apply_visitor(child, evaluated);
+				//const Val evaluated = pEnv->expand(data[i]);
+				if (auto opt = pEnv->expandOpt(data[i]))
+				{
+					boost::apply_visitor(child, opt.value());
+				}
 			}
 			else
 			{
@@ -96,8 +99,11 @@ namespace cgl
 
 			if (pEnv && value.second.isValid())
 			{
-				const Val evaluated = pEnv->expand(value.second);
-				boost::apply_visitor(child, evaluated);
+				//const Val evaluated = pEnv->expand(value.second);
+				if (auto opt = pEnv->expandOpt(value.second))
+				{
+					boost::apply_visitor(child, opt.value());
+				}
 			}
 			else
 			{
@@ -202,9 +208,12 @@ namespace cgl
 			
 			if (pEnv && data[i].isValid())
 			{
-				const Val evaluated = pEnv->expand(data[i]);
-				boost::apply_visitor(child, evaluated);
-				ss << lf;
+				//const Val evaluated = pEnv->expand(data[i]);
+				if (auto opt = pEnv->expandOpt(data[i]))
+				{
+					boost::apply_visitor(child, opt.value());
+					ss << lf;
+				}
 			}
 			else
 			{
@@ -241,9 +250,12 @@ namespace cgl
 
 			if (pEnv && value.second.isValid())
 			{
-				const Val evaluated = pEnv->expand(value.second);
-				boost::apply_visitor(child, evaluated);
-				ss << lf;
+				//const Val evaluated = pEnv->expand(value.second);
+				if (auto opt = pEnv->expandOpt(value.second))
+				{
+					boost::apply_visitor(child, opt.value());
+					ss << lf;
+				}
 			}
 			else
 			{

@@ -913,8 +913,7 @@ namespace cgl
 
 
 
-
-
+#ifdef commentout
 	boost::optional<double> EvalSatExpr::expandFreeOpt(Address address)const
 	{
 		auto it = invRefs.find(address);
@@ -1349,5 +1348,125 @@ namespace cgl
 			return opt.value();
 		}
 		return pEnv->expand(address, node);
+	}
+#endif
+
+	boost::optional<double> EvalSatExpr::expandFreeOpt(Address address)const
+	{
+		auto it = invRefs.find(address);
+		if (it != invRefs.end())
+		{
+			return data[it->second];
+		}
+		return boost::none;
+	}
+
+	LRValue EvalSatExpr::operator()(const UnaryExpr& node)
+	{
+		if (node.op == UnaryOp::Not)
+		{
+			CGL_Error("TODO: sat宣言中のnot演算子は未対応です");
+		}
+
+		Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs), node);
+		switch (node.op)
+		{
+		case UnaryOp::Plus: return lhs;
+		case UnaryOp::Minus:  return Minus(lhs, *pEnv);
+		}
+
+		CGL_Error("TODO: 未対応");
+		return 0;
+	}
+
+	LRValue EvalSatExpr::operator()(const BinaryExpr& node)
+	{
+		const double true_cost = 0.0;
+		const double false_cost = 10000.0;
+
+		Val rhs = pEnv->expand(boost::apply_visitor(*this, node.rhs), node);
+		if (node.op != BinaryOp::Assign)
+		{
+			Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs), node);
+
+			if (IsType<bool>(rhs))
+			{
+				rhs = As<bool>(rhs) ? true_cost : false_cost;
+			}
+			if (IsType<bool>(lhs))
+			{
+				lhs = As<bool>(lhs) ? true_cost : false_cost;
+			}
+
+			switch (node.op)
+			{
+			case BinaryOp::And: return Add(lhs, rhs, *pEnv);
+			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
+
+			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
+			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? true_cost : false_cost;
+			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::GreaterEqual: return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
+
+			case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
+			case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
+			case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
+			case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+
+			case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
+			case BinaryOp::Concat: return Concat(lhs, rhs, *pEnv);
+			default:;
+			}
+		}
+		else if (auto valOpt = AsOpt<LRValue>(node.lhs))
+		{
+			CGL_Error("一時オブジェクトへの代入はできません");
+		}
+		else if (auto valOpt = AsOpt<Identifier>(node.lhs))
+		{
+			const Identifier& identifier = valOpt.value();
+
+			const Address address = pEnv->findAddress(identifier);
+			//変数が存在する：代入式
+			if (address.isValid())
+			{
+				//pEnv->assignToObject(address, rhs);
+				pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
+			}
+			//変数が存在しない：変数宣言式
+			else
+			{
+				pEnv->bindNewValue(identifier, rhs);
+			}
+
+			return rhs;
+		}
+		else if (auto accessorOpt = AsOpt<Accessor>(node.lhs))
+		{
+			Eval evaluator(pEnv);
+			const LRValue lhs = boost::apply_visitor(evaluator, node.lhs);
+			if (lhs.isLValue())
+			{
+				if (lhs.isValid())
+				{
+					//pEnv->assignToObject(address, rhs);
+					pEnv->assignToAccessor(accessorOpt.value(), LRValue(rhs), node);
+					return rhs;
+				}
+				else
+				{
+					CGL_Error("参照エラー");
+				}
+			}
+			else
+			{
+				CGL_Error("アクセッサの評価結果がアドレスでない");
+			}
+		}
+
+		CGL_Error("ここは通らないはず");
+		return 0;
 	}
 }

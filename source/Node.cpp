@@ -26,7 +26,7 @@ namespace cgl
 	std::string LocationInfo::getInfo() const
 	{
 		std::stringstream ss;
-		ss << "[L" << locInfo_lineBegin << ":" << locInfo_posBegin << "-" << "L" << locInfo_lineEnd << ":" << locInfo_posEnd << "]";
+		ss << "at [L" << locInfo_lineBegin << ":" << locInfo_posBegin << "-" << "L" << locInfo_lineEnd << ":" << locInfo_posEnd << "]";
 		return ss.str();
 	}
 
@@ -668,7 +668,7 @@ namespace cgl
 		}*/
 		
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		const Val evaluated = boost::apply_visitor(evaluator, expr.value());
+		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.value()), LocationInfo());
 		
 		if (IsType<double>(evaluated))
 		{

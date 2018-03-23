@@ -398,4 +398,5 @@ namespace cgl
 
 	//boost::optional<Expr> Parse(const std::string& program);
 	boost::optional<Expr> Parse1(const std::string& filename);
+	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo);
 }

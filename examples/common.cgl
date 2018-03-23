@@ -1,5 +1,5 @@
 transform = (pos, scale, angle, vertex -> 
-    cosT= Cos(angle), sinT= Sin(angle)
+    cosT: Cos(angle), sinT: Sin(angle)
     {
         x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
         y: pos.y + sinT * scale.x * vertex.x + cosT * scale.y * vertex.y

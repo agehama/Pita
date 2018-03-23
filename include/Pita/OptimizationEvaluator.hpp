@@ -2,6 +2,7 @@
 #pragma warning(disable:4996)
 #include "Node.hpp"
 #include "Context.hpp"
+#include "Evaluator.hpp"
 
 namespace cgl
 {
@@ -243,6 +244,7 @@ namespace cgl
 	private:
 	};
 
+	/*
 	class EvalSatExpr : public boost::static_visitor<Val>
 	{
 	public:
@@ -305,5 +307,71 @@ namespace cgl
 		Val operator()(const DeclFree& node) { CGL_Error("invalid expression"); return 0; }
 
 		Val operator()(const Accessor& node);
+	};
+	*/
+
+	class EvalSatExpr : public Eval
+	{
+	public:
+		const std::vector<double>& data;//参照ID->data
+		const std::vector<Address>& refs;//参照ID->Address
+		const std::unordered_map<Address, int>& invRefs;//Address->参照ID
+
+		//TODO:このpEnvは外部の環境を書き換えたくないので、独立したものを設定する
+		EvalSatExpr(
+			std::shared_ptr<Context> pEnv,
+			const std::vector<double>& data,
+			const std::vector<Address>& refs,
+			const std::unordered_map<Address, int>& invRefs) :
+			Eval(pEnv),
+			data(data),
+			refs(refs),
+			invRefs(invRefs)
+		{}
+
+		bool isFreeVariable(Address address)const
+		{
+			return invRefs.find(address) != invRefs.end();
+		}
+
+		boost::optional<double> expandFreeOpt(Address address)const;
+
+		LRValue operator()(const LRValue& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const Identifier& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const Import& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const UnaryExpr& node)override;
+
+		LRValue operator()(const BinaryExpr& node)override;
+
+		LRValue operator()(const DefFunc& node) { return Eval::operator()(node); }
+
+		LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments) { return Eval::callFunction(info, funcVal, expandedArguments); }
+
+		LRValue operator()(const Range& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const Lines& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const If& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const For& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const Return& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const ListConstractor& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const KeyExpr& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const RecordConstractor& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const RecordInheritor& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const DeclSat& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const DeclFree& node) { return Eval::operator()(node); }
+
+		LRValue operator()(const Accessor& node) { return Eval::operator()(node); }
 	};
 }

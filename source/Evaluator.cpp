@@ -605,7 +605,7 @@ namespace cgl
 			return LRValue(address);
 		}
 
-		CGL_ErrorNode(node, std::string() + "識別子\"" + node.toString() + "\"が定義されていません。");
+		CGL_ErrorNode(node, msgs::Undefined(node));
 		return LRValue(0);
 	}
 
@@ -910,6 +910,17 @@ namespace cgl
 		return result;
 	}
 
+	LRValue Eval::operator()(const Identifier& node)
+	{
+		const Address address = pEnv->findAddress(node);
+		if (address.isValid())
+		{
+			return LRValue(address);
+		}
+
+		CGL_ErrorNode(node, msgs::Undefined(node));
+	}
+
 	LRValue Eval::operator()(const Import& node)
 	{
 		return node.eval(pEnv);
@@ -933,14 +944,13 @@ namespace cgl
 
 	LRValue Eval::operator()(const BinaryExpr& node)
 	{
-		const LRValue lhs_ = boost::apply_visitor(*this, node.lhs);
 		const LRValue rhs_ = boost::apply_visitor(*this, node.rhs);
 
 		Val lhs;
 		if (node.op != BinaryOp::Assign)
 		{
+			const LRValue lhs_ = boost::apply_visitor(*this, node.lhs);
 			lhs = pEnv->expand(lhs_, node);
-			
 		}
 
 		Val rhs = pEnv->expand(rhs_, node);
@@ -1000,6 +1010,7 @@ namespace cgl
 			}
 			else if (auto accessorOpt = AsOpt<Accessor>(node.lhs))
 			{
+				const LRValue lhs_ = boost::apply_visitor(*this, node.lhs);
 				if (lhs_.isLValue())
 				{
 					if (lhs_.isValid())
@@ -2312,7 +2323,7 @@ namespace cgl
 			const auto head = As<Identifier>(accessor.head);
 			if (!pEnv->findAddress(head).isValid())
 			{
-				CGL_ErrorNode(accessor, std::string() + "識別子\"" + head.toString() + "\"が定義されていません。");
+				CGL_ErrorNode(accessor, msgs::Undefined(head));
 			}
 		}
 

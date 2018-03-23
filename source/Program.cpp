@@ -1,3 +1,4 @@
+
 #include <Eigen/Core>
 
 #include <Pita/Program.hpp>
@@ -143,14 +144,14 @@ namespace cgl
 			}
 			catch (const cgl::Exception& e)
 			{
-				std::cerr << "CGL Exception: " << e.what() << std::endl;
+				std::cerr << e.what() << std::endl;
 				if (e.hasInfo)
 				{
-					printErrorPos(filepath, e.info);
+					PrintErrorPos(filepath, e.info);
 				}
 				else
 				{
-					std::cerr << "Exception not has info." << std::endl;
+					std::cerr << "Exception does not has any location info." << std::endl;
 				}
 
 				succeeded = false;
@@ -264,43 +265,5 @@ namespace cgl
 		}
 
 		return boost::none;
-	}
-
-	void Program::printErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo)
-	{
-		std::cerr << "------------------------------------------------------------" << std::endl;
-		std::ifstream ifs(input_filepath);
-		if (!ifs.is_open())
-		{
-			return;
-		}
-
-		const int errorLineBegin = static_cast<int>(locationInfo.locInfo_lineBegin) - 1;
-		const int errorLineEnd = static_cast<int>(locationInfo.locInfo_lineEnd) - 1;
-
-		const int printLines = 10;
-		const int printLineBegin = std::max(errorLineBegin - printLines / 2, 0);
-		const int printLineEnd = errorLineEnd + printLines / 2;
-
-		std::string line;
-		for (int l = 0; std::getline(ifs, line); ++l)
-		{
-			if (printLineBegin <= l && l <= printLineEnd)
-			{
-				std::cout << line << std::endl;
-				if (errorLineBegin <= l && l <= errorLineEnd)
-				{
-					const int startX = (l == errorLineBegin ? static_cast<int>(locationInfo.locInfo_posBegin) - 1 : 0);
-					const int endX = (l == errorLineEnd ? static_cast<int>(locationInfo.locInfo_posEnd) - 1 : static_cast<int>(line.size()));
-
-					std::string str(line.size(), ' ');
-					str.replace(startX, endX - startX, endX - startX, '~');
-
-					std::cout << str << std::endl;
-				}
-			}
-		}
-
-		std::cerr << "------------------------------------------------------------" << std::endl;
 	}
 }

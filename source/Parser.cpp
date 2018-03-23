@@ -1,3 +1,5 @@
+#include <iomanip>
+
 #include <Pita/Parser.hpp>
 
 namespace cgl
@@ -150,5 +152,76 @@ namespace cgl
 
 		workingDirectories.pop();
 		return result;
+	}
+
+	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo)
+	{
+		std::cerr << "--------------------------------------------------------------------------------" << std::endl;
+		std::ifstream ifs(input_filepath);
+		if (!ifs.is_open())
+		{
+			return;
+		}
+
+		std::stringstream tabRemovedStr;
+		char c;
+		while (ifs.get(c))
+		{
+			if (c == '\t')
+				tabRemovedStr << "    ";
+			else
+				tabRemovedStr << c;
+		}
+		std::stringstream is;
+		is << tabRemovedStr.str();
+
+		const int errorLineBegin = static_cast<int>(locationInfo.locInfo_lineBegin) - 1;
+		const int errorLineEnd = static_cast<int>(locationInfo.locInfo_lineEnd) - 1;
+
+		const int printLines = 10;
+		const int printLineBegin = std::max(errorLineBegin - printLines / 2, 0);
+		const int printLineEnd = errorLineEnd + printLines / 2;
+
+		if (printLineBegin != 0)
+		{
+			std::cout << "..." << std::endl;
+		}
+
+		const auto getLine = [](int line)
+		{
+			std::stringstream ss;
+			ss << std::right << std::setw(5) << line << "|";
+			return ss.str();
+		};
+
+		std::string line;
+		int l = 0;
+		int printedLines = 0;
+		//for (; std::getline(ifs, line); ++l)
+		for (; std::getline(is, line); ++l)
+		{
+			if (printLineBegin <= l && l <= printLineEnd)
+			{
+				std::cout << getLine(l + 1) << line << std::endl;
+				if (errorLineBegin <= l && l <= errorLineEnd)
+				{
+					const int startX = (l == errorLineBegin ? std::max(static_cast<int>(locationInfo.locInfo_posBegin) - 1, 0) : 0);
+					const int endX = (l == errorLineEnd ? std::max(static_cast<int>(locationInfo.locInfo_posEnd) - 1, 0) : static_cast<int>(line.size()));
+
+					std::string str(line.size(), ' ');
+					str.replace(startX, endX - startX, endX - startX, '^');
+
+					std::cout << "     |" << str << std::endl;
+				}
+				printedLines = l;
+			}
+		}
+
+		if (printedLines + 1 != l)
+		{
+			std::cout << "..." << std::endl;
+		}
+
+		std::cerr << "--------------------------------------------------------------------------------" << std::endl;
 	}
 }

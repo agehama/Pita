@@ -45,8 +45,6 @@ namespace cgl
 		boost::optional<double> asDoubleOpt();
 
 	private:
-		void printErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo);
-
 		std::shared_ptr<Context> pEnv;
 		Eval evaluator;
 		boost::optional<Val> evaluated;

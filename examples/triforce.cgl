@@ -1,32 +1,29 @@
-transform = (s, polygon -> {
-    cosT:cos(s.angle)
-    sinT:sin(s.angle)
-    x:s.pos.x + cosT * s.scale.x * polygon.x - sinT * s.scale.y * polygon.y
-    y:s.pos.y + sinT* s.scale.x * polygon.x + cosT* s.scale.y * polygon.y
-})
+import "common.cgl"
 
-transformA = (pos, scale, angle, polygon -> {
-    cosT:cos(angle)
-    sinT:sin(angle)
-    x:pos.x + cosT * scale.x * polygon.x - sinT * scale.y * polygon.y
-    y:pos.y + sinT* scale.x * polygon.x + cosT* scale.y * polygon.y
-})
+transformA = (pos, scale, angle, polygon ->
+	cosT:Cos(angle)
+    sinT:Sin(angle)
+	{
+    	x:pos.x + cosT * scale.x * polygon.x - sinT * scale.y * polygon.y
+    	y:pos.y + sinT * scale.x * polygon.x + cosT * scale.y * polygon.y
+	}
+)
 
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-}
+transformB = (s, polygon ->
+	cosT:Cos(s.angle)
+    sinT:Sin(s.angle)
+	{
+    	x:s.pos.x + cosT * s.scale.x * polygon.x - sinT * s.scale.y * polygon.y
+    	y:s.pos.y + sinT* s.scale.x * polygon.x + cosT* s.scale.y * polygon.y
+	}
+)
 
-contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
-
-distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
 
 regularTriangle = shape{
 	polygon: [
 		{x: 0, y: 0}, {x: 10, y: 10}, {x: 0, y: 10}
 	]
-	sat( cmaes(polygon[1]) & distant(polygon[0], polygon[1], 100) & distant(polygon[1], polygon[2], 100) & distant(polygon[2], polygon[0], 100) )
+	sat( Cmaes(polygon[1]) & distant(polygon[0], polygon[1], 100) & distant(polygon[1], polygon[2], 100) & distant(polygon[2], polygon[0], 100) )
 	var(polygon[1], polygon[2])
 }
 
@@ -36,9 +33,9 @@ regularTriangleT = regularTriangle{
 }
 
 main = shape{
-	a: regularTriangleT{pos: {x:150, y:50}}
-	b: regularTriangleT{pos: {x:50, y:50}}
-	c: regularTriangleT{pos: {x:250, y:50}}
-	sat( contact(transform(a, a.polygon[2]), transform(b, b.polygon[0])) & contact(transform(a, a.polygon[1]), transform(c, c.polygon[0])))
+	a: regularTriangleT{pos= {x:150, y:50}}
+	b: regularTriangleT{pos= {x:50, y:50}}
+	c: regularTriangleT{pos= {x:250, y:50}}
+	sat( contact(transformB(a, a.polygon[2]), transformB(b, b.polygon[0])) & contact(transformB(a, a.polygon[1]), transformB(c, c.polygon[0])))
 	var(b.pos, c.pos)
 }

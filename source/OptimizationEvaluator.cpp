@@ -488,7 +488,7 @@ namespace cgl
 					{
 						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
 						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
-						const Val returnedValue = pEnv->expand(evaluator.callFunction(function, arguments));
+						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments));
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
 					}
 				}

@@ -22,6 +22,14 @@
 
 namespace cgl
 {
+	//manip::LocationInfoPrinter LocationInfo::printLoc() const { return { *this }; }
+	std::string LocationInfo::getInfo() const
+	{
+		std::stringstream ss;
+		ss << "[L" << locInfo_lineBegin << ":" << locInfo_posBegin << "-" << "L" << locInfo_lineEnd << ":" << locInfo_posEnd << "]";
+		return ss.str();
+	}
+
 	Identifier Identifier::MakeIdentifier(const std::u32string& name_)
 	{
 		return Identifier(Unicode::UTF32ToUTF8(name_));

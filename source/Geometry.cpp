@@ -2007,7 +2007,7 @@ namespace cgl
 		for (int i = 0; i < numOfPoints; ++i)
 		{
 			const double x = beginValue + unitX * i;
-			const Val value = pContext->expand(evaluator.callFunction(function, { pContext->makeTemporaryValue(x) }));
+			const Val value = pContext->expand(evaluator.callFunction(LocationInfo(), function, { pContext->makeTemporaryValue(x) }));
 			if (!IsType<double>(value))
 			{
 				CGL_Error("Error");

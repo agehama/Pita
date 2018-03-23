@@ -273,7 +273,7 @@ namespace cgl
 
 		virtual LRValue operator()(const DefFunc& defFunc);
 
-		virtual LRValue callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		virtual LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
 
 		virtual LRValue operator()(const Range& range) { return RValue(0); }
 

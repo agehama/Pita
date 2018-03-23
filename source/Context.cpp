@@ -562,7 +562,7 @@ namespace cgl
 							}
 						}
 
-						const Val returnedValue = expand(evaluator.callFunction(function, args));
+						const Val returnedValue = expand(evaluator.callFunction(accessor, function, args));
 						writeBuffer().push_back(makeTemporaryValue(returnedValue));
 					}
 				}

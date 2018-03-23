@@ -12,6 +12,8 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 
+#include <boost/spirit/include/support_line_pos_iterator.hpp>
+
 #include "Node.hpp"
 
 namespace cgl
@@ -20,7 +22,6 @@ namespace cgl
 
 	//パース時のみ使用
 	extern std::stack<filesystem::path> workingDirectories;
-	//extern std::set<filesystem::path> alreadyImportedFiles;
 
 	extern std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 
@@ -47,7 +48,63 @@ namespace cgl
 	}
 
 	using namespace boost::spirit;
-	
+
+	//using IteratorT = std::string::const_iterator;
+	//using IteratorT = std::u32string::const_iterator;
+	using SourceT = boost::spirit::line_pos_iterator<std::string::const_iterator>;
+	//using IteratorT = boost::u8_to_u32_iterator<std::string::const_iterator>;
+	using IteratorT = boost::u8_to_u32_iterator<SourceT>;
+
+	struct Annotator
+	{
+		//typedef void result_type;
+
+		Annotator(SourceT first, SourceT last) :
+			first(first),
+			last(last)
+		{}
+
+		const SourceT first;
+		const SourceT last;
+
+		template<typename Val, typename First, typename Last>
+		void operator()(Val& v, First f, Last l)const
+		{
+			doAnnotate(v, f, l, first, last);
+		}
+
+	private:
+		void static doAnnotate(LocationInfo& li, IteratorT f, IteratorT l, SourceT first, SourceT last)
+		{
+			auto sourceBeginIt = f.base();
+			auto sourceEndIt = l.base();
+
+			auto lowerBound = get_line_start(first, sourceBeginIt);
+
+			li.locInfo_lineBegin = get_line(sourceBeginIt);
+			li.locInfo_lineEnd = get_line(sourceEndIt);
+
+			auto line = get_current_line(lowerBound, sourceBeginIt, last);
+
+			size_t cur_pos = 0, start_pos = 0, end_pos = 0;
+			for (IteratorT it = line.begin(), _eol = line.end(); ; ++it, ++cur_pos)
+			{
+				if (it.base() == sourceBeginIt) start_pos = cur_pos;
+				if (it.base() == sourceEndIt) end_pos = cur_pos;
+
+				if (*(it.base()) == '\n')
+					cur_pos = 0;
+
+				if (it == _eol)
+					break;
+			}
+
+			li.locInfo_posBegin = start_pos;
+			li.locInfo_posEnd = end_pos;
+		}
+		static void doAnnotate(...) {}
+	};
+
 	template<typename Iterator>
 	struct SpaceSkipper : public qi::grammar<Iterator>
 	{
@@ -85,54 +142,54 @@ namespace cgl
 		}
 	} const keywords;
 
-	//using IteratorT = std::string::const_iterator;
-	//using IteratorT = std::u32string::const_iterator;
-	using IteratorT = boost::u8_to_u32_iterator<std::string::const_iterator>;
 	using SpaceSkipperT = SpaceSkipper<IteratorT>;
 	using LineSkipperT = LineSkipper<IteratorT>;
 
 	static SpaceSkipperT spaceSkipper;
 	static LineSkipperT lineSkipper;
 
-	template<typename Iterator, typename Skipper>
+	template<typename Skipper>
 	struct Parser
-		: qi::grammar<Iterator, Lines(), Skipper>
+		: qi::grammar<IteratorT, Lines(), Skipper>
 	{
-		qi::rule<Iterator, DeclSat(), Skipper> constraints;
-		qi::rule<Iterator, DeclFree(), Skipper> freeVals;
+		qi::rule<IteratorT, DeclSat(), Skipper> constraints;
+		qi::rule<IteratorT, DeclFree(), Skipper> freeVals;
 
-		qi::rule<Iterator, FunctionAccess(), Skipper> functionAccess;
-		qi::rule<Iterator, RecordAccess(), Skipper> recordAccess;
-		qi::rule<Iterator, ListAccess(), Skipper> listAccess;
-		qi::rule<Iterator, Accessor(), Skipper> accessor;
+		qi::rule<IteratorT, FunctionAccess(), Skipper> functionAccess;
+		qi::rule<IteratorT, RecordAccess(), Skipper> recordAccess;
+		qi::rule<IteratorT, ListAccess(), Skipper> listAccess;
+		qi::rule<IteratorT, Accessor(), Skipper> accessor;
 
-		qi::rule<Iterator, Access(), Skipper> access;
+		qi::rule<IteratorT, Access(), Skipper> access;
 
-		qi::rule<Iterator, KeyExpr(), Skipper> record_keyexpr;
-		qi::rule<Iterator, RecordConstractor(), Skipper> record_maker;
-		qi::rule<Iterator, RecordInheritor(), Skipper> record_inheritor;
+		qi::rule<IteratorT, KeyExpr(), Skipper> record_keyexpr;
+		qi::rule<IteratorT, RecordConstractor(), Skipper> record_maker;
+		qi::rule<IteratorT, RecordInheritor(), Skipper> record_inheritor;
 
-		qi::rule<Iterator, ListConstractor(), Skipper> list_maker;
-		qi::rule<Iterator, Import(), Skipper> import_expr;
-		qi::rule<Iterator, For(), Skipper> for_expr;
-		qi::rule<Iterator, If(), Skipper> if_expr;
-		qi::rule<Iterator, Return(), Skipper> return_expr;
-		qi::rule<Iterator, DefFunc(), Skipper> def_func;
-		qi::rule<Iterator, Arguments(), Skipper> arguments;
-		qi::rule<Iterator, Identifier(), Skipper> id;
-		qi::rule<Iterator, KeyExpr(), Skipper> key_expr;
-		//qi::rule<Iterator, std::string(), Skipper> char_string;
-		qi::rule<Iterator, std::u32string(), Skipper> char_string;
-		qi::rule<Iterator, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
-		qi::rule<Iterator, Lines(), Skipper> expr_seq, statement;
-		qi::rule<Iterator, Lines(), Skipper> program;
+		qi::rule<IteratorT, ListConstractor(), Skipper> list_maker;
+		qi::rule<IteratorT, Import(), Skipper> import_expr;
+		qi::rule<IteratorT, For(), Skipper> for_expr;
+		qi::rule<IteratorT, If(), Skipper> if_expr;
+		qi::rule<IteratorT, Return(), Skipper> return_expr;
+		qi::rule<IteratorT, DefFunc(), Skipper> def_func;
+		qi::rule<IteratorT, Arguments(), Skipper> arguments;
+		qi::rule<IteratorT, Identifier(), Skipper> id;
+		qi::rule<IteratorT, KeyExpr(), Skipper> key_expr;
+		qi::rule<IteratorT, std::u32string(), Skipper> char_string;
+		qi::rule<IteratorT, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
+		qi::rule<IteratorT, Lines(), Skipper> expr_seq, statement;
+		qi::rule<IteratorT, Lines(), Skipper> program;
 
-		qi::rule<Iterator> s, s1;
-		qi::rule<Iterator> distinct_keyword;
-		qi::rule<Iterator, std::u32string(), Skipper> unchecked_identifier;
-		qi::rule<Iterator, std::u32string(), Skipper> float_value;
+		qi::rule<IteratorT> s, s1;
+		qi::rule<IteratorT> distinct_keyword;
+		qi::rule<IteratorT, std::u32string(), Skipper> unchecked_identifier;
+		qi::rule<IteratorT, std::u32string(), Skipper> float_value;
+
+		boost::phoenix::function<Annotator> annotate;
 		
-		Parser() : Parser::base_type(program)
+		Parser(SourceT first, SourceT last) :
+			Parser::base_type(program),
+			annotate(Annotator(first, last))
 		{
 			auto concatArguments = [](Arguments& a, const Arguments& b) { a.concat(b); };
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
@@ -272,7 +329,6 @@ namespace cgl
 			factor = 
 				  '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
 				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				//| '@' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Dynamic)]
 				| '@' >> s >> (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)])
 				| float_value[_val = Call(LRValue::Float, _1)]
 				| int_[_val = Call(LRValue::Int, _1)]
@@ -299,8 +355,44 @@ namespace cgl
 			unchecked_identifier = lexeme[(encode::alpha | encode::char_('_')) >> *(encode::alnum | encode::char_('_'))];
 
 			float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9')];
-			
+
 			s = *(encode::space);
+
+			auto setLocationInfo = annotate(_val, _1, _3);
+			qi::on_success(constraints, setLocationInfo);
+			qi::on_success(freeVals, setLocationInfo);
+			qi::on_success(functionAccess, setLocationInfo);
+			qi::on_success(recordAccess, setLocationInfo);
+			qi::on_success(listAccess, setLocationInfo);
+			qi::on_success(accessor, setLocationInfo);
+			qi::on_success(access, setLocationInfo);
+			qi::on_success(record_keyexpr, setLocationInfo);
+			qi::on_success(record_maker, setLocationInfo);
+			qi::on_success(record_inheritor, setLocationInfo);
+			qi::on_success(list_maker, setLocationInfo);
+			qi::on_success(import_expr, setLocationInfo);
+			qi::on_success(for_expr, setLocationInfo);
+			qi::on_success(if_expr, setLocationInfo);
+			qi::on_success(return_expr, setLocationInfo);
+			qi::on_success(def_func, setLocationInfo);
+			qi::on_success(arguments, setLocationInfo);
+			qi::on_success(id, setLocationInfo);
+			qi::on_success(key_expr, setLocationInfo);
+			qi::on_success(char_string, setLocationInfo);
+			qi::on_success(general_expr, setLocationInfo);
+			qi::on_success(logic_expr, setLocationInfo);
+			qi::on_success(logic_term, setLocationInfo);
+			qi::on_success(logic_factor, setLocationInfo);
+			qi::on_success(compare_expr, setLocationInfo);
+			qi::on_success(arith_expr, setLocationInfo);
+			qi::on_success(basic_arith_expr, setLocationInfo);
+			qi::on_success(term, setLocationInfo);
+			qi::on_success(factor, setLocationInfo);
+			qi::on_success(pow_term, setLocationInfo);
+			qi::on_success(pow_term1, setLocationInfo);
+			qi::on_success(expr_seq, setLocationInfo);
+			qi::on_success(statement, setLocationInfo);
+			qi::on_success(program, setLocationInfo);
 		}
 	};
 

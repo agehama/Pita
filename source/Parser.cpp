@@ -62,36 +62,36 @@ namespace cgl
 		void operator()(const DeclFree& node)const {}
 	};
 
-	inline boost::optional<Expr> Parse(const std::string& program)
-	{
-		boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
+	//inline boost::optional<Expr> Parse(const std::string& program)
+	//{
+	//	boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
 
-		Lines lines;
+	//	Lines lines;
 
-		SpaceSkipper<IteratorT> skipper;
-		Parser<IteratorT, SpaceSkipperT> grammer;
+	//	SpaceSkipper<IteratorT> skipper;
+	//	Parser<IteratorT, SpaceSkipperT> grammer;
 
-		auto it = tbegin;
-		if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
-		{
-			//std::cerr << "Syntax Error: parse failed\n";
-			std::cout << "Syntax Error: parse failed\n";
-			workingDirectories.pop();
-			return boost::none;
-		}
+	//	auto it = tbegin;
+	//	if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
+	//	{
+	//		//std::cerr << "Syntax Error: parse failed\n";
+	//		std::cout << "Syntax Error: parse failed\n";
+	//		workingDirectories.pop();
+	//		return boost::none;
+	//	}
 
-		if (it != tend)
-		{
-			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
-			std::cout << "Syntax Error: ramains input\n";
-			workingDirectories.pop();
-			return boost::none;
-		}
+	//	if (it != tend)
+	//	{
+	//		//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
+	//		std::cout << "Syntax Error: ramains input\n";
+	//		workingDirectories.pop();
+	//		return boost::none;
+	//	}
 
-		Expr result = lines;
-		workingDirectories.pop();
-		return result;
-	}
+	//	Expr result = lines;
+	//	workingDirectories.pop();
+	//	return result;
+	//}
 
 	boost::optional<Expr> Parse1(const std::string& filename)
 	{
@@ -111,15 +111,17 @@ namespace cgl
 		//cgl::alreadyImportedFiles.emplace(cgl::filesystem::canonical(cgl::filesystem::path(input_file)));
 
 
-		boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(sourceCode.begin()), tend(sourceCode.end());
+		//boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(sourceCode.begin()), tend(sourceCode.end());
+		SourceT beginSource(sourceCode.begin()), endSource(sourceCode.end());
+		IteratorT beginIt(beginSource), endIt(endSource);
 
 		Lines lines;
 
+		auto it = beginIt;
 		SpaceSkipper<IteratorT> skipper;
-		Parser<IteratorT, SpaceSkipperT> grammer;
+		Parser<SpaceSkipperT> grammer(beginSource, endSource);
 
-		auto it = tbegin;
-		if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
+		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
 		{
 			//std::cerr << "Syntax Error: parse failed\n";
 			std::cout << "Syntax Error: parse failed\n";
@@ -127,7 +129,7 @@ namespace cgl
 			return boost::none;
 		}
 
-		if (it != tend)
+		if (it != endIt)
 		{
 			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
 			std::cout << "Syntax Error: ramains input\n";

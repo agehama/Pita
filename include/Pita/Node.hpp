@@ -51,11 +51,13 @@ namespace cgl
 extern std::ofstream ofs;
 
 #define CGL_FileName (strchr(__FILE__, '\\') ? strchr(__FILE__, '\\') + 1 : __FILE__)
-#define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ") : ")
+#define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ")")
 #define CGL_TagError (std::string("[Error]   |> "))
 #define CGL_TagWarn  (std::string("[Warning] |> "))
 #define CGL_TagDebug (std::string("[Debug]   |> "))
-#define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
+#define CGL_Error(message) (throw cgl::Exception(message + CGL_FileDesc))
+#define CGL_ErrorNode(node, message) (throw cgl::Exception(node.getInfo() + " " + message + " | " + CGL_FileDesc))
+#define CGL_ErrorNodeInternal(node, message) (throw cgl::Exception(std::string("内部エラー: ") + message + ", " + node.getInfo() + " | " + CGL_FileDesc))
 
 #define CGL_DBG (std::cout << std::string(CGL_FileName) << " - "<< __FUNCTION__ << ": " << __LINE__ << std::endl)
 
@@ -122,6 +124,12 @@ namespace cgl
 	{
 		return boost::get<T1>(t2);
 	}
+
+	struct LocationInfo {
+		unsigned locInfo_lineBegin = 0, locInfo_lineEnd = 0;
+		unsigned locInfo_posBegin = 0, locInfo_posEnd = 0;
+		std::string getInfo() const;
+	};
 
 	enum class UnaryOp
 	{
@@ -199,7 +207,7 @@ namespace cgl
 
 	struct DefFunc;
 
-	struct Identifier
+	struct Identifier : public LocationInfo
 	{
 	public:
 		Identifier() = default;
@@ -550,7 +558,7 @@ namespace cgl
 		Val value;
 	};
 
-	struct LRValue
+	struct LRValue : public LocationInfo
 	{
 		LRValue() = default;
 
@@ -656,7 +664,7 @@ namespace cgl
 		{}
 	};
 
-	struct Import
+	struct Import : public LocationInfo
 	{
 	public:
 		Import() = default;
@@ -813,7 +821,7 @@ namespace cgl
 		}
 	};
 
-	struct UnaryExpr
+	struct UnaryExpr : public LocationInfo
 	{
 		Expr lhs;
 		UnaryOp op;
@@ -833,7 +841,7 @@ namespace cgl
 		}
 	};
 
-	struct BinaryExpr
+	struct BinaryExpr : public LocationInfo
 	{
 		Expr lhs;
 		Expr rhs;
@@ -854,7 +862,7 @@ namespace cgl
 		}
 	};
 
-	struct Range
+	struct Range : public LocationInfo
 	{
 		Expr lhs;
 		Expr rhs;
@@ -885,7 +893,7 @@ namespace cgl
 		}
 	};
 
-	struct Lines
+	struct Lines : public LocationInfo
 	{
 		std::vector<Expr> exprs;
 
@@ -1028,7 +1036,7 @@ namespace cgl
 		}
 	};
 
-	struct DefFunc
+	struct DefFunc : public LocationInfo
 	{
 		std::vector<Identifier> arguments;
 		Expr expr;
@@ -1100,7 +1108,7 @@ namespace cgl
 		}
 	};
 
-	struct If
+	struct If : public LocationInfo
 	{
 		Expr cond_expr;
 		Expr then_expr;
@@ -1149,7 +1157,7 @@ namespace cgl
 		}
 	};
 
-	struct For
+	struct For : public LocationInfo
 	{
 		Identifier loopCounter;
 		Expr rangeStart;
@@ -1200,7 +1208,7 @@ namespace cgl
 		}
 	};
 
-	struct Return
+	struct Return : public LocationInfo
 	{
 		Expr expr;
 
@@ -1221,7 +1229,7 @@ namespace cgl
 		}
 	};
 
-	struct ListConstractor
+	struct ListConstractor : public LocationInfo
 	{
 		std::vector<Expr> data;
 
@@ -1392,7 +1400,7 @@ namespace cgl
 		PackedVal packed(const Context& context)const;
 	};
 
-	struct KeyExpr
+	struct KeyExpr : public LocationInfo
 	{
 		Identifier name;
 		Expr expr;
@@ -1429,7 +1437,7 @@ namespace cgl
 		}
 	};
 
-	struct RecordConstractor
+	struct RecordConstractor : public LocationInfo
 	{
 		std::vector<Expr> exprs;
 
@@ -1493,7 +1501,7 @@ namespace cgl
 		}
 	};
 
-	struct DeclSat
+	struct DeclSat : public LocationInfo
 	{
 		Expr expr;
 
@@ -1675,7 +1683,7 @@ namespace cgl
 		}
 	};
 
-	struct DeclFree
+	struct DeclFree : public LocationInfo
 	{
 		std::vector<Accessor> accessors;
 		std::vector<Expr> ranges;
@@ -2013,7 +2021,7 @@ namespace cgl
 
 	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
 
-	struct Accessor
+	struct Accessor : public LocationInfo
 	{
 		//先頭のオブジェクト(識別子かもしくは関数・リスト・レコードのリテラル)
 		Expr head;
@@ -2185,7 +2193,7 @@ namespace cgl
 		}
 	};
 
-	struct RecordInheritor
+	struct RecordInheritor : public LocationInfo
 	{
 		//using OriginalRecord = boost::variant<Identifier, boost::recursive_wrapper<Record>>;
 		//OriginalRecord original;

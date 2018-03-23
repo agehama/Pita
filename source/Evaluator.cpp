@@ -605,7 +605,7 @@ namespace cgl
 			return LRValue(address);
 		}
 
-		CGL_Error(std::string() + "識別子\"" + node.toString() + "\"が定義されていません");
+		CGL_ErrorNode(node, std::string() + "識別子\"" + node.toString() + "\"が定義されていません。");
 		return LRValue(0);
 	}
 
@@ -632,7 +632,7 @@ namespace cgl
 				return LRValue(pEnv->bindReference(As<Accessor>(node.lhs)));
 			}
 
-			CGL_Error("参照演算子@の右辺には識別子かアクセッサしか用いることができません");
+			CGL_ErrorNode(node, "参照演算子\"@\"の右辺には識別子かアクセッサしか用いることができません。");
 		}
 		return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op);
 	}
@@ -695,7 +695,7 @@ namespace cgl
 			return BinaryExpr(lhs, rhs, node.op);
 		}
 
-		CGL_Error("二項演算子\"=\"の左辺は単一の左辺値でなければなりません");
+		CGL_ErrorNode(node, "二項演算子\"=\"の左辺は単一の左辺値でなければなりません。");
 		return LRValue(0);
 	}
 
@@ -832,7 +832,7 @@ namespace cgl
 			return result;
 		}
 
-		CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
+		CGL_ErrorNodeInternal(node, "node.adderの評価結果がRecordConstractorでありませんでした。");
 		return LRValue(0);
 	}
 
@@ -875,7 +875,7 @@ namespace cgl
 			}
 			else
 			{
-				CGL_Error("aaa");
+				CGL_ErrorNodeInternal(node, "アクセッサの評価結果が不正です。");
 			}
 		}
 
@@ -898,7 +898,7 @@ namespace cgl
 			const Expr closedAccessor = boost::apply_visitor(*this, expr);
 			if (!IsType<Accessor>(closedAccessor))
 			{
-				CGL_Error("不正な式です");
+				CGL_ErrorNodeInternal(node, "アクセッサの評価結果が不正です。");
 			}
 			result.addAccessor(As<Accessor>(closedAccessor));
 		}
@@ -927,7 +927,7 @@ namespace cgl
 		case UnaryOp::Dynamic: return RValue(lhs);
 		}
 
-		CGL_Error("Invalid UnaryExpr");
+		CGL_ErrorNodeInternal(node, "不明な単項演算子です。");
 		return RValue(0);
 	}
 
@@ -976,23 +976,7 @@ namespace cgl
 			//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
 			if (auto valOpt = AsOpt<LRValue>(node.lhs))
 			{
-				CGL_Error("一時オブジェクトへの代入はできません");
-				/*const LRValue& val = valOpt.value();
-				if (val.isLValue())
-				{
-					if (val.address().isValid())
-					{
-						pEnv->assignToObject(val.address(), rhs);
-					}
-					else
-					{
-						CGL_Error("reference error");
-					}
-				}
-				else
-				{
-					CGL_Error("");
-				}*/
+				CGL_ErrorNodeInternal(node, "一時オブジェクトへの代入はできません。");
 			}
 			else if (auto valOpt = AsOpt<Identifier>(node.lhs))
 			{
@@ -1002,16 +986,16 @@ namespace cgl
 				//変数が存在する：代入式
 				if (address.isValid())
 				{
-					CGL_DebugLog("代入式");
+					//CGL_DebugLog("代入式");
 					//pEnv->assignToObject(address, rhs);
 					pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
 				}
 				//変数が存在しない：変数宣言式
 				else
 				{
-					CGL_DebugLog("変数宣言式");
+					//CGL_DebugLog("変数宣言式");
 					pEnv->bindNewValue(identifier, rhs);
-					CGL_DebugLog("");
+					//CGL_DebugLog("");
 				}
 
 				return RValue(rhs);
@@ -1027,18 +1011,18 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error("参照エラー");
+						CGL_ErrorNodeInternal(node, "アクセッサの評価結果が無効なアドレス値です。");
 					}
 				}
 				else
 				{
-					CGL_Error("アクセッサの評価結果がアドレスでない");
+					CGL_ErrorNodeInternal(node, "アクセッサの評価結果が無効な値です。");
 				}
 			}
 		}
 		}
 
-		CGL_Error("Invalid BinaryExpr");
+		CGL_ErrorNodeInternal(node, "不明な二項演算子です。");
 		return RValue(0);
 	}
 
@@ -1047,7 +1031,7 @@ namespace cgl
 		return pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr);
 	}
 
-	LRValue Eval::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
+	LRValue Eval::callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
 	{
 		CGL_DebugLog("Function Context:");
 		pEnv->printContext();
@@ -1119,7 +1103,7 @@ namespace cgl
 		//if (funcVal.arguments.size() != callFunc.actualArguments.size())
 		if (funcVal.arguments.size() != expandedArguments.size())
 		{
-			CGL_Error("仮引数の数と実引数の数が合っていない");
+			CGL_ErrorNode(info, "仮引数の数と実引数の数が合っていません。");
 		}
 
 		//関数の評価
@@ -1191,7 +1175,7 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error("return式の中身が入って無い");
+					CGL_ErrorNode(info, "return式の右辺が無効な値です。");
 				}
 			}
 		}
@@ -1286,9 +1270,7 @@ namespace cgl
 		const Val cond = pEnv->expand(boost::apply_visitor(*this, if_statement.cond_expr));
 		if (!IsType<bool>(cond))
 		{
-			//条件は必ずブール値である必要がある
-			//std::cerr << "Error(" << __LINE__ << ")\n";
-			CGL_Error("条件は必ずブール値である必要がある");
+			CGL_ErrorNode(if_statement, "条件式の評価結果がブール値ではありませんでした。");
 		}
 
 		if (As<bool>(cond))
@@ -1327,7 +1309,7 @@ namespace cgl
 
 			if (!((a_IsInt || a_IsDouble) && (b_IsInt || b_IsDouble)))
 			{
-				CGL_Error("ループのレンジが不正な型（整数か実数に評価できる必要がある）");
+				CGL_ErrorNode(forExpression, "ループ範囲式の評価結果が数値ではありませんでした。");
 			}
 
 			const bool result_IsDouble = a_IsDouble || b_IsDouble;
@@ -1355,7 +1337,7 @@ namespace cgl
 			const Val result = LessEqual(loopCount, endVal, *pEnv);
 			if (!IsType<bool>(result))
 			{
-				CGL_Error("ここを通ることはないはず");
+				CGL_ErrorNodeInternal(forExpression, "loopCountの評価結果がブール値ではありませんでした。");
 			}
 
 			return As<bool>(result) == isInOrder;
@@ -1364,7 +1346,7 @@ namespace cgl
 		const auto stepOrder = calcStepValue(startVal, endVal);
 		if (!stepOrder)
 		{
-			CGL_Error("ループのレンジが不正");
+			CGL_ErrorNodeInternal(forExpression, "ループ範囲式の評価結果が不正な値です。");
 		}
 
 		const Val step = stepOrder.value().first;
@@ -1382,7 +1364,7 @@ namespace cgl
 			const auto isLoopContinuesOpt = loopContinues(loopCountValue, isInOrder);
 			if (!isLoopContinuesOpt)
 			{
-				CGL_Error("ここを通ることはないはず");
+				CGL_ErrorNodeInternal(forExpression, "loopContinuesの評価結果が不正な値です。");
 			}
 
 			//ループの継続条件を満たさなかったので抜ける
@@ -1451,7 +1433,7 @@ namespace cgl
 		Val rhs = pEnv->expand(rhs_);
 		if (pEnv->existsInCurrentScope(node.name))
 		{
-			CGL_Error(":演算子による変数への再代入は行えません");
+			CGL_ErrorNode(node, "宣言演算子\":\"による変数への値の再代入は行えません。代わりに代入演算子\"=\"を使用してください。");
 		}
 		else
 		{
@@ -1733,7 +1715,7 @@ namespace cgl
 			}
 		};
 
-		const auto checkSatisfied = [](std::shared_ptr<Context> pContext, const OptimizationProblemSat& problem)
+		const auto checkSatisfied = [&](std::shared_ptr<Context> pContext, const OptimizationProblemSat& problem)
 		{
 			if (problem.expr)
 			{
@@ -1741,7 +1723,7 @@ namespace cgl
 				const Val result = pContext->expand(boost::apply_visitor(evaluator, problem.expr.value()));
 				if (!IsType<bool>(result))
 				{
-					CGL_Error("制約式の評価結果がブール値でない");
+					CGL_ErrorNode(recordConsractor, "制約式の評価結果がブール値ではありませんでした。");
 				}
 
 				const bool currentConstraintIsSatisfied = As<bool>(result);
@@ -1883,7 +1865,7 @@ namespace cgl
 						const Val result = pEnv->expand(boost::apply_visitor(*this, oldConstraint.expr.value()));
 						if (!IsType<bool>(result))
 						{
-							CGL_Error("制約式の評価結果がブール値でない");
+							CGL_ErrorNode(recordConsractor, "制約式の評価結果がブール値ではありませんでした。");
 						}
 
 						const bool currentConstraintIsSatisfied = As<bool>(result);
@@ -2102,7 +2084,7 @@ namespace cgl
 			}
 			else
 			{
-				CGL_Error("not record");
+				CGL_ErrorNode(record, "レコード値ではない値に対してレコード継承式を適用しようとしました。");
 			}
 
 			pEnv->printContext(true);
@@ -2118,7 +2100,7 @@ namespace cgl
 
 		if (pEnv->temporaryRecord)
 		{
-			CGL_Error("レコード拡張に失敗");
+			CGL_ErrorNodeInternal(record, "二重にレコード継承式を適用しようとしました。temporaryRecordは既に存在しています。");
 		}
 		pEnv->temporaryRecord = clone;
 
@@ -2206,11 +2188,6 @@ namespace cgl
 		//pEnv->pop();
 		pEnv->exitScope();
 		*/
-
-		//ここは通らないはず。{}で囲まれた式を評価した結果がレコードでなかった。
-		//std::cerr << "Error(" << __LINE__ << ")\n";
-		CGL_Error("ここは通らないはず");
-		return RValue(0);
 	}
 
 	LRValue Eval::operator()(const DeclSat& node)
@@ -2227,7 +2204,7 @@ namespace cgl
 
 		if (pEnv->currentRecords.empty())
 		{
-			CGL_Error("sat宣言はレコードの中にしか書くことができません");
+			CGL_ErrorNode(node, "制約宣言はレコード式の中にしか書くことができません。");
 		}
 
 		//pEnv->currentRecords.back().get().problem.addConstraint(closedSatExpr);
@@ -2244,7 +2221,7 @@ namespace cgl
 			//std::cout << "  accessor:" << std::endl;
 			if (pEnv->currentRecords.empty())
 			{
-				CGL_Error("var宣言はレコードの中にしか書くことができません");
+				CGL_ErrorNode(node, "var宣言はレコード式の中にしか書くことができません。");
 			}
 
 			ClosureMaker closureMaker(pEnv, {});
@@ -2264,15 +2241,8 @@ namespace cgl
 			}
 			else
 			{
-				CGL_Error("var宣言に指定された変数が無効です");
+				CGL_ErrorNode(node, "var宣言には識別子かアクセッサしか用いることができません。");
 			}
-			/*const LRValue result = boost::apply_visitor(*this, expr);
-			if (!result.isLValue())
-			{
-				CGL_Error("var宣言に指定された変数は無効です");
-			}*/
-
-			//currentRecords.top().get().freeVariables.push_back(result.address());
 		}
 
 		for (const auto& range : node.ranges)
@@ -2365,7 +2335,7 @@ namespace cgl
 			}
 			else
 			{
-				CGL_Error("アクセッサのヘッドの評価結果が不正");
+				CGL_ErrorNodeInternal(accessor, "アクセッサの先頭の評価結果がレコード、リスト、関数のどの値でもありませんでした。");
 			}
 		}
 
@@ -2376,7 +2346,7 @@ namespace cgl
 			boost::optional<Val&> objOpt = pEnv->mutableExpandOpt(lrAddress);
 			if (!objOpt)
 			{
-				CGL_Error("参照エラー");
+				CGL_ErrorNode(accessor, "アクセッサによる参照先が存在しませんでした。");
 			}
 
 			Val& objRef = objOpt.value();
@@ -2387,7 +2357,7 @@ namespace cgl
 
 				if (!IsType<List>(objRef))
 				{
-					CGL_Error("オブジェクトがリストでない");
+					CGL_ErrorNode(accessor, "リストでない値に対してリストアクセスを行おうとしました。");
 				}
 
 				List& list = As<List>(objRef);
@@ -2404,7 +2374,7 @@ namespace cgl
 					}
 					else if (indexValue < 0 || !pEnv->isAutomaticExtendMode())
 					{
-						CGL_Error("listの範囲外アクセスが発生しました");
+						CGL_ErrorNode(accessor, "リストの範囲外アクセスが発生しました。");
 					}
 					else
 					{
@@ -2417,21 +2387,21 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error("list[index] の index が int 型でない");
+					CGL_ErrorNode(accessor, "リストアクセスのインデックスが整数値ではありませんでした。");
 				}
 			}
 			else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
 			{
 				if (!IsType<Record>(objRef))
 				{
-					CGL_Error("オブジェクトがレコードでない");
+					CGL_ErrorNode(accessor, "レコードでない値に対してレコードアクセスを行おうとしました。");
 				}
 
 				const Record& record = As<Record>(objRef);
 				auto it = record.values.find(recordAccessOpt.value().name);
 				if (it == record.values.end())
 				{
-					CGL_Error("指定された識別子がレコード中に存在しない");
+					CGL_ErrorNode(accessor, "指定された識別子がレコード中に存在しませんでした。");
 				}
 
 				address = it->second;
@@ -2442,7 +2412,7 @@ namespace cgl
 
 				if (!IsType<FuncVal>(objRef))
 				{
-					CGL_Error("オブジェクトが関数でない");
+					CGL_ErrorNode(accessor, "関数でない値に対して関数呼び出しを行おうとしました。");
 				}
 
 				const FuncVal& function = As<FuncVal>(objRef);
@@ -2474,7 +2444,7 @@ namespace cgl
 					}
 				}
 
-				const Val returnedValue = pEnv->expand(callFunction(function, args));
+				const Val returnedValue = pEnv->expand(callFunction(accessor, function, args));
 				address = pEnv->makeTemporaryValue(returnedValue);
 			}
 		}
@@ -2493,7 +2463,7 @@ namespace cgl
 				return false;
 			}
 
-			CGL_Error("不正な値");
+			CGL_ErrorNodeInternal(node, "制約式の評価結果が不正な値でした。");
 		}
 
 		Address address = node.address(*pEnv);
@@ -2560,7 +2530,7 @@ namespace cgl
 			return false;
 		}
 
-		CGL_Error("invalid expression");
+		CGL_ErrorNodeInternal(node, "制約式の評価結果が不正な値でした。");
 		return false;
 	}
 
@@ -2631,7 +2601,7 @@ namespace cgl
 		else if (IsType<List>(value1))
 		{
 			//return As<List>(value1) == As<List>(value2);
-			CGL_Error("未対応");
+			CGL_Error("TODO:未対応");
 			return false;
 		}
 		else if (IsType<KeyValue>(value1))
@@ -2641,7 +2611,7 @@ namespace cgl
 		else if (IsType<Record>(value1))
 		{
 			//return As<Record>(value1) == As<Record>(value2);
-			CGL_Error("未対応");
+			CGL_Error("TODO:未対応");
 			return false;
 		}
 		else if (IsType<FuncVal>(value1))

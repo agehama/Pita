@@ -24,11 +24,21 @@
 
 namespace cgl
 {
+	struct LocationInfo {
+		unsigned locInfo_lineBegin = 0, locInfo_lineEnd = 0;
+		unsigned locInfo_posBegin = 0, locInfo_posEnd = 0;
+		std::string getInfo() const;
+	};
+
 	class Exception : public std::exception
 	{
 	public:
 		explicit Exception(const std::string& message) :message(message) {}
+		Exception(const std::string& message, const LocationInfo& info) :message(message), info(info), hasInfo(true) {}
 		const char* what() const noexcept override { return message.c_str(); }
+
+		LocationInfo info;
+		bool hasInfo = false;
 
 	private:
 		std::string message;
@@ -56,8 +66,8 @@ extern std::ofstream ofs;
 #define CGL_TagWarn  (std::string("[Warning] |> "))
 #define CGL_TagDebug (std::string("[Debug]   |> "))
 #define CGL_Error(message) (throw cgl::Exception(message + CGL_FileDesc))
-#define CGL_ErrorNode(node, message) (throw cgl::Exception(node.getInfo() + " " + message + " | " + CGL_FileDesc))
-#define CGL_ErrorNodeInternal(node, message) (throw cgl::Exception(std::string("内部エラー: ") + message + ", " + node.getInfo() + " | " + CGL_FileDesc))
+#define CGL_ErrorNode(info, message) (throw cgl::Exception(info.getInfo() + " " + message + " | " + CGL_FileDesc, info))
+#define CGL_ErrorNodeInternal(info, message) (throw cgl::Exception(std::string("内部エラー: ") + message + ", " + info.getInfo() + " | " + CGL_FileDesc, info))
 
 #define CGL_DBG (std::cout << std::string(CGL_FileName) << " - "<< __FUNCTION__ << ": " << __LINE__ << std::endl)
 
@@ -124,12 +134,6 @@ namespace cgl
 	{
 		return boost::get<T1>(t2);
 	}
-
-	struct LocationInfo {
-		unsigned locInfo_lineBegin = 0, locInfo_lineEnd = 0;
-		unsigned locInfo_posBegin = 0, locInfo_posEnd = 0;
-		std::string getInfo() const;
-	};
 
 	enum class UnaryOp
 	{

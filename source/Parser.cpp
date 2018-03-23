@@ -102,16 +102,23 @@ namespace cgl
 		{
 			CGL_Error(std::string() + "Error file_path \"" + filename + "\" does not exists.");
 		}
-		std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+		std::stringstream tabRemovedStr;
+		char c;
+		while (ifs.get(c))
+		{
+			if (c == '\t')
+				tabRemovedStr << "    ";
+			else
+				tabRemovedStr << c;
+		}
+		std::string sourceCode = tabRemovedStr.str();
 
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
 
 		workingDirectories.emplace(currentDirectory);
 
-		//cgl::alreadyImportedFiles.emplace(cgl::filesystem::canonical(cgl::filesystem::path(input_file)));
-
-
-		//boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(sourceCode.begin()), tend(sourceCode.end());
 		SourceT beginSource(sourceCode.begin()), endSource(sourceCode.end());
 		IteratorT beginIt(beginSource), endIt(endSource);
 

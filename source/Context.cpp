@@ -66,7 +66,7 @@ namespace cgl
 			{
 				return it->second;
 			}
-				
+
 			CGL_Error(std::string("reference error: ") + lrvalue.toString());
 		}
 

@@ -1,3 +1,5 @@
+import "common.cgl"
+
 shapeList = (f, depth, template -> 
 	if depth == 0
 	then shape{
@@ -15,6 +17,6 @@ shapeList = (f, depth, template ->
 
 tree = shape{
 	depth = 50
-	a: shapeList(shapeList, depth, shape{a:diff(triangle{}, Buffer(triangle{}, -0.1))}){scale = x2(100)}
+	a: shapeList(shapeList, depth, shape{a:Diff(triangle{}, Buffer(triangle{}, -0.1))}){scale = x2(100)}
 	a.b.b.b.b.b = 0
 }

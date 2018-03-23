@@ -1,8 +1,10 @@
+import "common.cgl"
+
 cs = {
-    rect = square{scale: {x: 50, y: 25}, pos:{x:0, y:0}}
+    rect = square{scale = {x: 50, y: 25}, pos = {x:0, y:0}}
     interval = 70
-    start: square{scale: {x: 5, y: 5}, pos:{x:90, y:50}}
-    end: square{scale: {x: 5, y: 5}, pos:{x:260, y:380}}
+    start: square{scale = {x: 5, y: 5}, pos = {x:90, y:50}}
+    end: square{scale = {x: 5, y: 5}, pos = {x:260, y:380}}
     p: path{
         points: 10
         passes: [start.pos, end.pos]
@@ -10,7 +12,7 @@ cs = {
         i = 0
         for yi in 1:5 do(
             for xi in 1:5 do(
-                obstacles = obstacles @ [rect{angle: 247*i, pos.x = interval*xi, pos.y = interval*yi}]
+                obstacles = obstacles @ [rect{angle = 247*i, pos.x = interval*xi, pos.y = interval*yi}]
                 i = i + 1
             )
         )

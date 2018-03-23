@@ -11,9 +11,8 @@ arcPath = (r, begin, end, num ->
 })
 
 main = shape{
-    rect = square{scale: 
-    {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
-    tri = hexagon{scale: {x:100, y:100}}
+    rect = square{scale = {x: 60, y: 30}, pos = {x: 100, y: 100}, angle = 30}
+    tri = hexagon{scale = {x:100, y:100}}
     
     koch_shape = koch_curve.curve(5)
     arrow3= FunctionPath(Sin, 180, 360, 100){
@@ -39,4 +38,3 @@ main = shape{
         stroke: {r: 0, g: 128, b: 128}
     }
 }
-

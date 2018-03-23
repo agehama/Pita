@@ -1,5 +1,7 @@
+import "common.cgl"
+
 route = shape{
-    rect: square{scale: {x: 200, y: 100}, pos: {x: 100, y: 100}}
+    rect: square{scale = {x: 200, y: 100}, pos = {x: 100, y: 100}}
     arrow: path{
         points: 10
         passes: [rect.top(), moved(rect.right(), 50, 0), rect.bottom()]

@@ -2313,6 +2313,16 @@ namespace cgl
 		}
 		*/
 
+
+		if (IsType<Identifier>(accessor.head))
+		{
+			const auto head = As<Identifier>(accessor.head);
+			if (!pEnv->findAddress(head).isValid())
+			{
+				CGL_ErrorNode(accessor, std::string() + "識別子\"" + head.toString() + "\"が定義されていません。");
+			}
+		}
+
 		LRValue headValue = boost::apply_visitor(*this, accessor.head);
 		if (headValue.isLValue())
 		{

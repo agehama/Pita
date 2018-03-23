@@ -1,9 +1,8 @@
-vec2 = (x, y -> {x: x, y: y})
-x2 = (v -> {x: v, y: v})
+import "common.cgl"
 
 main = shape{
 	ss: []
-	rect = square{scale: x2(20)}
+	rect = square{scale = x2(20)}
 	i = 0
 	interval = 25
 	for yi in 0:9 do(

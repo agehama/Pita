@@ -35,7 +35,7 @@ rgb = (r, g, b -> {r: r, g: g, b: b})
 
 square = shape{
     polygon: [
-        {x: -1, y: -1}, {x: +1, y: -1}, {x: +1, y: +1}, {x: -1, y: +1}
+        {x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}, {x: +0.5, y: +0.5}, {x: -0.5, y: +0.5}
     ]
     topLeft:     (->globalPos( polygon[0] ))
     topRight:    (->globalPos( polygon[1] ))

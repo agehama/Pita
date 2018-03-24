@@ -4,4 +4,4 @@ fib = (x, f ->
 	else f(x-1, f) + f(x-2, f)
 )
 
-print(fib(23, fib))
+Print(fib(23, fib))

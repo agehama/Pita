@@ -33,11 +33,11 @@ rec_curve = (f, depth, template, ps ->
 
 tree = shape{
     tri = triangle{scale = {x: 10, y: 10}}
-    depth =  5
+    depth = 5
     a: shape{
         l: [
             rec_curve(rec_curve, depth, koch_template, [tri.p0(), tri.p1()])
-            rec_curve(rec_curve, depth, koch_template, [tri.p2(), tri.p2()])
+            rec_curve(rec_curve, depth, koch_template, [tri.p1(), tri.p2()])
             rec_curve(rec_curve, depth, koch_template, [tri.p2(), tri.p0()])
         ]
         scale = x2(70)

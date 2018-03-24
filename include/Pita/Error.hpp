@@ -42,18 +42,18 @@ extern std::ofstream ofs;
 #define CGL_TagWarn  (std::string("[Warning] |> "))
 #define CGL_TagDebug (std::string("[Debug]   |> "))
 
-#define OutputFileDesc
+//#define OutputFileDesc
 
 #ifdef OutputFileDesc
-#define CGL_Error(message) (throw cgl::Exception(std::string("Error: ") + message + " | " + CGL_FileDesc))
-#define CGL_ErrorInternal(message) (throw cgl::Exception(std::string("Error ") + std::string("内部エラー: ") + message + " | " + CGL_FileDesc))
-#define CGL_ErrorNode(info, message) (throw cgl::Exception(std::string("Error ") + info.getInfo() + ": " + message + " | " + CGL_FileDesc, info))
-#define CGL_ErrorNodeInternal(info, message) (throw cgl::Exception(std::string("Error ") + std::string("内部エラー: ") + message + ", " + info.getInfo() + " | " + CGL_FileDesc, info))
+#define CGL_Error(message) (throw cgl::Exception(std::string("Error") + message + " | " + CGL_FileDesc))
+#define CGL_ErrorInternal(message) (throw cgl::Exception(std::string("Error") + std::string("内部エラー: ") + message + " | " + CGL_FileDesc))
+#define CGL_ErrorNode(info, message) (throw cgl::Exception(std::string("Error") + info.getInfo() + ": " + message + " | " + CGL_FileDesc, info))
+#define CGL_ErrorNodeInternal(info, message) (throw cgl::Exception(std::string("Error") + std::string("内部エラー: ") + message + ", " + info.getInfo() + " | " + CGL_FileDesc, info))
 #else
-#define CGL_Error(message) (throw cgl::Exception(std::string("Error: ") + message + CGL_FileDesc))
-#define CGL_ErrorInternal(message) (throw cgl::Exception(std::string("Error ") + std::string("内部エラー: ") + message))
-#define CGL_ErrorNode(info, message) (throw cgl::Exception(std::string("Error ") + info.getInfo() + ": " + message, info))
-#define CGL_ErrorNodeInternal(info, message) (throw cgl::Exception(std::string("Error ") + std::string("内部エラー: ") + message + ", " + info.getInfo(), info))
+#define CGL_Error(message) (throw cgl::Exception(std::string("Error") + message + CGL_FileDesc))
+#define CGL_ErrorInternal(message) (throw cgl::Exception(std::string("Error") + std::string("内部エラー: ") + message))
+#define CGL_ErrorNode(info, message) (throw cgl::Exception(std::string("Error") + info.getInfo() + ": " + message, info))
+#define CGL_ErrorNodeInternal(info, message) (throw cgl::Exception(std::string("Error") + std::string("内部エラー: ") + message + ", " + info.getInfo(), info))
 #endif
 
 #define CGL_DBG (std::cout << std::string(CGL_FileName) << " - "<< __FUNCTION__ << ": " << __LINE__ << std::endl)

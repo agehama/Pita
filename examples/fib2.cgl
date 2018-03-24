@@ -8,4 +8,4 @@ fib = (x, fib ->
 		else memo[x] = fib(x-1, fib) + fib(x-2, fib)
 )
 
-print(fib(45, fib))
+Print(fib(45, fib))

@@ -26,7 +26,7 @@ namespace cgl
 	std::string LocationInfo::getInfo() const
 	{
 		std::stringstream ss;
-		ss << "at [L" << locInfo_lineBegin << ":" << locInfo_posBegin << "-" << "L" << locInfo_lineEnd << ":" << locInfo_posEnd << "]";
+		ss << "[L" << locInfo_lineBegin << ":" << locInfo_posBegin << "-" << "L" << locInfo_lineEnd << ":" << locInfo_posEnd << "]";
 		return ss.str();
 	}
 

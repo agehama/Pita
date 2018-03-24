@@ -1,3 +1,5 @@
+import "common.cgl"
+
 stick = shape{
     scale = {x:1, y:3}
     polygon: [

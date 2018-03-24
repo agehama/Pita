@@ -64,37 +64,6 @@ namespace cgl
 		void operator()(const DeclFree& node)const {}
 	};
 
-	//inline boost::optional<Expr> Parse(const std::string& program)
-	//{
-	//	boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
-
-	//	Lines lines;
-
-	//	SpaceSkipper<IteratorT> skipper;
-	//	Parser<IteratorT, SpaceSkipperT> grammer;
-
-	//	auto it = tbegin;
-	//	if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
-	//	{
-	//		//std::cerr << "Syntax Error: parse failed\n";
-	//		std::cout << "Syntax Error: parse failed\n";
-	//		workingDirectories.pop();
-	//		return boost::none;
-	//	}
-
-	//	if (it != tend)
-	//	{
-	//		//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
-	//		std::cout << "Syntax Error: ramains input\n";
-	//		workingDirectories.pop();
-	//		return boost::none;
-	//	}
-
-	//	Expr result = lines;
-	//	workingDirectories.pop();
-	//	return result;
-	//}
-
 	boost::optional<Expr> Parse1(const std::string& filename)
 	{
 		std::cout << "parsing: \"" << filename << "\"" << std::endl;

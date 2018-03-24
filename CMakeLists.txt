@@ -4,7 +4,7 @@ cmake_policy(SET CMP0024 OLD)
 
 project(Pita)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_CXX_STANDARD 17)
 
 set(Boost_USE_STATIC_LIBS ON)

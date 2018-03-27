@@ -1085,4 +1085,20 @@ namespace cgl
 		CGL_ErrorNodeInternal(node, "不明な二項演算子です。");
 		return 0;
 	}
+
+	LRValue EvalSatExpr::operator()(const KeyExpr& node)
+	{
+		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
+		Val rhs = pEnv->expand(rhs_, node);
+		if (pEnv->existsInCurrentScope(node.name))
+		{
+			CGL_ErrorNode(node, "制約式中では変数への再代入は行えません。");
+		}
+		else
+		{
+			pEnv->bindNewValue(node.name, rhs);
+		}
+
+		return RValue(rhs);
+	}
 }

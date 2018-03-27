@@ -362,7 +362,7 @@ namespace cgl
 
 		LRValue operator()(const ListConstractor& node) { return Eval::operator()(node); }
 
-		LRValue operator()(const KeyExpr& node) { return Eval::operator()(node); }
+		LRValue operator()(const KeyExpr& node)override;
 
 		LRValue operator()(const RecordConstractor& node) { return Eval::operator()(node); }
 

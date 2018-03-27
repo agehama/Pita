@@ -4,7 +4,14 @@
 
 namespace cgl
 {
-	PackedList ShapeDifference(const PackedVal& lhs, const PackedVal& rhs);
+	PackedList ShapeDiff(const PackedVal& lhs, const PackedVal& rhs);
+
+	PackedList ShapeUnion(const PackedVal& lhs, const PackedVal& rhs);
+
+	PackedList ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs);
+
+	PackedList ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs);
+
 
 	PackedList ShapeBuffer(const PackedVal& shape, const PackedVal& amount);
 

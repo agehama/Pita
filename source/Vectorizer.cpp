@@ -1022,9 +1022,25 @@ namespace cgl
 			case geos::geom::GEOS_MULTIPOINT:
 				break;
 			case geos::geom::GEOS_MULTILINESTRING:
+			{
+				const gg::MultiLineString* lines = dynamic_cast<const gg::MultiLineString*>(shape);
+				for (int i = 0; i < lines->getNumGeometries(); ++i)
+				{
+					const gg::LineString* line = dynamic_cast<const gg::LineString*>(lines->getGeometryN(i));
+					resultShapes.add(GetLineStringPacked(line));
+				}
 				break;
+			}
 			case geos::geom::GEOS_MULTIPOLYGON:
+			{
+				const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(shape);
+				for (int i = 0; i < polygons->getNumGeometries(); ++i)
+				{
+					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(polygons->getGeometryN(i));
+					resultShapes.add(GetPolygonPacked(polygon));
+				}
 				break;
+			}
 			case geos::geom::GEOS_GEOMETRYCOLLECTION:
 				break;
 			default:

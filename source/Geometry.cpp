@@ -5,6 +5,7 @@
 #include <geos/geom.h>
 #include <geos/opBuffer.h>
 #include <geos/opDistance.h>
+#include <geos/operation/union/CascadedUnion.h>
 
 #include <cmaes.h>
 
@@ -408,7 +409,7 @@ namespace cgl
 		}
 	};
 
-	PackedList ShapeDifference(const PackedVal& lhs, const PackedVal& rhs)
+	PackedList ShapeDiff(const PackedVal& lhs, const PackedVal& rhs)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
 		{
@@ -457,7 +458,7 @@ namespace cgl
 					else if(erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON && 
 						erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
-						std::cout << " Differenceの結果が予期せぬデータ形式 : " << GetGeometryType(erodeGeometry) << std::endl;
+						CGL_Error(std::string("Diffの結果が予期せぬデータ形式: \"") + GetGeometryType(erodeGeometry) + "\"");
 					}
 				}
 
@@ -466,6 +467,103 @@ namespace cgl
 
 			return GetShapesFromGeosPacked(resultGeometries);
 		}
+	}
+
+	PackedList ShapeUnion(const PackedVal& lhs, const PackedVal& rhs)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+
+		lhsPolygon.insert(lhsPolygon.end(), rhsPolygon.begin(), rhsPolygon.end());
+
+		geos::operation::geounion::CascadedUnion unionCalc(&lhsPolygon);
+		gg::Geometry* result = unionCalc.Union();
+
+		return GetShapesFromGeosPacked({ result });
+	}
+
+	PackedList ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+
+		auto factory = gg::GeometryFactory::create();
+
+		if (lhsPolygon.empty() || rhsPolygon.empty())
+		{
+			return {};
+		}
+		else
+		{
+			std::vector<gg::Geometry*> resultGeometries;
+
+			for (int s = 0; s < lhsPolygon.size(); ++s)
+			{
+				gg::Geometry* erodeGeometry = lhsPolygon[s];
+
+				for (int d = 0; d < rhsPolygon.size(); ++d)
+				{
+					erodeGeometry = erodeGeometry->intersection(rhsPolygon[d]);
+
+					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					{
+						lhsPolygon.erase(lhsPolygon.begin() + s);
+
+						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+
+						for (int i = 0; i < polygons->getNumGeometries(); ++i)
+						{
+							lhsPolygon.insert(lhsPolygon.begin() + s, polygons->getGeometryN(i)->clone());
+						}
+
+						erodeGeometry = lhsPolygon[s];
+					}
+					else if (erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON &&
+						erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
+					{
+						CGL_Error(std::string("Intersectの結果が予期せぬデータ形式: \"") + GetGeometryType(erodeGeometry) + "\"");
+					}
+				}
+
+				resultGeometries.push_back(erodeGeometry);
+			}
+
+			return GetShapesFromGeosPacked(resultGeometries);
+		}
+	}
+
+	PackedList ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+
+		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
+		gg::Geometry* lhsUnion = unionCalcLhs.Union();
+
+		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPolygon);
+		gg::Geometry* rhsUnion = unionCalcRhs.Union();
+
+		gg::Geometry* resultGeometry = lhsUnion->symDifference(rhsUnion);
+
+		return GetShapesFromGeosPacked({ resultGeometry });
 	}
 
 	PackedList ShapeBuffer(const PackedVal& shape, const PackedVal& amount)

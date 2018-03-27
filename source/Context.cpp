@@ -1410,7 +1410,49 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeDifference(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+			return Unpacked(ShapeDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"Union",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return Unpacked(ShapeUnion(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"Intersect",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return Unpacked(ShapeIntersect(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"SymDiff",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return Unpacked(ShapeSymDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
 		},
 			true
 			);

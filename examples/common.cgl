@@ -14,6 +14,7 @@ shape = {
 }
 
 mid = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
+mid3 = (a, b, c -> {x: (a.x + b.x + c.x)/3.0, y: (a.y + b.y + c.y)/3.0})
 
 moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
 
@@ -45,6 +46,7 @@ square = shape{
     bottom:      (->globalPos( mid(polygon[2], polygon[3]) ))
     left:        (->globalPos( mid(polygon[0], polygon[3]) ))
     right:       (->globalPos( mid(polygon[1], polygon[2]) ))
+    center:      (->globalPos( mid(top(), bottom()) ))
 }
 
 triangle = shape{
@@ -61,6 +63,7 @@ triangle = shape{
     bottom:      (->globalPos( mid(polygon[1], polygon[2]) ))
     left:        (->globalPos( polygon[2] ))
     right:       (->globalPos( polygon[1] ))
+    center:      (->globalPos( mid3(polygon[0], polygon[1], polygon[2]) ))
 }
 
 hexagon = shape{

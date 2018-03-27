@@ -1398,8 +1398,13 @@ namespace cgl
 			),
 			"min", MakeRecord("x", minX, "y", minY),
 			"max", MakeRecord("x", maxX, "y", maxY),
-			"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
-			"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
+			"topEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
+			"bottomEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY))),
+			"topLeft", MakeRecord("x", minX, "y", minY),
+			"topRight", MakeRecord("x", maxX, "y", minY),
+			"bottomLeft", MakeRecord("x", minX, "y", maxY),
+			"bottomRight", MakeRecord("x", maxX, "y", maxY),
+			"center", MakeRecord("x", (minX + maxX)*0.5, "y", (minY + maxY)*0.5)
 		);
 
 		return resultRecord;

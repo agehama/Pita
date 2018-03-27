@@ -9,6 +9,71 @@ namespace cgl
 
 	std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 
+	class GetInfo : public boost::static_visitor<LocationInfo&>
+	{
+	public:
+		GetInfo() = default;
+
+		LocationInfo& operator()(Lines& node) { return node; }
+		LocationInfo& operator()(BinaryExpr& node) { return node; }
+		LocationInfo& operator()(LRValue& node) { return node; }
+		LocationInfo& operator()(Identifier& node) { return node; }
+		LocationInfo& operator()(Import& node) { return node; }
+		LocationInfo& operator()(UnaryExpr& node) { return node; }
+		LocationInfo& operator()(Range& node) { return node; }
+		LocationInfo& operator()(DefFunc& node) { return node; }
+		LocationInfo& operator()(If& node) { return node; }
+		LocationInfo& operator()(For& node) { return node; }
+		LocationInfo& operator()(Return& node) { return node; }
+		LocationInfo& operator()(ListConstractor& node) { return node; }
+		LocationInfo& operator()(KeyExpr& node) { return node; }
+		LocationInfo& operator()(RecordConstractor& node) { return node; }
+		LocationInfo& operator()(RecordInheritor& node) { return node; }
+		LocationInfo& operator()(Accessor& node) { return node; }
+		LocationInfo& operator()(DeclSat& node) { return node; }
+		LocationInfo& operator()(DeclFree& node) { return node; }
+	};
+
+	inline LocationInfo& GetLocInfo(Expr& expr)
+	{
+		GetInfo getter;
+		return boost::apply_visitor(getter, expr);
+	}
+
+	void Annotator::doAnnotate(LocationInfo& li, IteratorT f, IteratorT l, SourceT first, SourceT last)
+	{
+		auto sourceBeginIt = f.base();
+		auto sourceEndIt = l.base();
+
+		auto lowerBound = get_line_start(first, sourceBeginIt);
+
+		li.locInfo_lineBegin = get_line(sourceBeginIt);
+		li.locInfo_lineEnd = get_line(sourceEndIt);
+
+		auto line = get_current_line(lowerBound, sourceBeginIt, last);
+
+		size_t cur_pos = 0, start_pos = 0, end_pos = 0;
+		for (IteratorT it = line.begin(), _eol = line.end(); ; ++it, ++cur_pos)
+		{
+			if (it.base() == sourceBeginIt) start_pos = cur_pos;
+			if (it.base() == sourceEndIt) end_pos = cur_pos;
+
+			if (*(it.base()) == '\n')
+				cur_pos = 0;
+
+			if (it == _eol)
+				break;
+		}
+
+		li.locInfo_posBegin = start_pos;
+		li.locInfo_posEnd = end_pos;
+	}
+
+	void Annotator::doAnnotate(Expr& li, IteratorT f, IteratorT l, SourceT first, SourceT last)
+	{
+		doAnnotate(GetLocInfo(li), f, l, first, last);
+	}
+
 	//importファイルはpathとnameの組で管理する
 	//最初のパース時にimportされるpathとnameの組を登録しておき、
 	//パース直後(途中だとバックトラックが走る可能性があるためパースが終わってから)にそのソースがimportするソースのパースを再帰的に行う

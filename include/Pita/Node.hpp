@@ -836,9 +836,16 @@ namespace cgl
 		Expr rhs;
 		BinaryOp op;
 
+		BinaryExpr() = default;
+
 		BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
 			lhs(lhs), rhs(rhs), op(op)
 		{}
+
+		static BinaryExpr Make(const Expr& lhs, const Expr& rhs, BinaryOp op)
+		{
+			return BinaryExpr(lhs, rhs, op);
+		}
 
 		BinaryExpr& setLocation(const LocationInfo& info)
 		{

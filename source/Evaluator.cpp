@@ -11,6 +11,58 @@ extern int constraintViolationCount;
 
 namespace cgl
 {
+	class ExprLocationInfo : public boost::static_visitor<std::string>
+	{
+	public:
+		ExprLocationInfo() = default;
+
+		std::string operator()(const Lines& node)const
+		{
+			std::string result = node.getInfo();
+			for (const auto& expr : node.exprs)
+			{
+				result += boost::apply_visitor(*this, expr);
+			}
+			return result;
+		}
+
+		std::string operator()(const UnaryExpr& node)const
+		{
+			std::string result = node.getInfo();
+			result += boost::apply_visitor(*this, node.lhs);
+			return result;
+		}
+
+		std::string operator()(const BinaryExpr& node)const
+		{
+			std::string result = node.getInfo();
+			result += boost::apply_visitor(*this, node.lhs);
+			result += boost::apply_visitor(*this, node.rhs);
+			return result;
+		}
+
+		std::string operator()(const LRValue& node)const { return node.getInfo(); }
+		std::string operator()(const Identifier& node)const { return node.getInfo(); }
+		std::string operator()(const Import& node)const { return node.getInfo(); }
+		std::string operator()(const Range& node)const { return node.getInfo(); }
+		std::string operator()(const DefFunc& node)const { return node.getInfo(); }
+		std::string operator()(const If& node)const { return node.getInfo(); }
+		std::string operator()(const For& node)const { return node.getInfo(); }
+		std::string operator()(const Return& node)const { return node.getInfo(); }
+		std::string operator()(const ListConstractor& node)const { return node.getInfo(); }
+		std::string operator()(const KeyExpr& node)const { return node.getInfo(); }
+		std::string operator()(const RecordConstractor& node)const { return node.getInfo(); }
+		std::string operator()(const RecordInheritor& node)const { return node.getInfo(); }
+		std::string operator()(const Accessor& node)const { return node.getInfo(); }
+		std::string operator()(const DeclSat& node)const { return node.getInfo(); }
+		std::string operator()(const DeclFree& node)const { return node.getInfo(); }
+	};
+
+	inline std::string GetLocationInfo(const Expr& expr)
+	{
+		return boost::apply_visitor(ExprLocationInfo(), expr);
+	}
+
 	void ProgressStore::TryWrite(std::shared_ptr<Context> env, const Val& value)
 	{
 		ProgressStore& i = Instance();
@@ -1433,11 +1485,26 @@ namespace cgl
 
 	LRValue Eval::operator()(const KeyExpr& node)
 	{
+		/*
 		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
 		Val rhs = pEnv->expand(rhs_, node);
 		if (pEnv->existsInCurrentScope(node.name))
 		{
 			CGL_ErrorNode(node, "宣言演算子\":\"による変数への値の再代入は行えません。代わりに代入演算子\"=\"を使用してください。");
+		}
+		else
+		{
+			pEnv->bindNewValue(node.name, rhs);
+		}
+
+		return RValue(rhs);
+		*/
+
+		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
+		Val rhs = pEnv->expand(rhs_, node);
+		if (pEnv->existsInCurrentScope(node.name))
+		{
+			pEnv->bindValueID(node.name, pEnv->makeTemporaryValue(rhs));
 		}
 		else
 		{

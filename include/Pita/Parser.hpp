@@ -57,8 +57,6 @@ namespace cgl
 
 	struct Annotator
 	{
-		//typedef void result_type;
-
 		Annotator(SourceT first, SourceT last) :
 			first(first),
 			last(last)
@@ -74,34 +72,8 @@ namespace cgl
 		}
 
 	private:
-		void static doAnnotate(LocationInfo& li, IteratorT f, IteratorT l, SourceT first, SourceT last)
-		{
-			auto sourceBeginIt = f.base();
-			auto sourceEndIt = l.base();
-
-			auto lowerBound = get_line_start(first, sourceBeginIt);
-
-			li.locInfo_lineBegin = get_line(sourceBeginIt);
-			li.locInfo_lineEnd = get_line(sourceEndIt);
-
-			auto line = get_current_line(lowerBound, sourceBeginIt, last);
-
-			size_t cur_pos = 0, start_pos = 0, end_pos = 0;
-			for (IteratorT it = line.begin(), _eol = line.end(); ; ++it, ++cur_pos)
-			{
-				if (it.base() == sourceBeginIt) start_pos = cur_pos;
-				if (it.base() == sourceEndIt) end_pos = cur_pos;
-
-				if (*(it.base()) == '\n')
-					cur_pos = 0;
-
-				if (it == _eol)
-					break;
-			}
-
-			li.locInfo_posBegin = start_pos;
-			li.locInfo_posEnd = end_pos;
-		}
+		static void doAnnotate(LocationInfo& li, IteratorT f, IteratorT l, SourceT first, SourceT last);
+		static void doAnnotate(Expr& li, IteratorT f, IteratorT l, SourceT first, SourceT last);
 		static void doAnnotate(...) {}
 	};
 
@@ -265,7 +237,7 @@ namespace cgl
 				);
 
 			key_expr = id[_val = Call(KeyExpr::Make, _1)] >> s >> ':' >> s >> basic_arith_expr[Call(KeyExpr::SetExpr, _val, _1)];
-
+			
 			basic_arith_expr = term[_val = _1] >>
 				*(
 				(s >> '+' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
@@ -359,6 +331,17 @@ namespace cgl
 			s = *(encode::space);
 
 			auto setLocationInfo = annotate(_val, _1, _3);
+			qi::on_success(general_expr, setLocationInfo);
+			qi::on_success(logic_expr, setLocationInfo);
+			qi::on_success(logic_term, setLocationInfo);
+			qi::on_success(logic_factor, setLocationInfo);
+			qi::on_success(compare_expr, setLocationInfo);
+			qi::on_success(arith_expr, setLocationInfo);
+			qi::on_success(basic_arith_expr, setLocationInfo);
+			qi::on_success(term, setLocationInfo);
+			qi::on_success(factor, setLocationInfo);
+			qi::on_success(pow_term, setLocationInfo);
+			qi::on_success(pow_term1, setLocationInfo);
 			qi::on_success(constraints, setLocationInfo);
 			qi::on_success(freeVals, setLocationInfo);
 			qi::on_success(functionAccess, setLocationInfo);

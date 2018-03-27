@@ -980,7 +980,7 @@ namespace cgl
 	{
 		if (node.op == UnaryOp::Not)
 		{
-			CGL_Error("TODO: sat宣言中のnot演算子は未対応です");
+			CGL_ErrorNode(node, "TODO: sat宣言中のnot演算子は未対応です。");
 		}
 
 		Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs), node);
@@ -990,7 +990,7 @@ namespace cgl
 		case UnaryOp::Minus:  return Minus(lhs, *pEnv);
 		}
 
-		CGL_Error("TODO: 未対応");
+		CGL_ErrorNodeInternal(node, "不明な単項演算子です。");
 		return 0;
 	}
 
@@ -1037,7 +1037,7 @@ namespace cgl
 		}
 		else if (auto valOpt = AsOpt<LRValue>(node.lhs))
 		{
-			CGL_Error("一時オブジェクトへの代入はできません");
+			CGL_ErrorNode(node, "一時オブジェクトへの代入はできません。");
 		}
 		else if (auto valOpt = AsOpt<Identifier>(node.lhs))
 		{
@@ -1048,7 +1048,8 @@ namespace cgl
 			if (address.isValid())
 			{
 				//pEnv->assignToObject(address, rhs);
-				pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
+				//pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
+				CGL_ErrorNode(node, "制約式中では変数への再代入は行えません。");
 			}
 			//変数が存在しない：変数宣言式
 			else
@@ -1072,16 +1073,16 @@ namespace cgl
 				}
 				else
 				{
-					CGL_Error("参照エラー");
+					CGL_ErrorNode(node, "アクセッサの評価結果が無効なアドレス値です。");
 				}
 			}
 			else
 			{
-				CGL_Error("アクセッサの評価結果がアドレスでない");
+				CGL_Error("アクセッサの評価結果が無効な値です。");
 			}
 		}
 
-		CGL_Error("ここは通らないはず");
+		CGL_ErrorNodeInternal(node, "不明な二項演算子です。");
 		return 0;
 	}
 }

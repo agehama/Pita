@@ -7,7 +7,8 @@
 
 namespace cgl
 {
-	struct LocationInfo {
+	struct LocationInfo
+	{
 		unsigned locInfo_lineBegin = 0, locInfo_lineEnd = 0;
 		unsigned locInfo_posBegin = 0, locInfo_posEnd = 0;
 		std::string getInfo() const;
@@ -42,7 +43,7 @@ extern std::ofstream ofs;
 #define CGL_TagWarn  (std::string("[Warning] |> "))
 #define CGL_TagDebug (std::string("[Debug]   |> "))
 
-#define OutputFileDesc
+//#define OutputFileDesc
 
 #ifdef OutputFileDesc
 #define CGL_Error(message) (throw cgl::Exception(std::string("Error") + message + " | " + CGL_FileDesc))
@@ -57,6 +58,7 @@ extern std::ofstream ofs;
 #endif
 
 #define CGL_DBG (std::cout << std::string(CGL_FileName) << " - "<< __FUNCTION__ << "(): " << __LINE__ << std::endl)
+#define CGL_DBG1(message) (std::cout << message << " | " << std::string(CGL_FileName) << " - "<< __FUNCTION__ << "(): " << __LINE__ << std::endl)
 
 #ifdef CGL_EnableLogOutput
 #define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))

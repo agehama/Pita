@@ -470,7 +470,7 @@ namespace cgl
 		return true;
 	}
 
-	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
+	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const LocationInfo& info, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
 	{
 		constructConstraint(pEnv);
 
@@ -539,7 +539,7 @@ namespace cgl
 					}
 
 					pEnv->switchFrontScope();
-					double result = eval(pEnv);
+					double result = eval(pEnv, info);
 					pEnv->switchBackScope();
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
@@ -593,7 +593,7 @@ namespace cgl
 					}
 
 					pEnv->switchFrontScope();
-					double result = eval(pEnv);
+					double result = eval(pEnv, info);
 					pEnv->switchBackScope();
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
@@ -628,7 +628,7 @@ namespace cgl
 		return resultxs;
 	}
 
-	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv)
+	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv, const LocationInfo& info)
 	{
 		if (!expr)
 		{
@@ -668,7 +668,7 @@ namespace cgl
 		}*/
 		
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.value()), LocationInfo());
+		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.value()), info);
 		
 		if (IsType<double>(evaluated))
 		{

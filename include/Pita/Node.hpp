@@ -169,6 +169,15 @@ namespace cgl
 			name(name_)
 		{}
 
+		Identifier& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		static Identifier MakeIdentifier(const std::u32string& name_);
 
 		bool operator==(const Identifier& other)const
@@ -528,6 +537,15 @@ namespace cgl
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
 		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
+		LRValue& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		bool isRValue()const
 		{
 			return IsType<RValue>(value);
@@ -626,6 +644,15 @@ namespace cgl
 
 		Import(const std::u32string& file, const Identifier& name);
 
+		Import& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		LRValue eval(std::shared_ptr<Context> pContext)const;
 
 		static Import Make(const std::u32string& filePath)
@@ -685,7 +712,7 @@ namespace cgl
 		void addUnitConstraint(const Expr& logicExpr);
 		//void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables);
 
-		std::vector<double> solve(std::shared_ptr<Context> pEnv, const Record currentRecord, const std::vector<Identifier>& currentKeyList);
+		std::vector<double> solve(std::shared_ptr<Context> pEnv, const LocationInfo& info, const Record currentRecord, const std::vector<Identifier>& currentKeyList);
 
 	private:
 		void constructConstraint(std::shared_ptr<Context> pEnv);
@@ -697,7 +724,7 @@ namespace cgl
 			data[index] = x;
 		}
 
-		double eval(std::shared_ptr<Context> pEnv);
+		double eval(std::shared_ptr<Context> pEnv, const LocationInfo& info);
 	};
 
 	struct SatUnaryExpr
@@ -783,6 +810,15 @@ namespace cgl
 			lhs(lhs), op(op)
 		{}
 
+		UnaryExpr& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		bool operator==(const UnaryExpr& other)const
 		{
 			if (op != other.op)
@@ -803,6 +839,15 @@ namespace cgl
 		BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
 			lhs(lhs), rhs(rhs), op(op)
 		{}
+
+		BinaryExpr& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		bool operator==(const BinaryExpr& other)const
 		{
@@ -829,6 +874,15 @@ namespace cgl
 		Range(const Expr& lhs, const Expr& rhs) :
 			lhs(lhs), rhs(rhs)
 		{}
+
+		Range& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static Range Make(const Expr& lhs)
 		{
@@ -859,6 +913,15 @@ namespace cgl
 		Lines(const std::vector<Expr>& exprs_) :
 			exprs(exprs_)
 		{}
+
+		Lines& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		void add(const Expr& expr)
 		{
@@ -1029,6 +1092,15 @@ namespace cgl
 			}
 		}
 
+		DefFunc& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		static bool IsValidArgs(const Lines& arguments_, const Expr& expr_)
 		{
 			for (size_t i = 0; i < arguments_.size(); ++i)
@@ -1072,6 +1144,15 @@ namespace cgl
 		If(const Expr& cond) :
 			cond_expr(cond)
 		{}
+
+		If& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static If Make(const Expr& cond)
 		{
@@ -1128,6 +1209,15 @@ namespace cgl
 			doExpr(doExpr)
 		{}
 
+		For& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		static For Make(const Identifier& loopCounter)
 		{
 			For obj;
@@ -1171,6 +1261,15 @@ namespace cgl
 			expr(expr)
 		{}
 
+		Return& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		static Return Make(const Expr& expr)
 		{
 			return Return(expr);
@@ -1191,6 +1290,15 @@ namespace cgl
 		ListConstractor(const Expr& expr) :
 			data({ expr })
 		{}
+
+		ListConstractor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		ListConstractor& add(const Expr& expr)
 		{
@@ -1368,6 +1476,15 @@ namespace cgl
 			name(name), expr(expr)
 		{}
 
+		KeyExpr& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		static KeyExpr Make(const Identifier& name)
 		{
 			return KeyExpr(name);
@@ -1395,6 +1512,15 @@ namespace cgl
 		std::vector<Expr> exprs;
 
 		RecordConstractor() = default;
+
+		RecordConstractor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		RecordConstractor& add(const Expr& expr)
 		{
@@ -1463,6 +1589,15 @@ namespace cgl
 		DeclSat(const Expr& expr) :
 			expr(expr)
 		{}
+
+		DeclSat& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static DeclSat Make(const Expr& expr)
 		{
@@ -1642,6 +1777,15 @@ namespace cgl
 		std::vector<Expr> ranges;
 
 		DeclFree() = default;
+
+		DeclFree& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		void addAccessor(const Accessor& accessor)
 		{
@@ -1987,6 +2131,15 @@ namespace cgl
 			head(head)
 		{}
 
+		Accessor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		Accessor& add(const Access& access)
 		{
 			accesses.push_back(access);
@@ -2162,6 +2315,15 @@ namespace cgl
 		RecordInheritor(const Expr& original) :
 			original(original)
 		{}
+
+		RecordInheritor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static RecordInheritor MakeIdentifier(const Identifier& original)
 		{

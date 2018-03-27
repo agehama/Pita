@@ -1355,6 +1355,14 @@ namespace cgl
 				ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
 				currentStream << "stroke=\"" << currentColor.toString() << "\" ";
 			}
+			else if (member.first == "stroke_width")
+			{
+				if (!IsNum(value))
+				{
+					CGL_Error("stroke_widthに数値以外の値が指定されました");
+				}
+				currentStream << "stroke-width=\"" << AsDouble(value) << "\" ";
+			}
 			else if (IsType<PackedRecord>(value))
 			{
 				hasShape = GeosFromRecordImpl2Packed(currentChildStream, As<PackedRecord>(value), member.first, depth + 1, transform) || hasShape;

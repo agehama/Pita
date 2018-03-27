@@ -17,6 +17,8 @@ namespace cgl
 
 	double ShapeArea(const PackedVal& lhs);
 
+	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs);
+
 	PackedList GetDefaultFontString(const std::string& str);
 
 

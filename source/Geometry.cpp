@@ -612,6 +612,29 @@ namespace cgl
 		return area;
 	}
 
+	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+
+		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
+		gg::Geometry* lhsUnion = unionCalcLhs.Union();
+
+		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPolygon);
+		gg::Geometry* rhsUnion = unionCalcRhs.Union();
+
+		gg::Geometry* resultGeometry = lhsUnion->symDifference(rhsUnion);
+
+		geos::operation::distance::DistanceOp distOp(lhsUnion, rhsUnion);
+		return distOp.distance();
+	}
+
 	PackedList GetDefaultFontString(const std::string& str)
 	{
 		if (str.empty() || str.front() == ' ')

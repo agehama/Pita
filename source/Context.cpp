@@ -994,7 +994,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			printVal(pEnv->expand(arguments[0], info), pEnv, std::cout, 0);
@@ -1009,7 +1009,7 @@ namespace cgl
 		{
 			if (arguments.size() != 0)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			printContext(std::cout);
@@ -1025,7 +1025,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& value = pEnv->expand(arguments[0], info);
@@ -1038,7 +1038,7 @@ namespace cgl
 				return static_cast<int>(opt.value().values.size());
 			}
 
-			CGL_Error("不正な式です");
+			CGL_ErrorNode(info, "不正な式です");
 			return 0;
 		},
 			false
@@ -1059,13 +1059,13 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& value = pEnv->expand(arguments[0], info);
 			if (!IsNum(value))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return deg2rad * AsDouble(value);
@@ -1079,13 +1079,13 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& value = pEnv->expand(arguments[0], info);
 			if (!IsNum(value))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return rad2deg * AsDouble(value);
@@ -1099,13 +1099,13 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return std::sin(deg2rad*AsDouble(x));
@@ -1119,13 +1119,13 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return std::cos(deg2rad*AsDouble(x));
@@ -1139,13 +1139,13 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return std::sin(AsDouble(x));
@@ -1159,13 +1159,13 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& x = pEnv->expand(arguments[0], info);
 			if (!IsNum(x))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return std::cos(AsDouble(x));
@@ -1179,7 +1179,7 @@ namespace cgl
 		{
 			if (arguments.size() != 2)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const double x0 = AsDouble(expand(arguments[0], info));
@@ -1196,7 +1196,7 @@ namespace cgl
 		{
 			if (arguments.size() != 0 && arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			if (arguments.empty())
@@ -1209,7 +1209,7 @@ namespace cgl
 				const Val& value = expand(arguments[0], info);
 				if (!IsType<int>(value))
 				{
-					CGL_Error("引数の型が正しくありません");
+					CGL_ErrorNode(info, "引数の型が正しくありません");
 				}
 				m_random.seed(As<int>(value));
 			}
@@ -1225,7 +1225,7 @@ namespace cgl
 		{
 			if (arguments.size() != 2 && arguments.size() != 3)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& passesVal = pEnv->expand(arguments[0], info);
@@ -1235,11 +1235,11 @@ namespace cgl
 
 			if (!IsType<List>(passesVal) || !IsType<int>(numVal))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 			if (obstaclesValOpt && !IsType<List>(obstaclesValOpt.value()))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			if (obstaclesValOpt)
@@ -1257,7 +1257,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1 && arguments.size() != 2)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 			//buildText(str, basePath)
 
@@ -1266,11 +1266,11 @@ namespace cgl
 
 			if (!IsType<CharString&>(strVal))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 			if (baseLineOpt && !IsType<Record>(baseLineOpt.value()))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			if (baseLineOpt)
@@ -1288,7 +1288,7 @@ namespace cgl
 		{
 			if (arguments.size() != 2)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& arg1 = pEnv->expand(arguments[0], info);
@@ -1296,14 +1296,41 @@ namespace cgl
 
 			if (!IsType<Record>(arg1))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 			if (!IsType<double>(arg2) && !IsType<int>(arg2))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return GetOffsetPath(As<PackedRecord>(As<Record>(arg1).packed(*this)), AsDouble(arg2)).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"SubPath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 3)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg2 = pEnv->expand(arguments[1], info);
+			const Val& arg3 = pEnv->expand(arguments[2], info);
+
+			if (!IsType<Record>(arg1))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+			if (!IsNum(arg2) || !IsNum(arg3))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetSubPath(As<PackedRecord>(As<Record>(arg1).packed(*this)), AsDouble(arg2), AsDouble(arg3)).unpacked(*this);
 		},
 			true
 			);
@@ -1314,7 +1341,7 @@ namespace cgl
 		{
 			if (arguments.size() != 4)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& func = pEnv->expand(arguments[0], info);
@@ -1324,7 +1351,7 @@ namespace cgl
 
 			if (!IsType<FuncVal>(func) || !IsNum(beginX) || !IsNum(endX) || !IsType<int>(numOfPoints))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return GetFunctionPath(m_weakThis.lock(), info, As<FuncVal>(func), AsDouble(beginX), AsDouble(endX), As<int>(numOfPoints)).unpacked(*this);
@@ -1338,14 +1365,14 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& arg1 = pEnv->expand(arguments[0], info);
 
 			if (!IsType<Record>(arg1))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 			
 			return GetShapeOuterPaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
@@ -1359,14 +1386,14 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& arg1 = pEnv->expand(arguments[0], info);
 
 			if (!IsType<Record>(arg1))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return GetShapePaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
@@ -1380,7 +1407,7 @@ namespace cgl
 		{
 			if (arguments.size() != 2)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			return Unpacked(ShapeDifference(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
@@ -1394,7 +1421,7 @@ namespace cgl
 		{
 			if (arguments.size() != 2)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			return Unpacked(ShapeBuffer(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
@@ -1408,7 +1435,7 @@ namespace cgl
 		{
 			if (arguments.size() != 2)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& shape = pEnv->expand(arguments[0], info);
@@ -1416,10 +1443,38 @@ namespace cgl
 
 			if (!IsType<Record>(shape) || !IsType<Record>(path))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return GetDeformedShape(As<PackedRecord>(As<Record>(shape).packed(*this)), As<PackedRecord>(As<Record>(path).packed(*this))).unpacked(*this);
+			return GetBaseLineDeformedShape(As<PackedRecord>(As<Record>(shape).packed(*this)), As<PackedRecord>(As<Record>(path).packed(*this))).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"DeformShapeByPath2",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 4)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& path = pEnv->expand(arguments[1], info);
+			const Val& p0 = pEnv->expand(arguments[2], info);
+			const Val& p1 = pEnv->expand(arguments[3], info);
+
+			if (!IsType<Record>(shape) || !IsType<Record>(path) || !IsType<Record>(p0) || !IsType<Record>(p1))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetDeformedPathShape(
+				As<PackedRecord>(As<Record>(shape).packed(*this)), 
+				As<PackedRecord>(As<Record>(p0).packed(*this)),
+				As<PackedRecord>(As<Record>(p1).packed(*this)),
+				As<PackedRecord>(As<Record>(path).packed(*this))).unpacked(*this);
 		},
 			true
 			);
@@ -1430,7 +1485,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			return ShapeArea(Packed(pEnv->expand(arguments[0], info), *this));
@@ -1444,14 +1499,14 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			const Val& shape = pEnv->expand(arguments[0], info);
 
 			if (!IsType<Record>(shape))
 			{
-				CGL_Error("引数の型が正しくありません");
+				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return GetBoundingBox(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
@@ -1465,7 +1520,7 @@ namespace cgl
 		{
 			if (arguments.size() != 0)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			garbageCollect();
@@ -1481,7 +1536,7 @@ namespace cgl
 		{
 			if (arguments.size() != 1)
 			{
-				CGL_Error("引数の数が正しくありません");
+				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
 			if (auto opt = AsOpt<bool>(pEnv->expand(arguments[0], info)))

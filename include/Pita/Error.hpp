@@ -56,7 +56,7 @@ extern std::ofstream ofs;
 #define CGL_ErrorNodeInternal(info, message) (throw cgl::Exception(std::string("Error") + std::string("内部エラー: ") + message + ", " + info.getInfo(), info))
 #endif
 
-#define CGL_DBG (std::cout << std::string(CGL_FileName) << " - "<< __FUNCTION__ << ": " << __LINE__ << std::endl)
+#define CGL_DBG (std::cout << std::string(CGL_FileName) << " - "<< __FUNCTION__ << "(): " << __LINE__ << std::endl)
 
 #ifdef CGL_EnableLogOutput
 #define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))

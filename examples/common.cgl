@@ -57,6 +57,10 @@ triangle = shape{
     p0: (->globalPos( polygon[0] ))
     p1: (->globalPos( polygon[1] ))
     p2: (->globalPos( polygon[2] ))
+    top:         (->globalPos( polygon[0] ))
+    bottom:      (->globalPos( mid(polygon[1], polygon[2]) ))
+    left:        (->globalPos( polygon[2] ))
+    right:       (->globalPos( polygon[1] ))
 }
 
 hexagon = shape{
@@ -68,3 +72,5 @@ hexagon = shape{
 
 contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
 distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
+
+parallel = (l1, l2 -> (l1[1].y - l1[0].y)*(l2[1].x - l2[0].x) == (l1[1].x - l1[0].x)*(l2[1].y - l2[0].y))

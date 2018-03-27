@@ -56,6 +56,8 @@ namespace cgl
 			return distances.empty();
 		}
 
+		Path clone()const;
+
 		BaseLineOffset getOffset(double offset)const;
 	};
 

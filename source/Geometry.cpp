@@ -284,7 +284,7 @@ namespace cgl
 						const gg::Point* p0 = exterior->getPointN(p);
 						const gg::Point* p1 = exterior->getPointN(p + 1);
 
-						const int num = 5;
+						const int num = 20;
 						for (int sub = 0; sub < num; ++sub)
 						{
 							const double progress = 1.0 * sub / (num - 1);
@@ -936,6 +936,64 @@ namespace cgl
 		return GetOffsetPathImpl(originalPath, offset);
 	}
 
+	PackedRecord GetSubPath(const PackedRecord& packedPathRecord, double offsetBegin, double offsetEnd)
+	{
+		Path originalPath = std::move(ReadPathPacked(packedPathRecord));
+
+		const int beginCycle = static_cast<int>(std::floor(offsetBegin));
+		const int endCycle = static_cast<int>(std::floor(offsetEnd));
+		const double beginT = offsetBegin - beginCycle;
+		const double endT = offsetEnd - endCycle;
+
+		const auto& cs = originalPath.cs;
+		const auto& distances = originalPath.distances;
+		const double length = distances.back();
+
+		const auto lerp = [](const gg::Coordinate& p0, const gg::Coordinate& p1, double t)
+		{
+			return gg::Coordinate(p0.x + (p1.x - p0.x)*t, p0.y + (p1.y - p0.y)*t);
+		};
+
+		//t in [0.0, 1.0)
+		const auto round = [&](const auto it)
+		{
+			return (distances.end() == it || distances.end() - 1 == it) ? distances.end() - 2 : it;
+		};
+
+		const auto coord = [&](const gg::Coordinate& p)
+		{
+			return MakeRecord("x", p.x, "y", p.y);
+		};
+
+		PackedList points;
+		for (int i = beginCycle; i <= endCycle; ++i)
+		{
+			const double currentBeginT = (i == beginCycle ? beginT : 0.0);
+			const double currentEndT = (i == endCycle ? endT : 1.0);
+
+			const double currentOffsetBegin = currentBeginT * length;
+			auto itBegin = round(std::upper_bound(distances.begin(), distances.end(), currentOffsetBegin));
+
+			const int lineIndexBegin = std::distance(distances.begin(), itBegin) - 1;
+			const double innerTBegin = (currentOffsetBegin - distances[lineIndexBegin]) / (distances[lineIndexBegin + 1] - distances[lineIndexBegin]);
+
+			const double currentOffsetEnd = currentEndT * length;
+			auto itEnd = round(std::upper_bound(distances.begin(), distances.end(), currentOffsetEnd));
+
+			const int lineIndexEnd = std::distance(distances.begin(), itEnd) - 1;
+			const double innerTEnd = (currentOffsetEnd - distances[lineIndexEnd]) / (distances[lineIndexEnd + 1] - distances[lineIndexEnd]);
+
+			points.add(coord(lerp(cs->getAt(lineIndexBegin), cs->getAt(lineIndexBegin + 1), innerTBegin)));
+			for (int line = lineIndexBegin + 1; line < lineIndexEnd; ++line)
+			{
+				points.add(coord(cs->getAt(line)));
+			}
+			points.add(coord(lerp(cs->getAt(lineIndexEnd), cs->getAt((lineIndexEnd + 1) % cs->size()), innerTEnd)));
+		}
+
+		return MakeRecord("line", points);
+	}
+
 	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const LocationInfo& info, const FuncVal& function, double beginValue, double endValue, int numOfPoints)
 	{
 		Eval evaluator(pContext);
@@ -1226,7 +1284,7 @@ namespace cgl
 		return resultRecord;
 	}
 
-	PackedList GetDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
+	PackedList GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
 	{
 		//return PackedList();
 		
@@ -1390,5 +1448,195 @@ namespace cgl
 		packedList.add(GetShapesFromGeosPacked(result));
 		
 		return packedList;
+	}
+
+	PackedList GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
+	{
+		const bool debugDraw = false;
+		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape);
+
+		const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.02;
+		//const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.05;
+		//const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0;
+		const double minX = originalBoundingRect.minPos().x() - eps;
+		const double minY = originalBoundingRect.minPos().y() - eps;
+		const double maxX = originalBoundingRect.maxPos().x() + eps;
+		const double maxY = originalBoundingRect.maxPos().y() + eps;
+		//const double maxY = originalBoundingRect.maxPos().y();
+
+		const BoundingRect boundingRect(minX, minY, maxX, maxY);
+		const double aspect = (maxY - minY) / (maxX - minX);
+
+		/*const int xNum = 15;
+		const int yNum = static_cast<int>(xNum * aspect + 0.5);
+		std::cout << "yNum: " << yNum << "\n";*/
+		/*const int xNum = 10;
+		const int yNum = 4;*/
+		const int xNum = 40;
+		const int yNum = 5;//yNumは奇数（真ん中0, 上と下に(yNum-1)/2ずつ）
+
+		std::vector<Path> targetPaths;
+		const Path centerPath(ReadPathPacked(targetPathRecord));
+
+		const double maxWidth = centerPath.length();
+		const double maxHeight = maxWidth * aspect;
+
+		//std::cout << "yNum: " << yNum << "\n";
+		//std::cout << "originalWidth: " << maxX - minX << "\n";
+		//std::cout << "originalHeight: " << maxY - minY << "\n";
+
+		//std::cout << "maxWidth: " << maxWidth << "\n";
+		//std::cout << "maxHeight: " << maxHeight << "\n";
+
+		const int centerY = (yNum - 1) / 2;
+		const double unitY = maxHeight / (yNum - 1);
+		for (int i = 0; i < yNum; ++i)
+		{
+			const double currentHeight = (i - centerY) * unitY;
+			if (i == centerY)
+			{
+				targetPaths.push_back(centerPath.clone());
+				continue;
+			}
+			const auto offsetPath = GetOffsetPathImpl(centerPath, -currentHeight);
+			targetPaths.push_back(ReadPathPacked(offsetPath));
+		}
+
+		PackedList packedList;
+		if (debugDraw)
+		{
+			for (const auto& path : targetPaths)
+			{
+				packedList.add(WritePathPacked(path));
+			}
+		}
+
+		const auto makeSquare = [](double x, double y)
+		{
+			return MakeRecord(
+				"polygon", MakeList(
+					MakeRecord("x", -0.5, "y", -0.5), MakeRecord("x", +0.5, "y", -0.5), MakeRecord("x", +0.5, "y", +0.5), MakeRecord("x", -0.5, "y", +0.5)
+				),
+				"pos", MakeRecord("x", x, "y", y),
+				"scale", MakeRecord("x", 3, "y", 3),
+				"fill", MakeRecord("r", 0, "g", 0, "b", 0)
+			);
+		};
+
+		const auto makeLine = [](double x0, double y0, double x1, double y1)
+		{
+			return MakeRecord(
+				"line", MakeList(
+					MakeRecord("x", x0, "y", y0), MakeRecord("x", x1, "y", y1)
+				),
+				"stroke", MakeRecord("r", 0, "g", 0, "b", 0)
+			);
+		};
+
+		if (debugDraw)
+		{
+			packedList.add(
+				MakeRecord(
+					"polygon", MakeList(
+						MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY), MakeRecord("x", maxX, "y", maxY), MakeRecord("x", minX, "y", maxY)
+					),
+					"min", MakeRecord("x", minX, "y", minY),
+					"max", MakeRecord("x", maxX, "y", maxY),
+					"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
+					"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
+				)
+			);
+		}
+
+		Deformer deformer;
+
+		std::vector<std::vector<double>> xs;
+		std::vector<std::vector<double>> ys;
+
+		xs = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
+		ys = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
+
+		for (int y = 0; y < yNum; ++y)
+		{
+			const auto frontPos = targetPaths[y].cs->front();
+			const auto backPos = targetPaths[y].cs->back();
+
+			xs[y].front() = frontPos.x;
+			xs[y].back() = backPos.x;
+			ys[y].front() = frontPos.y;
+			ys[y].back() = backPos.y;
+
+			if (debugDraw)
+			{
+				packedList.add(makeSquare(frontPos.x, frontPos.y));
+				packedList.add(makeSquare(backPos.x, backPos.y));
+			}
+		}
+
+		//法線との交差判定により格子点の位置を求める
+		const double dX = 1.0 / (xNum - 1);
+		for (int x = 1; x + 1 < xNum; ++x)
+		{
+			const double currentProgress = x * dX;
+			const double currentBaseOffset = centerPath.length()*currentProgress;
+
+			const auto basePos = centerPath.getOffset(currentBaseOffset);
+			xs[centerY][x] = basePos.x;
+			ys[centerY][x] = basePos.y;
+			if (debugDraw)
+			{
+				packedList.add(makeSquare(basePos.x, basePos.y));
+			}
+
+			for (int y = 0; y < yNum; ++y)
+			{
+				if (y == centerY)continue;
+
+				const double currentHeight = (y - centerY) * unitY;
+				const double currentX = basePos.x + basePos.nx * currentHeight;
+				const double currentY = basePos.y + basePos.ny * currentHeight;
+
+				xs[y][x] = currentX;
+				ys[y][x] = currentY;
+				if (debugDraw)
+				{
+					packedList.add(makeSquare(currentX, currentY));
+					packedList.add(makeLine(basePos.x, basePos.y, currentX, currentY));
+				}
+			}
+		}
+
+		deformer.initialize(boundingRect, xs, ys);
+
+		auto geometries = GeosFromRecordPacked(shape);
+
+		const auto result = deformer.FFD(geometries);
+
+		packedList.add(GetShapesFromGeosPacked(result));
+
+		return packedList;
+	}
+
+	PackedList GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0Record, const PackedRecord& p1Record, const PackedRecord& targetPath)
+	{
+		const auto p0 = ReadVec2Packed(p0Record);
+		const auto p1 = ReadVec2Packed(p1Record);
+
+		const double x0 = std::get<0>(p0);
+		const double y0 = std::get<1>(p0);
+		const double x1 = std::get<0>(p1);
+		const double y1 = std::get<1>(p1);
+
+		const double xm = (x0 + x1)*0.5;
+		const double ym = (y0 + y1)*0.5;
+		const double deg = rad2deg * std::atan2(y1 - y0, x1 - x0);
+
+		auto transformedShape = MakeRecord(
+			"s", shape,
+			"pos", MakeRecord("x", -xm, "y", -ym),
+			"angle", -deg
+		);
+
+		return GetCenterLineDeformedShape(transformedShape, targetPath);
 	}
 }

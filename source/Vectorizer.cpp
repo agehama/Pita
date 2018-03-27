@@ -37,6 +37,23 @@ namespace cgl
 		Color color;
 	};
 
+	Path Path::clone()const
+	{
+		Path resultPath;
+
+		resultPath.cs = std::make_unique<gg::CoordinateArraySequence>();
+		auto& csResult = resultPath.cs;
+		auto& distancesResult = resultPath.distances;
+
+		for (size_t i = 0; i < cs->size(); ++i)
+		{
+			csResult->add(cs->getAt(i));
+		}
+		distancesResult = distances;
+
+		return std::move(resultPath);
+	}
+
 	BaseLineOffset Path::getOffset(double offset)const
 	{
 		BaseLineOffset result;

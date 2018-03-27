@@ -1,0 +1,17 @@
+import "common.cgl"
+
+arrow = shape{
+    body: square{scale = vec2(20, 100), sat(contact(bottom(), vec2(0, 0))), var(pos)}
+    head: triangle{scale = vec2(50, 50), sat(contact(bottom(), body.top())), var(pos)}
+    begin: (->globalPos(body.bottom()))
+    end: (->globalPos(head.top()))
+    length: (->length(sub(begin(), end())))
+}
+
+main = {
+    a: square{scale=x2(100)}
+    offset = 0.1
+    p = SubPath(ShapeOuterPath({s: Buffer(a, 30)})[0], offset+0, offset+0.25)
+    b = arrow{}
+    c: DeformShapeByPath2(b, p, b.begin(), b.end())
+}

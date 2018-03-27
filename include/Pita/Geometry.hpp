@@ -17,6 +17,8 @@ namespace cgl
 
 	PackedRecord GetOffsetPath(const PackedRecord& pathRule, double offset);
 
+	PackedRecord GetSubPath(const PackedRecord& pathRule, double offsetBegin, double offsetEnd);
+
 	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const LocationInfo& info, const FuncVal& function, double beginValue, double endValue, int numOfPoints);
 
 	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord());
@@ -27,7 +29,9 @@ namespace cgl
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape);
 
-	PackedList GetDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
+	PackedList GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
 
-	PackedList GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& originalPath, const PackedRecord& targetPath);
+	PackedList GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
+
+	PackedList GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0, const PackedRecord& p1, const PackedRecord& targetPath);
 }

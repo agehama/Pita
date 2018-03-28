@@ -518,9 +518,25 @@ namespace cgl
 							{
 								writeBuffer().push_back(list.get(indexOpt.value()));
 							}
+							else if (auto indicesOpt = AsOpt<List>(value))
+							{
+								const List& indices = indicesOpt.value();
+								for (const Address indexAddress : indices.data)
+								{
+									Val indexValue = expand(indexAddress, info);
+									if (auto indexOpt = AsOpt<int>(indexValue))
+									{
+										writeBuffer().push_back(list.get(indexOpt.value()));
+									}
+									else
+									{
+										CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
+									}
+								}
+							}
 							else
 							{
-								CGL_Error("list[index] の index が int 型でない");
+								CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
 							}
 						}
 					}

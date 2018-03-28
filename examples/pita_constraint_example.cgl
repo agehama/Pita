@@ -1,7 +1,7 @@
 import "common.cgl"
 
-baseColor = rgb(49, 187, 222)
-mainColor = rgb(245, 245, 245)
+baseColor = rgb(245, 245, 245)
+mainColor = rgb(49, 187, 222)
 
 fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
 fontTitle = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/34828"
@@ -11,5 +11,6 @@ main = shape{
     sat( contact(cubes[0].topRight(), cubes[1].bottomLeft()) )
     sat( contact(cubes[1].bottomRight(), cubes[2].topRight()) )
     sat( contact(cubes[2].topLeft(), cubes[0].bottomRight()) )
-    var(cubes[*].pos, cubes[*].angle)
+    var(cubes[[1, 2]].pos, cubes[[1, 2]].angle)
+    fill: rgb(49, 187, 222)
 }

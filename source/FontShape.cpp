@@ -10,6 +10,7 @@
 #include <geos/opDistance.h>
 
 #include <Pita/FontShape.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
@@ -52,6 +53,16 @@ namespace cgl
 		}
 	}
 
+	//最後の点は含めない
+	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n)
+	{
+		for (int i = 0; i < n; ++i)
+		{
+			const double t = 1.0*i / n;
+			output.push_back(p0*(1.0 - t)*(1.0 - t)*(1.0 - t) + p1 * 3.0*(1.0 - t)*(1.0 - t)*t + p2 * 3.0*(1.0 - t)*t*t + p3 * t*t*t);
+		}
+	}
+
 	FontBuilder::FontBuilder()
 	{
 		//mplus-1m-medium-sub.ttf
@@ -88,14 +99,16 @@ namespace cgl
 			stbtt_InitFont(fontInfo2, pc, stbtt_GetFontOffsetForIndex(pc, 0));
 			stbtt_GetFontVMetrics(fontInfo2, &ascent2, &descent2, &lineGap2);
 		}
+		checkClockWise();
 	}
 
 	FontBuilder::FontBuilder(const std::string& fontPath)
 	{
 		fontInfo1 = new stbtt_fontinfo;
-		fread(current_buffer, 1, 1 << 25, fopen(fontPath.c_str(), "rb"));
+		size_t result = fread(current_buffer, 1, 1 << 25, fopen(fontPath.c_str(), "rb"));
 		stbtt_InitFont(fontInfo1, current_buffer, stbtt_GetFontOffsetForIndex(current_buffer, 0));
 		stbtt_GetFontVMetrics(fontInfo1, &ascent1, &descent1, &lineGap1);
+		checkClockWise();
 	}
 
 	FontBuilder::~FontBuilder()
@@ -126,7 +139,7 @@ namespace cgl
 				return{};
 			}
 		}
-		
+
 		stbtt_vertex* pv;
 		const int verticesNum = isFont1 ? stbtt_GetGlyphShape(fontInfo1, glyphIndex, &pv) : stbtt_GetGlyphShape(fontInfo2, glyphIndex, &pv);
 
@@ -152,6 +165,7 @@ namespace cgl
 				const Eigen::Vector2d p1 = vec2(v1->x, v1->y);
 				const Eigen::Vector2d p2 = vec2(v2->x, v2->y);
 				const Eigen::Vector2d pc = vec2(v2->cx, v2->cy);
+				const Eigen::Vector2d pc1 = vec2(v2->cx1, v2->cy1);
 
 				//Line
 				if (v2->type == STBTT_vline)
@@ -163,9 +177,17 @@ namespace cgl
 				{
 					GetQuadraticBezier(points, p1, pc, p2, quality);
 				}
+				else if (v2->type == STBTT_vcubic)
+				{
+					GetCubicBezier(points, p1, pc, pc1, p2, quality);
+				}
+				else
+				{
+					CGL_Error("Fontの読み取りに失敗しました。");
+				}
 			}
 
-			if (IsClockWise(points))
+			if (clockWisePolygons == IsClockWise(points))
 			{
 				currentPolygons.push_back(ToPolygon(points));
 			}
@@ -274,5 +296,77 @@ namespace cgl
 
 		return FontSizeToReal(advanceWidth - leftSideBearing);
 	}
-}
 
+	void FontBuilder::checkClockWise()
+	{
+		const auto vec2 = [&](short x, short y)
+		{
+			return Eigen::Vector2d(FontSizeToReal(x), FontSizeToReal(-y));
+		};
+
+		const int codePoint = static_cast<int>('.');
+
+		bool isFont1 = true;
+		int glyphIndex = stbtt_FindGlyphIndex(fontInfo1, codePoint);
+		if (glyphIndex == 0)
+		{
+			isFont1 = false;
+			glyphIndex = stbtt_FindGlyphIndex(fontInfo2, codePoint);
+			if (glyphIndex == 0)
+			{
+				CGL_Error("Fontの初期化に失敗しました。");
+			}
+		}
+
+		stbtt_vertex* pv;
+		const int verticesNum = isFont1 ? stbtt_GetGlyphShape(fontInfo1, glyphIndex, &pv) : stbtt_GetGlyphShape(fontInfo2, glyphIndex, &pv);
+
+		using Vertices = Vector<Eigen::Vector2d>;
+
+		std::vector<gg::Geometry*> currentPolygons;
+		std::vector<gg::Geometry*> currentHoles;
+
+		const int quality = 3;
+
+		int polygonBeginIndex = 0;
+		while (polygonBeginIndex < verticesNum)
+		{
+			stbtt_vertex* nextPolygonBegin = std::find_if(pv + polygonBeginIndex + 1, pv + verticesNum, [](const stbtt_vertex& p) {return p.type == STBTT_vmove; });
+			const int nextPolygonFirstIndex = std::distance(pv, nextPolygonBegin);
+			const int currentPolygonLastIndex = nextPolygonFirstIndex - 1;
+
+			Vector<Eigen::Vector2d> points;
+
+			for (int vi = polygonBeginIndex; vi < currentPolygonLastIndex; ++vi)
+			{
+				stbtt_vertex* v1 = pv + vi;
+				stbtt_vertex* v2 = pv + vi + 1;
+
+				const Eigen::Vector2d p1 = vec2(v1->x, v1->y);
+				const Eigen::Vector2d p2 = vec2(v2->x, v2->y);
+				const Eigen::Vector2d pc = vec2(v2->cx, v2->cy);
+				const Eigen::Vector2d pc1 = vec2(v2->cx1, v2->cy1);
+
+				if (v2->type == STBTT_vline)
+				{
+					points.push_back(p1);
+				}
+				else if (v2->type == STBTT_vcurve)
+				{
+					GetQuadraticBezier(points, p1, pc, p2, quality);
+				}
+				else if (v2->type == STBTT_vcubic)
+				{
+					GetCubicBezier(points, p1, pc, pc1, p2, quality);
+				}
+				else
+				{
+					CGL_Error("Fontの初期化に失敗しました。");
+				}
+			}
+
+			clockWisePolygons = IsClockWise(points);
+			return;
+		}
+	}
+}

@@ -27,10 +27,12 @@ namespace cgl
 		double glyphWidth(int codePoint);
 
 	private:
+		void checkClockWise();
+
 		std::string fontDataRawEN, fontDataRawJP;
 		stbtt_fontinfo *fontInfo1, *fontInfo2;
 		int ascent1, descent1, lineGap1;
 		int ascent2, descent2, lineGap2;
+		bool clockWisePolygons;
 	};
 }
-

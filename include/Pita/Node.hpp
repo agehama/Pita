@@ -400,6 +400,11 @@ namespace cgl
 			return str;
 		}
 
+		bool empty()const
+		{
+			return str.empty();
+		}
+
 	private:
 		std::u32string str;
 	};

@@ -19,6 +19,12 @@ namespace cgl
 		return os.str();
 	}
 
+	template<>
+	inline std::string ToS<Eigen::Vector2d>(Eigen::Vector2d v)
+	{
+		return std::string("(") + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ")";
+	}
+
 	class ValuePrinter : public boost::static_visitor<void>
 	{
 	public:

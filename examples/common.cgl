@@ -27,6 +27,8 @@ sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
 mul = (v, a -> {x: v.x * a, y: v.y * a})
 div = (v, a -> {x: v.x / a, y: v.y / a})
 
+lerp = (p0, p1, t -> add(p0, mul(sub(p1, p0), t)))
+
 sqrt = (x -> x^0.5)
 
 length = (v -> sqrt(v.x*v.x + v.y*v.y))

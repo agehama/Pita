@@ -1,5 +1,8 @@
 #include <stack>
 #include <unordered_set>
+
+#include <Unicode.hpp>
+
 #include <Pita/Context.hpp>
 #include <Pita/Evaluator.hpp>
 #include <Pita/Geometry.hpp>
@@ -1255,16 +1258,17 @@ namespace cgl
 			"BuildText",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
-			if (arguments.size() != 1 && arguments.size() != 2)
+			if (arguments.size() != 1 && arguments.size() != 2 && arguments.size() != 3)
 			{
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 			//buildText(str, basePath)
 
 			const Val& strVal = pEnv->expand(arguments[0], info);
-			auto baseLineOpt = arguments.size() == 2 ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
+			auto baseLineOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
+			auto fontNameOpt = 3 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
 
-			if (!IsType<CharString&>(strVal))
+			if (!IsType<CharString>(strVal))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
@@ -1272,8 +1276,20 @@ namespace cgl
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
+			if (fontNameOpt && !IsType<CharString>(fontNameOpt.value()))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
 
-			if (baseLineOpt)
+			if (3 <= arguments.size())
+			{
+				return BuildText(
+					As<CharString>(strVal), 
+					As<PackedRecord>(As<Record>(baseLineOpt.value()).packed(*this)), 
+					As<CharString>(fontNameOpt.value())
+				).unpacked(*this);
+			}
+			else if (2 <= arguments.size())
 			{
 				return BuildText(As<CharString>(strVal), As<PackedRecord>(As<Record>(baseLineOpt.value()).packed(*this))).unpacked(*this);
 			}

@@ -9,11 +9,14 @@
 
 #include <cmaes.h>
 
+#include <Unicode.hpp>
+
 #include <Pita/Geometry.hpp>
 #include <Pita/Vectorizer.hpp>
 #include <Pita/FontShape.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
+#include <Pita/Parser.hpp>
 
 namespace
 {
@@ -1152,13 +1155,35 @@ namespace cgl
 		return pathRecord;
 	}
 
-	PackedRecord BuildText(const CharString& str, const PackedRecord& packedPathRecord)
+	PackedRecord BuildText(const CharString& str, const PackedRecord& packedPathRecord, const CharString& fontPath)
 	{
 		Path path = packedPathRecord.values.empty() ? Path() : std::move(ReadPathPacked(packedPathRecord));
 
 		auto factory = gg::GeometryFactory::create();
 
-		FontBuilder font;
+		std::unique_ptr<FontBuilder> pFont;
+
+		if (fontPath.empty())
+		{
+			pFont = std::make_unique<FontBuilder>();
+		}
+		else
+		{
+			const std::string u8FilePath = Unicode::UTF32ToUTF8(fontPath.toString());
+			const auto filepath = cgl::filesystem::path(u8FilePath);
+
+			if (filepath.is_absolute())
+			{
+				const std::string pathStr = filesystem::canonical(filepath).string();
+				pFont = std::make_unique<FontBuilder>(pathStr);
+			}
+			else
+			{
+				CGL_Error("Fontのパスは絶対パスで指定してください。");
+			}
+		}
+
+		//FontBuilder font;
 		//cgl::FontBuilder font("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
 
 		std::u32string string = str.toString();
@@ -1176,12 +1201,12 @@ namespace cgl
 				std::vector<gg::Geometry*> result;
 				
 				const int codePoint = static_cast<int>(string[i]);
-				const double currentGlyphWidth = font.glyphWidth(codePoint);
+				const double currentGlyphWidth = pFont->glyphWidth(codePoint);
 
 				const auto offsetLeft = path.getOffset(offsetHorizontal);
 				const auto offsetCenter = path.getOffset(offsetHorizontal + currentGlyphWidth * 0.5);
 
-				const auto characterPolygon = font.makePolygon(codePoint, 5, 0, 0);
+				const auto characterPolygon = pFont->makePolygon(codePoint, 5, 0, 0);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
 				offsetHorizontal += currentGlyphWidth;
@@ -1205,13 +1230,14 @@ namespace cgl
 				std::vector<gg::Geometry*> result;
 
 				const int codePoint = static_cast<int>(string[i]);
-				const auto characterPolygon = font.makePolygon(codePoint, 5, offsetHorizontal);
+				const auto characterPolygon = pFont->makePolygon(codePoint, 5, offsetHorizontal);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
-				offsetHorizontal += font.glyphWidth(codePoint);
+				offsetHorizontal += pFont->glyphWidth(codePoint);
 
 				resultCharList.add(GetShapesFromGeosPacked(result));
 			}
+			
 		}
 		
 		PackedRecord result;

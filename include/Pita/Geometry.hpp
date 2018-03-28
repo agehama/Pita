@@ -30,7 +30,7 @@ namespace cgl
 
 	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const LocationInfo& info, const FuncVal& function, double beginValue, double endValue, int numOfPoints);
 
-	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord());
+	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord(), const CharString& fontPath = CharString());
 
 	PackedList GetShapeOuterPaths(const PackedRecord& shape);
 

@@ -30,7 +30,7 @@ namespace cgl
 		void checkClockWise();
 
 		std::string fontDataRawEN, fontDataRawJP;
-		stbtt_fontinfo *fontInfo1, *fontInfo2;
+		stbtt_fontinfo *fontInfo1 = nullptr, *fontInfo2 = nullptr;
 		int ascent1, descent1, lineGap1;
 		int ascent2, descent2, lineGap2;
 		bool clockWisePolygons;

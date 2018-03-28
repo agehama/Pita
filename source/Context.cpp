@@ -1097,6 +1097,26 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Abs",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(arguments[0], info);
+			if (!IsNum(x))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return std::abs(AsDouble(x));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Sin",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -1562,7 +1582,21 @@ namespace cgl
 
 			return ShapeDistance(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this));
 		},
-			true
+			false
+			);
+
+		registerBuiltInFunction(
+			"ClosestPoints",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return ShapeClosestPoints(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)).unpacked(*this);
+		},
+			false
 			);
 
 		registerBuiltInFunction(
@@ -1583,7 +1617,7 @@ namespace cgl
 
 			return GetBoundingBox(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
 		},
-			true
+			false
 			);
 
 		registerBuiltInFunction(

@@ -1,0 +1,83 @@
+import "common.cgl"
+
+baseColor = rgb(49, 187, 222)
+mainColor = rgb(245, 245, 245)
+
+fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
+fontTitle = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/34828"
+
+arrow = shape{
+    body: square{scale = vec2(20, 100), sat(contact(bottom(), vec2(0, 0))), var(pos)}
+    head: triangle{scale = vec2(50, 50), sat(contact(bottom(), body.top())), var(pos)}
+    begin: (->globalPos(body.bottom()))
+    end: (->globalPos(head.top()))
+    length: (->length(sub(begin(), end())))
+}
+
+main = {
+    arrowDown = arrow{angle: 180}
+
+    interval = vec2(0, 50)
+    a= square{scale: vec2(500, 100), fill:baseColor}
+    b= square{scale: vec2(500, 100), fill:baseColor, sat( contact(moved(a.bottom(), interval.x, interval.y), top()) ), var(pos)}
+    c= square{scale: vec2(500, 100), fill:baseColor, sat( contact(moved(b.bottom(), interval.x, interval.y), top()) ), var(pos)}
+
+    a_ : shape{
+        a: ShapeOuterPath(a)
+        stroke: baseColor
+    }
+    b_ : shape{
+        a: ShapeOuterPath(b)
+        stroke: baseColor
+    }
+    c_ : shape{
+        a: ShapeOuterPath(c)
+        stroke: baseColor
+    }
+
+    d: [
+        shape{
+            text: BuildText("依存性解析", {}, fontPath){pos:x2(0)}
+            sat( contact(BoundingBox(text).center, a.center()) )
+            var(text.pos)
+            fill: baseColor
+        }
+        shape{
+            text: BuildText("成立判定", {}, fontPath){pos:x2(0)}
+            sat( contact(BoundingBox(text).center, b.center()) )
+            var(text.pos)
+            fill: baseColor
+        }
+        shape{
+            text: BuildText("数値計算", {}, fontPath){pos:x2(0)}
+            sat( contact(BoundingBox(text).center, c.center()) )
+            var(text.pos)
+            fill: baseColor
+        }
+    ]
+
+    e: [
+        shape{
+            p: DeformShapeByPath2(arrowDown, {line: [a.bottom(), b.top()]}, arrowDown.begin(), arrowDown.end())
+            fill: baseColor
+        }
+        shape{
+            p: DeformShapeByPath2(arrowDown, {line: [b.bottom(), c.top()]}, arrowDown.begin(), arrowDown.end())
+            fill: baseColor
+        }
+    ]
+
+    title: shape{
+        text: BuildText("制約処理の手順", {}, fontTitle){pos:vec2(0, -100), scale: x2(1.2)}
+        sat( BoundingBox(text).topLeft.x == a.topLeft().x )
+        var(text.pos.x)
+        fill: baseColor
+    }
+}
+
+main2 = shape{
+    ss: [
+        
+        main
+    ]
+}

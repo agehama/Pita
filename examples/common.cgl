@@ -48,7 +48,7 @@ square = shape{
     bottom:      (->globalPos( mid(polygon[2], polygon[3]) ))
     left:        (->globalPos( mid(polygon[0], polygon[3]) ))
     right:       (->globalPos( mid(polygon[1], polygon[2]) ))
-    center:      (->globalPos( mid(top(), bottom()) ))
+    center:      (->mid(top(), bottom()))
 }
 
 triangle = shape{

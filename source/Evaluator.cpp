@@ -1792,9 +1792,17 @@ namespace cgl
 			{
 				Eval evaluator(pContext);
 				const Val result = pContext->expand(boost::apply_visitor(evaluator, problem.expr.value()), recordConsractor);
-				if (!IsType<bool>(result))
+				if (IsType<bool>(result))
 				{
-					CGL_ErrorNode(recordConsractor, "制約式の評価結果がブール値ではありませんでした。");
+					return As<bool>(result);
+				}
+				else if (IsNum(result))
+				{
+					return Equal(AsDouble(result), 0.0, *pEnv);
+				}
+				else
+				{
+					CGL_ErrorNode(recordConsractor, "制約式の評価結果が不正な値です。");
 				}
 
 				const bool currentConstraintIsSatisfied = As<bool>(result);
@@ -1934,12 +1942,27 @@ namespace cgl
 					for (auto& oldConstraint : original.groupConstraints)
 					{
 						const Val result = pEnv->expand(boost::apply_visitor(*this, oldConstraint.expr.value()), recordConsractor);
-						if (!IsType<bool>(result))
+						/*if (!IsType<bool>(result))
 						{
 							CGL_ErrorNode(recordConsractor, "制約式の評価結果がブール値ではありませんでした。");
+						}*/
+
+						//const bool currentConstraintIsSatisfied = As<bool>(result);
+
+						bool currentConstraintIsSatisfied = false;
+						if (IsType<bool>(result))
+						{
+							currentConstraintIsSatisfied = As<bool>(result);
+						}
+						else if (IsNum(result))
+						{
+							currentConstraintIsSatisfied = Equal(AsDouble(result), 0.0, *pEnv);
+						}
+						else
+						{
+							CGL_ErrorNode(recordConsractor, "制約式の評価結果が不正な値です。");
 						}
 
-						const bool currentConstraintIsSatisfied = As<bool>(result);
 						if (!currentConstraintIsSatisfied)
 						{
 							//const auto& problemRefs = currentProblem.refs;
@@ -2007,6 +2030,8 @@ namespace cgl
 
 						for (size_t constraintID : currentConstraintIDs)
 						{
+							CGL_DBG1("Constraint:");
+							printExpr(adderUnitConstraints[constraintID], pEnv, std::cout);
 							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 						}
 

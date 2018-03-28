@@ -632,10 +632,38 @@ namespace cgl
 		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPolygon);
 		gg::Geometry* rhsUnion = unionCalcRhs.Union();
 
-		gg::Geometry* resultGeometry = lhsUnion->symDifference(rhsUnion);
+		geos::operation::distance::DistanceOp distOp(lhsUnion, rhsUnion);
+		const auto result = distOp.distance();
+		return result;
+	}
+
+	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+
+		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
+		gg::Geometry* lhsUnion = unionCalcLhs.Union();
+
+		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPolygon);
+		gg::Geometry* rhsUnion = unionCalcRhs.Union();
 
 		geos::operation::distance::DistanceOp distOp(lhsUnion, rhsUnion);
-		return distOp.distance();
+		const auto result = distOp.closestPoints();
+		
+		PackedList points;
+		for (size_t i = 0; i < result->size(); ++i)
+		{
+			points.add(MakeRecord("x", result->getX(i), "y", result->getY(i)));
+		}
+
+		return MakeRecord("line", points);
 	}
 
 	PackedList GetDefaultFontString(const std::string& str)
@@ -1182,7 +1210,6 @@ namespace cgl
 				CGL_Error("Fontのパスは絶対パスで指定してください。");
 			}
 		}
-
 		//FontBuilder font;
 		//cgl::FontBuilder font("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
 
@@ -1239,7 +1266,6 @@ namespace cgl
 			}
 			
 		}
-		
 		PackedRecord result;
 		result.add("shapes", resultCharList);
 		result.add("str", str);

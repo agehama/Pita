@@ -1,0 +1,67 @@
+import "common.cgl"
+
+baseColor = rgb(245, 245, 245)
+mainColor = rgb(49, 187, 222)
+
+main = {
+    a: square{scale: x2(300), angle: 45, fill: mainColor, 
+        basePos: (->lerp(topLeft(), bottomRight(), 0.3))}
+    b: a{pos: a.topLeft(), fill: mainColor
+        sat( distant(a.top(), bottom(), 10) & parallel([a.bottom(), a.top()], [a.top(), bottom()]) ), 
+        var(pos)}
+    c: a{pos: a.topRight(), fill: mainColor
+        sat( distant(a.right(), left(), 10) & parallel([a.left(), a.right()], [a.right(), left()]) ), 
+        var(pos)}
+    fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
+    d: shape{
+        text: BuildText("構文", {}, fontPath)
+        fill: baseColor
+        pos: b.bottomRight()
+    }
+    e: shape{
+        text: BuildText("図形演算", {}, fontPath)
+        fill: baseColor
+        pos: a.bottomRight()
+    }
+    f: shape{
+        text: BuildText("制約処理", {}, fontPath)
+        fill: baseColor
+        pos: c.center()
+    }
+    aOut: shape{
+        line: [a.topLeft(), a.topRight()]
+    }
+    bOut: shape{
+        line: [b.topLeft(), b.topRight()]
+    }
+    cOut: shape{
+        line: [c.topLeft(), c.topRight()]
+    }
+
+    sat( b.topLeft().x == BoundingBox(d).center.x )
+    sat( Distance(bOut, d) == 20.0 )
+
+    sat( a.topLeft().x == BoundingBox(e).center.x )
+    sat( Distance(aOut, e) == 20.0 )
+
+    sat( Cmaes(f.pos), c.topLeft().x == BoundingBox(f).center.x )
+    sat( Distance(cOut, f) == 20.0 )
+    var(d.pos, e.pos, f.pos)
+}
+
+main2 = shape{
+    m: main
+    l: {
+        stroke: baseColor
+        ls: [
+            ClosestPoints(m.cOut, m.f)
+            ClosestPoints({line: [m.c.topLeft(), m.c.bottomLeft()]}, m.f)
+
+            ClosestPoints(m.aOut, m.e)
+            ClosestPoints({line: [m.a.topLeft(), m.a.bottomLeft()]}, m.e)
+
+            ClosestPoints(m.bOut, m.d)
+            ClosestPoints({line: [m.b.topLeft(), m.b.bottomLeft()]}, m.d)
+        ]
+    }
+}

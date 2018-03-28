@@ -19,6 +19,8 @@ namespace cgl
 
 	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs);
 
+	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs);
+
 	PackedList GetDefaultFontString(const std::string& str);
 
 

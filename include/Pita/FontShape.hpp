@@ -26,13 +26,28 @@ namespace cgl
 
 		double glyphWidth(int codePoint);
 
+		int ascent()const
+		{
+			return std::max(ascent1, ascent2);
+		}
+
+		int descent()const
+		{
+			return std::min(descent1, descent2);
+		}
+
+		int lineGap()const
+		{
+			return std::max(lineGap1, lineGap2);
+		}
+
 	private:
 		void checkClockWise();
 
 		std::string fontDataRawEN, fontDataRawJP;
 		stbtt_fontinfo *fontInfo1 = nullptr, *fontInfo2 = nullptr;
-		int ascent1, descent1, lineGap1;
-		int ascent2, descent2, lineGap2;
+		int ascent1 = 0, descent1 = 0, lineGap1 = 0;
+		int ascent2 = 0, descent2 = 0, lineGap2 = 0;
 		bool clockWisePolygons;
 	};
 }

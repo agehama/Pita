@@ -34,6 +34,8 @@ sqrt = (x -> x^0.5)
 length = (v -> sqrt(v.x*v.x + v.y*v.y))
 setLength = (v, l -> mul(div(v, length(v)), l))
 
+lineLength = (l -> ((l[1].x - l[0].x)^2 + (l[1].y - l[0].y)^2)^0.5)
+
 rgb = (r, g, b -> {r: r, g: g, b: b})
 
 square = shape{
@@ -66,6 +68,7 @@ triangle = shape{
     left:        (->globalPos( polygon[2] ))
     right:       (->globalPos( polygon[1] ))
     center:      (->globalPos( mid3(polygon[0], polygon[1], polygon[2]) ))
+    bottomEdge:  (->[p2(), p1()])
 }
 
 hexagon = shape{
@@ -74,6 +77,15 @@ hexagon = shape{
         vec2(r*Cos(60*i), r*Sin(60*i))
     )
 }
+
+circle = (quality -> shape{
+    r = 0.5
+    delta = 360.0 / quality
+    polygon: for i in 0:quality list(
+        angle = delta*i
+        vec2(r*Cos(angle), r*Sin(angle))
+    )
+})
 
 contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
 distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)

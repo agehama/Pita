@@ -1220,9 +1220,6 @@ namespace cgl
 		
 		if(!path.empty())
 		{
-			const auto& cs = path.cs;
-			const auto& distances = path.distances;
-			
 			for (size_t i = 0; i < string.size(); ++i)
 			{
 				std::vector<gg::Geometry*> result;
@@ -1252,20 +1249,33 @@ namespace cgl
 		}
 		else
 		{
+			double offsetVertical = 0;
 			for (size_t i = 0; i < string.size(); ++i)
 			{
 				std::vector<gg::Geometry*> result;
 
 				const int codePoint = static_cast<int>(string[i]);
-				const auto characterPolygon = pFont->makePolygon(codePoint, 5, offsetHorizontal);
+
+				if (codePoint == '\r') continue;
+				if (codePoint == '\n')
+				{
+					//offsetVertical += pFont->ascent() - pFont->descent() + pFont->lineGap();
+					//offsetVertical += pFont->lineGap()*1.2;
+					//offsetVertical += (pFont->ascent() - pFont->descent())*1.2;
+					offsetVertical += (pFont->ascent() - pFont->descent())*1.0;
+					offsetHorizontal = 0;
+					continue;
+				}
+
+				const auto characterPolygon = pFont->makePolygon(codePoint, 5, offsetHorizontal, offsetVertical);
 				result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
 
 				offsetHorizontal += pFont->glyphWidth(codePoint);
 
 				resultCharList.add(GetShapesFromGeosPacked(result));
 			}
-			
 		}
+
 		PackedRecord result;
 		result.add("shapes", resultCharList);
 		result.add("str", str);

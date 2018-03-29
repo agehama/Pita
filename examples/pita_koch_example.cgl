@@ -1,62 +1,30 @@
 import "common.cgl"
 
-div3 = (p, q -> {x: (q.x - p.x) / 3.0, y: (q.y - p.y) / 3.0})
-
-koch_template = (p, q ->
+koch = (p, q ->
     v = sub(p, q)
     n = {x: -v.y, y: v.x}
-    vby3 = div3(p, q)
-    m = div(add(p, q), 2.0)
-    nby3 = setLength(n, 0.5*sqrt(3.0)*length(vby3))
-    m1 = add(p, vby3)
-    m2 = add(m1, vby3)
-    ps = [p, m1, add(m, nby3), m2, q]
-    [[ps[0], ps[1]], [ps[1], ps[2]], [ps[2], ps[3]], [ps[3], ps[4]]]
+    ps = [p
+        lerp(p, q, 1.0/3.0) 
+        add(mid(p, q), div(n, 2*3.0^0.5))
+        lerp(p, q, 2.0/3.0)
+        q]
+    for i in 0:3 list([ps[i], ps[i+1]])
 )
 
-rec_curve = (f, depth, template, ps -> 
+rec = (f, depth, template, ps -> 
     if depth == 0
-    then {
-        line: ps
-    }
+    then { line: ps }
     else {
         ss = template(ps[0], ps[1])
-        b: [
-            f(f, depth-1, template, ss[0])
-            f(f, depth-1, template, ss[1])
-            f(f, depth-1, template, ss[2])
-            f(f, depth-1, template, ss[3])
-        ]
+        b: for i in 0:3 list( f(f, depth-1, template, ss[i]) )
     }
 )
 
-curve = (depth -> shape{
-    a: shape{
-        c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:0}])
-        scale = x2(70)
-    }
-    stroke: rgb(0, 0, 0)
-})
-
-snowflake = (depth -> shape{
-    tri = triangle{scale = {x: 10, y: 10}}
-    a: shape{
-        l: [
-            rec_curve(rec_curve, depth, koch_template, [tri.p0(), tri.p1()])
-            rec_curve(rec_curve, depth, koch_template, [tri.p1(), tri.p2()])
-            rec_curve(rec_curve, depth, koch_template, [tri.p2(), tri.p0()])
-        ]
-        scale = x2(70)
-    }
-    stroke: rgb(0, 0, 0)
-})
-
-main = snowflake(5){
+snowflake = shape{
+    tri = triangle{scale: x2(10)}
+    l: for i in 0:2 list(
+        rec(rec, 5, koch, [tri.p(i), tri.p(Mod(i+1,3))])
+    )
+    scale: x2(70)
     stroke: rgb(49, 187, 222)
-}
-
-main2 = shape{
-    a: main{}
-    b: a{scale: x2(0.8)}
-    c: b{scale: x2(0.8)}
 }

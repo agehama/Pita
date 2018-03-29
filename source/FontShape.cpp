@@ -108,6 +108,7 @@ namespace cgl
 		size_t result = fread(current_buffer, 1, 1 << 25, fopen(fontPath.c_str(), "rb"));
 		stbtt_InitFont(fontInfo1, current_buffer, stbtt_GetFontOffsetForIndex(current_buffer, 0));
 		stbtt_GetFontVMetrics(fontInfo1, &ascent1, &descent1, &lineGap1);
+		//CGL_DBG1("ascent1: " + ToS(ascent1) + ", descent1: " + ToS(descent1) + ", lineGap1: " + ToS(lineGap1) + " | ");
 		checkClockWise();
 	}
 
@@ -125,7 +126,8 @@ namespace cgl
 			
 			//const double size = 0.025;
 			//return Eigen::Vector2d(size * (offsetX + x), size * (offsetY - y));
-			return Eigen::Vector2d(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
+			//return Eigen::Vector2d(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
+			return Eigen::Vector2d(offsetX + FontSizeToReal(x), FontSizeToReal(offsetY - y));
 		};
 
 		bool isFont1 = true;

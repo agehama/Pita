@@ -1133,6 +1133,31 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Mod",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& y = pEnv->expand(arguments[1], info);
+			if (!IsNum(x) || !IsNum(y))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			if (IsType<int>(x) && IsType<int>(y))
+			{
+				return As<int>(x) % As<int>(y);
+			}
+			return fmod(AsDouble(x), AsDouble(y));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Sin",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

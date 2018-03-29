@@ -1,0 +1,9 @@
+import "common.cgl"
+
+baseColor = rgb(245, 245, 245)
+mainColor = rgb(49, 187, 222)
+
+main = shape{
+    a: shape{a: Buffer(square{scale: vec2(200, 100)}, 30), fill: mainColor}
+    b: circle(100){scale: x2(60), pos: vec2(40, 40), fill: baseColor}
+}

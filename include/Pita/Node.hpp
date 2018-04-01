@@ -200,6 +200,8 @@ namespace cgl
 			return name;
 		}
 
+		friend std::ostream& operator<<(std::ostream& os, const Identifier& node) { return os; }
+
 	private:
 		std::string name;
 	};
@@ -611,6 +613,11 @@ namespace cgl
 			return false;
 		}
 
+		friend std::ostream& operator<<(std::ostream& os, const LRValue& node)
+		{
+			return os;
+		}
+
 		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference> value;
 	};
 
@@ -686,6 +693,8 @@ namespace cgl
 		{
 			return seed;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Import& node) { return os; }
 
 	private:
 		void updateHash();
@@ -833,6 +842,8 @@ namespace cgl
 
 			return IsEqual(lhs, other.lhs);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const UnaryExpr& node) { return os; }
 	};
 
 	struct BinaryExpr : public LocationInfo
@@ -870,6 +881,8 @@ namespace cgl
 
 			return IsEqual(lhs, other.lhs) && IsEqual(rhs, other.rhs);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const BinaryExpr& node) { return os; }
 	};
 
 	struct Range : public LocationInfo
@@ -910,6 +923,8 @@ namespace cgl
 		{
 			return IsEqual(lhs, rhs);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Range& node) { return os; }
 	};
 
 	struct Lines : public LocationInfo
@@ -998,6 +1013,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Lines& node) { return os; }
 	};
 
 	struct Arguments
@@ -1143,6 +1160,8 @@ namespace cgl
 
 			return IsEqual(expr, other.expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const DefFunc& node) { return os; }
 	};
 
 	struct If : public LocationInfo
@@ -1201,6 +1220,8 @@ namespace cgl
 			return IsEqual(cond_expr, other.cond_expr)
 				&& IsEqual(then_expr, other.then_expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const If& node) { return os; }
 	};
 
 	struct For : public LocationInfo
@@ -1261,6 +1282,8 @@ namespace cgl
 				&& IsEqual(rangeEnd, other.rangeEnd)
 				&& IsEqual(doExpr, other.doExpr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const For& node) { return os; }
 	};
 
 	struct Return : public LocationInfo
@@ -1291,6 +1314,8 @@ namespace cgl
 		{
 			return IsEqual(expr, other.expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Return& node) { return os; }
 	};
 
 	struct ListConstractor : public LocationInfo
@@ -1350,6 +1375,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const ListConstractor& node) { return os; }
 	};
 
 	struct PackedList
@@ -1517,6 +1544,8 @@ namespace cgl
 			return name == other.name
 				&& IsEqual(expr, other.expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const KeyExpr& node) { return os; }
 	};
 
 	struct RecordConstractor : public LocationInfo
@@ -1567,6 +1596,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const RecordConstractor& node) { return os; }
 	};
 
 	struct KeyValue
@@ -1621,6 +1652,8 @@ namespace cgl
 			std::cerr << "Warning: IsEqual<DeclSat>() don't care about expr" << std::endl;
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const DeclSat& node) { return os; }
 	};
 
 	struct SatFunctionReference
@@ -1854,6 +1887,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const DeclFree& node) { return os; }
 	};
 
 	enum class RecordType { Normal, Path, Text, ShapePath };
@@ -2069,6 +2104,8 @@ namespace cgl
 		{
 			return index == other.index;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const ListAccess& node) { return os; }
 	};
 
 	struct RecordAccess
@@ -2090,6 +2127,8 @@ namespace cgl
 		{
 			return name == other.name;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const RecordAccess& node) { return os; }
 	};
 
 	struct FunctionAccess
@@ -2126,6 +2165,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const FunctionAccess& node) { return os; }
 	};
 
 	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
@@ -2213,6 +2254,8 @@ namespace cgl
 
 			return IsEqual(head, other.head);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Accessor& node) { return os; }
 	};
 
 	struct DeepReference
@@ -2386,6 +2429,8 @@ namespace cgl
 			std::cerr << "Error(" << __LINE__ << ")\n";
 			return false;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const RecordInheritor& node) { return os; }
 	};
 
 	Expr BuildString(const std::u32string& str);

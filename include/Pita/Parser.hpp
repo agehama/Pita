@@ -3,6 +3,7 @@
 #include <set>
 #include <filesystem>
 
+#define BOOST_SPIRIT_DEBUG
 #define BOOST_RESULT_OF_USE_DECLTYPE
 #define BOOST_SPIRIT_USE_PHOENIX_V3
 #define BOOST_SPIRIT_UNICODE
@@ -74,6 +75,33 @@ namespace cgl
 	private:
 		static void doAnnotate(LocationInfo& li, IteratorT f, IteratorT l, SourceT first, SourceT last);
 		static void doAnnotate(Expr& li, IteratorT f, IteratorT l, SourceT first, SourceT last);
+		static void doAnnotate(...) {}
+	};
+
+	struct ErrorHandler
+	{
+		ErrorHandler(SourceT first, SourceT last, const std::string& sourcePath) :
+			first(first),
+			last(last),
+			sourcePath(sourcePath)
+		{}
+
+		const SourceT first;
+		const SourceT last;
+		const std::string sourcePath;
+
+		typedef qi::error_handler_result result_type;
+		template<typename First, typename Last, typename T>
+		qi::error_handler_result operator()(First f, Last l, T const& what) const
+		{
+			std::stringstream ss;
+			ss << what;
+			doAnnotate(f, l, first, last, sourcePath, ss.str());
+			return qi::fail;
+		}
+
+	private:
+		static void doAnnotate(IteratorT f, IteratorT l, SourceT first, SourceT last, const std::string& sourcePath, const std::string& what);
 		static void doAnnotate(...) {}
 	};
 
@@ -158,15 +186,17 @@ namespace cgl
 		qi::rule<IteratorT, std::u32string(), Skipper> float_value;
 
 		boost::phoenix::function<Annotator> annotate;
+		boost::phoenix::function<ErrorHandler> errorHandler;
 		
-		Parser(SourceT first, SourceT last) :
+		Parser(SourceT first, SourceT last, const std::string& sourcePath) :
 			Parser::base_type(program),
-			annotate(Annotator(first, last))
+			annotate(Annotator(first, last)),
+			errorHandler(ErrorHandler(first, last, sourcePath))
 		{
 			auto concatArguments = [](Arguments& a, const Arguments& b) { a.concat(b); };
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
 
-			program = s >> -(expr_seq) >> s;
+			program = s > -(expr_seq) > s;
 
 			expr_seq = statement[_val = _1] >> *(
 				+(lit('\n')) >> statement[Call(Lines::Concat, _val, _1)]
@@ -193,7 +223,7 @@ namespace cgl
 				((lit("do") >> s >> general_expr[Call(For::SetDo, _val, _1, false)]) |
 				(lit("list") >> s >> general_expr[Call(For::SetDo, _val, _1, true)]));
 
-			import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] >> '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
+			import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] > '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
@@ -252,7 +282,7 @@ namespace cgl
 					(s >> '/' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Div)]))
 					)
 				;
-			
+
 			//最低でも1つは受け取るようにしないと、単一のfactorを受理できてしまうのでMul,Divの方に行ってくれない
 			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
 			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
@@ -263,7 +293,7 @@ namespace cgl
 			record_maker = (
 				encode::char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
 				*(
-				(s >> ',' >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+				(s >> ',' >> s > (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					| (+(encode::char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					)
 				>> s >> encode::char_('}')
@@ -277,10 +307,10 @@ namespace cgl
 				*(
 					(s >> encode::char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
 					| (+(encode::char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					) >> s >> encode::char_(']')
+					) >> s > encode::char_(']')
 				)
-				| (encode::char_('[') >> s >> encode::char_(']'));
-			
+				| (encode::char_('[') >> s > encode::char_(']'));
+
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
 				| (record_maker[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]));
@@ -299,24 +329,25 @@ namespace cgl
 				>> *(s >> encode::char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> encode::char_(')');
 
 			factor = 
-				  '+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
-				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| '@' >> s >> (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)])
-				| float_value[_val = Call(LRValue::Float, _1)]
+				  float_value[_val = Call(LRValue::Float, _1)]
 				| int_[_val = Call(LRValue::Int, _1)]
 				| lit("true")[_val = Call(LRValue::Bool, true)]
 				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| import_expr[_val = _1]
-				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
-				| '\"' >> char_string[_val = Call(BuildString, _1)] >> '\"'
+				| '(' >> s >> expr_seq[_val = _1] > s > ')'
+				| '\"' >> char_string[_val = Call(BuildString, _1)] > '\"'
+				| list_maker[_val = _1]
+				| record_maker[_val = _1]
 				| constraints[_val = _1]
 				| record_inheritor[_val = _1]
 				| freeVals[_val = _1]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
+				| '+' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
+				| '-' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
+				| '@' >> s > (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)])
 				| for_expr[_val = _1]
-				| list_maker[_val = _1]
-				| record_maker[_val = _1]
+				
 				| id[_val = _1];
 
 			id = unchecked_identifier[_val = Call(Identifier::MakeIdentifier, _1)] - distinct_keyword;
@@ -329,6 +360,57 @@ namespace cgl
 			float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9')];
 
 			s = *(encode::space);
+
+			//auto errorInfo = errorHandler(_1, _2, _3, _4);
+			auto errorInfo = errorHandler(_1, _3, _4);
+			//qi::on_error<qi::fail>(VarAssignment, errorHandler(_1, _2, _3, _4));
+
+			qi::on_error<qi::fail>(general_expr, errorInfo);
+			qi::on_error<qi::fail>(logic_expr, errorInfo);
+			qi::on_error<qi::fail>(logic_term, errorInfo);
+			qi::on_error<qi::fail>(logic_factor, errorInfo);
+			qi::on_error<qi::fail>(compare_expr, errorInfo);
+			qi::on_error<qi::fail>(arith_expr, errorInfo);
+			qi::on_error<qi::fail>(basic_arith_expr, errorInfo);
+			qi::on_error<qi::fail>(term, errorInfo);
+			qi::on_error<qi::fail>(factor, errorInfo);
+			qi::on_error<qi::fail>(pow_term, errorInfo);
+			qi::on_error<qi::fail>(pow_term1, errorInfo);
+			qi::on_error<qi::fail>(constraints, errorInfo);
+			qi::on_error<qi::fail>(freeVals, errorInfo);
+			qi::on_error<qi::fail>(functionAccess, errorInfo);
+			qi::on_error<qi::fail>(recordAccess, errorInfo);
+			qi::on_error<qi::fail>(listAccess, errorInfo);
+			qi::on_error<qi::fail>(accessor, errorInfo);
+			qi::on_error<qi::fail>(access, errorInfo);
+			qi::on_error<qi::fail>(record_keyexpr, errorInfo);
+			qi::on_error<qi::fail>(record_maker, errorInfo);
+			qi::on_error<qi::fail>(record_inheritor, errorInfo);
+			qi::on_error<qi::fail>(list_maker, errorInfo);
+			qi::on_error<qi::fail>(import_expr, errorInfo);
+			qi::on_error<qi::fail>(for_expr, errorInfo);
+			qi::on_error<qi::fail>(if_expr, errorInfo);
+			qi::on_error<qi::fail>(return_expr, errorInfo);
+			qi::on_error<qi::fail>(def_func, errorInfo);
+			qi::on_error<qi::fail>(arguments, errorInfo);
+			qi::on_error<qi::fail>(id, errorInfo);
+			qi::on_error<qi::fail>(key_expr, errorInfo);
+			qi::on_error<qi::fail>(char_string, errorInfo);
+			qi::on_error<qi::fail>(general_expr, errorInfo);
+			qi::on_error<qi::fail>(logic_expr, errorInfo);
+			qi::on_error<qi::fail>(logic_term, errorInfo);
+			qi::on_error<qi::fail>(logic_factor, errorInfo);
+			qi::on_error<qi::fail>(compare_expr, errorInfo);
+			qi::on_error<qi::fail>(arith_expr, errorInfo);
+			qi::on_error<qi::fail>(basic_arith_expr, errorInfo);
+			qi::on_error<qi::fail>(term, errorInfo);
+			qi::on_error<qi::fail>(factor, errorInfo);
+			qi::on_error<qi::fail>(pow_term, errorInfo);
+			qi::on_error<qi::fail>(pow_term1, errorInfo);
+			qi::on_error<qi::fail>(expr_seq, errorInfo);
+			qi::on_error<qi::fail>(statement, errorInfo);
+			//qi::on_error<qi::fail>(program, std::cout << boost::phoenix::val("parse failed : ") << std::endl);
+			//qi::on_error<qi::fail>(list_maker, std::cout << boost::phoenix::val("parse failed : list_maker") << std::endl);
 
 			auto setLocationInfo = annotate(_val, _1, _3);
 			qi::on_success(general_expr, setLocationInfo);
@@ -376,6 +458,13 @@ namespace cgl
 			qi::on_success(expr_seq, setLocationInfo);
 			qi::on_success(statement, setLocationInfo);
 			qi::on_success(program, setLocationInfo);
+
+			/*BOOST_SPIRIT_DEBUG_NODES(
+				(float_value)(unchecked_identifier)(distinct_keyword)(s)(s1)(program)
+				(expr_seq)(statement)(general_expr)(logic_expr)(logic_term)(logic_factor)(compare_expr)(arith_expr)(basic_arith_expr)(term)(factor)(pow_term)(pow_term1)
+				(char_string)(key_expr)(id)(arguments)(def_func)(return_expr)(if_expr)(for_expr)(import_expr)(list_maker)(record_inheritor)(record_maker)(record_keyexpr)
+				(access)(accessor)(listAccess)(recordAccess)(functionAccess)(freeVals)(constraints)
+			)*/
 		}
 	};
 

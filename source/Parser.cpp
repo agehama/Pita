@@ -74,6 +74,53 @@ namespace cgl
 		doAnnotate(GetLocInfo(li), f, l, first, last);
 	}
 
+	bool printed = false;
+	void ErrorHandler::doAnnotate(IteratorT f, IteratorT l, SourceT first, SourceT last, const std::string& sourcePath, const std::string& what)
+	{
+		if (printed)
+		{
+			return;
+		}
+		printed = true;
+
+		auto sourceBeginIt = f.base();
+		auto sourceEndIt = l.base();
+
+		auto lowerBound = get_line_start(first, sourceBeginIt);
+
+		LocationInfo li;
+
+		li.locInfo_lineBegin = get_line(sourceBeginIt);
+		li.locInfo_lineEnd = get_line(sourceEndIt);
+
+		auto line = get_current_line(lowerBound, sourceBeginIt, last);
+
+		size_t cur_pos = 0, start_pos = 0, end_pos = 0;
+		for (IteratorT it = line.begin(), _eol = line.end(); ; ++it, ++cur_pos)
+		{
+			if (it.base() == sourceBeginIt) start_pos = cur_pos;
+			if (it.base() == sourceEndIt) end_pos = cur_pos;
+
+			if (*(it.base()) == '\n')
+				cur_pos = 0;
+
+			if (it == _eol)
+				break;
+		}
+
+		li.locInfo_posBegin = start_pos;
+		li.locInfo_posEnd = end_pos;
+
+		std::cout << std::string("Error") + li.getInfo() + ": expecting " + what << std::endl;
+		PrintErrorPos(sourcePath, li);
+
+		//CGL_ErrorNode(li, what);
+		//CGL_ErrorNode(li, "aaa");
+		//std::cout << "aaa" << std::endl;
+
+		//return li;
+	}
+
 	//importファイルはpathとnameの組で管理する
 	//最初のパース時にimportされるpathとnameの組を登録しておき、
 	//パース直後(途中だとバックトラックが走る可能性があるためパースが終わってから)にそのソースがimportするソースのパースを再帰的に行う
@@ -162,13 +209,16 @@ namespace cgl
 
 		auto it = beginIt;
 		SpaceSkipper<IteratorT> skipper;
-		Parser<SpaceSkipperT> grammer(beginSource, endSource);
+		Parser<SpaceSkipperT> grammer(beginSource, endSource, filename);
 
 		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
 		{
 			//std::cerr << "Syntax Error: parse failed\n";
 			std::cout << "Syntax Error: parse failed\n";
-			workingDirectories.pop();
+			if (!workingDirectories.empty())
+			{
+				workingDirectories.pop();
+			}
 			return boost::none;
 		}
 
@@ -176,7 +226,10 @@ namespace cgl
 		{
 			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
 			std::cout << "Syntax Error: ramains input\n";
-			workingDirectories.pop();
+			if (!workingDirectories.empty())
+			{
+				workingDirectories.pop();
+			}
 			return boost::none;
 		}
 

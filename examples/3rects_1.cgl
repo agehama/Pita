@@ -1,0 +1,14 @@
+import "common.cgl"
+
+{
+    cubes: [
+        square{scale: x2(30)}
+        square{scale: x2(40)
+        square{scale: x2(60)}
+    ]
+
+    sat( contact(cubes[0].topRight(),    cubes[1].bottomLeft() ) )
+    sat( contact(cubes[1].bottomRight(), cubes[2].topRight()   ) )
+    sat( contact(cubes[2].topLeft(),     cubes[0].bottomRight()) )
+    var(cubes[[1, 2]].pos, cubes[[1, 2]].angle)
+}

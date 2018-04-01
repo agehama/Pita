@@ -165,6 +165,7 @@ namespace cgl
 		}
 		else
 		{
+			std::cout << "Parse failed" << std::endl;
 			succeeded = false;
 		}
 

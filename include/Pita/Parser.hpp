@@ -3,7 +3,7 @@
 #include <set>
 #include <filesystem>
 
-#define BOOST_SPIRIT_DEBUG
+//#define BOOST_SPIRIT_DEBUG
 #define BOOST_RESULT_OF_USE_DECLTYPE
 #define BOOST_SPIRIT_USE_PHOENIX_V3
 #define BOOST_SPIRIT_UNICODE
@@ -352,48 +352,6 @@ namespace cgl
 				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| id[_val = _1];
 
-			/*factor =
-				  ('+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)])
-				| ('-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)])
-				| ('@' >> s >> (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)]))
-				| float_value[_val = Call(LRValue::Float, _1)]
-				| int_[_val = Call(LRValue::Int, _1)]
-				| lit("true")[_val = Call(LRValue::Bool, true)]
-				| lit("false")[_val = Call(LRValue::Bool, false)]
-				| import_expr[_val = _1]
-				| ('(' >> s >> expr_seq[_val = _1] >> s >> ')')
-				| ('\"' >> char_string[_val = Call(BuildString, _1)] >> '\"')
-				| constraints[_val = _1]
-				| record_inheritor[_val = _1]
-				| freeVals[_val = _1]
-				| accessor[_val = _1]
-				| def_func[_val = _1]
-				| for_expr[_val = _1]
-				| list_maker[_val = _1]
-				| record_maker[_val = _1]
-				| id[_val = _1];*/
-
-			/*factor =
-				'+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
-				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| '@' >> s >> (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)])
-				| float_value[_val = Call(LRValue::Float, _1)]
-				| int_[_val = Call(LRValue::Int, _1)]
-				| lit("true")[_val = Call(LRValue::Bool, true)]
-				| lit("false")[_val = Call(LRValue::Bool, false)]
-				| import_expr[_val = _1]
-				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
-				| '\"' >> char_string[_val = Call(BuildString, _1)] >> '\"'
-				| constraints[_val = _1]
-				| record_inheritor[_val = _1]
-				| freeVals[_val = _1]
-				| accessor[_val = _1]
-				| def_func[_val = _1]
-				| for_expr[_val = _1]
-				| list_maker[_val = _1]
-				| record_maker[_val = _1]
-				| id[_val = _1];*/
-
 			id = unchecked_identifier[_val = Call(Identifier::MakeIdentifier, _1)] - distinct_keyword;
 
 			char_string = lexeme[*(encode::char_ - encode::char_('\"'))];
@@ -405,10 +363,7 @@ namespace cgl
 
 			s = *(encode::space);
 
-			//auto errorInfo = errorHandler(_1, _2, _3, _4);
 			auto errorInfo = errorHandler(_1, _3, _4);
-			//qi::on_error<qi::fail>(VarAssignment, errorHandler(_1, _2, _3, _4));
-
 			qi::on_error<qi::fail>(general_expr, errorInfo);
 			qi::on_error<qi::fail>(logic_expr, errorInfo);
 			qi::on_error<qi::fail>(logic_term, errorInfo);
@@ -453,8 +408,6 @@ namespace cgl
 			qi::on_error<qi::fail>(pow_term1, errorInfo);
 			qi::on_error<qi::fail>(expr_seq, errorInfo);
 			qi::on_error<qi::fail>(statement, errorInfo);
-			//qi::on_error<qi::fail>(program, std::cout << boost::phoenix::val("parse failed : ") << std::endl);
-			//qi::on_error<qi::fail>(list_maker, std::cout << boost::phoenix::val("parse failed : list_maker") << std::endl);
 
 			auto setLocationInfo = annotate(_val, _1, _3);
 			qi::on_success(general_expr, setLocationInfo);
@@ -503,16 +456,15 @@ namespace cgl
 			qi::on_success(statement, setLocationInfo);
 			qi::on_success(program, setLocationInfo);
 
-			/*BOOST_SPIRIT_DEBUG_NODES(
+			BOOST_SPIRIT_DEBUG_NODES(
 				(float_value)(unchecked_identifier)(distinct_keyword)(s)(s1)(program)
 				(expr_seq)(statement)(general_expr)(logic_expr)(logic_term)(logic_factor)(compare_expr)(arith_expr)(basic_arith_expr)(term)(factor)(pow_term)(pow_term1)
 				(char_string)(key_expr)(id)(arguments)(def_func)(return_expr)(if_expr)(for_expr)(import_expr)(list_maker)(record_inheritor)(record_maker)(record_keyexpr)
 				(access)(accessor)(listAccess)(recordAccess)(functionAccess)(freeVals)(constraints)
-			)*/
+			)
 		}
 	};
 
-	//boost::optional<Expr> Parse(const std::string& program);
 	boost::optional<Expr> Parse1(const std::string& filename);
 	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo);
 }

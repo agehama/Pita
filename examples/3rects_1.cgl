@@ -3,7 +3,7 @@ import "common.cgl"
 {
     cubes: [
         square{scale: x2(30)}
-        square{scale: x2(40)
+        square{scale: x2(40)}
         square{scale: x2(60)}
     ]
 

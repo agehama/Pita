@@ -39,9 +39,7 @@ lineLength = (l -> ((l[1].x - l[0].x)^2 + (l[1].y - l[0].y)^2)^0.5)
 rgb = (r, g, b -> {r: r, g: g, b: b})
 
 square = shape{
-    polygon: [
-        {x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}, {x: +0.5, y: +0.5}, {x: -0.5, y: +0.5}
-    ]
+    polygon: [{x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}, {x: +0.5, y: +0.5}, {x: -0.5, y: +0.5}]
     topLeft:     (->globalPos( polygon[0] ))
     topRight:    (->globalPos( polygon[1] ))
     bottomRight: (->globalPos( polygon[2] ))

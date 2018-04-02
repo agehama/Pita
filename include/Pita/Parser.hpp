@@ -26,6 +26,8 @@ namespace cgl
 
 	extern std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 
+	extern bool errorMessagePrinted;
+
 	inline auto MakeUnaryExpr(UnaryOp op)
 	{
 		return boost::phoenix::bind([](const auto & e, UnaryOp op) {return UnaryExpr(e, op); }, boost::spirit::_1, op);
@@ -51,9 +53,7 @@ namespace cgl
 	using namespace boost::spirit;
 
 	//using IteratorT = std::string::const_iterator;
-	//using IteratorT = std::u32string::const_iterator;
 	using SourceT = boost::spirit::line_pos_iterator<std::string::const_iterator>;
-	//using IteratorT = boost::u8_to_u32_iterator<std::string::const_iterator>;
 	using IteratorT = boost::u8_to_u32_iterator<SourceT>;
 
 	struct Annotator
@@ -196,7 +196,7 @@ namespace cgl
 			auto concatArguments = [](Arguments& a, const Arguments& b) { a.concat(b); };
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
 
-			program = s > -(expr_seq) > s;
+			program = s >> -(expr_seq) >> s;
 
 			expr_seq = statement[_val = _1] >> *(
 				+(lit('\n')) >> statement[Call(Lines::Concat, _val, _1)]
@@ -223,7 +223,7 @@ namespace cgl
 				((lit("do") >> s >> general_expr[Call(For::SetDo, _val, _1, false)]) |
 				(lit("list") >> s >> general_expr[Call(For::SetDo, _val, _1, true)]));
 
-			import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] > '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
+			import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] >> '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
@@ -290,26 +290,29 @@ namespace cgl
 			//record{} の間には改行は挟めない（record,{}と区別できなくなるので）
 			record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 
-			record_maker = (
-				encode::char_('{') >> s >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >>
-				*(
-				(s >> ',' >> s > (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+			record_maker = encode::char_('{') >> s >
+				-( 
+					(record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >
+				    *(
+				      (s >> ',' >> s > (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					| (+(encode::char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
+					                        //^-ここだけはバックトラックを許さないと最後の改行を食べた時戻れなくなる
 					)
-				>> s >> encode::char_('}')
 				)
-				| (encode::char_('{') >> s >> encode::char_('}'));
+				>> s > encode::char_('}');
 
 			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
-			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> encode::char_(':') >> s >> general_expr[Call(KeyExpr::SetExpr, _val, _1)];
+			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> encode::char_(':') >> s > general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
-			list_maker = (encode::char_('[') >> s >> general_expr[_val = Call(ListConstractor::Make, _1)] >>
-				*(
-					(s >> encode::char_(',') >> s >> general_expr[Call(ListConstractor::Append, _val, _1)])
+			list_maker = encode::char_('[') >> s > 
+				-(
+					general_expr[_val = Call(ListConstractor::Make, _1)] >
+				    *(
+				      (s >> encode::char_(',') > s > general_expr[Call(ListConstractor::Append, _val, _1)])
 					| (+(encode::char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
-					) >> s > encode::char_(']')
+					)
 				)
-				| (encode::char_('[') >> s > encode::char_(']'));
+				>> s > encode::char_(']');
 
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
@@ -329,26 +332,67 @@ namespace cgl
 				>> *(s >> encode::char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> encode::char_(')');
 
 			factor = 
-				  float_value[_val = Call(LRValue::Float, _1)]
-				| int_[_val = Call(LRValue::Int, _1)]
-				| lit("true")[_val = Call(LRValue::Bool, true)]
-				| lit("false")[_val = Call(LRValue::Bool, false)]
-				| import_expr[_val = _1]
-				| '(' >> s >> expr_seq[_val = _1] > s > ')'
-				| '\"' >> char_string[_val = Call(BuildString, _1)] > '\"'
-				| list_maker[_val = _1]
-				| record_maker[_val = _1]
+				  import_expr[_val = _1]
+				| ('(' >> s > expr_seq[_val = _1] > s > ')')
+				| ('\"' > char_string[_val = Call(BuildString, _1)] > '\"')
 				| constraints[_val = _1]
 				| record_inheritor[_val = _1]
 				| freeVals[_val = _1]
 				| accessor[_val = _1]
 				| def_func[_val = _1]
-				| '+' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
-				| '-' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
-				| '@' >> s > (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)])
 				| for_expr[_val = _1]
-				
+				| list_maker[_val = _1]
+				| record_maker[_val = _1]
+				| ('+' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Plus)])
+				| ('-' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Minus)])
+				| ('@' >> s > (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)]))
+				| float_value[_val = Call(LRValue::Float, _1)]
+				| int_[_val = Call(LRValue::Int, _1)]
+				| lit("true")[_val = Call(LRValue::Bool, true)]
+				| lit("false")[_val = Call(LRValue::Bool, false)]
 				| id[_val = _1];
+
+			/*factor =
+				  ('+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)])
+				| ('-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)])
+				| ('@' >> s >> (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)]))
+				| float_value[_val = Call(LRValue::Float, _1)]
+				| int_[_val = Call(LRValue::Int, _1)]
+				| lit("true")[_val = Call(LRValue::Bool, true)]
+				| lit("false")[_val = Call(LRValue::Bool, false)]
+				| import_expr[_val = _1]
+				| ('(' >> s >> expr_seq[_val = _1] >> s >> ')')
+				| ('\"' >> char_string[_val = Call(BuildString, _1)] >> '\"')
+				| constraints[_val = _1]
+				| record_inheritor[_val = _1]
+				| freeVals[_val = _1]
+				| accessor[_val = _1]
+				| def_func[_val = _1]
+				| for_expr[_val = _1]
+				| list_maker[_val = _1]
+				| record_maker[_val = _1]
+				| id[_val = _1];*/
+
+			/*factor =
+				'+' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Plus)]
+				| '-' >> s >> factor[_val = MakeUnaryExpr(UnaryOp::Minus)]
+				| '@' >> s >> (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)])
+				| float_value[_val = Call(LRValue::Float, _1)]
+				| int_[_val = Call(LRValue::Int, _1)]
+				| lit("true")[_val = Call(LRValue::Bool, true)]
+				| lit("false")[_val = Call(LRValue::Bool, false)]
+				| import_expr[_val = _1]
+				| '(' >> s >> expr_seq[_val = _1] >> s >> ')'
+				| '\"' >> char_string[_val = Call(BuildString, _1)] >> '\"'
+				| constraints[_val = _1]
+				| record_inheritor[_val = _1]
+				| freeVals[_val = _1]
+				| accessor[_val = _1]
+				| def_func[_val = _1]
+				| for_expr[_val = _1]
+				| list_maker[_val = _1]
+				| record_maker[_val = _1]
+				| id[_val = _1];*/
 
 			id = unchecked_identifier[_val = Call(Identifier::MakeIdentifier, _1)] - distinct_keyword;
 

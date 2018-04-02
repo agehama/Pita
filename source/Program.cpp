@@ -103,9 +103,9 @@ namespace cgl
 			std::cerr << "Parse \"" << filepath << "\" ..." << std::endl;
 		}
 
-		if (auto exprOpt = Parse1(filepath))
+		try
 		{
-			try
+			if (auto exprOpt = Parse1(filepath))
 			{
 				if (logOutput)
 				{
@@ -138,11 +138,19 @@ namespace cgl
 				}
 
 				if (logOutput)
-				std::cerr << "completed" << std::endl;
+					std::cerr << "completed" << std::endl;
 
 				succeeded = true;
 			}
-			catch (const cgl::Exception& e)
+			else
+			{
+				std::cout << "Parse failed" << std::endl;
+				succeeded = false;
+			}
+		}
+		catch (const cgl::Exception& e)
+		{
+			if (!errorMessagePrinted)
 			{
 				std::cerr << e.what() << std::endl;
 				if (e.hasInfo)
@@ -153,19 +161,14 @@ namespace cgl
 				{
 					std::cerr << "Exception does not has any location info." << std::endl;
 				}
-
-				succeeded = false;
 			}
-			catch (const std::exception& other)
-			{
-				std::cerr << "Error: " << other.what() << std::endl;
 
-				succeeded = false;
-			}
+			succeeded = false;
 		}
-		else
+		catch (const std::exception& other)
 		{
-			std::cout << "Parse failed" << std::endl;
+			std::cerr << "Error: " << other.what() << std::endl;
+
 			succeeded = false;
 		}
 

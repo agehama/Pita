@@ -40,8 +40,10 @@ namespace cgl
 		return boost::apply_visitor(getter, expr);
 	}
 
-	void Annotator::doAnnotate(LocationInfo& li, IteratorT f, IteratorT l, SourceT first, SourceT last)
+	LocationInfo GetLocationInfo(IteratorT f, IteratorT l, SourceT first, SourceT last)
 	{
+		LocationInfo li;
+
 		auto sourceBeginIt = f.base();
 		auto sourceEndIt = l.base();
 
@@ -67,6 +69,13 @@ namespace cgl
 
 		li.locInfo_posBegin = start_pos;
 		li.locInfo_posEnd = end_pos;
+
+		return li;
+	}
+
+	void Annotator::doAnnotate(LocationInfo& li, IteratorT f, IteratorT l, SourceT first, SourceT last)
+	{
+		li = GetLocationInfo(f, l, first, last);
 	}
 
 	void Annotator::doAnnotate(Expr& li, IteratorT f, IteratorT l, SourceT first, SourceT last)
@@ -74,51 +83,19 @@ namespace cgl
 		doAnnotate(GetLocInfo(li), f, l, first, last);
 	}
 
-	bool printed = false;
+	bool errorMessagePrinted = false;
 	void ErrorHandler::doAnnotate(IteratorT f, IteratorT l, SourceT first, SourceT last, const std::string& sourcePath, const std::string& what)
 	{
-		if (printed)
+		if (errorMessagePrinted)
 		{
 			return;
 		}
-		printed = true;
+		errorMessagePrinted = true;
 
-		auto sourceBeginIt = f.base();
-		auto sourceEndIt = l.base();
-
-		auto lowerBound = get_line_start(first, sourceBeginIt);
-
-		LocationInfo li;
-
-		li.locInfo_lineBegin = get_line(sourceBeginIt);
-		li.locInfo_lineEnd = get_line(sourceEndIt);
-
-		auto line = get_current_line(lowerBound, sourceBeginIt, last);
-
-		size_t cur_pos = 0, start_pos = 0, end_pos = 0;
-		for (IteratorT it = line.begin(), _eol = line.end(); ; ++it, ++cur_pos)
-		{
-			if (it.base() == sourceBeginIt) start_pos = cur_pos;
-			if (it.base() == sourceEndIt) end_pos = cur_pos;
-
-			if (*(it.base()) == '\n')
-				cur_pos = 0;
-
-			if (it == _eol)
-				break;
-		}
-
-		li.locInfo_posBegin = start_pos;
-		li.locInfo_posEnd = end_pos;
+		const LocationInfo li = GetLocationInfo(f, l, first, last);
 
 		std::cout << std::string("Error") + li.getInfo() + ": expecting " + what << std::endl;
 		PrintErrorPos(sourcePath, li);
-
-		//CGL_ErrorNode(li, what);
-		//CGL_ErrorNode(li, "aaa");
-		//std::cout << "aaa" << std::endl;
-
-		//return li;
 	}
 
 	//importファイルはpathとnameの組で管理する
@@ -213,8 +190,10 @@ namespace cgl
 
 		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
 		{
-			//std::cerr << "Syntax Error: parse failed\n";
-			std::cout << "Syntax Error: parse failed\n";
+			if (!errorMessagePrinted)
+			{
+				std::cout << "Syntax Error: parse failed\n";
+			}
 			if (!workingDirectories.empty())
 			{
 				workingDirectories.pop();
@@ -224,8 +203,10 @@ namespace cgl
 
 		if (it != endIt)
 		{
-			//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
-			std::cout << "Syntax Error: ramains input\n";
+			if (!errorMessagePrinted)
+			{
+				std::cout << "Syntax Error: ramains input:\n" << std::string(it.base().base(), sourceCode.cend()) << std::endl;
+			}
 			if (!workingDirectories.empty())
 			{
 				workingDirectories.pop();

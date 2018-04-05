@@ -968,10 +968,13 @@ namespace cgl
 			PackedList polygonList;
 			const gg::LineString* outer = poly->getExteriorRing();
 
+			int pointsCount = 0;
 			for (int i = 1; i < static_cast<int>(outer->getNumPoints()); ++i)//始点と終点は同じ座標なので最後だけ飛ばす
 			{
 				const gg::Coordinate& p = outer->getCoordinateN(i);
 				appendCoord(polygonList, p.x, p.y);
+				++pointsCount;
+				//std::cout << pointsCount << " | (" << p.x << ", " << p.y << ")\n";
 			}
 
 			result.add("polygon", polygonList);

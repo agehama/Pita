@@ -257,7 +257,9 @@ namespace cgl
 					debugPrint = true;
 				}
 
+				//int pointsCount = 0;
 				const gg::Geometry* geometry = originalShape[shapei];
+				//CGL_DBG1(geometry->getGeometryType());
 				if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 				{
 					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
@@ -265,23 +267,6 @@ namespace cgl
 					const gg::LineString* exterior = polygon->getExteriorRing();
 
 					gg::CoordinateArraySequence newExterior;
-					/*for (size_t p = 0; p < exterior->getNumPoints(); ++p)
-					{
-						const gg::Point* point = exterior->getPointN(p);
-
-						const auto uv = getUV(point->getX(), point->getY());
-
-						const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
-
-						if (debugPrint)
-						{
-							//std::cout << "uv(" << uv.x() << ", " << uv.y() << "), pos(" << newPos.x() << ", " << newPos.y() << ")\n";
-						}
-
-						newExterior.add(gg::Coordinate(newPos.x(), newPos.y()));
-						//newExterior.add(gg::Coordinate(point->getX(), point->getY()));
-					}
-					*/
 					for (size_t p = 0; p + 1 < exterior->getNumPoints(); ++p)
 					{
 						const gg::Point* p0 = exterior->getPointN(p);
@@ -290,16 +275,24 @@ namespace cgl
 						const int num = 20;
 						for (int sub = 0; sub < num; ++sub)
 						{
-							const double progress = 1.0 * sub / (num - 1);
+							const double progress = 1.0 * sub / num;
 							const double x = p0->getX() + (p1->getX() - p0->getX())*progress;
 							const double y = p0->getY() + (p1->getY() - p0->getY())*progress;
 
 							const auto uv = getUV(x, y);
-
 							const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
+
+							//std::cout <<"sub" << sub << ": (" << x << ", " << y << ")\n";
+							//++pointsCount;
+							//std::cout << pointsCount << " | " << "sub" << sub << ": (" << newPos.x() << ", " << newPos.y() << ")\n";
 
 							newExterior.add(gg::Coordinate(newPos.x(), newPos.y()));
 						}
+					}
+
+					if (!newExterior.empty())
+					{
+						newExterior.add(newExterior.front());
 					}
 
 					std::vector<gg::Geometry*>* holes = new std::vector<gg::Geometry*>;
@@ -355,7 +348,6 @@ namespace cgl
 				}
 				else if(geometry->getGeometryTypeId() == gg::GEOS_LINESTRING)
 				{
-					
 					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(geometry);
 					
 					gg::CoordinateArraySequence newPoints;
@@ -1588,8 +1580,7 @@ namespace cgl
 
 	PackedList GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
 	{
-		//return PackedList();
-		
+		//CGL_DBG;
 		const bool debugDraw = false;
 		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape);
 
@@ -1632,7 +1623,8 @@ namespace cgl
 			const auto offsetPath = GetOffsetPathImpl(targetPaths.front(), -currentHeight);
 			targetPaths.push_back(std::move(ReadPathPacked(offsetPath)));
 		}
-		
+		//CGL_DBG;
+
 		PackedList packedList;
 		if (debugDraw)
 		{
@@ -1692,6 +1684,7 @@ namespace cgl
 		xs = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
 		ys = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
 		
+		//CGL_DBG;
 		for (int y = 0; y < yNum; ++y)
 		{
 			const auto frontPos = targetPaths[y].cs->front();
@@ -1740,15 +1733,16 @@ namespace cgl
 			}
 		}
 		
+		//CGL_DBG;
 		deformer.initialize(boundingRect, xs, ys);
-		
+		//CGL_DBG;
 		auto geometries = GeosFromRecordPacked(shape);
-		
+		//CGL_DBG;
 		const auto result = deformer.FFD(geometries);
 		//return GetPackedShapesFromGeos(result);
-		
+		//CGL_DBG;
 		packedList.add(GetShapesFromGeosPacked(result));
-		
+		//CGL_DBG;
 		return packedList;
 	}
 

@@ -247,6 +247,8 @@ namespace cgl
 
 			std::vector<gg::Geometry*> result;
 
+			const int num = 20;
+
 			//for (const gg::Geometry* geometry : originalShape)
 			for (int shapei=0;shapei<originalShape.size();++shapei)
 			{
@@ -272,7 +274,6 @@ namespace cgl
 						const gg::Point* p0 = exterior->getPointN(p);
 						const gg::Point* p1 = exterior->getPointN(p + 1);
 
-						const int num = 20;
 						for (int sub = 0; sub < num; ++sub)
 						{
 							const double progress = 1.0 * sub / num;
@@ -302,7 +303,7 @@ namespace cgl
 
 						gg::CoordinateArraySequence newInterior;
 						//for (size_t p = 0; p < hole->getNumPoints(); ++p)
-						for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
+						/*for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
 						{
 							const gg::Point* point = hole->getPointN(p);
 
@@ -311,10 +312,30 @@ namespace cgl
 							const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
 
 							newInterior.add(gg::Coordinate(newPos.x(), newPos.y()));
-							//newInterior.add(gg::Coordinate(point->getX(), point->getY()));
+						}*/
+						for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p - 1; --p)
+						{
+							const gg::Point* p0 = hole->getPointN(p);
+							const gg::Point* p1 = hole->getPointN(p - 1);
+
+							for (int sub = 0; sub < num; ++sub)
+							{
+								const double progress = 1.0 * sub / num;
+								const double x = p0->getX() + (p1->getX() - p0->getX())*progress;
+								const double y = p0->getY() + (p1->getY() - p0->getY())*progress;
+
+								const auto uv = getUV(x, y);
+								const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
+
+								newInterior.add(gg::Coordinate(newPos.x(), newPos.y()));
+							}
 						}
 
-						//holes.push_back(factory->createLinearRing(newInterior));
+						if (!newInterior.empty())
+						{
+							newInterior.add(newInterior.front());
+						}
+
 						holes->push_back(factory->createLinearRing(newInterior));
 
 						/*
@@ -353,12 +374,9 @@ namespace cgl
 					gg::CoordinateArraySequence newPoints;
 					for (size_t p = 0; p + 1 < lineString->getNumPoints(); ++p)
 					{
-						
 						const gg::Point* p0 = lineString->getPointN(p);
 						const gg::Point* p1 = lineString->getPointN(p + 1);
-						
 
-						const int num = 5;
 						for (int sub = 0; sub < num; ++sub)
 						{
 							//debugPrint = shapei == 0 && p == 0 && sub == 0;
@@ -370,7 +388,6 @@ namespace cgl
 							const auto newPos = get(uv.x(), uv.y(), xs, ys, debugPrint);
 							newPoints.add(gg::Coordinate(newPos.x(), newPos.y()));
 						}
-						
 					}
 
 					result.push_back(factory->createLineString(newPoints));

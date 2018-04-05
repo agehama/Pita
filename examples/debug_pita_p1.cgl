@@ -7,7 +7,7 @@ accentColor = rgb(68, 84, 106)
 main = {
     centerCircle: circle(100){scale: x2(100)}
     circlePath = ShapeOuterPath(centerCircle)[0]
-    rect = triangle{scale: x2(80)}
+    rect = shape{a: Diff(triangle{scale: x2(80)}, triangle{scale: x2(60)})}
 
     gearNum = 4
     delta = 0.5 / gearNum

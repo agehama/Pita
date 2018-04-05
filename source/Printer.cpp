@@ -464,7 +464,7 @@ namespace cgl
 			++i;
 		}
 
-		os << indent() << "Statement end" << std::endl;
+		os << indent() << ") Statement end" << std::endl;
 	}
 
 	void Printer::operator()(const If& if_statement)const

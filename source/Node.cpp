@@ -403,6 +403,8 @@ namespace cgl
 		{
 			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
 		}
+
+		//printExpr(expr.value(), pEnv, std::cout);
 		
 		std::vector<char> usedInSat(freeVariableRefs.size(), 0);
 		//SatVariableBinder binder(pEnv, freeVariables);

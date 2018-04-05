@@ -1859,11 +1859,25 @@ namespace cgl
 			for (const auto& constraint : adderUnitConstraints)
 			{
 				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
+
+				/*std::cout << "constraint:\n";
+				printExpr(constraint, pEnv, std::cout);
+				std::stringstream ss;
+				for (const Address address: adderVariableAppearances.back())
+				{
+					ss << "Address(" << address.toString() << "), ";
+				}
+				std::cout << ss.str() << "\n";*/
 			}
+
+			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
 
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
 				//std::cout << "  3. Dependency analysis" << std::endl;
+
+				//std::vector<Address> addressesOriginal;
+				//std::vector<Address> addressesAdder;
 
 				ConstraintAppearance wholeAddressesOriginal, wholeAddressesAdder;
 				for (const auto& appearance : original.variableAppearances)
@@ -1883,6 +1897,38 @@ namespace cgl
 				std::vector<ConstraintAppearance> mergedVariableAppearances = original.variableAppearances;
 				mergedVariableAppearances.insert(mergedVariableAppearances.end(), adderVariableAppearances.begin(), adderVariableAppearances.end());
 
+				/*{
+					for (const Address address : wholeAddressesOriginal)
+					{
+						addressesOriginal.push_back(address);
+					}
+					for (const Address address : wholeAddressesAdder)
+					{
+						addressesAdder.push_back(address);
+					}
+					std::sort(addressesOriginal.begin(), addressesOriginal.end());
+					std::sort(addressesAdder.begin(), addressesAdder.end());
+				}
+
+				{
+					std::stringstream ss;
+					for (const Address address : addressesOriginal)
+					{
+						ss << address.toString() << ", ";
+					}
+					std::cout << "original: ";
+					std::cout << ss.str() << "\n";
+				}
+				{
+					std::stringstream ss;
+					for (const Address address : addressesAdder)
+					{
+						ss << address.toString() << ", ";
+					}
+					std::cout << "adder   : ";
+					std::cout << ss.str() << "\n";
+				}*/
+
 				//ケースB: 独立でない
 				if (intersects(wholeAddressesAdder, wholeAddressesOriginal))
 				{
@@ -1895,6 +1941,17 @@ namespace cgl
 					}
 
 					std::cout << "Record constraint separated to " << std::to_string(mergedConstraintGroups.size()) << " independent constraints" << std::endl;
+
+					/*if (mergedConstraintGroups.size() == 1)
+					{
+						std::cout << "group   : ";
+						const auto& group = mergedConstraintGroups.front();
+						for (const auto val : group)
+						{
+							std::cout << val << ", ";
+						}
+						std::cout << std::endl;
+					}*/
 
 					original.freeVariableAddresses = mergedFreeVariableAddresses;
 					original.unitConstraints = mergedUnitConstraints;
@@ -1918,7 +1975,7 @@ namespace cgl
 						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
 
 						//std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
-
+						//std::cout << "2 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
 						readResult(pEnv, resultxs, currentProblem);

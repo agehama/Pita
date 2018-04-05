@@ -230,6 +230,16 @@ namespace cgl
 			return valueID != other.valueID;
 		}
 
+		bool operator<(const Address other)const
+		{
+			return valueID < other.valueID;
+		}
+
+		bool operator<=(const Address other)const
+		{
+			return valueID <= other.valueID;
+		}
+
 		static Address Null()
 		{
 			return Address();

@@ -4,23 +4,6 @@ baseColor = rgb(245, 245, 245)
 mainColor = rgb(49, 187, 222)
 accentColor = rgb(68, 84, 106)
 
-fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
-sourceFontPath = "C:/Windows/Fonts/SourceCodePro-Regular.ttf"
-
-sourceCodeText =
-"{
-    size = 100
-    polygon: [
-        {x: 0, y: 0}, {x: size, y: 0}
-        {x: size, y: size}, {x: 0, y: size}
-    ]
-    fill: {r: 49, g: 187, b: 222}
-}"
-
-sourceCodeShape = {
-    a: BuildText(sourceCodeText, {}, sourceFontPath)
-}
-
 arrow = shape{
     body: square{scale: vec2(400, 20), pos: vec2(-200, 0)}
     head: triangle{scale: x2(50), pos: x2(0), angle: 90}

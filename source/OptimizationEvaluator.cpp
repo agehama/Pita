@@ -121,10 +121,26 @@ namespace cgl
 			addLocalVariable(As<Identifier>(node.lhs));
 		}
 
-		//++depth;
-		const bool a = boost::apply_visitor(*this, node.lhs);
-		const bool b = boost::apply_visitor(*this, node.rhs);
-		//--depth;
+		bool a, b;
+
+		//論理積は単位制約同士をまとめるのに使っているので、基本的にスコープは分かれているべき
+		//内側の論理積はつながっている？
+		if (node.op == BinaryOp::And)
+		{
+			{
+				SatVariableBinder child(*this);
+				a = boost::apply_visitor(child, node.lhs);
+			}
+			{
+				SatVariableBinder child(*this);
+				b = boost::apply_visitor(child, node.rhs);
+			}
+		}
+		else
+		{
+			a = boost::apply_visitor(*this, node.lhs);
+			b = boost::apply_visitor(*this, node.rhs);
+		}
 
 		return a || b;
 	}

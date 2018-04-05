@@ -15,6 +15,8 @@ namespace cgl
 
 	PackedList ShapeBuffer(const PackedVal& shape, const PackedVal& amount);
 
+	PackedList ShapeSubDiv(const PackedVal& shape, int numSubDiv);
+
 	double ShapeArea(const PackedVal& lhs);
 
 	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs);
@@ -25,6 +27,8 @@ namespace cgl
 
 
 	PackedRecord BuildPath(const PackedList& passes, int numOfPoints = 10, const PackedList& obstacleList = PackedList());
+
+	PackedRecord GetBezierPath(const PackedRecord& p0, const PackedRecord& n0, const PackedRecord& p1, const PackedRecord& n1, int numOfPoints);
 
 	PackedRecord GetOffsetPath(const PackedRecord& pathRule, double offset);
 

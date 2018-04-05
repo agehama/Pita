@@ -43,26 +43,6 @@ namespace cgl
 		return fontSize*size;
 	}
 
-	//最後の点は含めない
-	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n)
-	{
-		for (int i = 0; i < n; ++i)
-		{
-			const double t = 1.0*i / n;
-			output.push_back(p0*(1.0 - t)*(1.0 - t) + p1*2.0*(1.0 - t)*t + p2*t*t);
-		}
-	}
-
-	//最後の点は含めない
-	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n)
-	{
-		for (int i = 0; i < n; ++i)
-		{
-			const double t = 1.0*i / n;
-			output.push_back(p0*(1.0 - t)*(1.0 - t)*(1.0 - t) + p1 * 3.0*(1.0 - t)*(1.0 - t)*t + p2 * 3.0*(1.0 - t)*t*t + p3 * t*t*t);
-		}
-	}
-
 	FontBuilder::FontBuilder()
 	{
 		//mplus-1m-medium-sub.ttf
@@ -177,11 +157,11 @@ namespace cgl
 				//Quadratic Bezier
 				else if (v2->type == STBTT_vcurve)
 				{
-					GetQuadraticBezier(points, p1, pc, p2, quality);
+					GetQuadraticBezier(points, p1, pc, p2, quality, false);
 				}
 				else if (v2->type == STBTT_vcubic)
 				{
-					GetCubicBezier(points, p1, pc, pc1, p2, quality);
+					GetCubicBezier(points, p1, pc, pc1, p2, quality, false);
 				}
 				else
 				{
@@ -355,11 +335,11 @@ namespace cgl
 				}
 				else if (v2->type == STBTT_vcurve)
 				{
-					GetQuadraticBezier(points, p1, pc, p2, quality);
+					GetQuadraticBezier(points, p1, pc, p2, quality, false);
 				}
 				else if (v2->type == STBTT_vcubic)
 				{
-					GetCubicBezier(points, p1, pc, pc1, p2, quality);
+					GetCubicBezier(points, p1, pc, pc1, p2, quality, false);
 				}
 				else
 				{

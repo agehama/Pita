@@ -10,9 +10,6 @@ namespace cgl
 
 	bool IsClockWise(const Vector<Eigen::Vector2d>& closedPath);
 
-	//最後の点は含めない
-	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n);
-
 	class FontBuilder
 	{
 	public:

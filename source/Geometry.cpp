@@ -260,9 +260,8 @@ namespace cgl
 				const gg::Geometry* geometry = originalShape[shapei];
 				if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 				{
-					
 					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
-					
+
 					const gg::LineString* exterior = polygon->getExteriorRing();
 
 					gg::CoordinateArraySequence newExterior;
@@ -383,7 +382,6 @@ namespace cgl
 					}
 
 					result.push_back(factory->createLineString(newPoints));
-					
 				}
 			}
 
@@ -591,6 +589,98 @@ namespace cgl
 		{
 			gg::Geometry* currentGeometry = polygons[s];
 			resultGeometries.push_back(currentGeometry->buffer(distance));
+		}
+
+		return GetShapesFromGeosPacked(resultGeometries);
+	}
+
+	PackedList ShapeSubDiv(const PackedVal& shape, int numSubDiv)
+	{
+		if (!IsType<PackedRecord>(shape))
+		{
+			CGL_Error("不正な式です");
+			return{};
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape);
+		std::vector<gg::Geometry*> resultGeometries;
+
+		auto factory = gg::GeometryFactory::create();
+
+		const auto subdividePoly = [&](const gg::Polygon* polygon)
+		{
+			const gg::LineString* exterior = polygon->getExteriorRing();
+
+			gg::CoordinateArraySequence newExterior;
+			for (size_t p = 0; p + 1 < exterior->getNumPoints(); ++p)
+			{
+				const gg::Point* p0 = exterior->getPointN(p);
+				const gg::Point* p1 = exterior->getPointN(p + 1);
+
+				for (int sub = 0; sub < numSubDiv; ++sub)
+				{
+					const double progress = 1.0 * sub / (numSubDiv - 1);
+					const double x = p0->getX() + (p1->getX() - p0->getX())*progress;
+					const double y = p0->getY() + (p1->getY() - p0->getY())*progress;
+					newExterior.add(gg::Coordinate(x, y));
+				}
+
+				if (p + 2 == exterior->getNumPoints())
+				{
+					newExterior.add(gg::Coordinate(p1->getX(), p1->getY()));
+				}
+			}
+
+			std::vector<gg::Geometry*>* holes = new std::vector<gg::Geometry*>;
+			for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
+			{
+				const gg::LineString* hole = polygon->getInteriorRingN(i);
+
+				gg::CoordinateArraySequence newInterior;
+				//for (size_t p = 0; p < hole->getNumPoints(); ++p)
+				for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p - 1; --p)
+				{
+					const gg::Point* p0 = hole->getPointN(p);
+					const gg::Point* p1 = hole->getPointN(p - 1);
+
+					for (int sub = 0; sub < numSubDiv; ++sub)
+					{
+						const double progress = 1.0 * sub / (numSubDiv - 1);
+						const double x = p0->getX() + (p1->getX() - p0->getX())*progress;
+						const double y = p0->getY() + (p1->getY() - p0->getY())*progress;
+						newInterior.add(gg::Coordinate(x, y));
+					}
+
+					if (p - 2 == 0)
+					{
+						newExterior.add(gg::Coordinate(p1->getX(), p1->getY()));
+					}
+				}
+
+				holes->push_back(factory->createLinearRing(newInterior));
+			}
+
+			resultGeometries.push_back(factory->createPolygon(factory->createLinearRing(newExterior), holes));
+		};
+
+		for (int s = 0; s < lhsPolygon.size(); ++s)
+		{
+			const gg::Geometry* geometry = lhsPolygon[s];
+
+			if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
+			{
+				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+				subdividePoly(polygon);
+			}
+			if (geometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+			{
+				const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(geometry);
+
+				for (int i = 0; i < polygons->getNumGeometries(); ++i)
+				{
+					subdividePoly(dynamic_cast<const gg::Polygon*>(polygons->getGeometryN(i)));
+				}
+			}
 		}
 
 		return GetShapesFromGeosPacked(resultGeometries);
@@ -1010,6 +1100,30 @@ namespace cgl
 		result.type = RecordType::Path;
 
 		return result;
+	}
+
+	PackedRecord GetBezierPath(const PackedRecord& p0Record, const PackedRecord& n0Record, const PackedRecord& p1Record, const PackedRecord& n1Record, int numOfPoints)
+	{
+		const auto p0 = ReadVec2Packed(p0Record);
+		const auto n0 = ReadVec2Packed(n0Record);
+		const auto p1 = ReadVec2Packed(p1Record);
+		const auto n1 = ReadVec2Packed(n1Record);
+
+		const Eigen::Vector2d v_p0(std::get<0>(p0), std::get<1>(p0));
+		const Eigen::Vector2d v_n0(std::get<0>(n0), std::get<1>(n0));
+		const Eigen::Vector2d v_p1(std::get<0>(p1), std::get<1>(p1));
+		const Eigen::Vector2d v_n1(std::get<0>(n1), std::get<1>(n1));
+
+		Vector<Eigen::Vector2d> result;
+		GetCubicBezier(result, v_p0, v_p0 + v_n0, v_p1 + v_n1, v_p1, numOfPoints, true);
+
+		PackedList polygonList;
+		for (size_t i = 0; i < result.size(); ++i)
+		{
+			polygonList.add(MakeRecord("x", result[i].x(), "y", result[i].y()));
+		}
+
+		return MakeRecord("line", polygonList);
 	}
 
 	PackedRecord GetOffsetPathImpl(const Path& originalPath, double offset)

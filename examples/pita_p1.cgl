@@ -1,0 +1,33 @@
+import "common.cgl"
+
+baseColor = rgb(245, 245, 245)
+mainColor = rgb(49, 187, 222)
+accentColor = rgb(68, 84, 106)
+
+gear = (gearNum -> shape{
+    baseCircle = circle(100)
+    outerCircle = baseCircle{scale: x2(100)}
+    innerCircle = baseCircle{scale: x2(50)}
+    gearShape = hexagon{scale: vec2(10,25)}
+    delta = 0.5 / gearNum
+    gears = for i in 1:gearNum list(
+        DeformShapeByPath2(gearShape, 
+            SubPath(ShapeOuterPath(outerCircle)[0], delta*(i*2), delta*(i*2+1.2)),
+            gearShape.p(3), gearShape.p(0))
+    )
+    gear: shape{s: Diff(Union(outerCircle, gears), innerCircle)}
+})
+
+main = {
+    a: gear(7)
+    b: a{pos: vec2(100,100)}
+    sat( Area(Intersect(a, b))^2 + Area(BoundingBox({s:[a,b]}))*0.01 )
+    var(b.pos)
+}
+main2 = {
+    a: main
+    b: main.a{pos: vec2(200,300)}
+    fill: accentColor
+    sat( Area(Intersect(a, b))^2 + Area(BoundingBox({s:[a,b]}))*0.01 )
+    var(b.pos)
+}

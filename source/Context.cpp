@@ -1599,6 +1599,62 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"BezierPath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 5)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& p0 = pEnv->expand(arguments[0], info);
+			const Val& n0 = pEnv->expand(arguments[1], info);
+			const Val& p1 = pEnv->expand(arguments[2], info);
+			const Val& n1 = pEnv->expand(arguments[3], info);
+			const Val& num = pEnv->expand(arguments[4], info);
+
+			if (!IsType<Record>(p0) || !IsType<Record>(n0) || !IsType<Record>(p1) || !IsType<Record>(n1) || !IsType<int>(num))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetBezierPath(
+				As<PackedRecord>(As<Record>(p0).packed(*this)),
+				As<PackedRecord>(As<Record>(n0).packed(*this)),
+				As<PackedRecord>(As<Record>(p1).packed(*this)),
+				As<PackedRecord>(As<Record>(n1).packed(*this)),
+				As<int>(num)
+			).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"SubDiv",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& num = pEnv->expand(arguments[1], info);
+
+			if (!IsType<Record>(shape) || !IsType<int>(num))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeSubDiv(
+				As<PackedRecord>(As<Record>(shape).packed(*this)),
+				As<int>(num)
+			).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
 			"Area",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

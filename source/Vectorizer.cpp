@@ -11,6 +11,34 @@
 
 namespace cgl
 {
+	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint)
+	{
+		for (int i = 0; i < n; ++i)
+		{
+			const double t = 1.0*i / n;
+			output.push_back(p0*(1.0 - t)*(1.0 - t) + p1 * 2.0*(1.0 - t)*t + p2 * t*t);
+		}
+
+		if (includesEndPoint)
+		{
+			output.push_back(p2);
+		}
+	}
+
+	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint)
+	{
+		for (int i = 0; i < n; ++i)
+		{
+			const double t = 1.0*i / n;
+			output.push_back(p0*(1.0 - t)*(1.0 - t)*(1.0 - t) + p1 * 3.0*(1.0 - t)*(1.0 - t)*t + p2 * 3.0*(1.0 - t)*t*t + p3 * t*t*t);
+		}
+
+		if (includesEndPoint)
+		{
+			output.push_back(p3);
+		}
+	}
+
 	struct Color
 	{
 		int r = 0, g = 0, b = 0;

@@ -38,6 +38,11 @@ lineLength = (l -> ((l[1].x - l[0].x)^2 + (l[1].y - l[0].y)^2)^0.5)
 
 rgb = (r, g, b -> {r: r, g: g, b: b})
 
+contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
+distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
+
+parallel = (l1, l2 -> (l1[1].y - l1[0].y)*(l2[1].x - l2[0].x) == (l1[1].x - l1[0].x)*(l2[1].y - l2[0].y))
+
 square = shape{
     polygon: [
         {x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}
@@ -65,6 +70,8 @@ triangle = shape{
     p1: (->globalPos( polygon[1] ))
     p2: (->globalPos( polygon[2] ))
     top:         (->globalPos( polygon[0] ))
+    bottomRight: (->globalPos( polygon[1] ))
+    bottomLeft:  (->globalPos( polygon[2] ))
     bottom:      (->globalPos( mid(polygon[1], polygon[2]) ))
     left:        (->globalPos( polygon[2] ))
     right:       (->globalPos( polygon[1] ))
@@ -77,6 +84,7 @@ hexagon = shape{
     polygon: for i in 0:5 list(
         vec2(r*Cos(60*i), r*Sin(60*i))
     )
+    p: (index -> globalPos( polygon[index] ))
 }
 
 circle = (quality -> shape{
@@ -88,7 +96,11 @@ circle = (quality -> shape{
     )
 })
 
-contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
-distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
+arrow = shape{
+    body: square{scale = vec2(20, 200), sat(contact(bottom(), vec2(0, 0))), var(pos)}
+    head: triangle{scale = vec2(50, 50), sat(contact(bottom(), body.top())), var(pos)}
+    begin: (->globalPos(body.bottom()))
+    end: (->globalPos(head.top()))
+}
 
-parallel = (l1, l2 -> (l1[1].y - l1[0].y)*(l2[1].x - l2[0].x) == (l1[1].x - l1[0].x)*(l2[1].y - l2[0].y))
+

@@ -28,6 +28,9 @@ namespace cgl
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
 
+	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint);
+	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint);
+
 	//bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment);
 	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record);
 

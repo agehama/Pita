@@ -108,7 +108,7 @@ namespace cgl
 
 		bool operator()(const RecordConstractor& node);
 
-		bool operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const RecordInheritor& node);
 		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
 

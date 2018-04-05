@@ -312,6 +312,23 @@ namespace cgl
 		return result;
 	}
 
+	bool SatVariableBinder::operator()(const RecordInheritor& node)
+	{
+		//std::cout << getIndent() << typeid(node).name() << std::endl;
+
+		bool result = false;
+		for (size_t i = 0; i < node.adder.exprs.size(); ++i)
+		{
+			const auto& expr = node.adder.exprs[i];
+			//CGL_DebugLog(std::string("BindRecordExpr(") + ToS(i) + ")");
+			//printExpr(expr);
+			//++depth;
+			result = boost::apply_visitor(*this, expr) || result;
+			//--depth;
+		}
+		return result;
+	}
+
 	bool SatVariableBinder::operator()(const Accessor& node)
 	{
 		//std::cout << getIndent() << typeid(node).name() << std::endl;

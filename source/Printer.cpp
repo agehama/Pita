@@ -716,7 +716,7 @@ namespace cgl
 
 		std::stringstream ss;
 
-		UnaryOp op;
+		UnaryOp op = node.op;
 		switch (op)
 		{
 		case cgl::UnaryOp::Not: ss << "!"; break;

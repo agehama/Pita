@@ -185,7 +185,7 @@ namespace cgl
 				{
 					return *nextIt;
 				}
-				boost::none;
+				return boost::none;
 			};
 
 			std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());

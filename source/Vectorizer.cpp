@@ -140,14 +140,19 @@ namespace cgl
 
 	std::vector<PitaGeometry> GeosFromRecordDrawablePacked(const cgl::PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
-	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record)
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform)
 	{
 		const auto& values = record.values;
 
 		auto itX = values.find("x");
 		auto itY = values.find("y");
-		
-		return std::tuple<double, double>(AsDouble(itX->second.value), AsDouble(itY->second.value));
+
+		Eigen::Vector2d xy;
+		xy << AsDouble(itX->second.value), AsDouble(itY->second.value);
+		const auto xy_ = transform.product(xy);
+
+		//return std::tuple<double, double>(AsDouble(itX->second.value), AsDouble(itY->second.value));
+		return std::tuple<double, double>(xy_.x(), xy_.y());
 	}
 
 	Path ReadPathPacked(const PackedRecord& pathRecord)
@@ -732,6 +737,17 @@ namespace cgl
 		std::vector<gg::Geometry*> currentHoles;
 
 		std::vector<gg::Geometry*> currentLines;
+
+		{
+			if (record.values.find("x") != record.values.end() &&
+				record.values.find("y") != record.values.end())
+			{
+				const auto v = ReadVec2Packed(record, transform);
+
+				auto factory = gg::GeometryFactory::create();
+				currentPolygons.push_back(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v))));
+			}
+		}
 
 		for (const auto& member : record.values)
 		{

@@ -34,8 +34,6 @@ namespace cgl
 	//bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment);
 	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record);
 
-	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
-
 	struct BaseLineOffset
 	{
 		double x = 0, y = 0;
@@ -201,6 +199,8 @@ namespace cgl
 		Eigen::Vector2d m_min = Eigen::Vector2d(DBL_MAX, DBL_MAX);
 		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
 	};
+
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform = TransformPacked());
 
 	//bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Context> pEnv, const Transform& transform);
 	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);

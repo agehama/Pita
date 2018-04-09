@@ -56,7 +56,7 @@ main = {
         pos: vec2(xmax*0.5 - (end().x + begin().x)*0.5, 0)
         sat( contact(begin(), rectL.topRight()) )
         sat( contact(end(), rectR.topLeft()) )
-        sat( p: @ss[3], Distance({a:triangle, pos: center()}, rail) == 0.0 )        
+        sat( Distance(center(), rail) == 0.0 )
     }
     
     fill: baseColor

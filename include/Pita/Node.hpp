@@ -63,15 +63,10 @@ extern std::ofstream ofs;
 //#define CGL_DebugLog(message) (cgl::Log(std::cout, CGL_TagDebug + CGL_FileDesc + message))
 #define CGL_DebugLog(message) (cgl::Log(ofs, CGL_TagDebug + CGL_FileDesc + message))
 #else
-#define CGL_ErrorLog(message) 
-#define CGL_WarnLog(message)  
-#define CGL_DebugLog(message) 
+#define CGL_ErrorLog(message)
+#define CGL_WarnLog(message)
+#define CGL_DebugLog(message)
 #endif
-
-namespace std
-{
-	template<class T> struct hash;
-}
 
 namespace cgl
 {
@@ -359,7 +354,7 @@ namespace cgl
 	struct FunctionAccess;
 
 	struct Accessor;
-	
+
 	struct DeclSat;
 	struct DeclFree;
 
@@ -525,7 +520,7 @@ namespace cgl
 		{
 			return !IsEqualVal(value, other.value);
 		}
-		
+
 		Val value;
 	};
 
@@ -576,7 +571,7 @@ namespace cgl
 		{
 			return As<Reference>(value);
 		}
-		
+
 		const Val& evaluated()const
 		{
 			return As<RValue>(value).value;
@@ -681,7 +676,7 @@ namespace cgl
 		SatUnaryExpr() = default;
 
 		SatUnaryExpr(const SatExpr& lhs, UnaryOp op) :
-			lhs(lhs), 
+			lhs(lhs),
 			op(op)
 		{}
 	};
@@ -925,7 +920,7 @@ namespace cgl
 		std::vector<Identifier> arguments;
 		Expr expr;
 		boost::optional<Address> builtinFuncAddress;
-		
+
 		FuncVal() = default;
 
 		explicit FuncVal(Address builtinFuncAddress) :
@@ -1033,7 +1028,7 @@ namespace cgl
 			return IsEqual(expr, other.expr);
 		}
 	};
-	
+
 	struct If
 	{
 		Expr cond_expr;
@@ -1074,7 +1069,7 @@ namespace cgl
 			if (b1)
 			{
 				return IsEqual(cond_expr, other.cond_expr)
-					&& IsEqual(then_expr, other.then_expr) 
+					&& IsEqual(then_expr, other.then_expr)
 					&& IsEqual(else_expr.value(), other.else_expr.value());
 			}
 
@@ -1516,7 +1511,7 @@ namespace cgl
 				args.push_back(value);
 			}
 			*/
-			
+
 			void appendExpr(const SatExpr& value)
 			{
 				args.push_back(value);
@@ -1783,7 +1778,7 @@ namespace cgl
 
 		std::vector<OptimizationProblemSat> problems;
 		boost::optional<Expr> constraint;
-		
+
 		//var宣言で指定されたアクセッサ
 		std::vector<Accessor> freeVariables;
 		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
@@ -1881,7 +1876,7 @@ namespace cgl
 		{
 			listAccess.isArbitrary = true;
 		}
-		
+
 		bool operator==(const ListAccess& other)const
 		{
 			return index == other.index;
@@ -1940,7 +1935,7 @@ namespace cgl
 					return false;
 				}
 			}
-			
+
 			return true;
 		}
 	};
@@ -2188,5 +2183,5 @@ namespace cgl
 	};
 
 	Expr BuildString(const std::u32string& str);
-	
+
 }

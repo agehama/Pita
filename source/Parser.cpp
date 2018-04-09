@@ -153,6 +153,18 @@ namespace cgl
 		void operator()(const DeclFree& node)const {}
 	};
 
+	std::string AsUtf8(const std::u32string& input) {
+		return std::string(
+			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.begin()),
+			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.end()));
+	}
+
+	std::u32string AsUtf32(const std::string& input) {
+		return std::u32string(
+			boost::u8_to_u32_iterator<std::string::const_iterator>(input.begin()),
+			boost::u8_to_u32_iterator<std::string::const_iterator>(input.end()));
+	}
+
 	boost::optional<Expr> Parse1(const std::string& filename)
 	{
 		std::cout << "parsing: \"" << filename << "\"" << std::endl;
@@ -164,7 +176,88 @@ namespace cgl
 		}
 		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
-		std::stringstream tabRemovedStr;
+		std::stringstream escapedStr;
+		{
+			const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
+			{
+				const auto nextIt = it + 1;
+				if (nextIt != itEnd)
+				{
+					return *nextIt;
+				}
+				boost::none;
+			};
+
+			std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+			const auto utf32str = AsUtf32(original);
+
+			bool inLineComment = false;
+			bool inScopeComment = false;
+			for (auto it = utf32str.begin(); it != utf32str.end(); ++it)
+			{
+				if (inScopeComment)
+				{
+					//エラー位置を正しく捕捉するため、コメント内でも改行はちゃんと拾う必要がある
+					if (*it == '\n')
+					{
+						escapedStr << '\n';
+						continue;
+					}
+					else if (*it == '*')
+					{
+						if (auto opt = nextCharOpt(it, utf32str.end()))
+						{
+							if (opt.value() == '/')
+							{
+								inScopeComment = false;
+								++it;
+								escapedStr << "  ";
+								continue;
+							}
+						}
+					}
+
+					escapedStr << ' ';
+					continue;
+				}
+
+				if (inLineComment)
+				{
+					if (*it == '\n')
+					{
+						escapedStr << '\n';
+						inLineComment = false;
+					}
+					else
+					{
+						escapedStr << ' ';
+					}
+					continue;
+				}
+
+				if (*it == '\t')
+				{
+					escapedStr << "    ";
+				}
+				else if (*it == '/')
+				{
+					if (auto opt = nextCharOpt(it, utf32str.end()))
+					{
+						if (opt.value() == '/' || opt.value() == '*')
+						{
+							(opt.value() == '/' ? inLineComment : inScopeComment) = true;
+							++it;
+							escapedStr << "  ";
+							continue;
+						}
+					}
+				}
+
+				escapedStr << AsUtf8(std::u32string(it, it + 1));
+			}
+		}
+
+		/*std::stringstream tabRemovedStr;
 		char c;
 		while (ifs.get(c))
 		{
@@ -173,7 +266,8 @@ namespace cgl
 			else
 				tabRemovedStr << c;
 		}
-		std::string sourceCode = tabRemovedStr.str();
+		std::string sourceCode = tabRemovedStr.str();*/
+		std::string sourceCode = escapedStr.str();
 
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
 

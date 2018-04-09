@@ -2,10 +2,19 @@ cmake_minimum_required(VERSION 3.1)
 
 cmake_policy(SET CMP0024 OLD)
 
+if(WIN32)
+  if ("${CMAKE_GENERATOR}" MATCHES "Visual Studio ([0-9]+)")
+    set(CMAKE_GENERATOR_TOOLSET "host=x64" CACHE STRING "CMAKE_GENERATOR_TOOLSET" FORCE)
+  endif()
+endif()
+
 project(Pita)
 
-set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD 17)
+if(MSVC)
+  set(CMAKE_CXX_STANDARD 17)
+else()
+  set(CMAKE_CXX_STANDARD 14)
+endif()
 
 set(Boost_USE_STATIC_LIBS ON)
 

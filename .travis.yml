@@ -21,6 +21,7 @@ before_install:
   - sudo apt-get install libboost-dev
   - sudo apt-get install libc++-dev
 script:
+  - ls /usr/include/c++/v1/experimental
   - mkdir build
   - cd build
   - cmake -DCMAKE_CXX_COMPILER=$COMPILER ..

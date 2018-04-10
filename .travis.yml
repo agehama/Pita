@@ -22,8 +22,8 @@ matrix:
             - cmake
       env: COMPILER=clang++-3.8
 before_install:
+  - sudo apt-get update -qq
   - sudo apt-get install libboost-dev
-  - sudo apt-get install libc++-dev
 script:
   - mkdir build
   - cd build

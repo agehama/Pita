@@ -10,7 +10,6 @@ matrix:
           packages:
             - g++-5
             - cmake
-            - libboost-all-dev
       env: COMPILER=g++-5
     - compiler: clang
       addons:
@@ -22,8 +21,9 @@ matrix:
           packages:
             - clang-3.8
             - cmake
-            - libboost-all-dev
       env: COMPILER=clang++-3.8
+before_install:
+  - sudo apt-get install libboost-dev
 script:
   - mkdir build
   - cd build

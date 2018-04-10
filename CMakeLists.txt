@@ -41,6 +41,10 @@ if(MSVC)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /source-charset:utf-8")
 endif()
 
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024 -stdlib=libc++ -nostdinc++")
+endif()
+
 set(CGL_EIGEN_TARGET_DIR "eigen")
 set(CGL_GEOS_TARGET_DIR "geos")
 set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
@@ -87,10 +91,6 @@ include_directories(${PROJECT_BINARY_DIR}/${CGL_LIBCMAES_TARGET_DIR})
 include_directories(external/stb)
 
 include_directories(include)
-
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024")
-endif()
 
 add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/Vectorizer.cpp)
 if(MSVC)

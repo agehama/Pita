@@ -2346,7 +2346,7 @@ namespace cgl
 	LRValue Eval::operator()(const DeclSat& node)
 	{
 		//ここでクロージャを作る必要がある
-		ClosureMaker closureMaker(pEnv, {});
+		ClosureMaker closureMaker(pEnv, std::set<std::string>());
 		const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
 		//innerSatClosures.push_back(closedSatExpr);
 
@@ -2377,7 +2377,7 @@ namespace cgl
 				CGL_ErrorNode(node, "var宣言はレコード式の中にしか書くことができません。");
 			}
 
-			ClosureMaker closureMaker(pEnv, {});
+			ClosureMaker closureMaker(pEnv, std::set<std::string>());
 			const Expr varExpr = accessor;
 			const Expr closedVarExpr = boost::apply_visitor(closureMaker, varExpr);
 
@@ -2400,7 +2400,7 @@ namespace cgl
 
 		for (const auto& range : node.ranges)
 		{
-			ClosureMaker closureMaker(pEnv, {});
+			ClosureMaker closureMaker(pEnv, std::set<std::string>());
 			const Expr closedRangeExpr = boost::apply_visitor(closureMaker, range);
 			pEnv->currentRecords.back().get().freeRanges.push_back(closedRangeExpr);
 		}

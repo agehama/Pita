@@ -16,6 +16,10 @@ else()
   set(CMAKE_CXX_STANDARD 14)
 endif()
 
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024")
+endif()
+
 set(Boost_USE_STATIC_LIBS ON)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
@@ -89,7 +93,7 @@ include_directories(external/stb)
 include_directories(include)
 
 add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/Vectorizer.cpp)
-target_link_libraries(pita_lib geos cmaes)
+target_link_libraries(pita_lib geos cmaes stdc++fs)
 
 add_executable(pita source/Source.cpp)
 target_link_libraries(pita pita_lib)

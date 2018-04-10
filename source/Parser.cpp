@@ -36,8 +36,26 @@ namespace cgl
 
 	inline LocationInfo& GetLocInfo(Expr& expr)
 	{
-		GetInfo getter;
-		return boost::apply_visitor(getter, expr);
+		//GetInfo getter;
+		//return boost::apply_visitor(getter, expr);
+		if(IsType<Lines>(expr)){return static_cast<LocationInfo&>(As<Lines>(expr));}
+		else if(IsType<BinaryExpr>(expr)){return static_cast<LocationInfo&>(As<BinaryExpr>(expr));}
+		else if(IsType<LRValue>(expr)){return static_cast<LocationInfo&>(As<LRValue>(expr));}
+		else if(IsType<Identifier>(expr)){return static_cast<LocationInfo&>(As<Identifier>(expr));}
+		else if(IsType<Import>(expr)){return static_cast<LocationInfo&>(As<Import>(expr));}
+		else if(IsType<UnaryExpr>(expr)){return static_cast<LocationInfo&>(As<UnaryExpr>(expr));}
+		else if(IsType<Range>(expr)){return static_cast<LocationInfo&>(As<Range>(expr));}
+		else if(IsType<DefFunc>(expr)){return static_cast<LocationInfo&>(As<DefFunc>(expr));}
+		else if(IsType<If>(expr)){return static_cast<LocationInfo&>(As<If>(expr));}
+		else if(IsType<For>(expr)){return static_cast<LocationInfo&>(As<For>(expr));}
+		else if(IsType<Return>(expr)){return static_cast<LocationInfo&>(As<Return>(expr));}
+		else if(IsType<ListConstractor>(expr)){return static_cast<LocationInfo&>(As<ListConstractor>(expr));}
+		else if(IsType<KeyExpr>(expr)){return static_cast<LocationInfo&>(As<KeyExpr>(expr));}
+		else if(IsType<RecordConstractor>(expr)){return static_cast<LocationInfo&>(As<RecordConstractor>(expr));}
+		else if(IsType<RecordInheritor>(expr)){return static_cast<LocationInfo&>(As<RecordInheritor>(expr));}
+		else if(IsType<Accessor>(expr)){return static_cast<LocationInfo&>(As<Accessor>(expr));}
+		else if(IsType<DeclSat>(expr)){return static_cast<LocationInfo&>(As<DeclSat>(expr));}
+		else{return static_cast<LocationInfo&>(As<DeclFree>(expr));}
 	}
 
 	LocationInfo GetLocationInfo(IteratorT f, IteratorT l, SourceT first, SourceT last)

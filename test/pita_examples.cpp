@@ -13,7 +13,8 @@
 
 extern int constraintViolationCount;
 
-const std::string directory("../../Pita/examples/");
+//const std::string directory("../../Pita/examples/");
+const std::string directory("./");
 
 std::vector<std::string> exampleFiles()
 {

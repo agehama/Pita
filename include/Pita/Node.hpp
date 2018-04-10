@@ -20,6 +20,10 @@
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
 
+#include <boost/version.hpp>
+#define CGL_BOOST_MAJOR_VERSION (BOOST_VERSION / 100000)
+#define CGL_BOOST_MINOR_VERSION (BOOST_VERSION / 100 % 1000)
+
 #include <Eigen/Core>
 
 #include "Error.hpp"
@@ -52,6 +56,7 @@ namespace cgl
 		return typeid(T1) == t2.type();
 	}
 
+#if (CGL_BOOST_MAJOR_VERSION == 1) && (CGL_BOOST_MINOR_VERSION <= 57)
 	template<class T1, class T2>
 	inline boost::optional<T1&> AsOpt(T2& t2)
 	{
@@ -83,7 +88,39 @@ namespace cgl
 	{
 		return boost::get<T1>(t2);
 	}
+#else
+	template<class T1, class T2>
+	inline boost::optional<T1&> AsOpt(T2& t2)
+	{
+		if (IsType<T1>(t2))
+		{
+			return boost::relaxed_get<T1>(t2);
+		}
+		return boost::none;
+	}
 
+	template<class T1, class T2>
+	inline boost::optional<const T1&> AsOpt(const T2& t2)
+	{
+		if (IsType<T1>(t2))
+		{
+			return boost::relaxed_get<T1>(t2);
+		}
+		return boost::none;
+	}
+
+	template<class T1, class T2>
+	inline T1& As(T2& t2)
+	{
+		return boost::relaxed_get<T1>(t2);
+	}
+
+	template<class T1, class T2>
+	inline const T1& As(const T2& t2)
+	{
+		return boost::relaxed_get<T1>(t2);
+	}
+#endif
 	enum class UnaryOp
 	{
 		Not,

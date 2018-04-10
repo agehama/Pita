@@ -1024,7 +1024,7 @@ namespace cgl
 		}
 
 		CGL_ErrorNodeInternal(node, "不明な単項演算子です。");
-		return 0;
+		return LRValue(0);
 	}
 
 	LRValue EvalSatExpr::operator()(const BinaryExpr& node)
@@ -1052,7 +1052,7 @@ namespace cgl
 			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
 
 			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
-			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? true_cost : false_cost;
+			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? LRValue(true_cost) : LRValue(false_cost);
 			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
 			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
 			case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
@@ -1116,7 +1116,7 @@ namespace cgl
 		}
 
 		CGL_ErrorNodeInternal(node, "不明な二項演算子です。");
-		return 0;
+		return LRValue(0);
 	}
 
 	LRValue EvalSatExpr::operator()(const KeyExpr& node)

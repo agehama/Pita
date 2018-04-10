@@ -13,10 +13,10 @@ matrix:
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.9
           packages:
-            - clang-3.8
-      env: COMPILER=clang++-3.8
+            - clang-3.9
+      env: COMPILER=clang++-3.9
 before_install:
   - sudo apt-get install libboost-dev
   - sudo apt-get install libc++-dev

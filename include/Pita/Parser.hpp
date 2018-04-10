@@ -8,6 +8,8 @@
 #  elif __has_include(<experimental/filesystem>)
 #    include <experimental/filesystem>
 #    define CGL_EXPERIMENTAL_FILESYSTEM
+#  else
+#    error "filesystem does not exists"
 #  endif
 #endif
 

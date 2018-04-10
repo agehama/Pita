@@ -28,7 +28,7 @@ namespace cgl
 			
 			if (rec1.constraint && rec2.constraint)
 			{
-				constraint = BinaryExpr(rec1.constraint.value(), rec2.constraint.value(), BinaryOp::And);
+				constraint = BinaryExpr(rec1.constraint.get(), rec2.constraint.get(), BinaryOp::And);
 			}
 			else if (rec1.constraint)
 			{
@@ -65,7 +65,7 @@ namespace cgl
 
 			if (constraint && rec2.constraint)
 			{
-				constraint = BinaryExpr(constraint.value(), rec2.constraint.value(), BinaryOp::And);
+				constraint = BinaryExpr(constraint.get(), rec2.constraint.get(), BinaryOp::And);
 			}
 			else if (rec2.constraint)
 			{
@@ -654,14 +654,14 @@ namespace cgl
 		{
 			CGL_Error("List is packed");
 		}
-		const UnpackedList& unpackedLHS = unpackedLHSOpt.value();
+		const UnpackedList& unpackedLHS = unpackedLHSOpt.get();
 
 		auto unpackedRHSOpt = As<List>(rhs).asUnpackedOpt();
 		if (!unpackedRHSOpt)
 		{
 			CGL_Error("List is packed");
 		}
-		const UnpackedList& unpackedRHS = unpackedRHSOpt.value();
+		const UnpackedList& unpackedRHS = unpackedRHSOpt.get();
 
 		return List(UnpackedList::Concat(unpackedLHS, unpackedRHS));*/
 

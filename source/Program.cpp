@@ -49,7 +49,7 @@ namespace cgl
 		{
 			try
 			{
-				return pEnv->expand(boost::apply_visitor(evaluator, exprOpt.value()));
+				return pEnv->expand(boost::apply_visitor(evaluator, exprOpt.get()));
 			}
 			catch (const cgl::Exception& e)
 			{
@@ -71,11 +71,11 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.value());
+					printExpr(exprOpt.get());
 				}
 
 				if (logOutput) std::cout << "execute..." << std::endl;
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
+				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
 				const Val result = pEnv->expand(lrvalue);
 				if (logOutput) std::cout << "execute succeeded" << std::endl;
 
@@ -110,17 +110,17 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
-					//printExpr2(exprOpt.value(), pEnv, std::cerr);
-					printExpr(exprOpt.value(), pEnv, std::cerr);
+					//printExpr2(exprOpt.get(), pEnv, std::cerr);
+					printExpr(exprOpt.get(), pEnv, std::cerr);
 				}
 
 				if (logOutput) std::cerr << "execute..." << std::endl;
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
+				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
 				if (logOutput)
 				{
 					std::cerr << "execute succeeded" << std::endl;
-					//printVal(evaluated.value(), pEnv, std::cout, 0);
+					//printVal(evaluated.get(), pEnv, std::cout, 0);
 				}
 
 				if (logOutput)
@@ -128,12 +128,12 @@ namespace cgl
 
 				if (output_filename.empty())
 				{
-					OutputSVG2(std::cout, Packed(evaluated.value(), *pEnv), "shape");
+					OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape");
 				}
 				else
 				{
 					std::ofstream file(output_filename);
-					OutputSVG2(file, Packed(evaluated.value(), *pEnv), "shape");
+					OutputSVG2(file, Packed(evaluated.get(), *pEnv), "shape");
 					file.close();
 				}
 
@@ -193,11 +193,11 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.value(), pEnv, std::cout);
+					printExpr(exprOpt.get(), pEnv, std::cout);
 				}
 
 				if (logOutput) std::cout << "execute..." << std::endl;
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.value());
+				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
 				evaluated = pEnv->expand(lrvalue);
 				if (logOutput) std::cout << "completed" << std::endl;
 
@@ -239,7 +239,7 @@ namespace cgl
 
 			const Val answer = pEnv->expand(boost::apply_visitor(evaluator2, expr));
 
-			return IsEqualVal(result.value(), answer);
+			return IsEqualVal(result.get(), answer);
 		}*/
 
 		return false;
@@ -249,9 +249,9 @@ namespace cgl
 	{
 		if (evaluated)
 		{
-			if (auto opt = AsOpt<int>(evaluated.value()))
+			if (auto opt = AsOpt<int>(evaluated.get()))
 			{
-				return opt.value();
+				return opt.get();
 			}
 		}
 
@@ -262,9 +262,9 @@ namespace cgl
 	{
 		if (evaluated)
 		{
-			if (auto opt = AsOpt<double>(evaluated.value()))
+			if (auto opt = AsOpt<double>(evaluated.get()))
 			{
-				return opt.value();
+				return opt.get();
 			}
 		}
 

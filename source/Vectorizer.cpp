@@ -172,11 +172,11 @@ namespace cgl
 		const PackedVal lineVal = itLine->second.value;
 		if (auto pointListOpt = AsOpt<PackedList>(lineVal))
 		{
-			for (const auto pointVal : pointListOpt.value().data)
+			for (const auto pointVal : pointListOpt.get().data)
 			{
 				if (auto posRecordOpt = AsOpt<PackedRecord>(pointVal.value))
 				{
-					const auto v = ReadVec2Packed(posRecordOpt.value());
+					const auto v = ReadVec2Packed(posRecordOpt.get());
 					const double x = std::get<0>(v);
 					const double y = std::get<1>(v);
 					//cs->add(gg::Coordinate(x, y));
@@ -260,7 +260,7 @@ namespace cgl
 
 			if (valOpt)
 			{
-				const PackedRecord& childRecord = valOpt.value();
+				const PackedRecord& childRecord = valOpt.get();
 				if (member.first == "pos")
 				{
 					ReadDoublePacked(px, "x", childRecord);
@@ -1217,7 +1217,7 @@ namespace cgl
 		auto boundingBoxOpt = GetBoundingBoxPacked(value);
 		if (IsType<PackedRecord>(value) && boundingBoxOpt)
 		{
-			const BoundingRect& rect = boundingBoxOpt.value();
+			const BoundingRect& rect = boundingBoxOpt.get();
 
 			//const auto pos = rect.pos();
 			const auto widthXY = rect.width();
@@ -1676,7 +1676,7 @@ namespace cgl
 		auto boundingBoxOpt = GetBoundingBoxPacked(value);
 		if (IsType<PackedRecord>(value) && boundingBoxOpt)
 		{
-			const BoundingRect& rect = boundingBoxOpt.value();
+			const BoundingRect& rect = boundingBoxOpt.get();
 			//const auto pos = rect.pos();
 			const auto widthXY = rect.width();
 			const auto center = rect.center();

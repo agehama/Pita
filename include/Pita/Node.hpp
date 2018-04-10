@@ -1261,7 +1261,7 @@ namespace cgl
 			{
 				return IsEqual(cond_expr, other.cond_expr)
 					&& IsEqual(then_expr, other.then_expr)
-					&& IsEqual(else_expr.value(), other.else_expr.value());
+					&& IsEqual(else_expr.get(), other.else_expr.get());
 			}
 
 			return IsEqual(cond_expr, other.cond_expr)
@@ -1847,15 +1847,15 @@ namespace cgl
 			{
 				if (auto opt = AsOpt<ListRef>(r))
 				{
-					str += opt.value().asString();
+					str += opt.get().asString();
 				}
 				else if (auto opt = AsOpt<RecordRef>(r))
 				{
-					str += opt.value().asString();
+					str += opt.get().asString();
 				}
 				else if (auto opt = AsOpt<FunctionRef>(r))
 				{
-					str += opt.value().asString();
+					str += opt.get().asString();
 				}
 			}
 
@@ -2087,7 +2087,7 @@ namespace cgl
 		{
 			if (constraint)
 			{
-				constraint = BinaryExpr(constraint.value(), logicExpr, BinaryOp::And);
+				constraint = BinaryExpr(constraint.get(), logicExpr, BinaryOp::And);
 			}
 			else
 			{
@@ -2392,7 +2392,7 @@ namespace cgl
 					return false;
 				}
 
-				return IsEqualVal(lhs.value(), other.lhs.value());
+				return IsEqualVal(lhs.get(), other.lhs.get());
 			}
 			else
 			{

@@ -203,9 +203,9 @@ namespace cgl
 					VariableRange range;
 					if (currentVariableRange)
 					{
-						if (auto opt = AsOpt<PackedList>(currentVariableRange.value()))
+						if (auto opt = AsOpt<PackedList>(currentVariableRange.get()))
 						{
-							const auto& rangeData = opt.value().data;
+							const auto& rangeData = opt.get().data;
 							if (rangeData.size() == 2)
 							{
 								range.minimum = AsDouble(rangeData[0].value);
@@ -221,9 +221,9 @@ namespace cgl
 				{
 					if (currentVariableRange)
 					{
-						if (auto opt = AsOpt<PackedList>(currentVariableRange.value()))
+						if (auto opt = AsOpt<PackedList>(currentVariableRange.get()))
 						{
-							const auto& rangeData = opt.value().data;
+							const auto& rangeData = opt.get().data;
 							const auto& list = As<List>(value).data;
 
 							if (rangeData.size() != list.size())
@@ -248,9 +248,9 @@ namespace cgl
 				{
 					if (currentVariableRange)
 					{
-						if (auto opt = AsOpt<PackedRecord>(currentVariableRange.value()))
+						if (auto opt = AsOpt<PackedRecord>(currentVariableRange.get()))
 						{
-							const auto& rangeData = opt.value().values;
+							const auto& rangeData = opt.get().values;
 							const auto& record = As<Record>(value).values;
 
 							for (const auto& elem : record)
@@ -311,15 +311,15 @@ namespace cgl
 				Val evaluated = headValue.evaluated();
 				if (auto opt = AsOpt<Record>(evaluated))
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+					writeBuffer().push_back(makeTemporaryValue(opt.get()));
 				}
 				else if (auto opt = AsOpt<List>(evaluated))
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+					writeBuffer().push_back(makeTemporaryValue(opt.get()));
 				}
 				else if (auto opt = AsOpt<FuncVal>(evaluated))
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+					writeBuffer().push_back(makeTemporaryValue(opt.get()));
 				}
 				else
 				{
@@ -343,7 +343,7 @@ namespace cgl
 						CGL_Error("参照エラー");
 					}
 
-					const Val& objRef = objOpt.value();
+					const Val& objRef = objOpt.get();
 
 					if (auto listAccessOpt = AsOpt<ListAccess>(access))
 					{
@@ -354,7 +354,7 @@ namespace cgl
 
 						const List& list = As<const List&>(objRef);
 
-						if (listAccessOpt.value().isArbitrary)
+						if (listAccessOpt.get().isArbitrary)
 						{
 							const auto& allIndices = list.data;
 
@@ -362,11 +362,11 @@ namespace cgl
 						}
 						else
 						{
-							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index));
+							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index));
 
 							if (auto indexOpt = AsOpt<int>(value))
 							{
-								writeBuffer().push_back(list.get(indexOpt.value()));
+								writeBuffer().push_back(list.get(indexOpt.get()));
 							}
 							else
 							{
@@ -382,7 +382,7 @@ namespace cgl
 						}
 
 						const Record& record = As<const Record&>(objRef);
-						auto it = record.values.find(recordAccessOpt.value().name);
+						auto it = record.values.find(recordAccessOpt.get().name);
 						if (it == record.values.end())
 						{
 							CGL_Error("指定された識別子がレコード中に存在しない");
@@ -461,15 +461,15 @@ namespace cgl
 				Val evaluated = headValue.evaluated();
 				if (auto opt = AsOpt<Record>(evaluated))
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+					writeBuffer().push_back(makeTemporaryValue(opt.get()));
 				}
 				else if (auto opt = AsOpt<List>(evaluated))
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+					writeBuffer().push_back(makeTemporaryValue(opt.get()));
 				}
 				else if (auto opt = AsOpt<FuncVal>(evaluated))
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.value()));
+					writeBuffer().push_back(makeTemporaryValue(opt.get()));
 				}
 				else
 				{
@@ -493,7 +493,7 @@ namespace cgl
 						CGL_Error("参照エラー");
 					}
 
-					const Val& objRef = objOpt.value();
+					const Val& objRef = objOpt.get();
 
 					if (auto listAccessOpt = AsOpt<ListAccess>(access))
 					{
@@ -504,7 +504,7 @@ namespace cgl
 
 						const List& list = As<List>(objRef);
 
-						if (listAccessOpt.value().isArbitrary)
+						if (listAccessOpt.get().isArbitrary)
 						{
 							const auto& allIndices = list.data;
 
@@ -512,21 +512,21 @@ namespace cgl
 						}
 						else
 						{
-							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index), info);
+							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), info);
 
 							if (auto indexOpt = AsOpt<int>(value))
 							{
-								writeBuffer().push_back(list.get(indexOpt.value()));
+								writeBuffer().push_back(list.get(indexOpt.get()));
 							}
 							else if (auto indicesOpt = AsOpt<List>(value))
 							{
-								const List& indices = indicesOpt.value();
+								const List& indices = indicesOpt.get();
 								for (const Address indexAddress : indices.data)
 								{
 									Val indexValue = expand(indexAddress, info);
 									if (auto indexOpt = AsOpt<int>(indexValue))
 									{
-										writeBuffer().push_back(list.get(indexOpt.value()));
+										writeBuffer().push_back(list.get(indexOpt.get()));
 									}
 									else
 									{
@@ -548,7 +548,7 @@ namespace cgl
 						}
 
 						const Record& record = As<Record>(objRef);
-						auto it = record.values.find(recordAccessOpt.value().name);
+						auto it = record.values.find(recordAccessOpt.get().name);
 						if (it == record.values.end())
 						{
 							CGL_Error("指定された識別子がレコード中に存在しない");
@@ -668,7 +668,7 @@ namespace cgl
 					CGL_Error("参照エラー");
 				}
 				
-				const Val& objRef = objOpt.value();
+				const Val& objRef = objOpt.get();
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
@@ -678,11 +678,11 @@ namespace cgl
 					}
 
 					const List& list = As<List>(objRef);
-					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.value().index), info);
+					Val value = pEnv->expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), info);
 					if (auto indexOpt = AsOpt<int>(value))
 					{
-						address = list.get(indexOpt.value());
-						deepReference.addList(indexOpt.value(), address);
+						address = list.get(indexOpt.get());
+						deepReference.addList(indexOpt.get(), address);
 					}
 					else
 					{
@@ -697,7 +697,7 @@ namespace cgl
 					}
 
 					const Record& record = As<Record>(objRef);
-					auto it = record.values.find(recordAccessOpt.value().name);
+					auto it = record.values.find(recordAccessOpt.get().name);
 					if (it == record.values.end())
 					{
 						CGL_Error("指定された識別子がレコード中に存在しない");
@@ -886,11 +886,11 @@ namespace cgl
 					CGL_Error("参照エラー");
 				}
 
-				Val& objRef = objOpt.value();
+				Val& objRef = objOpt.get();
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
-					Val indexValue = expand(boost::apply_visitor(evaluator, listAccessOpt.value().index), info);
+					Val indexValue = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), info);
 
 					if (!IsType<List>(objRef))
 					{
@@ -900,7 +900,7 @@ namespace cgl
 					List& list = As<List>(objRef);
 					if (auto indexOpt = AsOpt<int>(indexValue))
 					{
-						const int index = indexOpt.value();
+						const int index = indexOpt.get();
 						if (isLastElement)
 						{
 							const Address oldAddress = list.data[index];
@@ -926,7 +926,7 @@ namespace cgl
 					}
 
 					Record& record = As<Record>(objRef);
-					auto it = record.values.find(recordAccessOpt.value().name);
+					auto it = record.values.find(recordAccessOpt.get().name);
 					if (it == record.values.end())
 					{
 						CGL_Error("指定された識別子がレコード中に存在しない");
@@ -1050,11 +1050,11 @@ namespace cgl
 			const Val& value = pEnv->expand(arguments[0], info);
 			if (auto opt = AsOpt<List>(value))
 			{
-				return static_cast<int>(opt.value().data.size());
+				return static_cast<int>(opt.get().data.size());
 			}
 			else if (auto opt = AsOpt<Record>(value))
 			{
-				return static_cast<int>(opt.value().values.size());
+				return static_cast<int>(opt.get().values.size());
 			}
 
 			CGL_ErrorNode(info, "不正な式です");
@@ -1301,14 +1301,14 @@ namespace cgl
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
-			if (obstaclesValOpt && !IsType<List>(obstaclesValOpt.value()))
+			if (obstaclesValOpt && !IsType<List>(obstaclesValOpt.get()))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			if (obstaclesValOpt)
 			{
-				return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal), As<PackedList>(As<List>(obstaclesValOpt.value()).packed(*this))).unpacked(*this);
+				return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal), As<PackedList>(As<List>(obstaclesValOpt.get()).packed(*this))).unpacked(*this);
 			}
 			return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal)).unpacked(*this);
 		},
@@ -1333,11 +1333,11 @@ namespace cgl
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
-			if (baseLineOpt && !IsType<Record>(baseLineOpt.value()))
+			if (baseLineOpt && !IsType<Record>(baseLineOpt.get()))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
-			if (fontNameOpt && !IsType<CharString>(fontNameOpt.value()))
+			if (fontNameOpt && !IsType<CharString>(fontNameOpt.get()))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
@@ -1346,13 +1346,13 @@ namespace cgl
 			{
 				return BuildText(
 					As<CharString>(strVal), 
-					As<PackedRecord>(As<Record>(baseLineOpt.value()).packed(*this)), 
-					As<CharString>(fontNameOpt.value())
+					As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this)), 
+					As<CharString>(fontNameOpt.get())
 				).unpacked(*this);
 			}
 			else if (2 <= arguments.size())
 			{
-				return BuildText(As<CharString>(strVal), As<PackedRecord>(As<Record>(baseLineOpt.value()).packed(*this))).unpacked(*this);
+				return BuildText(As<CharString>(strVal), As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this))).unpacked(*this);
 			}
 			return BuildText(As<CharString>(strVal)).unpacked(*this);
 		},
@@ -1744,7 +1744,7 @@ namespace cgl
 
 			if (auto opt = AsOpt<bool>(pEnv->expand(arguments[0], info)))
 			{
-				m_automaticGC = opt.value();
+				m_automaticGC = opt.get();
 			}
 
 			return 0;
@@ -1818,7 +1818,7 @@ namespace cgl
 						CGL_Error("参照エラー");
 					}
 
-					const Val& objRef = objOpt.value();
+					const Val& objRef = objOpt.get();
 
 					if (IsType<int>(tail[i].first))
 					{
@@ -1889,7 +1889,7 @@ namespace cgl
 
 				if (auto opt = context.expandOpt(LRValue(address)))
 				{
-					CheckValue(opt.value(), context, reachableAddressSet, newAddressSet);
+					CheckValue(opt.get(), context, reachableAddressSet, newAddressSet);
 				}
 				else
 				{
@@ -1948,7 +1948,7 @@ namespace cgl
 			boost::apply_visitor(*this, node.then_expr);
 			if (node.else_expr)
 			{
-				boost::apply_visitor(*this, node.else_expr.value());
+				boost::apply_visitor(*this, node.else_expr.get());
 			}
 		}
 
@@ -2000,11 +2000,11 @@ namespace cgl
 			{
 				if (auto listAccess = AsOpt<ListAccess>(access))
 				{
-					boost::apply_visitor(*this, listAccess.value().index);
+					boost::apply_visitor(*this, listAccess.get().index);
 				}
 				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
 				{
-					for (const auto& argument : functionAccess.value().actualArguments)
+					for (const auto& argument : functionAccess.get().actualArguments)
 					{
 						boost::apply_visitor(*this, argument);
 					}
@@ -2060,7 +2060,7 @@ namespace cgl
 
 				if (auto opt = context.expandOpt(LRValue(address)))
 				{
-					boost::apply_visitor(*this, opt.value());
+					boost::apply_visitor(*this, opt.get());
 				}
 				else
 				{
@@ -2096,27 +2096,27 @@ namespace cgl
 
 			if (node.constraint)
 			{
-				CheckExpr(node.constraint.value(), context, reachableAddressSet, newAddressSet);
+				CheckExpr(node.constraint.get(), context, reachableAddressSet, newAddressSet);
 			}
 
 			for (const auto& problem : node.problems)
 			{
 				if (problem.expr)
 				{
-					CheckExpr(problem.expr.value(), context, reachableAddressSet, newAddressSet);
+					CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
 				}
 			}
 
 			/*const auto& problem = node.problem;
 			if (problem.candidateExpr)
 			{
-				CheckExpr(problem.candidateExpr.value(), context, reachableAddressSet, newAddressSet);
+				CheckExpr(problem.candidateExpr.get(), context, reachableAddressSet, newAddressSet);
 			}*/
 
 			/*
 			if (problem.expr)
 			{
-				CheckExpr(problem.expr.value(), context, reachableAddressSet, newAddressSet);
+				CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
 			}
 			for (Address address : problem.refs)
 			{
@@ -2225,7 +2225,7 @@ namespace cgl
 			if (temporaryRecord)
 			{
 				std::unordered_set<Address> addressesDelta;
-				CheckValue(temporaryRecord.value(), *this, referenceableAddresses, addressesDelta);
+				CheckValue(temporaryRecord.get(), *this, referenceableAddresses, addressesDelta);
 
 				traverse(addressesDelta, traverse);
 			}

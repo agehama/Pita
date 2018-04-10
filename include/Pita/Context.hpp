@@ -166,7 +166,7 @@ namespace cgl
 				return boost::none;
 			}
 
-			//return m_values[valueIDOpt.value()];
+			//return m_values[valueIDOpt.get()];
 		}
 		*/
 
@@ -207,7 +207,7 @@ namespace cgl
 			{
 				if (auto opt = m_values.at(address))
 				{
-					return expandRef(opt.value());
+					return expandRef(opt.get());
 				}
 				else
 				{
@@ -251,7 +251,7 @@ namespace cgl
 			if (auto opt = AsOpt<Record>(reference))
 			{
 				Record expanded;
-				for (const auto& elem : opt.value().values)
+				for (const auto& elem : opt.get().values)
 				{
 					expanded.append(elem.first, expandObject(elem.second));
 				}
@@ -260,7 +260,7 @@ namespace cgl
 			else if (auto opt = AsOpt<List>(reference))
 			{
 				List expanded;
-				for (const auto& elem : opt.value().data)
+				for (const auto& elem : opt.get().data)
 				{
 					expanded.append(expandObject(elem));
 				}
@@ -275,7 +275,7 @@ namespace cgl
 		{
 			if (auto valueIDOpt = AsOpt<unsigned>(ref.headValue))
 			{
-				bindValueID(name, valueIDOpt.value());
+				bindValueID(name, valueIDOpt.get());
 			}
 			else
 			{

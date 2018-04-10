@@ -65,7 +65,7 @@ namespace cgl
 				//const Val evaluated = pEnv->expand(data[i]);
 				if (auto opt = pEnv->expandOpt(data[i]))
 				{
-					boost::apply_visitor(child, opt.value());
+					boost::apply_visitor(child, opt.get());
 				}
 			}
 			else
@@ -102,7 +102,7 @@ namespace cgl
 				//const Val evaluated = pEnv->expand(value.second);
 				if (auto opt = pEnv->expandOpt(value.second))
 				{
-					boost::apply_visitor(child, opt.value());
+					boost::apply_visitor(child, opt.get());
 				}
 			}
 			else
@@ -211,7 +211,7 @@ namespace cgl
 				//const Val evaluated = pEnv->expand(data[i]);
 				if (auto opt = pEnv->expandOpt(data[i]))
 				{
-					boost::apply_visitor(child, opt.value());
+					boost::apply_visitor(child, opt.get());
 					ss << lf;
 				}
 			}
@@ -253,7 +253,7 @@ namespace cgl
 				//const Val evaluated = pEnv->expand(value.second);
 				if (auto opt = pEnv->expandOpt(value.second))
 				{
-					boost::apply_visitor(child, opt.value());
+					boost::apply_visitor(child, opt.get());
 					ss << lf;
 				}
 			}
@@ -494,7 +494,7 @@ namespace cgl
 			const auto child = Printer(pEnv, os, m_indent + 1);
 			os << child.indent() << "Else(" << std::endl;
 
-			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), if_statement.else_expr.value());
+			boost::apply_visitor(Printer(pEnv, os, m_indent + 2), if_statement.else_expr.get());
 
 			os << child.indent() << ")" << std::endl;
 		}
@@ -630,17 +630,17 @@ namespace cgl
 			if (auto opt = AsOpt<ListAccess>(access))
 			{
 				os << child.indent() << "[" << std::endl;
-				boost::apply_visitor(child, opt.value().index);
+				boost::apply_visitor(child, opt.get().index);
 				os << child.indent() << "]" << std::endl;
 			}
 			else if (auto opt = AsOpt<RecordAccess>(access))
 			{
-				os << child.indent() << "." << std::string(opt.value().name) << std::endl;
+				os << child.indent() << "." << std::string(opt.get().name) << std::endl;
 			}
 			else if (auto opt = AsOpt<FunctionAccess>(access))
 			{
 				os << child.indent() << "(" << std::endl;
-				for (const auto& arg : opt.value().actualArguments)
+				for (const auto& arg : opt.get().actualArguments)
 				{
 					boost::apply_visitor(child, arg);
 				}
@@ -894,7 +894,7 @@ namespace cgl
 			const auto child = Printer2(pEnv, os, m_indent + 1);
 			os << child.indent() << "Else(" << footer();
 
-			boost::apply_visitor(Printer2(pEnv, os, m_indent + 2), if_statement.else_expr.value());
+			boost::apply_visitor(Printer2(pEnv, os, m_indent + 2), if_statement.else_expr.get());
 
 			os << child.indent() << ")" << footer();
 		}
@@ -923,7 +923,7 @@ namespace cgl
 		{
 			std::stringstream ss;
 			const auto child = Printer2(pEnv, ss, m_indent + 1);
-			boost::apply_visitor(child, if_statement.else_expr.value());
+			boost::apply_visitor(child, if_statement.else_expr.get());
 
 			os << indent() << "else(" << footer();
 			os << ss.str();
@@ -1034,17 +1034,17 @@ namespace cgl
 			if (auto opt = AsOpt<ListAccess>(access))
 			{
 				os << child.indent() << "[" << footer();
-				boost::apply_visitor(child, opt.value().index);
+				boost::apply_visitor(child, opt.get().index);
 				os << child.indent() << "]" << footer();
 			}
 			else if (auto opt = AsOpt<RecordAccess>(access))
 			{
-				os << child.indent() << "." << std::string(opt.value().name) << footer();
+				os << child.indent() << "." << std::string(opt.get().name) << footer();
 			}
 			else if (auto opt = AsOpt<FunctionAccess>(access))
 			{
 				os << child.indent() << "(" << footer();
-				for (const auto& arg : opt.value().actualArguments)
+				for (const auto& arg : opt.get().actualArguments)
 				{
 					boost::apply_visitor(child, arg);
 				}
@@ -1061,18 +1061,18 @@ namespace cgl
 			if (auto opt = AsOpt<ListAccess>(access))
 			{
 				ss << "[";
-				boost::apply_visitor(child, opt.value().index);
+				boost::apply_visitor(child, opt.get().index);
 				ss << "]";
 			}
 			else if (auto opt = AsOpt<RecordAccess>(access))
 			{
-				ss << "." << std::string(opt.value().name);
+				ss << "." << std::string(opt.get().name);
 			}
 			else if (auto opt = AsOpt<FunctionAccess>(access))
 			{
 				ss << "(";
 				int argIndex = 0;
-				const auto& args = opt.value().actualArguments;
+				const auto& args = opt.get().actualArguments;
 				for (const auto& arg : args)
 				{
 					boost::apply_visitor(child, arg);

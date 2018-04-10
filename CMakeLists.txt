@@ -93,7 +93,11 @@ include_directories(external/stb)
 include_directories(include)
 
 add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/Vectorizer.cpp)
-target_link_libraries(pita_lib geos cmaes stdc++fs)
+if(MSVC)
+  target_link_libraries(pita_lib geos cmaes)
+else()
+  target_link_libraries(pita_lib geos cmaes stdc++fs)
+endif()
 
 add_executable(pita source/Source.cpp)
 target_link_libraries(pita pita_lib)

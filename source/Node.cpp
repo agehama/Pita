@@ -218,18 +218,18 @@ namespace cgl
 
 		if (!importName.empty())
 		{
-			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(it->second.value()), BinaryOp::Assign);
+			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(it->second.get()), BinaryOp::Assign);
 			printExpr(importParseTree, pContext, std::cout);
 			Eval evaluator(pContext);
 			return boost::apply_visitor(evaluator, importParseTree);
 		}
 
-		if (IsType<Lines>(it->second.value()))
+		if (IsType<Lines>(it->second.get()))
 		{
 			Eval evaluator(pContext);
 
 			LRValue result;
-			const auto& lines = As<Lines>(it->second.value());
+			const auto& lines = As<Lines>(it->second.get());
 			for (const auto& expr : lines.exprs)
 			{
 				result = boost::apply_visitor(evaluator, expr);
@@ -249,18 +249,18 @@ namespace cgl
 
 		if (name)
 		{
-			const Expr importParseTree = BinaryExpr(name.value(), ToImportForm(originalParseTree.value()), BinaryOp::Assign);
+			const Expr importParseTree = BinaryExpr(name.get(), ToImportForm(originalParseTree.get()), BinaryOp::Assign);
 			printExpr(importParseTree, pContext, std::cout);
 			Eval evaluator(pContext);
 			return boost::apply_visitor(evaluator, importParseTree);
 		}
 
-		if (IsType<Lines>(originalParseTree.value()))
+		if (IsType<Lines>(originalParseTree.get()))
 		{
 			Eval evaluator(pContext);
 
 			LRValue result;
-			const auto& lines = As<Lines>(originalParseTree.value());
+			const auto& lines = As<Lines>(originalParseTree.get());
 			for (const auto& expr : lines.exprs)
 			{
 				result = boost::apply_visitor(evaluator, expr);
@@ -273,12 +273,12 @@ namespace cgl
 
 		//}
 
-		//if (IsType<Lines>(originalParseTree.value()))
+		//if (IsType<Lines>(originalParseTree.get()))
 		//{
 		//	Eval evaluator(pContext);
 
 		//	LRValue result;
-		//	const auto& lines = As<Lines>(originalParseTree.value());
+		//	const auto& lines = As<Lines>(originalParseTree.get());
 		//	for (const auto& expr : lines.exprs)
 		//	{
 		//		//std::cout << "====================================================================================" << std::endl;
@@ -365,7 +365,7 @@ namespace cgl
 	{
 		if (expr)
 		{
-			expr = BinaryExpr(expr.value(), logicExpr, BinaryOp::And);
+			expr = BinaryExpr(expr.get(), logicExpr, BinaryOp::And);
 		}
 		else
 		{
@@ -386,13 +386,13 @@ namespace cgl
 		}
 
 		/*Expr2SatExpr evaluator(0, pEnv, freeVariables);
-		expr = boost::apply_visitor(evaluator, candidateExpr.value());
+		expr = boost::apply_visitor(evaluator, candidateExpr.get());
 		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
 
 		{
 			CGL_DebugLog("Print:");
 			Printer printer;
-			boost::apply_visitor(printer, expr.value());
+			boost::apply_visitor(printer, expr.get());
 			CGL_DebugLog("");
 		}*/
 
@@ -404,12 +404,12 @@ namespace cgl
 			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
 		}
 
-		//printExpr(expr.value(), pEnv, std::cout);
+		//printExpr(expr.get(), pEnv, std::cout);
 		
 		std::vector<char> usedInSat(freeVariableRefs.size(), 0);
 		//SatVariableBinder binder(pEnv, freeVariables);
 		SatVariableBinder binder(pEnv, freeVariableRefs, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
-		if (boost::apply_visitor(binder, expr.value()))
+		if (boost::apply_visitor(binder, expr.get()))
 		{
 			//refs = binder.refs;
 			//invRefs = binder.invRefs;
@@ -437,7 +437,7 @@ namespace cgl
 			pEnv->printContext(true);
 
 			CGL_DebugLog("expr:");
-			printExpr(candidateExpr.value());
+			printExpr(candidateExpr.get());
 		}*/
 	}
 
@@ -452,16 +452,16 @@ namespace cgl
 			{
 				CGL_Error("参照エラー");
 			}
-			const Val& val = opt.value();
+			const Val& val = opt.get();
 			if (auto opt = AsOpt<double>(val))
 			{
-				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
-				data[i] = opt.value();
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.get()));
+				data[i] = opt.get();
 			}
 			else if (auto opt = AsOpt<int>(val))
 			{
-				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
-				data[i] = opt.value();
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.get()));
+				data[i] = opt.get();
 			}
 			else
 			{
@@ -666,11 +666,11 @@ namespace cgl
 			pEnv->printContext();
 
 			CGL_DebugLog("expr:");
-			printExpr(expr.value());
+			printExpr(expr.get());
 		}*/
 		
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.value()), info);
+		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.get()), info);
 		
 		if (IsType<double>(evaluated))
 		{
@@ -778,7 +778,7 @@ namespace cgl
 			{
 				CGL_Error("参照エラー");
 			}
-			const PackedVal packedValue = boost::apply_visitor(packer, opt.value());
+			const PackedVal packedValue = boost::apply_visitor(packer, opt.get());
 
 			result.add(address, packedValue);
 		}
@@ -841,7 +841,7 @@ namespace cgl
 			{
 				CGL_Error("参照エラー");
 			}
-			const PackedVal packedValue = boost::apply_visitor(packer, opt.value());
+			const PackedVal packedValue = boost::apply_visitor(packer, opt.get());
 
 			result.add(keyval.first, keyval.second, packedValue);
 		}

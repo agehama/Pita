@@ -793,7 +793,7 @@ namespace cgl
 			{
 				if (auto posRecordOpt = AsOpt<PackedRecord>(pointVal.value))
 				{
-					const auto v = ReadVec2Packed(posRecordOpt.value());
+					const auto v = ReadVec2Packed(posRecordOpt.get());
 					const double x = std::get<0>(v);
 					const double y = std::get<1>(v);
 

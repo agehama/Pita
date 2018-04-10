@@ -225,7 +225,7 @@ namespace cgl
 					{
 						if (auto opt = nextCharOpt(it, utf32str.end()))
 						{
-							if (opt.value() == '/')
+							if (opt.get() == '/')
 							{
 								inScopeComment = false;
 								++it;
@@ -261,9 +261,9 @@ namespace cgl
 				{
 					if (auto opt = nextCharOpt(it, utf32str.end()))
 					{
-						if (opt.value() == '/' || opt.value() == '*')
+						if (opt.get() == '/' || opt.get() == '*')
 						{
-							(opt.value() == '/' ? inLineComment : inScopeComment) = true;
+							(opt.get() == '/' ? inLineComment : inScopeComment) = true;
 							++it;
 							escapedStr << "  ";
 							continue;

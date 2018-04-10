@@ -23,7 +23,6 @@ before_install:
 script:
   - mkdir build
   - cd build
-  - cmake --version
   - cmake -DCMAKE_CXX_COMPILER=$COMPILER ..
   - make -j4
   - ctest -V

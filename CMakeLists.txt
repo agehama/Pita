@@ -89,7 +89,7 @@ include_directories(external/stb)
 include_directories(include)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024 -stdlib=libc++")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024")
 endif()
 
 add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/Vectorizer.cpp)

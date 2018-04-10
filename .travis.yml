@@ -16,7 +16,6 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.8
             - george-edison55-precise-backports
           packages:
             - clang-3.8
@@ -24,7 +23,6 @@ matrix:
       env: COMPILER=clang++-3.8
 before_install:
   - sudo apt-get install libboost-dev
-  - sudo apt-get install libc++-dev
 script:
   - mkdir build
   - cd build

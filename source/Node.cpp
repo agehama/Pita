@@ -3,6 +3,8 @@
 #include <thread>
 #include <mutex>
 
+#include <boost/functional/hash.hpp>
+
 #include <cppoptlib/meta.h>
 #include <cppoptlib/problem.h>
 #include <cppoptlib/solver/bfgssolver.h>
@@ -14,9 +16,20 @@
 #include <Pita/Node.hpp>
 #include <Pita/Context.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
+#include <Pita/Parser.hpp>
+#include <Pita/Evaluator.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
+	//manip::LocationInfoPrinter LocationInfo::printLoc() const { return { *this }; }
+	std::string LocationInfo::getInfo() const
+	{
+		std::stringstream ss;
+		ss << "[L" << locInfo_lineBegin << ":" << locInfo_posBegin << "-" << "L" << locInfo_lineEnd << ":" << locInfo_posEnd << "]";
+		return ss.str();
+	}
+
 	Identifier Identifier::MakeIdentifier(const std::u32string& name_)
 	{
 		return Identifier(Unicode::UTF32ToUTF8(name_));
@@ -55,6 +68,249 @@ namespace cgl
 		return IsType<Address>(value)
 			? As<Address>(value)
 			: env.getReference(As<Reference>(value));
+	}
+
+	class ExprImportForm : public boost::static_visitor<Expr>
+	{
+	public:
+		ExprImportForm(bool isTopLevel)
+			:isTopLevel(isTopLevel)
+		{}
+
+		bool isTopLevel;
+
+		Expr operator()(const Lines& node)const
+		{
+			if (!isTopLevel)
+			{
+				return node;
+			}
+
+			RecordConstractor result;
+			for (const auto& expr : node.exprs)
+			{
+				result.add(boost::apply_visitor(ExprImportForm(false), expr));
+			}
+
+			return result;
+		}
+
+		Expr operator()(const BinaryExpr& node)const
+		{
+			if (node.op != BinaryOp::Assign)
+			{
+				return node;
+			}
+
+			KeyExpr keyExpr(As<Identifier>(node.lhs));
+			KeyExpr::SetExpr(keyExpr, node.rhs);
+			return keyExpr;
+		}
+
+		Expr operator()(const LRValue& node)const { return node; }
+		Expr operator()(const Identifier& node)const { return node; }
+		Expr operator()(const Import& node)const { return node; }
+		Expr operator()(const UnaryExpr& node)const { return node; }
+		Expr operator()(const Range& node)const { return node; }
+		Expr operator()(const DefFunc& node)const { return node; }
+		Expr operator()(const If& node)const { return node; }
+		Expr operator()(const For& node)const { return node; }
+		Expr operator()(const Return& node)const { return node; }
+		Expr operator()(const ListConstractor& node)const { return node; }
+		Expr operator()(const KeyExpr& node)const { return node; }
+		Expr operator()(const RecordConstractor& node)const { return node; }
+		Expr operator()(const RecordInheritor& node)const { return node; }
+		Expr operator()(const Accessor& node)const { return node; }
+		Expr operator()(const DeclSat& node)const { return node; }
+		Expr operator()(const DeclFree& node)const { return node; }
+	};
+
+	Expr ToImportForm(const Expr& expr)
+	{
+		ExprImportForm converter(true);
+		return boost::apply_visitor(converter, expr);
+	}
+
+	Import::Import(const std::u32string& filePath)
+	{
+		const std::string u8FilePath = Unicode::UTF32ToUTF8(filePath);
+		const auto path = cgl::filesystem::path(u8FilePath);
+
+		std::string sourceCode;
+
+		if (path.is_absolute())
+		{
+			const std::string pathStr = filesystem::canonical(path).string();
+
+			importPath = pathStr;
+
+			/*if (alreadyImportedFiles.find(filesystem::canonical(path)) != alreadyImportedFiles.end())
+			{
+				std::cout << "File \"" << path.string() << "\" has been already imported.\n";
+				originalParseTree = boost::none;
+				return;
+			}
+
+			alreadyImportedFiles.emplace(filesystem::canonical(path));
+
+			std::ifstream ifs(u8FilePath);
+			if (!ifs.is_open())
+			{
+				CGL_Error(std::string() + "Error: import file \"" + u8FilePath + "\" does not exists.");
+			}
+
+			sourceCode = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+			cgl::workingDirectories.emplace(path.parent_path());*/
+		}
+		else
+		{
+			const auto currentDirectory = workingDirectories.top();
+			const auto currentFilePath = currentDirectory / path;
+			const std::string pathStr = filesystem::canonical(currentFilePath).string();
+
+			importPath = pathStr;
+			/*if (alreadyImportedFiles.find(filesystem::canonical(currentFilePath)) != alreadyImportedFiles.end())
+			{
+				std::cout << "File \"" << filesystem::canonical(currentFilePath).string() << "\" has been already imported.\n";
+				originalParseTree = boost::none;
+				return;
+			}
+
+			alreadyImportedFiles.emplace(filesystem::canonical(currentFilePath));
+
+			std::ifstream ifs(currentFilePath.string());
+			if (!ifs.is_open())
+			{
+				CGL_Error(std::string() + "Error: import file \"" + currentFilePath.string() + "\" does not exists.");
+			}
+
+			sourceCode = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+			cgl::workingDirectories.emplace(currentFilePath.parent_path());*/
+		}
+
+		/*if (auto opt = Parse(sourceCode))
+		{
+			originalParseTree = opt;
+		}
+		else
+		{
+			CGL_Error("Parse failed.");
+		}*/
+		updateHash();
+	}
+
+	Import::Import(const std::u32string& path, const Identifier& name):
+		Import(path)
+	{
+		//name = importName;
+		importName = name;
+		updateHash();
+	}
+
+	LRValue Import::eval(std::shared_ptr<Context> pContext)const
+	{
+		auto it = importedParseTrees.find(seed);
+		if (it == importedParseTrees.end() || !it->second)
+		{
+			CGL_Error("ファイルのimportに失敗");
+			return RValue(0);
+		}
+
+		if (!importName.empty())
+		{
+			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(it->second.get()), BinaryOp::Assign);
+			printExpr(importParseTree, pContext, std::cout);
+			Eval evaluator(pContext);
+			return boost::apply_visitor(evaluator, importParseTree);
+		}
+
+		if (IsType<Lines>(it->second.get()))
+		{
+			Eval evaluator(pContext);
+
+			LRValue result;
+			const auto& lines = As<Lines>(it->second.get());
+			for (const auto& expr : lines.exprs)
+			{
+				result = boost::apply_visitor(evaluator, expr);
+			}
+
+			return result;
+		}
+
+		CGL_Error("ファイルのimportに失敗");
+
+		/*
+		if(!originalParseTree)
+		{
+			//CGL_Error("ファイルのimportに失敗");
+			return RValue(0);
+		}
+
+		if (name)
+		{
+			const Expr importParseTree = BinaryExpr(name.get(), ToImportForm(originalParseTree.get()), BinaryOp::Assign);
+			printExpr(importParseTree, pContext, std::cout);
+			Eval evaluator(pContext);
+			return boost::apply_visitor(evaluator, importParseTree);
+		}
+
+		if (IsType<Lines>(originalParseTree.get()))
+		{
+			Eval evaluator(pContext);
+
+			LRValue result;
+			const auto& lines = As<Lines>(originalParseTree.get());
+			for (const auto& expr : lines.exprs)
+			{
+				result = boost::apply_visitor(evaluator, expr);
+			}
+
+			return result;
+		}
+		//if (name)
+		//{
+
+		//}
+
+		//if (IsType<Lines>(originalParseTree.get()))
+		//{
+		//	Eval evaluator(pContext);
+
+		//	LRValue result;
+		//	const auto& lines = As<Lines>(originalParseTree.get());
+		//	for (const auto& expr : lines.exprs)
+		//	{
+		//		//std::cout << "====================================================================================" << std::endl;
+		//		//printExpr(expr, pContext, std::cout);
+		//		result = boost::apply_visitor(evaluator, expr);
+		//		//pContext->printContext(std::cout);
+		//		//std::cout << "------------------------------------------------------------------------------------" << std::endl;
+		//	}
+
+		//	//std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
+		//	//pContext->printContext(std::cout);
+
+		//	//printVal(pContext->expand(result), pContext, std::cout);
+		//	return result;
+		//}
+
+		CGL_Error("ファイルのimportに失敗");
+
+		*/
+	}
+
+	void Import::SetName(Import& node, const Identifier& name)
+	{
+		node.importName = name;
+		node.updateHash();
+	}
+
+	void Import::updateHash()
+	{
+		seed = 0;
+		boost::hash_combine(seed, importPath);
+		boost::hash_combine(seed, importName);
 	}
 
 	Expr BuildString(const std::u32string& str32)
@@ -109,7 +365,7 @@ namespace cgl
 	{
 		if (expr)
 		{
-			expr = BinaryExpr(expr.value(), logicExpr, BinaryOp::And);
+			expr = BinaryExpr(expr.get(), logicExpr, BinaryOp::And);
 		}
 		else
 		{
@@ -130,13 +386,13 @@ namespace cgl
 		}
 
 		/*Expr2SatExpr evaluator(0, pEnv, freeVariables);
-		expr = boost::apply_visitor(evaluator, candidateExpr.value());
+		expr = boost::apply_visitor(evaluator, candidateExpr.get());
 		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
 
 		{
 			CGL_DebugLog("Print:");
 			Printer printer;
-			boost::apply_visitor(printer, expr.value());
+			boost::apply_visitor(printer, expr.get());
 			CGL_DebugLog("");
 		}*/
 
@@ -147,11 +403,13 @@ namespace cgl
 		{
 			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
 		}
+
+		//printExpr(expr.get(), pEnv, std::cout);
 		
 		std::vector<char> usedInSat(freeVariableRefs.size(), 0);
 		//SatVariableBinder binder(pEnv, freeVariables);
 		SatVariableBinder binder(pEnv, freeVariableRefs, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
-		if (boost::apply_visitor(binder, expr.value()))
+		if (boost::apply_visitor(binder, expr.get()))
 		{
 			//refs = binder.refs;
 			//invRefs = binder.invRefs;
@@ -179,7 +437,7 @@ namespace cgl
 			pEnv->printContext(true);
 
 			CGL_DebugLog("expr:");
-			printExpr(candidateExpr.value());
+			printExpr(candidateExpr.get());
 		}*/
 	}
 
@@ -189,16 +447,21 @@ namespace cgl
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const Val val = pEnv->expand(refs[i]);
+			const auto opt = pEnv->expandOpt(refs[i]);
+			if (!opt)
+			{
+				CGL_Error("参照エラー");
+			}
+			const Val& val = opt.get();
 			if (auto opt = AsOpt<double>(val))
 			{
-				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
-				data[i] = opt.value();
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.get()));
+				data[i] = opt.get();
 			}
 			else if (auto opt = AsOpt<int>(val))
 			{
-				CGL_DebugLog(ToS(i) + " : " + ToS(opt.value()));
-				data[i] = opt.value();
+				CGL_DebugLog(ToS(i) + " : " + ToS(opt.get()));
+				data[i] = opt.get();
 			}
 			else
 			{
@@ -209,7 +472,7 @@ namespace cgl
 		return true;
 	}
 
-	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
+	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const LocationInfo& info, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
 	{
 		constructConstraint(pEnv);
 
@@ -278,7 +541,7 @@ namespace cgl
 					}
 
 					pEnv->switchFrontScope();
-					double result = eval(pEnv);
+					double result = eval(pEnv, info);
 					pEnv->switchBackScope();
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
@@ -332,7 +595,7 @@ namespace cgl
 					}
 
 					pEnv->switchFrontScope();
-					double result = eval(pEnv);
+					double result = eval(pEnv, info);
 					pEnv->switchBackScope();
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
@@ -367,7 +630,7 @@ namespace cgl
 		return resultxs;
 	}
 
-	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv)
+	double OptimizationProblemSat::eval(std::shared_ptr<Context> pEnv, const LocationInfo& info)
 	{
 		if (!expr)
 		{
@@ -403,11 +666,11 @@ namespace cgl
 			pEnv->printContext();
 
 			CGL_DebugLog("expr:");
-			printExpr(expr.value());
+			printExpr(expr.get());
 		}*/
 		
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		const Val evaluated = boost::apply_visitor(evaluator, expr.value());
+		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.get()), info);
 		
 		if (IsType<double>(evaluated))
 		{
@@ -510,8 +773,12 @@ namespace cgl
 
 		for (const Address address : data)
 		{
-			const Val& value = context.expand(address);
-			const PackedVal packedValue = boost::apply_visitor(packer, value);
+			const auto& opt = context.expandOpt(address);
+			if (!opt)
+			{
+				CGL_Error("参照エラー");
+			}
+			const PackedVal packedValue = boost::apply_visitor(packer, opt.get());
 
 			result.add(address, packedValue);
 		}
@@ -569,8 +836,12 @@ namespace cgl
 
 		for (const auto& keyval : values)
 		{
-			const Val& value = context.expand(keyval.second);
-			const PackedVal packedValue = boost::apply_visitor(packer, value);
+			const auto& opt = context.expandOpt(keyval.second);
+			if (!opt)
+			{
+				CGL_Error("参照エラー");
+			}
+			const PackedVal packedValue = boost::apply_visitor(packer, opt.get());
 
 			result.add(keyval.first, keyval.second, packedValue);
 		}

@@ -4,20 +4,49 @@
 
 namespace cgl
 {
-	List ShapeDifference(const Val& lhs, const Val& rhs, std::shared_ptr<cgl::Context> pEnv);
+	PackedList ShapeDiff(const PackedVal& lhs, const PackedVal& rhs);
 
-	List ShapeBuffer(const Val& shape, const Val& amount, std::shared_ptr<cgl::Context> pEnv);
+	PackedList ShapeUnion(const PackedVal& lhs, const PackedVal& rhs);
 
-	//std::vector<Eigen::Vector2d> GetPath(const Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
-	void GetPath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
+	PackedList ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs);
 
-	void GetOffsetPath(Record& pathRule, double offset, std::shared_ptr<cgl::Context> pEnv);
+	PackedList ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs);
 
-	void GetText(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
 
-	void GetShapePath(Record& pathRule, std::shared_ptr<cgl::Context> pEnv);
+	PackedList ShapeBuffer(const PackedVal& shape, const PackedVal& amount);
 
-	double ShapeArea(const Val& lhs, std::shared_ptr<cgl::Context> pEnv);
+	PackedList ShapeSubDiv(const PackedVal& shape, int numSubDiv);
 
-	List GetDefaultFontString(const std::string& str, std::shared_ptr<cgl::Context> pEnv);
+	double ShapeArea(const PackedVal& lhs);
+
+	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs);
+
+	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs);
+
+	PackedList GetDefaultFontString(const std::string& str);
+
+
+	PackedRecord BuildPath(const PackedList& passes, int numOfPoints = 10, const PackedList& obstacleList = PackedList());
+
+	PackedRecord GetBezierPath(const PackedRecord& p0, const PackedRecord& n0, const PackedRecord& p1, const PackedRecord& n1, int numOfPoints);
+
+	PackedRecord GetOffsetPath(const PackedRecord& pathRule, double offset);
+
+	PackedRecord GetSubPath(const PackedRecord& pathRule, double offsetBegin, double offsetEnd);
+
+	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const LocationInfo& info, const FuncVal& function, double beginValue, double endValue, int numOfPoints);
+
+	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord(), const CharString& fontPath = CharString());
+
+	PackedList GetShapeOuterPaths(const PackedRecord& shape);
+
+	PackedList GetShapePaths(const PackedRecord& shape);
+
+	PackedRecord GetBoundingBox(const PackedRecord& shape);
+
+	PackedList GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
+
+	PackedList GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
+
+	PackedList GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0, const PackedRecord& p1, const PackedRecord& targetPath);
 }

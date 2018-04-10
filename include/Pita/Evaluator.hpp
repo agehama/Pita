@@ -55,7 +55,7 @@ namespace cgl
 
 		Expr operator()(const Identifier& node)const { return node; }
 
-		Expr operator()(const SatReference& node)const { return node; }
+		Expr operator()(const Import& node)const { return node; }
 
 		Expr operator()(const UnaryExpr& node)const;
 
@@ -92,10 +92,12 @@ namespace cgl
 	class ValueCloner : public boost::static_visitor<Val>
 	{
 	public:
-		ValueCloner(std::shared_ptr<Context> pEnv) :
-			pEnv(pEnv)
+		ValueCloner(std::shared_ptr<Context> pEnv, const LocationInfo& info) :
+			pEnv(pEnv),
+			info(info)
 		{}
 
+		const LocationInfo info;
 		std::shared_ptr<Context> pEnv;
 		std::unordered_map<Address, Address> replaceMap;
 
@@ -123,11 +125,13 @@ namespace cgl
 	class ValueCloner2 : public boost::static_visitor<Val>
 	{
 	public:
-		ValueCloner2(std::shared_ptr<Context> pEnv, const std::unordered_map<Address, Address>& replaceMap) :
+		ValueCloner2(std::shared_ptr<Context> pEnv, const std::unordered_map<Address, Address>& replaceMap, const LocationInfo& info) :
 			pEnv(pEnv),
-			replaceMap(replaceMap)
+			replaceMap(replaceMap),
+			info(info)
 		{}
 
+		const LocationInfo info;
 		std::shared_ptr<Context> pEnv;
 		const std::unordered_map<Address, Address>& replaceMap;
 
@@ -186,7 +190,7 @@ namespace cgl
 		void operator()(Jump& node) {}
 	};
 
-	Val Clone(std::shared_ptr<Context> pEnv, const Val& value);
+	Val Clone(std::shared_ptr<Context> pEnv, const Val& value, const LocationInfo& info);
 
 	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
 	//外側のスコープを参照する識別子をアドレスに置き換えた式を返す
@@ -220,7 +224,7 @@ namespace cgl
 
 		Expr operator()(const Identifier& node);
 
-		Expr operator()(const SatReference& node) { return node; }
+		Expr operator()(const Import& node) { return node; }
 
 		Expr operator()(const UnaryExpr& node);
 
@@ -261,45 +265,45 @@ namespace cgl
 
 		Eval(std::shared_ptr<Context> pEnv) :pEnv(pEnv) {}
 
-		LRValue operator()(const LRValue& node) { return node; }
+		virtual LRValue operator()(const LRValue& node) { return node; }
 
-		LRValue operator()(const Identifier& node) { return pEnv->findAddress(node); }
+		virtual LRValue operator()(const Identifier& node);
 
-		LRValue operator()(const SatReference& node) { CGL_Error("不正な式"); return LRValue(0); }
+		virtual LRValue operator()(const Import& node);
 
-		LRValue operator()(const UnaryExpr& node);
+		virtual LRValue operator()(const UnaryExpr& node);
 
-		LRValue operator()(const BinaryExpr& node);
+		virtual LRValue operator()(const BinaryExpr& node);
 
-		LRValue operator()(const DefFunc& defFunc);
-		
-		LRValue callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		virtual LRValue operator()(const DefFunc& defFunc);
 
-		LRValue operator()(const Range& range) { return RValue(0); }
+		virtual LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
 
-		LRValue operator()(const Lines& statement);
+		virtual LRValue operator()(const Range& range) { return RValue(0); }
 
-		LRValue operator()(const If& if_statement);
+		virtual LRValue operator()(const Lines& statement);
 
-		LRValue operator()(const For& forExpression);
+		virtual LRValue operator()(const If& if_statement);
 
-		LRValue operator()(const Return& return_statement);
+		virtual LRValue operator()(const For& forExpression);
 
-		LRValue operator()(const ListConstractor& listConstractor);
+		virtual LRValue operator()(const Return& return_statement);
 
-		LRValue operator()(const KeyExpr& keyExpr);
+		virtual LRValue operator()(const ListConstractor& listConstractor);
 
-		LRValue operator()(const RecordConstractor& recordConsractor);
+		virtual LRValue operator()(const KeyExpr& keyExpr);
 
-		LRValue operator()(const RecordInheritor& record);
+		virtual LRValue operator()(const RecordConstractor& recordConsractor);
 
-		LRValue operator()(const DeclSat& node);
+		virtual LRValue operator()(const RecordInheritor& record);
 
-		LRValue operator()(const DeclFree& node);
+		virtual LRValue operator()(const DeclSat& node);
 
-		LRValue operator()(const Accessor& accessor);
+		virtual LRValue operator()(const DeclFree& node);
 
-	private:
+		virtual LRValue operator()(const Accessor& accessor);
+
+	protected:
 		std::shared_ptr<Context> pEnv;
 		
 		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
@@ -328,7 +332,7 @@ namespace cgl
 
 		bool operator()(const Identifier& node);
 
-		bool operator()(const SatReference& node) { return true; }
+		bool operator()(const Import& node) { return false; }
 
 		bool operator()(const UnaryExpr& node);
 
@@ -351,77 +355,7 @@ namespace cgl
 		bool operator()(const Accessor& node);
 	};
 
-	class Expr2SatExpr : public boost::static_visitor<Expr>
-	{
-	public:
-
-		int refID_Offset;
-
-		//AccessorからObjectReferenceに変換するのに必要
-		std::shared_ptr<Context> pEnv;
-
-		//freeに指定された変数全て
-		std::vector<Address> freeVariables;
-
-		//freeに指定された変数が実際にsatに現れたかどうか
-		std::vector<char> usedInSat;
-
-		//FreeVariables Index -> SatReference
-		std::map<int, SatReference> satRefs;
-
-		//TODO:vector->mapに書き換える
-		std::vector<Address> refs;
-
-		Expr2SatExpr(int refID_Offset, std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
-			refID_Offset(refID_Offset),
-			pEnv(pEnv),
-			freeVariables(freeVariables),
-			usedInSat(freeVariables.size(), 0)
-		{}
-
-		boost::optional<size_t> freeVariableIndex(Address reference);
-
-		boost::optional<SatReference> getSatRef(Address reference);
-
-		boost::optional<SatReference> addSatRef(Address reference);
-				
-		Expr operator()(const LRValue& node);
-
-		//ここにIdentifierが残っている時点でClosureMakerにローカル変数だと判定された変数のはず
-		Expr operator()(const Identifier& node);
-
-		Expr operator()(const SatReference& node) { return node; }
-
-		Expr operator()(const UnaryExpr& node);
-
-		Expr operator()(const BinaryExpr& node);
-
-		Expr operator()(const DefFunc& node) { CGL_Error("invalid expression"); return LRValue(0); }
-
-		Expr operator()(const Range& node) { CGL_Error("invalid expression"); return LRValue(0); }
-
-		Expr operator()(const Lines& node);
-
-		Expr operator()(const If& node);
-
-		Expr operator()(const For& node);
-
-		Expr operator()(const Return& node) { CGL_Error("invalid expression"); return LRValue(0); }
-		
-		Expr operator()(const ListConstractor& node);
-
-		Expr operator()(const KeyExpr& node) { return node; }
-
-		Expr operator()(const RecordConstractor& node);
-
-		Expr operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return LRValue(0); }
-		Expr operator()(const DeclSat& node) { CGL_Error("invalid expression"); return LRValue(0); }
-		Expr operator()(const DeclFree& node) { CGL_Error("invalid expression"); return LRValue(0); }
-
-		Expr operator()(const Accessor& node);
-	};
-
-	Val evalExpr(const Expr& expr);
+	boost::optional<const Val&> evalExpr(const Expr& expr);
 
 	bool IsEqualVal(const Val& value1, const Val& value2);
 

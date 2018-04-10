@@ -1,8 +1,4 @@
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-}
+import "common.cgl"
 
 stick = shape{
     scale = {x:1, y:3}

@@ -1,0 +1,55 @@
+getParallelotope = (f, df, xmin, xmax ->
+    xmid = (xmin + xmax)*0.5
+    divnum = 100
+    
+    amid = 1.0*(f(xmax) - f(xmin)) / (xmax - xmin)
+    amin = amid
+    amax = amid
+
+    dx = 1.0*(xmax - xmin) / divnum
+    for i in 0:divnum do(
+        a = df(xmin + i*dx)
+        if(a < amin)then(amin = a)
+        if(amax < a)then(amax = a)
+    )
+
+    xhalf = xmax - xmid
+
+    ymid = f(xmid)
+    ywidth = (amax - amin)*xhalf
+    ywidth_half = ywidth*0.5
+    
+    ycenter_left = ymid - xhalf*amid
+    ycenter_right = ymid + xhalf*amid
+
+    shape{
+        polygon: [
+            vec2(xmin, ycenter_left + ywidth_half)
+            vec2(xmax, ycenter_right + ywidth_half)
+            vec2(xmax, ycenter_right - ywidth_half)
+            vec2(xmin, ycenter_left - ywidth_half)
+        ]
+        ls: [
+            {
+                line: [vec2(xmid - xhalf, ymid - xhalf*amin), vec2(xmid + xhalf, ymid + xhalf*amin)]
+                stroke: rgb(0, 255, 255)
+            }
+            {
+                line: [vec2(xmid - xhalf, ymid - xhalf*amax), vec2(xmid + xhalf, ymid + xhalf*amax)]
+                stroke: rgb(0, 255, 0)
+            }
+        ]
+    }
+)
+
+route = shape{
+    begin = 0
+    end = 90
+    b: FunctionPath(Sin, begin, end, 100){
+        stroke: rgb(255, 0, 0)
+    }
+    a: getParallelotope(Sin, Cos, begin, end){
+        fill: rgb(64, 64, 64)
+    }
+    scale: {x:200, y:-100}
+}

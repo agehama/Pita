@@ -8,6 +8,7 @@
 
 #include <cxxopts.hpp>
 #include <Pita/Program.hpp>
+#include <Pita/Parser.hpp>
 
 extern bool calculating;
 
@@ -711,7 +712,7 @@ int main(int argc, char* argv[])
 
 	ofs.open("log.txt");
 
-	std::ifstream ifs(input_file);
+	/*std::ifstream ifs(input_file);
 	if (!ifs.is_open())
 	{
 		std::cerr << "Error file_path \"" << input_file << "\" does not exists." << std::endl;
@@ -719,9 +720,20 @@ int main(int argc, char* argv[])
 	}
 	std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
+	const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(input_file)).parent_path();
+	std::cout << "currentDirectory: " << currentDirectory.string() << std::endl;
+
+	cgl::workingDirectories.emplace(currentDirectory);
+
+	cgl::alreadyImportedFiles.emplace(cgl::filesystem::canonical(cgl::filesystem::path(input_file)));
+
 	calculating = true;
 	cgl::Program program;
-	program.execute1(sourceCode, output_file);
+	program.execute1(sourceCode, output_file);*/
+
+	calculating = true;
+	cgl::Program program;
+	program.execute1(input_file, output_file);
 
 	return 0;
 }

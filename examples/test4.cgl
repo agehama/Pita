@@ -1,0 +1,17 @@
+import "common.cgl"
+
+testUnion = shape{
+    a= square{scale=x2(100), angle=45} 
+    b= a{pos=vec2(75, 0)}
+    c: shape{a: Union(a, b)}
+}
+
+main = shape{
+    a: testUnion{fill: rgb(128, 128, 128)}
+    b: shape{
+        text: BuildText("中央")
+        pos = vec2(100, 100)
+    }
+    sat( contact(BoundingBox(b).center, BoundingBox(a).center) )
+    var(b.pos)
+}

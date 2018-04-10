@@ -19,6 +19,12 @@ namespace cgl
 		return os.str();
 	}
 
+	template<>
+	inline std::string ToS<Eigen::Vector2d>(Eigen::Vector2d v)
+	{
+		return std::string("(") + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ")";
+	}
+
 	class ValuePrinter : public boost::static_visitor<void>
 	{
 	public:
@@ -55,9 +61,53 @@ namespace cgl
 		void operator()(const Jump& node)const;
 	};
 
+	class ValuePrinter2 : public boost::static_visitor<void>
+	{
+	public:
+		ValuePrinter2(std::shared_ptr<Context> pEnv, std::ostream& os, int indent, const std::string& header = "") :
+			pEnv(pEnv),
+			os(os),
+			m_indent(indent),
+			m_header(header)
+		{}
+
+		std::shared_ptr<Context> pEnv;
+		int m_indent;
+		std::ostream& os;
+		mutable std::string m_header;
+
+		std::string indent()const;
+		std::string footer()const;
+		std::string delimiter()const;
+
+		void operator()(bool node)const;
+
+		void operator()(int node)const;
+
+		void operator()(double node)const;
+
+		void operator()(const CharString& node)const;
+
+		void operator()(const List& node)const;
+
+		void operator()(const KeyValue& node)const;
+
+		void operator()(const Record& node)const;
+
+		void operator()(const FuncVal& node)const;
+
+		void operator()(const Jump& node)const;
+	};
+
 	inline void printVal(const Val& evaluated, std::shared_ptr<Context> pEnv, std::ostream& os, int indent = 0)
 	{
 		ValuePrinter printer(pEnv, os, indent);
+		boost::apply_visitor(printer, evaluated);
+	}
+
+	inline void printVal2(const Val& evaluated, std::shared_ptr<Context> pEnv, std::ostream& os, int indent = 0)
+	{
+		ValuePrinter2 printer(pEnv, os, indent);
 		boost::apply_visitor(printer, evaluated);
 	}
 
@@ -82,8 +132,6 @@ namespace cgl
 		std::ostream& os;
 
 		void operator()(double node)const;
-
-		void operator()(const SatReference& node)const;
 
 		void operator()(const SatUnaryExpr& node)const;
 
@@ -111,7 +159,7 @@ namespace cgl
 
 		void operator()(const Identifier& node)const;
 
-		void operator()(const SatReference& node)const;
+		void operator()(const Import& node)const;
 
 		void operator()(const UnaryExpr& node)const;
 
@@ -144,11 +192,72 @@ namespace cgl
 		void operator()(const Accessor& accessor)const;
 	};
 
+	class Printer2 : public boost::static_visitor<void>
+	{
+	public:
+		Printer2(std::shared_ptr<Context> pEnv, std::ostream& os, int indent = 0, const std::string& header = "") :
+			pEnv(pEnv),
+			os(os),
+			m_indent(indent),
+			m_header(header)
+		{}
+
+		std::shared_ptr<Context> pEnv;
+		std::ostream& os;
+		int m_indent;
+		mutable std::string m_header;
+
+		std::string indent()const;
+		std::string footer()const;
+		std::string delimiter()const;
+
+		void operator()(const LRValue& node)const;
+
+		void operator()(const Identifier& node)const;
+
+		void operator()(const Import& node)const;
+
+		void operator()(const UnaryExpr& node)const;
+
+		void operator()(const BinaryExpr& node)const;
+
+		void operator()(const DefFunc& defFunc)const;
+
+		void operator()(const Range& range)const;
+
+		void operator()(const Lines& statement)const;
+
+		void operator()(const If& if_statement)const;
+
+		void operator()(const For& forExpression)const;
+
+		void operator()(const Return& return_statement)const;
+
+		void operator()(const ListConstractor& listConstractor)const;
+
+		void operator()(const KeyExpr& keyExpr)const;
+
+		void operator()(const RecordConstractor& recordConstractor)const;
+
+		void operator()(const RecordInheritor& record)const;
+
+		void operator()(const DeclSat& node)const;
+
+		void operator()(const DeclFree& node)const;
+
+		void operator()(const Accessor& accessor)const;
+	};
+
 	inline void printExpr(const Expr& expr, std::shared_ptr<Context> pEnv, std::ostream& os)
 	{
 		os << "PrintExpr(\n";
 		boost::apply_visitor(Printer(pEnv, os), expr);
 		os << ") " << std::endl;
+	}
+
+	inline void printExpr2(const Expr& expr, std::shared_ptr<Context> pEnv, std::ostream& os)
+	{
+		boost::apply_visitor(Printer2(pEnv, os), expr);
 	}
 
 #ifdef CGL_EnableLogOutput

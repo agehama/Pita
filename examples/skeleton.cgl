@@ -1,19 +1,4 @@
-transform = (pos, scale, angle, vertex -> {
-    cosT: cos(angle)
-    sinT: sin(angle)
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
-})
-
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-}
-
-contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1 & (p.y - q.y)*(p.y - q.y) < 1)
-
-distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
+import "common.cgl"
 
 kite = shape{
     polygon: [

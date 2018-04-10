@@ -2,10 +2,25 @@ cmake_minimum_required(VERSION 3.1)
 
 cmake_policy(SET CMP0024 OLD)
 
+if(WIN32)
+  if ("${CMAKE_GENERATOR}" MATCHES "Visual Studio ([0-9]+)")
+    set(CMAKE_GENERATOR_TOOLSET "host=x64" CACHE STRING "CMAKE_GENERATOR_TOOLSET" FORCE)
+  endif()
+endif()
+
 project(Pita)
 
-set(CMAKE_CXX_STANDARD 14)
-#set(CMAKE_CXX_STANDARD 17)
+if(MSVC)
+  set(CMAKE_CXX_STANDARD 17)
+else()
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCC)
+  message("CMAKE_COMPILER_IS_GNUCC True")
+else()
+  message("CMAKE_COMPILER_IS_GNUCC False")
+endif()
 
 set(Boost_USE_STATIC_LIBS ON)
 
@@ -30,6 +45,10 @@ endif()
 if(MSVC)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /source-charset:utf-8")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /source-charset:utf-8")
+endif()
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024 -stdlib=libc++")
 endif()
 
 set(CGL_EIGEN_TARGET_DIR "eigen")
@@ -79,11 +98,12 @@ include_directories(external/stb)
 
 include_directories(include)
 
-#add_executable(pita source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Vectorizer.cpp source/Source.cpp)
-#target_link_libraries(pita geos cmaes)
-
-add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Vectorizer.cpp)
-target_link_libraries(pita_lib geos cmaes)
+add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/Geometry.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/Vectorizer.cpp)
+if(MSVC)
+  target_link_libraries(pita_lib geos cmaes)
+else()
+  target_link_libraries(pita_lib geos cmaes stdc++fs)
+endif()
 
 add_executable(pita source/Source.cpp)
 target_link_libraries(pita pita_lib)

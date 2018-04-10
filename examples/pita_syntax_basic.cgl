@@ -1,0 +1,12 @@
+import "common.cgl"
+
+{
+    size = 100
+    polygon: [
+        vec2(0, 0)
+        vec2(size, 0)
+        vec2(size, size)
+        vec2(0, size)
+    ]
+    fill: rgb(49, 187, 222)
+}

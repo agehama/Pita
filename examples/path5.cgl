@@ -1,0 +1,23 @@
+route = shape{
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+    tri = hexagon{scale: {x:100, y:100}}
+    arrow: BuildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
+        stroke: {r: 0, g: 255, b: 0}
+    }
+    arrow2: OffsetPath(arrow, 100.0){
+        stroke: {r: 0, g: 255, b: 255}
+    }
+    arrow3: FunctionPath(Sin, 0, 360*2, 100){
+        scale: {x: 2, y: 100}
+        stroke: {r: 255, g: 0, b: 0}
+    }
+    arrow4: OffsetPath(arrow3, -100){
+        stroke: {r: 255, g: 128, b: 128}
+    }
+    arrow5: ShapeOuterPath(tri)[0]{
+        stroke: {r: 0, g: 0, b: 255}
+    }
+    arrow6: OffsetPath(arrow5, -20){
+        stroke: {r: 128, g: 128, b: 255}
+    }
+}

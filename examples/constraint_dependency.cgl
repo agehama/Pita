@@ -1,38 +1,13 @@
-transform = (pos, scale, angle, vertex -> {
-    cosT: cos(angle)
-    sinT: sin(angle)
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT * scale.x * vertex.x + cosT * scale.y * vertex.y
-})
-
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-}
-
-square = shape{
-    polygon: [
-        {x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}, {x: +0.5, y: +0.5}, {x: -0.5, y: +0.5}
-    ]
-    getLocalPos: (i->transform(@pos, @scale, @angle, polygon[i]))
-    topLeft:     (->getLocalPos(0))
-    topRight:    (->getLocalPos(1))
-    bottomRight: (->getLocalPos(2))
-    bottomLeft:  (->getLocalPos(3))
-}
-
-
-contact = (p, q -> (p.x - q.x)*(p.x - q.x) < 1  & (p.y - q.y)*(p.y - q.y) < 1)
+import "common.cgl"
 
 main = shape{
     ss: []
     num = 70
     for i in 0:num-1 do(
         ss[i] = square{
-            scale: {x: 30, y: 30}
-            pos: {x: 45*i, y:200*sin(170*i)}
-            angle: i*35
+            scale = {x: 30, y: 30}
+            pos = {x: 45*i, y:200*Sin(170*i)}
+            angle = i*35
         }
         var(ss[i].pos, ss[i].angle)
     )

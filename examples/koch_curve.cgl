@@ -1,26 +1,6 @@
-vec2 = (x, y -> {x: x, y: y})
-x2 = (v -> {x: v, y: v})
+import "common.cgl"
 
 div3 = (p, q -> {x: (q.x - p.x) / 3.0, y: (q.y - p.y) / 3.0})
-
-add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
-sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
-
-mul = (v, a -> {x: v.x * a, y: v.y * a})
-div = (v, a -> {x: v.x / a, y: v.y / a})
-
-contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
-
-sqrt = (x -> x^0.5)
-
-length = (v -> sqrt(v.x*v.x + v.y*v.y))
-setLength = (v, l -> mul(div(v, length(v)), l))
-
-shape = {
-    pos: vec2(0, 0)
-    scale: vec2(1, 1)
-    angle: 0
-}
 
 koch_template = (p, q ->
     v = sub(p, q)
@@ -50,11 +30,28 @@ rec_curve = (f, depth, template, ps ->
     }
 )
 
-tree = shape{
-    depth =  5
+curve = (depth -> shape{
     a: shape{
         c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:0}])
         scale = x2(70)
     }
-    stroke: {r: 0, g: 255, b: 0}
+    stroke: rgb(0, 0, 0)
+})
+
+snowflake = (depth -> shape{
+    tri = square{scale = {x: 10, y: 10}}
+    a: shape{
+        l: [
+            rec_curve(rec_curve, depth, koch_template, [tri.topLeft(), tri.topRight()])
+            rec_curve(rec_curve, depth, koch_template, [tri.topRight(), tri.bottomRight()])
+            rec_curve(rec_curve, depth, koch_template, [tri.bottomRight(), tri.bottomLeft()])
+            rec_curve(rec_curve, depth, koch_template, [tri.bottomLeft(), tri.topLeft()])
+        ]
+        scale = x2(70)
+    }
+    stroke: rgb(0, 0, 0)
+})
+
+main = snowflake(5){
+    angle = 45
 }

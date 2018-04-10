@@ -1,0 +1,24 @@
+import "common.cgl"
+
+arrow = shape{
+    body: square{scale: vec2(200, 20), pos: vec2(-100, 0)}
+    head: triangle{scale: x2(50), pos: x2(0), angle: 90}
+}
+
+arcPath = (r, begin, end, num -> 
+{
+    delta = 1.0*(end - begin)/num
+    line: for i in 0:num list(
+        angle = begin + delta*i
+        vec2(r*Cos(angle), r*Sin(angle))
+    )
+})
+
+main = shape{
+    a = arrow{}
+    arrows: for i in 0:2 list(
+        DeformShapeByPath2(a, 
+            arcPath(100, 120*i, 120*(i+1), 50),
+            a.body.left(), a.head.top())
+    )
+}

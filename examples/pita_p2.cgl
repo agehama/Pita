@@ -1,0 +1,44 @@
+import "common.cgl"
+
+baseColor = rgb(245, 245, 245)
+mainColor = rgb(49, 187, 222)
+accentColor = rgb(68, 84, 106)
+
+fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
+sourceFontPath = "C:/Windows/Fonts/SourceCodePro-Regular.ttf"
+
+sourceCodeText =
+"{
+    size = 100
+    polygon: [
+        {x: 0, y: 0}, {x: size, y: 0}
+        {x: size, y: size}, {x: 0, y: size}
+    ]
+    fill: {r: 49, g: 187, b: 222}
+}"
+
+sourceCodeShape = {
+    a: BuildText(sourceCodeText, {}, sourceFontPath)
+}
+
+arrow = shape{
+    body: square{scale: vec2(400, 20), pos: vec2(-200, 0)}
+    head: triangle{scale: x2(50), pos: x2(0), angle: 90}
+}
+
+main = {
+    a: square{scale: x2(100), angle: 45}
+    b: a{pos: vec2(300, 0)}
+    strength = 5.0
+    c = BezierPath(
+        a.bottom(), mul(sub(a.bottom(), a.top()), strength), 
+        b.right(), mul(sub(b.right(), b.left()), strength),
+        100)
+    fill: baseColor
+    stroke: accentColor
+
+    arrowShape = arrow{}
+    d: DeformShapeByPath2({s:SubDiv(arrowShape, 10)}, 
+            c,
+            arrowShape.body.left(), arrowShape.head.top())
+}

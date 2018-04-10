@@ -1,0 +1,34 @@
+import "common.cgl"
+
+baseColor = rgb(245, 245, 245)
+mainColor = rgb(49, 187, 222)
+
+kite = shape{
+    polygon: [
+        {x: 0, y: 0}, {x: 20, y: -20}, {x: 80, y: 0}, {x: 20, y: +20}
+    ]
+    begin: (->transform(@pos, @scale, @angle, polygon[0]))
+    end:   (->transform(@pos, @scale, @angle, polygon[2]))
+}
+
+skeleton = (num -> shape{
+    ss: []
+    for i in 0:num-1 do(
+        newKite = kite{pos.x = 100*i}
+        ss = ss @ [newKite]
+        var(newKite.pos, newKite.angle)
+    )
+    for i in 0:num-2 do(
+        sat( contact(ss[i].end(), ss[i+1].begin()) )
+    )
+    begin: (->transform(@pos, @scale, @angle, ss[0].begin()))
+    end:   (->transform(@pos, @scale, @angle, ss[num-1].end()))
+})
+
+skeletonA = skeleton(5)
+
+main = skeletonA{
+    sat( contact(begin(), {x: 30, y:200}) )
+    sat( contact(end(), {x: 200, y:150}) )
+    fill: mainColor
+}

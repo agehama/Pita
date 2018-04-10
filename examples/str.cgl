@@ -1,37 +1,7 @@
-transform = (pos, scale, angle, vertex -> {
-    cosT:cos(angle)
-    sinT:sin(angle)
-    x:pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y:pos.y + sinT* scale.x * vertex.x + cosT* scale.y * vertex.y
-})
-
-shape = {
-    pos: {x:0, y:0}
-    scale: {x:1, y:1}
-    angle: 0
-    globalPos: (p->transform(@pos, @scale, @angle, p))
-}
-
-m = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
-
-moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
-
-square = shape{
-    polygon: [
-        {x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}, {x: +0.5, y: +0.5}, {x: -0.5, y: +0.5}
-    ]
-    topLeft:     (->globalPos( polygon[0] ))
-    topRight:    (->globalPos( polygon[1] ))
-    bottomRight: (->globalPos( polygon[2] ))
-    bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( m(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( m(polygon[2], polygon[3]) ))
-    left:        (->globalPos( m(polygon[0], polygon[3]) ))
-    right:       (->globalPos( m(polygon[1], polygon[2]) ))
-}
+import "common.cgl"
 
 main = text{
-    rect: square{scale: {x: 400, y: 300}}
+    rect: square{scale= {x: 400, y: 300}}
     str: "abcde"
     base: path{
         points: 7

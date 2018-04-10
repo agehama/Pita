@@ -20,56 +20,23 @@
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
 
+#include <boost/version.hpp>
+#define CGL_BOOST_MAJOR_VERSION (BOOST_VERSION / 100000)
+#define CGL_BOOST_MINOR_VERSION (BOOST_VERSION / 100 % 1000)
+
 #include <Eigen/Core>
+
+#include "Error.hpp"
 
 namespace cgl
 {
-	class Exception : public std::exception
-	{
-	public:
-		explicit Exception(const std::string& message) :message(message) {}
-		const char* what() const noexcept override { return message.c_str(); }
-
-	private:
-		std::string message;
-	};
-
-	inline void Log(std::ostream& os, const std::string& str)
-	{
-		std::regex regex("\n");
-		os << std::regex_replace(str, regex, "\n          |> ") << "\n";
-	}
-
 	const double pi = 3.1415926535;
 	const double deg2rad = pi / 180.0;
 	const double rad2deg = 180.0 / pi;
 
 	template<class T>
 	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
-}
 
-extern std::ofstream ofs;
-
-#define CGL_FileName (strchr(__FILE__, '\\') ? strchr(__FILE__, '\\') + 1 : __FILE__)
-#define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ") : ")
-#define CGL_TagError (std::string("[Error]   |> "))
-#define CGL_TagWarn  (std::string("[Warning] |> "))
-#define CGL_TagDebug (std::string("[Debug]   |> "))
-#define CGL_Error(message) (throw cgl::Exception(CGL_FileDesc + message))
-
-#ifdef CGL_EnableLogOutput
-#define CGL_ErrorLog(message) (cgl::Log(std::cerr, CGL_TagError + CGL_FileDesc + message))
-#define CGL_WarnLog(message)  (cgl::Log(std::cerr, CGL_TagWarn  + CGL_FileDesc + message))
-//#define CGL_DebugLog(message) (cgl::Log(std::cout, CGL_TagDebug + CGL_FileDesc + message))
-#define CGL_DebugLog(message) (cgl::Log(ofs, CGL_TagDebug + CGL_FileDesc + message))
-#else
-#define CGL_ErrorLog(message)
-#define CGL_WarnLog(message)
-#define CGL_DebugLog(message)
-#endif
-
-namespace cgl
-{
 	//std::string UTF8ToString(const std::string& str);
 
 	template<class T1, class T2>
@@ -84,6 +51,7 @@ namespace cgl
 		return typeid(T1) == t2.type();
 	}
 
+#if (CGL_BOOST_MAJOR_VERSION == 1) && (CGL_BOOST_MINOR_VERSION <= 57)
 	template<class T1, class T2>
 	inline boost::optional<T1&> AsOpt(T2& t2)
 	{
@@ -115,7 +83,39 @@ namespace cgl
 	{
 		return boost::get<T1>(t2);
 	}
+#else
+	template<class T1, class T2>
+	inline boost::optional<T1&> AsOpt(T2& t2)
+	{
+		if (IsType<T1>(t2))
+		{
+			return boost::relaxed_get<T1>(t2);
+		}
+		return boost::none;
+	}
 
+	template<class T1, class T2>
+	inline boost::optional<const T1&> AsOpt(const T2& t2)
+	{
+		if (IsType<T1>(t2))
+		{
+			return boost::relaxed_get<T1>(t2);
+		}
+		return boost::none;
+	}
+
+	template<class T1, class T2>
+	inline T1& As(T2& t2)
+	{
+		return boost::relaxed_get<T1>(t2);
+	}
+
+	template<class T1, class T2>
+	inline const T1& As(const T2& t2)
+	{
+		return boost::relaxed_get<T1>(t2);
+	}
+#endif
 	enum class UnaryOp
 	{
 		Not,
@@ -192,14 +192,23 @@ namespace cgl
 
 	struct DefFunc;
 
-	struct Identifier
+	struct Identifier : public LocationInfo
 	{
 	public:
 		Identifier() = default;
 
-		Identifier(const std::string& name_) :
+		explicit Identifier(const std::string& name_) :
 			name(name_)
 		{}
+
+		Identifier& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static Identifier MakeIdentifier(const std::u32string& name_);
 
@@ -217,6 +226,13 @@ namespace cgl
 		{
 			return name;
 		}
+
+		const std::string& toString()const
+		{
+			return name;
+		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Identifier& node) { return os; }
 
 	private:
 		std::string name;
@@ -244,6 +260,16 @@ namespace cgl
 		bool operator!=(const Address other)const
 		{
 			return valueID != other.valueID;
+		}
+
+		bool operator<(const Address other)const
+		{
+			return valueID < other.valueID;
+		}
+
+		bool operator<=(const Address other)const
+		{
+			return valueID <= other.valueID;
 		}
 
 		static Address Null()
@@ -360,32 +386,35 @@ namespace cgl
 
 	struct Jump;
 
-	struct SatReference
+	struct Import;
+
+	/*struct SatReference
 	{
-		int refID;
+	int refID;
 
-		SatReference() = default;
+	SatReference() = default;
 
-		explicit SatReference(int refID)
-			:refID(refID)
-		{}
+	explicit SatReference(int refID)
+	:refID(refID)
+	{}
 
-		bool operator==(const SatReference& other)const
-		{
-			return refID == other.refID;
-		}
+	bool operator==(const SatReference& other)const
+	{
+	return refID == other.refID;
+	}
 
-		bool operator!=(const SatReference& other)const
-		{
-			return refID != other.refID;
-		}
-	};
+	bool operator!=(const SatReference& other)const
+	{
+	return refID != other.refID;
+	}
+	};*/
 
 	struct CharString
 	{
 	public:
 		CharString() = default;
-		CharString(const std::u32string& str) :str(str) {}
+
+		explicit CharString(const std::u32string& str) :str(str) {}
 
 		bool operator==(const CharString& other)const
 		{
@@ -413,6 +442,11 @@ namespace cgl
 		std::u32string toString()const
 		{
 			return str;
+		}
+
+		bool empty()const
+		{
+			return str.empty();
 		}
 
 	private:
@@ -446,6 +480,16 @@ namespace cgl
 	PackedVal Packed(const Val& value, const Context& context);
 	Val Unpacked(const PackedVal& packedValue, Context& context);
 
+	inline double IsNum(const Val& value)
+	{
+		return IsType<double>(value) || IsType<int>(value);
+	}
+
+	inline double IsNum(const PackedVal& value)
+	{
+		return IsType<double>(value) || IsType<int>(value);
+	}
+
 	inline double AsDouble(const Val& value)
 	{
 		if (IsType<double>(value))
@@ -476,7 +520,8 @@ namespace cgl
 	using Expr = boost::variant<
 		boost::recursive_wrapper<LRValue>,
 		Identifier,
-		SatReference,
+
+		boost::recursive_wrapper<Import>,
 
 		boost::recursive_wrapper<UnaryExpr>,
 		boost::recursive_wrapper<BinaryExpr>,
@@ -524,7 +569,7 @@ namespace cgl
 		Val value;
 	};
 
-	struct LRValue
+	struct LRValue : public LocationInfo
 	{
 		LRValue() = default;
 
@@ -540,6 +585,15 @@ namespace cgl
 		static LRValue Float(const std::u32string& str);
 		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
 		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
+
+		LRValue& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		bool isRValue()const
 		{
@@ -586,11 +640,11 @@ namespace cgl
 		{
 			/*if (isLValue() && other.isLValue())
 			{
-				return address() == other.address();
+			return address() == other.address();
 			}
 			else if (isRValue() && other.isRValue())
 			{
-				return IsEqualVal(evaluated(), other.evaluated());
+			return IsEqualVal(evaluated(), other.evaluated());
 			}*/
 
 			if (isRValue() && other.isRValue())
@@ -599,6 +653,11 @@ namespace cgl
 			}
 
 			return false;
+		}
+
+		friend std::ostream& operator<<(std::ostream& os, const LRValue& node)
+		{
+			return os;
 		}
 
 		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference> value;
@@ -614,7 +673,6 @@ namespace cgl
 
 	using SatExpr = boost::variant<
 		double,
-		SatReference,
 		boost::recursive_wrapper<SatUnaryExpr>,
 		boost::recursive_wrapper<SatBinaryExpr>,
 		boost::recursive_wrapper<SatFunctionReference>
@@ -631,6 +689,63 @@ namespace cgl
 		{}
 	};
 
+	struct Import : public LocationInfo
+	{
+	public:
+		Import() = default;
+
+		explicit Import(const std::u32string& filePath);
+
+		Import(const std::u32string& file, const Identifier& name);
+
+		Import& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
+		LRValue eval(std::shared_ptr<Context> pContext)const;
+
+		static Import Make(const std::u32string& filePath)
+		{
+			return Import(filePath);
+		}
+
+		static void SetName(Import& node, const Identifier& name);
+
+		bool operator==(const Import& other)const
+		{
+			return false;
+		}
+
+		const std::string& getImportPath()const
+		{
+			return importPath;
+		}
+
+		const std::string& getImportName()const
+		{
+			return importName;
+		}
+
+		size_t getSeed()const
+		{
+			return seed;
+		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Import& node) { return os; }
+
+	private:
+		void updateHash();
+
+		std::string importPath;
+		std::string importName;
+		size_t seed;
+	};
+
 	struct OptimizationProblemSat
 	{
 	public:
@@ -645,7 +760,7 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
-		//freeVariablesから辿れる全てのアドレス
+												 //freeVariablesから辿れる全てのアドレス
 		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//変数ID->Address
 
 		bool hasPlateausFunction = false;
@@ -653,7 +768,7 @@ namespace cgl
 		void addUnitConstraint(const Expr& logicExpr);
 		//void constructConstraint(std::shared_ptr<Context> pEnv, std::vector<std::pair<Address, VariableRange>>& freeVariables);
 
-		std::vector<double> solve(std::shared_ptr<Context> pEnv, const Record currentRecord, const std::vector<Identifier>& currentKeyList);
+		std::vector<double> solve(std::shared_ptr<Context> pEnv, const LocationInfo& info, const Record currentRecord, const std::vector<Identifier>& currentKeyList);
 
 	private:
 		void constructConstraint(std::shared_ptr<Context> pEnv);
@@ -665,7 +780,7 @@ namespace cgl
 			data[index] = x;
 		}
 
-		double eval(std::shared_ptr<Context> pEnv);
+		double eval(std::shared_ptr<Context> pEnv, const LocationInfo& info);
 	};
 
 	struct SatUnaryExpr
@@ -742,7 +857,7 @@ namespace cgl
 		}
 	};
 
-	struct UnaryExpr
+	struct UnaryExpr : public LocationInfo
 	{
 		Expr lhs;
 		UnaryOp op;
@@ -750,6 +865,15 @@ namespace cgl
 		UnaryExpr(const Expr& lhs, UnaryOp op) :
 			lhs(lhs), op(op)
 		{}
+
+		UnaryExpr& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		bool operator==(const UnaryExpr& other)const
 		{
@@ -760,17 +884,35 @@ namespace cgl
 
 			return IsEqual(lhs, other.lhs);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const UnaryExpr& node) { return os; }
 	};
 
-	struct BinaryExpr
+	struct BinaryExpr : public LocationInfo
 	{
 		Expr lhs;
 		Expr rhs;
 		BinaryOp op;
 
+		BinaryExpr() = default;
+
 		BinaryExpr(const Expr& lhs, const Expr& rhs, BinaryOp op) :
 			lhs(lhs), rhs(rhs), op(op)
 		{}
+
+		static BinaryExpr Make(const Expr& lhs, const Expr& rhs, BinaryOp op)
+		{
+			return BinaryExpr(lhs, rhs, op);
+		}
+
+		BinaryExpr& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		bool operator==(const BinaryExpr& other)const
 		{
@@ -781,9 +923,11 @@ namespace cgl
 
 			return IsEqual(lhs, other.lhs) && IsEqual(rhs, other.rhs);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const BinaryExpr& node) { return os; }
 	};
 
-	struct Range
+	struct Range : public LocationInfo
 	{
 		Expr lhs;
 		Expr rhs;
@@ -797,6 +941,15 @@ namespace cgl
 		Range(const Expr& lhs, const Expr& rhs) :
 			lhs(lhs), rhs(rhs)
 		{}
+
+		Range& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static Range Make(const Expr& lhs)
 		{
@@ -812,9 +965,11 @@ namespace cgl
 		{
 			return IsEqual(lhs, rhs);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Range& node) { return os; }
 	};
 
-	struct Lines
+	struct Lines : public LocationInfo
 	{
 		std::vector<Expr> exprs;
 
@@ -827,6 +982,15 @@ namespace cgl
 		Lines(const std::vector<Expr>& exprs_) :
 			exprs(exprs_)
 		{}
+
+		Lines& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		void add(const Expr& expr)
 		{
@@ -891,6 +1055,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Lines& node) { return os; }
 	};
 
 	struct Arguments
@@ -957,7 +1123,7 @@ namespace cgl
 		}
 	};
 
-	struct DefFunc
+	struct DefFunc : public LocationInfo
 	{
 		std::vector<Identifier> arguments;
 		Expr expr;
@@ -997,6 +1163,15 @@ namespace cgl
 			}
 		}
 
+		DefFunc& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		static bool IsValidArgs(const Lines& arguments_, const Expr& expr_)
 		{
 			for (size_t i = 0; i < arguments_.size(); ++i)
@@ -1027,9 +1202,15 @@ namespace cgl
 
 			return IsEqual(expr, other.expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const DefFunc& node) { return os; }
 	};
 
+<<<<<<< HEAD
 	struct If
+=======
+	struct If : public LocationInfo
+>>>>>>> develop
 	{
 		Expr cond_expr;
 		Expr then_expr;
@@ -1040,6 +1221,15 @@ namespace cgl
 		If(const Expr& cond) :
 			cond_expr(cond)
 		{}
+
+		If& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static If Make(const Expr& cond)
 		{
@@ -1070,20 +1260,28 @@ namespace cgl
 			{
 				return IsEqual(cond_expr, other.cond_expr)
 					&& IsEqual(then_expr, other.then_expr)
+<<<<<<< HEAD
 					&& IsEqual(else_expr.value(), other.else_expr.value());
+=======
+					&& IsEqual(else_expr.get(), other.else_expr.get());
+>>>>>>> develop
 			}
 
 			return IsEqual(cond_expr, other.cond_expr)
 				&& IsEqual(then_expr, other.then_expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const If& node) { return os; }
 	};
 
-	struct For
+	struct For : public LocationInfo
 	{
 		Identifier loopCounter;
 		Expr rangeStart;
 		Expr rangeEnd;
 		Expr doExpr;
+
+		bool asList = false;
 
 		For() = default;
 
@@ -1093,6 +1291,15 @@ namespace cgl
 			rangeEnd(rangeEnd),
 			doExpr(doExpr)
 		{}
+
+		For& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static For Make(const Identifier& loopCounter)
 		{
@@ -1111,9 +1318,11 @@ namespace cgl
 			forExpression.rangeEnd = rangeEnd;
 		}
 
-		static void SetDo(For& forExpression, const Expr& doExpr)
+		static void SetDo(For& forExpression, const Expr& doExpr, bool isList)
 		{
 			forExpression.doExpr = doExpr;
+
+			forExpression.asList = isList;
 		}
 
 		bool operator==(const For& other)const
@@ -1123,9 +1332,11 @@ namespace cgl
 				&& IsEqual(rangeEnd, other.rangeEnd)
 				&& IsEqual(doExpr, other.doExpr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const For& node) { return os; }
 	};
 
-	struct Return
+	struct Return : public LocationInfo
 	{
 		Expr expr;
 
@@ -1134,6 +1345,15 @@ namespace cgl
 		Return(const Expr& expr) :
 			expr(expr)
 		{}
+
+		Return& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static Return Make(const Expr& expr)
 		{
@@ -1144,9 +1364,11 @@ namespace cgl
 		{
 			return IsEqual(expr, other.expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Return& node) { return os; }
 	};
 
-	struct ListConstractor
+	struct ListConstractor : public LocationInfo
 	{
 		std::vector<Expr> data;
 
@@ -1155,6 +1377,15 @@ namespace cgl
 		ListConstractor(const Expr& expr) :
 			data({ expr })
 		{}
+
+		ListConstractor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		ListConstractor& add(const Expr& expr)
 		{
@@ -1194,6 +1425,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const ListConstractor& node) { return os; }
 	};
 
 	struct PackedList
@@ -1317,7 +1550,7 @@ namespace cgl
 		PackedVal packed(const Context& context)const;
 	};
 
-	struct KeyExpr
+	struct KeyExpr : public LocationInfo
 	{
 		Identifier name;
 		Expr expr;
@@ -1328,10 +1561,28 @@ namespace cgl
 			name(name)
 		{}
 
+		KeyExpr(const Identifier& name, const Expr& expr) :
+			name(name), expr(expr)
+		{}
+
+		KeyExpr& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
+
 		static KeyExpr Make(const Identifier& name)
 		{
 			return KeyExpr(name);
 		}
+
+		/*static KeyExpr Make2(const Identifier& name, const Expr& expr)
+		{
+			return KeyExpr(name, expr);
+		}*/
 
 		static void SetExpr(KeyExpr& keyval, const Expr& expr)
 		{
@@ -1343,13 +1594,24 @@ namespace cgl
 			return name == other.name
 				&& IsEqual(expr, other.expr);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const KeyExpr& node) { return os; }
 	};
 
-	struct RecordConstractor
+	struct RecordConstractor : public LocationInfo
 	{
 		std::vector<Expr> exprs;
 
 		RecordConstractor() = default;
+
+		RecordConstractor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		RecordConstractor& add(const Expr& expr)
 		{
@@ -1384,6 +1646,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const RecordConstractor& node) { return os; }
 	};
 
 	struct KeyValue
@@ -1409,7 +1673,7 @@ namespace cgl
 		}
 	};
 
-	struct DeclSat
+	struct DeclSat : public LocationInfo
 	{
 		Expr expr;
 
@@ -1418,6 +1682,15 @@ namespace cgl
 		DeclSat(const Expr& expr) :
 			expr(expr)
 		{}
+
+		DeclSat& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static DeclSat Make(const Expr& expr)
 		{
@@ -1429,6 +1702,8 @@ namespace cgl
 			std::cerr << "Warning: IsEqual<DeclSat>() don't care about expr" << std::endl;
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const DeclSat& node) { return os; }
 	};
 
 	struct SatFunctionReference
@@ -1471,7 +1746,6 @@ namespace cgl
 
 		struct FunctionRef
 		{
-			//std::vector<boost::variant<SatReference, Val>> args;
 			std::vector<SatExpr> args;
 
 			FunctionRef() = default;
@@ -1488,7 +1762,7 @@ namespace cgl
 				{
 					/*if (!IsEqual(args[i], other.args[i]))
 					{
-						return false;
+					return false;
 					}*/
 				}
 
@@ -1500,6 +1774,7 @@ namespace cgl
 				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
 			}
 
+<<<<<<< HEAD
 			/*
 			void appendRef(const SatReference& ref)
 			{
@@ -1512,6 +1787,8 @@ namespace cgl
 			}
 			*/
 
+=======
+>>>>>>> develop
 			void appendExpr(const SatExpr& value)
 			{
 				args.push_back(value);
@@ -1557,7 +1834,7 @@ namespace cgl
 			//if (!(headValue == other.headValue))
 			/*if (!(funcName == other.funcName))
 			{
-				return false;
+			return false;
 			}*/
 			if (!(headAddress == other.headAddress))
 			{
@@ -1588,15 +1865,15 @@ namespace cgl
 			{
 				if (auto opt = AsOpt<ListRef>(r))
 				{
-					str += opt.value().asString();
+					str += opt.get().asString();
 				}
 				else if (auto opt = AsOpt<RecordRef>(r))
 				{
-					str += opt.value().asString();
+					str += opt.get().asString();
 				}
 				else if (auto opt = AsOpt<FunctionRef>(r))
 				{
-					str += opt.value().asString();
+					str += opt.get().asString();
 				}
 			}
 
@@ -1604,12 +1881,21 @@ namespace cgl
 		}
 	};
 
-	struct DeclFree
+	struct DeclFree : public LocationInfo
 	{
 		std::vector<Accessor> accessors;
 		std::vector<Expr> ranges;
 
 		DeclFree() = default;
+
+		DeclFree& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		void addAccessor(const Accessor& accessor)
 		{
@@ -1635,30 +1921,30 @@ namespace cgl
 		{
 			/*if (refs.size() != other.refs.size())
 			{
-				return false;
+			return false;
 			}
 
 			for (size_t i = 0; i < refs.size(); ++i)
 			{
-				if (!SameType(refs[i].type(), other.refs[i].type()))
-				{
-					return false;
-				}
+			if (!SameType(refs[i].type(), other.refs[i].type()))
+			{
+			return false;
+			}
 
-				if (IsType<Identifier>(refs[i]))
-				{
-					if (As<Identifier>(refs[i]) != As<Identifier>(other.refs[i]))
-					{
-						return false;
-					}
-				}
-				else if (IsType<ObjectReference>(refs[i]))
-				{
-					if (!(As<ObjectReference>(refs[i]) == As<ObjectReference>(other.refs[i])))
-					{
-						return false;
-					}
-				}
+			if (IsType<Identifier>(refs[i]))
+			{
+			if (As<Identifier>(refs[i]) != As<Identifier>(other.refs[i]))
+			{
+			return false;
+			}
+			}
+			else if (IsType<ObjectReference>(refs[i]))
+			{
+			if (!(As<ObjectReference>(refs[i]) == As<ObjectReference>(other.refs[i])))
+			{
+			return false;
+			}
+			}
 			}*/
 
 			std::cerr << "Warning: IsEqual<DeclFree>() don't care about accessors" << std::endl;
@@ -1666,6 +1952,8 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const DeclFree& node) { return os; }
 	};
 
 	enum class RecordType { Normal, Path, Text, ShapePath };
@@ -1817,7 +2105,7 @@ namespace cgl
 		{
 			if (constraint)
 			{
-				constraint = BinaryExpr(constraint.value(), logicExpr, BinaryOp::And);
+				constraint = BinaryExpr(constraint.get(), logicExpr, BinaryOp::And);
 			}
 			else
 			{
@@ -1881,6 +2169,8 @@ namespace cgl
 		{
 			return index == other.index;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const ListAccess& node) { return os; }
 	};
 
 	struct RecordAccess
@@ -1902,6 +2192,8 @@ namespace cgl
 		{
 			return name == other.name;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const RecordAccess& node) { return os; }
 	};
 
 	struct FunctionAccess
@@ -1938,11 +2230,13 @@ namespace cgl
 
 			return true;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const FunctionAccess& node) { return os; }
 	};
 
 	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
 
-	struct Accessor
+	struct Accessor : public LocationInfo
 	{
 		//先頭のオブジェクト(識別子かもしくは関数・リスト・レコードのリテラル)
 		Expr head;
@@ -1954,6 +2248,15 @@ namespace cgl
 		Accessor(const Expr& head) :
 			head(head)
 		{}
+
+		Accessor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		Accessor& add(const Access& access)
 		{
@@ -2016,6 +2319,8 @@ namespace cgl
 
 			return IsEqual(head, other.head);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const Accessor& node) { return os; }
 	};
 
 	struct DeepReference
@@ -2105,7 +2410,7 @@ namespace cgl
 					return false;
 				}
 
-				return IsEqualVal(lhs.value(), other.lhs.value());
+				return IsEqualVal(lhs.get(), other.lhs.get());
 			}
 			else
 			{
@@ -2114,7 +2419,7 @@ namespace cgl
 		}
 	};
 
-	struct RecordInheritor
+	struct RecordInheritor : public LocationInfo
 	{
 		//using OriginalRecord = boost::variant<Identifier, boost::recursive_wrapper<Record>>;
 		//OriginalRecord original;
@@ -2130,6 +2435,15 @@ namespace cgl
 		RecordInheritor(const Expr& original) :
 			original(original)
 		{}
+
+		RecordInheritor& setLocation(const LocationInfo& info)
+		{
+			locInfo_lineBegin = info.locInfo_lineBegin;
+			locInfo_lineEnd = info.locInfo_lineEnd;
+			locInfo_posBegin = info.locInfo_posBegin;
+			locInfo_posEnd = info.locInfo_posEnd;
+			return *this;
+		}
 
 		static RecordInheritor MakeIdentifier(const Identifier& original)
 		{
@@ -2168,11 +2482,11 @@ namespace cgl
 		{
 			/*if (IsType<Identifier>(original) && IsType<Identifier>(other.original))
 			{
-				return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
+			return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
 			}
 			if (IsType<Record>(original) && IsType<Record>(other.original))
 			{
-				return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
+			return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
 			}*/
 
 			return IsEqual(original, other.original) && adder == other.adder;
@@ -2180,6 +2494,8 @@ namespace cgl
 			std::cerr << "Error(" << __LINE__ << ")\n";
 			return false;
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const RecordInheritor& node) { return os; }
 	};
 
 	Expr BuildString(const std::u32string& str);

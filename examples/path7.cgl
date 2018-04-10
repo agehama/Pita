@@ -1,0 +1,78 @@
+import "common.cgl"
+
+getParallelotope = (f, df, xmin, xmax ->
+    xmid = (xmin + xmax)*0.5
+    divnum = 100
+    
+    amid = 1.0*(f(xmax) - f(xmin)) / (xmax - xmin)
+    amin = amid
+    amax = amid
+
+    dx = 1.0*(xmax - xmin) / divnum
+    for i in 0:divnum do(
+        a = df(xmin + i*dx)
+        if(a < amin)then(amin = a)
+        if(amax < a)then(amax = a)
+    )
+
+    xhalf = xmax - xmid
+
+    ymid = f(xmid)
+    ywidth = (amax - amin)*xhalf
+    ywidth_half = ywidth*0.5
+    
+    ycenter_left = ymid - xhalf*amid
+    ycenter_right = ymid + xhalf*amid
+
+    shape{
+        polygon: [
+            vec2(xmid - xhalf, ymid - xhalf*amax)
+            vec2(xmid - xhalf, ymid - xhalf*amin)
+            vec2(xmid + xhalf, ymid + xhalf*amax)
+            vec2(xmid + xhalf, ymid + xhalf*amin)
+        ]
+        width: ywidth
+        left: xmin
+        right: xmax
+    }
+)
+
+route = shape{
+    f = (x -> 0.5*x + Sin(x + 0.5*Cos(2*x)) + 2.0*Cos(x/3.0))
+    df = (x -> 0.5 - 0.6666666666666666*Sin(x/3.0) + Cos(x + 0.5*Cos(2*x))*(1.0 - 2.0*Cos(x)*Sin(x)))
+    f = SinRad
+    df = CosRad
+    begin = Rad(0)
+    end = Rad(300)
+    z: FunctionPath(f, begin, end, 100){
+        stroke: rgb(0, 0, 0)
+    }
+    ps = []
+    midX = (begin + end)*0.5
+    ps = ps @ [getParallelotope(f, df, begin, midX)]
+    ps = ps @ [getParallelotope(f, df, midX, end)]
+    if(true)then(
+        for n in 0:6 do(
+            maxWidth = 0
+            maxWidthIndex = 0
+            for i in 0:Size(ps)-1 do(
+                if(maxWidth < ps[i].width)then(
+                    maxWidth = ps[i].width
+                    maxWidthIndex = i
+                )
+            )
+            currentLeft = ps[maxWidthIndex].left
+            currentRight = ps[maxWidthIndex].right
+            currentMid = (currentLeft+currentRight)*0.5
+            ps = ps @ [getParallelotope(f, df, currentLeft, currentMid)]
+            ps = ps @ [getParallelotope(f, df, currentMid, currentRight)]
+            ps[maxWidthIndex] = {width:0}
+        )
+    )
+    pss: []
+    for i in 0:Size(ps)-1 do(
+        pss[i] = ShapeOuterPath(ps[i])
+    )
+    stroke: rgb(83, 162, 246)
+    scale: {x:200, y:-100}
+}

@@ -1,0 +1,19 @@
+route = shape{
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+    arrow: BuildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
+        stroke: {r: 0, g: 255, b: 0}
+    }
+    arrow2: OffsetPath(arrow, 100.0){
+        stroke: {r: 0, g: 255, b: 255}
+    }
+    arrow3 = FunctionPath(Sin, 0, 360*2, 100){
+        scale: {x: 2, y: 100}
+        stroke: {r: 255, g: 0, b: 0}
+    }
+    textShape: BuildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita ", arrow3){
+    }
+    bound: shape{
+        a: ShapeOuterPath(BoundingBox(textShape))
+        stroke: {r: 0, g: 255, b: 0}
+    }
+}

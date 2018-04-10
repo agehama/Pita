@@ -31,7 +31,7 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("参照エラー");
+				CGL_Error(std::string() + "Address(" + key.toString() + ") is not binded.");
 			}
 			return it->second;
 		}
@@ -41,9 +41,22 @@ namespace cgl
 			auto it = m_values.find(key);
 			if (it == m_values.end())
 			{
-				CGL_Error("参照エラー");
+				CGL_Error(std::string() + "Address(" + key.toString() + ") is not binded.");
 			}
 			return it->second;
+		}
+
+		void bind(Address key, const ValueType& value)
+		{
+			auto it = m_values.find(key);
+			if (it != m_values.end())
+			{
+				it->second = value;
+			}
+			else
+			{
+				m_values.emplace(key, value);
+			}
 		}
 
 		typename ValueList::iterator at(Address key)
@@ -64,6 +77,11 @@ namespace cgl
 		typename ValueList::const_iterator end()const
 		{
 			return m_values.cend();
+		}
+
+		typename ValueList::const_iterator find(const Address address)const
+		{
+			return m_values.find(address);
 		}
 
 		void gc(const std::unordered_set<Address>& ramainAddresses)
@@ -104,10 +122,11 @@ namespace cgl
 
 	class Context
 	{
-	public:	
+	public:
 		using LocalContext = std::vector<Scope>;
 
-		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
+		//using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
+		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&, const LocationInfo& info)>;
 
 		Address makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
 
@@ -134,7 +153,7 @@ namespace cgl
 
 		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction);
 
-		Val callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments);
+		Val callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments, const LocationInfo& info);
 		bool isPlateausBuiltInFunction(Address functionAddress);
 
 		/*
@@ -147,7 +166,7 @@ namespace cgl
 				return boost::none;
 			}
 
-			//return m_values[valueIDOpt.value()];
+			//return m_values[valueIDOpt.get()];
 		}
 		*/
 
@@ -188,7 +207,7 @@ namespace cgl
 			{
 				if (auto opt = m_values.at(address))
 				{
-					return expandRef(opt.value());
+					return expandRef(opt.get());
 				}
 				else
 				{
@@ -201,9 +220,9 @@ namespace cgl
 			return 0;
 		}*/
 
-		const Val& expand(const LRValue& lrvalue)const;
+		const Val& expand(const LRValue& lrvalue, const LocationInfo& info)const;
 
-		Val& mutableExpand(LRValue& lrvalue);
+		Val& mutableExpand(LRValue& lrvalue, const LocationInfo& info);
 
 		boost::optional<const Val&> expandOpt(const LRValue& lrvalue)const;
 
@@ -212,15 +231,15 @@ namespace cgl
 		Address evalReference(const Accessor& access);
 
 		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
-		std::vector<Address> expandReferences(Address address);
-		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange);
+		std::vector<Address> expandReferences(Address address, const LocationInfo& info);
+		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info);
 
 		//std::vector<Address> expandReferences2(const Accessor& access);
-		std::vector<std::pair<Address, VariableRange>> expandReferences2(const Accessor& access, boost::optional<const PackedVal&> rangeOpt);
+		std::vector<std::pair<Address, VariableRange>> expandReferences2(const Accessor& access, boost::optional<const PackedVal&> rangeOpt, const LocationInfo& info);
 
 		Reference bindReference(Address address);
 		Reference bindReference(const Identifier& identifier);
-		Reference bindReference(const Accessor& accessor);
+		Reference bindReference(const Accessor& accessor, const LocationInfo& info);
 		Address getReference(Reference reference)const;
 		Reference cloneReference(Reference reference, const std::unordered_map<Address, Address>& addressReplaceMap);
 		
@@ -232,7 +251,7 @@ namespace cgl
 			if (auto opt = AsOpt<Record>(reference))
 			{
 				Record expanded;
-				for (const auto& elem : opt.value().values)
+				for (const auto& elem : opt.get().values)
 				{
 					expanded.append(elem.first, expandObject(elem.second));
 				}
@@ -241,7 +260,7 @@ namespace cgl
 			else if (auto opt = AsOpt<List>(reference))
 			{
 				List expanded;
-				for (const auto& elem : opt.value().data)
+				for (const auto& elem : opt.get().data)
 				{
 					expanded.append(expandObject(elem));
 				}
@@ -256,7 +275,7 @@ namespace cgl
 		{
 			if (auto valueIDOpt = AsOpt<unsigned>(ref.headValue))
 			{
-				bindValueID(name, valueIDOpt.value());
+				bindValueID(name, valueIDOpt.get());
 			}
 			else
 			{
@@ -326,6 +345,8 @@ namespace cgl
 		}*/
 		void bindValueID(const std::string& name, const Address ID);
 
+		bool existsInCurrentScope(const std::string& name)const;
+
 		//bindValueIDの変数宣言式用
 		void makeVariable(const std::string& name, const Address ID)
 		{
@@ -350,7 +371,8 @@ namespace cgl
 
 		void TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(Address address, const Val& newValue)
 		{
-			m_values[address] = newValue;
+			//m_values[address] = newValue;
+			m_values.bind(address, newValue);
 		}
 
 		/*
@@ -367,7 +389,7 @@ namespace cgl
 		}*/
 
 		//Accessorの示すリスト or レコードの持つアドレスを書き換える
-		void assignToAccessor(const Accessor& accessor, const LRValue& newValue);
+		void assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info);
 
 		static std::shared_ptr<Context> Make();
 

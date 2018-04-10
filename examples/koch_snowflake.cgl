@@ -1,52 +1,6 @@
-vec2 = (x, y -> {x: x, y: y})
-x2 = (v -> {x: v, y: v})
+import "common.cgl"
 
 div3 = (p, q -> {x: (q.x - p.x) / 3.0, y: (q.y - p.y) / 3.0})
-
-add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
-sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
-
-mul = (v, a -> {x: v.x * a, y: v.y * a})
-div = (v, a -> {x: v.x / a, y: v.y / a})
-
-contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
-
-sqrt = (x -> x^0.5)
-
-length = (v -> sqrt(v.x*v.x + v.y*v.y))
-setLength = (v, l -> mul(div(v, length(v)), l))
-
-transform = (pos, scale, angle, vertex -> {
-    cosT: cos(angle)
-    sinT: sin(angle)
-    x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
-    y: pos.y + sinT * scale.x * vertex.x + cosT * scale.y * vertex.y
-})
-
-shape = {
-    polygon: []
-    pos: vec2(0, 0)
-    scale: vec2(1, 1)
-    angle: 0
-    p: (index->poly=@polygon, transform(@pos, @scale, @angle, poly[index]))
-}
-
-square = shape{
-    polygon: [
-        {x: -0.5, y: -0.5}
-        {x: +0.5, y: -0.5}
-        {x: +0.5, y: +0.5}
-        {x: -0.5, y: +0.5}
-    ]
-}
-
-triangle = shape{
-    polygon: [
-        {x: 0, y: -0.5773502691896}
-        {x: 0.5, y: 0.2886751345948}
-        {x: -0.5, y: 0.2886751345948}
-    ]
-}
 
 koch_template = (p, q ->
     v = sub(p, q)
@@ -79,12 +33,12 @@ rec_curve = (f, depth, template, ps ->
 
 tree = shape{
     tri = triangle{scale = {x: 10, y: 10}}
-    depth =  5
+    depth = 5
     a: shape{
         l: [
-            rec_curve(rec_curve, depth, koch_template, [tri.p(0), tri.p(1)])
-            rec_curve(rec_curve, depth, koch_template, [tri.p(1), tri.p(2)])
-            rec_curve(rec_curve, depth, koch_template, [tri.p(2), tri.p(0)])
+            rec_curve(rec_curve, depth, koch_template, [tri.p0(), tri.p1()])
+            rec_curve(rec_curve, depth, koch_template, [tri.p1(), tri.p2()])
+            rec_curve(rec_curve, depth, koch_template, [tri.p2(), tri.p0()])
         ]
         scale = x2(70)
     }

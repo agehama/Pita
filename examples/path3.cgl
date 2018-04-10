@@ -1,0 +1,26 @@
+
+route = shape{
+    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+    arrow: BuildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
+        stroke: {r: 0, g: 255, b: 0}
+    }
+    arrow2: OffsetPath(arrow, 100.0){
+        stroke: {r: 0, g: 255, b: 255}
+    }
+    arrow3 = ShapeOuterPath(rect)[0]{
+        stroke: {r: 0, g: 0, b: 255}
+    }
+    textShape = shape{
+        a: Buffer(BuildText("図", arrow2){
+        scale: {x: 20, y: 20}
+    }, 20)
+    }
+    arrow4: shape{
+        paths: ShapePath(textShape)
+        stroke: {r: 0, g: 0, b: 255}
+    }
+    ts: []
+    for i in 0:Size(arrow4.paths)-1 do(
+        ts[i] = BuildText("図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita 図形記述言語Pita", arrow4.paths[i])
+    )
+}

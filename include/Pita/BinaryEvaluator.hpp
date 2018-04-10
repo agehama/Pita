@@ -100,7 +100,7 @@ namespace cgl
 		}
 		else if (auto objLhsOpt = AsOpt<ObjectReference>(lhs))
 		{
-			const auto& objRefLhs = objLhsOpt.value();
+			const auto& objRefLhs = objLhsOpt.get();
 
 			const bool rhsIsIdentifier = IsType<Identifier>(rhs);
 			const bool rhsIsObjRef = IsType<ObjectReference>(rhs);
@@ -130,7 +130,7 @@ namespace cgl
 		//if (auto objLhsOpt = AsOpt<ObjectReference>(lhs))
 		if (IsType<Address>(lhs))
 		{
-			//const auto& objRefLhs = objLhsOpt.value();
+			//const auto& objRefLhs = objLhsOpt.get();
 			const Address lhsAddress = As<Address>(lhs);
 
 			if (IsType<Address>(rhs))

@@ -1,0 +1,28 @@
+language: cpp
+matrix:
+  include:
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env: COMPILER=g++-5
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - clang-3.8
+      env: COMPILER=clang++-3.8
+before_install:
+  - sudo apt-get install libboost-dev
+  - sudo apt-get install libc++-dev
+script:
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_CXX_COMPILER=$COMPILER ..
+  - make -j4
+  - ctest -V

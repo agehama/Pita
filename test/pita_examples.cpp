@@ -13,6 +13,9 @@
 
 extern int constraintViolationCount;
 
+//const std::string directory("../../Pita/examples/");
+const std::string directory("./");
+
 std::vector<std::string> exampleFiles()
 {
 	const std::vector<std::string> filenames({
@@ -49,15 +52,18 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 		std::cout << "----------------------------------------------\n";
 		std::cout << "run \"" << filename << "\" ...\n";
 
-		std::ifstream ifs(filename + ".cgl");
-		std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+		//std::ifstream ifs(directory + filename + ".cgl");
+		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+		std::string sourcePath(directory + filename + ".cgl");
 
 		auto start = std::chrono::system_clock::now();
 
 		Program program;
 		try
 		{
-			program.execute1(sourceCode, filename + ".svg", false);
+			//program.execute1(sourceCode, filename + ".svg", false);
+			program.execute1(sourcePath, filename + ".svg", false);
 		}
 		catch(const std::exception& e)
 		{
@@ -83,15 +89,19 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		std::cout << "----------------------------------------------\n";
 		std::cout << "run \"" << filename << "\" ...\n";
 
-		std::ifstream ifs(filename + ".cgl");
-		std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+		//std::ifstream ifs(directory + filename + ".cgl");
+		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+		std::string sourcePath(directory + filename + ".cgl");
 
 		auto start = std::chrono::system_clock::now();
 
 		Program program;
 		try
 		{
-			program.run(sourceCode, false);
+			//program.run(sourceCode, false);
+			//program.execute1(sourceCode, filename + ".svg", false);
+			program.execute1(sourcePath, filename + ".svg", false);
 		}
 		catch (const std::exception& e)
 		{

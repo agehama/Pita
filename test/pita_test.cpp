@@ -20,7 +20,7 @@ a = 1
 	auto opt = program.asIntOpt();
 	if (opt)
 	{
-		BOOST_CHECK_EQUAL(opt.value(), 3);
+		BOOST_CHECK_EQUAL(opt.get(), 3);
 	}
 }
 

@@ -20,8 +20,9 @@ matrix:
             - clang-3.9
       env: COMPILER=clang++-3.9
 before_install:
+  - sudo apt-get update -qq
   - sudo apt-get install libboost-dev
-  - sudo apt-get install libc++-dev
+  - sudo apt-get install libc++-dev libc++abi-dev
 script:
   - ls /usr/include/c++/v1/experimental
   - mkdir build

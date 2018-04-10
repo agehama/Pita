@@ -1,3 +1,5 @@
+sudo: required
+dist: precise
 language: cpp
 matrix:
   include:

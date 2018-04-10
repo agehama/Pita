@@ -378,11 +378,11 @@ namespace cgl
 		{
 			if (pEnv)
 			{
-				os << indent() << "Address" << node.getInfo() << "(" << node.address(*pEnv).toString() << ")" << std::endl;
+				os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.address(*pEnv).toString() << ")" << std::endl;
 			}
 			else
 			{
-				os << indent() << "Address" << node.getInfo() << "(" << node.toString() << ")" << std::endl;
+				os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
 			}
 		}
 		else
@@ -395,17 +395,17 @@ namespace cgl
 
 	void Printer::operator()(const Identifier& node)const
 	{
-		os << indent() << "Identifier" << node.getInfo() << "(" << static_cast<std::string>(node) << ")" << std::endl;
+		os << indent() << "Identifier" << static_cast<LocationInfo>(node).getInfo() << "(" << static_cast<std::string>(node) << ")" << std::endl;
 	}
 
 	void Printer::operator()(const Import& node)const
 	{
-		os << indent() << "Import" << node.getInfo() << "(" << ")" << std::endl;
+		os << indent() << "Import" << static_cast<LocationInfo>(node).getInfo() << "(" << ")" << std::endl;
 	}
 
 	void Printer::operator()(const UnaryExpr& node)const
 	{
-		os << indent() << UnaryOpToStr(node.op) << node.getInfo() << "(" << std::endl;
+		os << indent() << UnaryOpToStr(node.op) << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
 
 		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.lhs);
 
@@ -414,7 +414,7 @@ namespace cgl
 
 	void Printer::operator()(const BinaryExpr& node)const
 	{
-		os << indent() << BinaryOpToStr(node.op) << node.getInfo() << "(" << std::endl;
+		os << indent() << BinaryOpToStr(node.op) << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
 		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.lhs);
 		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.rhs);
 		os << indent() << ")" << std::endl;
@@ -603,14 +603,14 @@ namespace cgl
 
 	void Printer::operator()(const DeclSat& node)const
 	{
-		os << indent() << "DeclSat" << node.getInfo() << "(" << std::endl;
+		os << indent() << "DeclSat" << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
 		boost::apply_visitor(Printer(pEnv, os, m_indent + 1), node.expr);
 		os << indent() << ")" << std::endl;
 	}
 
 	void Printer::operator()(const DeclFree& node)const
 	{
-		os << indent() << "DeclFree" << node.getInfo() << "(" << std::endl;
+		os << indent() << "DeclFree" << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
 		for (const auto& accessor : node.accessors)
 		{
 			Expr expr = accessor;

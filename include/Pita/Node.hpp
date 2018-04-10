@@ -116,6 +116,7 @@ namespace cgl
 		return boost::relaxed_get<T1>(t2);
 	}
 #endif
+
 	enum class UnaryOp
 	{
 		Not,
@@ -1206,11 +1207,7 @@ namespace cgl
 		friend std::ostream& operator<<(std::ostream& os, const DefFunc& node) { return os; }
 	};
 
-<<<<<<< HEAD
-	struct If
-=======
 	struct If : public LocationInfo
->>>>>>> develop
 	{
 		Expr cond_expr;
 		Expr then_expr;
@@ -1260,11 +1257,7 @@ namespace cgl
 			{
 				return IsEqual(cond_expr, other.cond_expr)
 					&& IsEqual(then_expr, other.then_expr)
-<<<<<<< HEAD
-					&& IsEqual(else_expr.value(), other.else_expr.value());
-=======
 					&& IsEqual(else_expr.get(), other.else_expr.get());
->>>>>>> develop
 			}
 
 			return IsEqual(cond_expr, other.cond_expr)
@@ -1774,21 +1767,6 @@ namespace cgl
 				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
 			}
 
-<<<<<<< HEAD
-			/*
-			void appendRef(const SatReference& ref)
-			{
-				args.push_back(ref);
-			}
-
-			void appendValue(const Val& value)
-			{
-				args.push_back(value);
-			}
-			*/
-
-=======
->>>>>>> develop
 			void appendExpr(const SatExpr& value)
 			{
 				args.push_back(value);

@@ -18,7 +18,7 @@ namespace cgl
 
 		std::string operator()(const Lines& node)const
 		{
-			std::string result = node.getInfo();
+			std::string result = static_cast<const LocationInfo&>(node).getInfo();
 			for (const auto& expr : node.exprs)
 			{
 				result += boost::apply_visitor(*this, expr);
@@ -28,34 +28,34 @@ namespace cgl
 
 		std::string operator()(const UnaryExpr& node)const
 		{
-			std::string result = node.getInfo();
+			std::string result = static_cast<const LocationInfo&>(node).getInfo();
 			result += boost::apply_visitor(*this, node.lhs);
 			return result;
 		}
 
 		std::string operator()(const BinaryExpr& node)const
 		{
-			std::string result = node.getInfo();
+			std::string result = static_cast<const LocationInfo&>(node).getInfo();
 			result += boost::apply_visitor(*this, node.lhs);
 			result += boost::apply_visitor(*this, node.rhs);
 			return result;
 		}
 
-		std::string operator()(const LRValue& node)const { return node.getInfo(); }
-		std::string operator()(const Identifier& node)const { return node.getInfo(); }
-		std::string operator()(const Import& node)const { return node.getInfo(); }
-		std::string operator()(const Range& node)const { return node.getInfo(); }
-		std::string operator()(const DefFunc& node)const { return node.getInfo(); }
-		std::string operator()(const If& node)const { return node.getInfo(); }
-		std::string operator()(const For& node)const { return node.getInfo(); }
-		std::string operator()(const Return& node)const { return node.getInfo(); }
-		std::string operator()(const ListConstractor& node)const { return node.getInfo(); }
-		std::string operator()(const KeyExpr& node)const { return node.getInfo(); }
-		std::string operator()(const RecordConstractor& node)const { return node.getInfo(); }
-		std::string operator()(const RecordInheritor& node)const { return node.getInfo(); }
-		std::string operator()(const Accessor& node)const { return node.getInfo(); }
-		std::string operator()(const DeclSat& node)const { return node.getInfo(); }
-		std::string operator()(const DeclFree& node)const { return node.getInfo(); }
+		std::string operator()(const LRValue& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const Identifier& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const Import& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const Range& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const DefFunc& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const If& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const For& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const Return& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const ListConstractor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const KeyExpr& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const RecordConstractor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const RecordInheritor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const Accessor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const DeclSat& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
+		std::string operator()(const DeclFree& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 	};
 
 	inline std::string GetLocationInfo(const Expr& expr)

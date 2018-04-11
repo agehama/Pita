@@ -103,7 +103,7 @@ if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 else()
 #  target_link_libraries(pita_lib geos cmaes stdc++fs)
-  target_link_libraries(pita_lib geos cmaes libc++experimental)
+  target_link_libraries(pita_lib geos cmaes c++experimental)
 endif()
 
 add_executable(pita source/Source.cpp)

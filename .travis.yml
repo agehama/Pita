@@ -35,6 +35,7 @@ before_install:
   - sudo dpkg -i libc++abi1_3.9.1-3_amd64.deb
   - sudo dpkg -i libc++abi-dev_3.9.1-3_amd64.deb
   - dpkg --search libc++ > test2
+  - ln -s /usr/lib/x86_64-linux-gnu/libc++experimental.a /usr/lib/x86_64-linux-gnu/libstdc++fs
   - cat test2
 script:
   - ls /usr/include/c++/v1/experimental

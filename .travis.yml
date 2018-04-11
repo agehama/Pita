@@ -28,8 +28,12 @@ before_install:
   - cat test1
   - wget http://launchpadlibrarian.net/331689507/libc++1_3.9.1-3_amd64.deb
   - wget http://launchpadlibrarian.net/331689503/libc++-dev_3.9.1-3_amd64.deb
+  - wget http://launchpadlibrarian.net/331689511/libc++abi1_3.9.1-3_amd64.deb
+  - wget http://launchpadlibrarian.net/331689509/libc++abi-dev_3.9.1-3_amd64.deb
   - sudo dpkg -i libc++1_3.9.1-3_amd64.deb
   - sudo dpkg -i libc++-dev_3.9.1-3_amd64.deb
+  - sudo dpkg -i libc++abi1_3.9.1-3_amd64.deb
+  - sudo dpkg -i libc++abi-dev_3.9.1-3_amd64.deb
   - dpkg --search libc++ > test2
   - cat test2
 script:

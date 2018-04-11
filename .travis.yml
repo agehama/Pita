@@ -25,11 +25,13 @@ before_install:
   - sudo apt-get install clang-3.9
   - sudo apt-get install libc++-dev libc++abi-dev
   - dpkg --search libc++ > test1
+  - cat test1
   - wget http://launchpadlibrarian.net/331689507/libc++1_3.9.1-3_amd64.deb
   - wget http://launchpadlibrarian.net/331689503/libc++-dev_3.9.1-3_amd64.deb
   - sudo dpkg -i libc++1_3.9.1-3_amd64.deb
   - sudo dpkg -i libc++-dev_3.9.1-3_amd64.deb
   - dpkg --search libc++ > test2
+  - cat test2
   - diff test1 test2
 script:
   - ls /usr/include/c++/v1/experimental

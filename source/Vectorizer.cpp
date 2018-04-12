@@ -738,17 +738,6 @@ namespace cgl
 
 		std::vector<gg::Geometry*> currentLines;
 
-		{
-			if (record.values.find("x") != record.values.end() &&
-				record.values.find("y") != record.values.end())
-			{
-				const auto v = ReadVec2Packed(record, transform);
-
-				auto factory = gg::GeometryFactory::create();
-				currentPolygons.push_back(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v))));
-			}
-		}
-
 		for (const auto& member : record.values)
 		{
 			const cgl::PackedVal& value = member.second.value;
@@ -883,15 +872,39 @@ namespace cgl
 		return currentPolygons;
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform)
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& parent)
 	{
 		if (cgl::IsType<cgl::PackedRecord>(value))
 		{
-			return GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), transform);
+			{
+				const auto& record = cgl::As<cgl::PackedRecord>(value);
+
+				if (record.values.find("x") != record.values.end() &&
+					record.values.find("y") != record.values.end())
+				{
+					const cgl::TransformPacked current(record);
+
+					const cgl::TransformPacked transform = parent * current;
+
+					std::vector<gg::Geometry*> currentPolygons;
+					std::vector<gg::Geometry*> currentHoles;
+
+					std::vector<gg::Geometry*> currentLines;
+
+					const auto v = ReadVec2Packed(record, transform);
+
+					auto factory = gg::GeometryFactory::create();
+					currentPolygons.push_back(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v))));
+
+					return currentPolygons;
+				}
+			}
+
+			return GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), parent);
 		}
 		if (cgl::IsType<cgl::PackedList>(value))
 		{
-			return GeosFromListPacked(cgl::As<cgl::PackedList>(value), transform);
+			return GeosFromListPacked(cgl::As<cgl::PackedList>(value), parent);
 		}
 
 		return{};

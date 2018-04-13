@@ -1,3 +1,5 @@
+EnableGC(false)
+
 import "common.cgl"
 
 kite = shape{
@@ -13,18 +15,19 @@ skeleton = (num -> shape{
     for i in 0:num-1 do(
         newKite = kite{pos.x = 100*i}
         ss = ss @ [newKite]
-        var(@ss[i].pos, @ss[i].angle)
+        var(ss[i].pos, ss[i].angle)
     )
     for i in 0:num-2 do(
-        sat( contact(@ss[i].end(), @ss[i+1].begin()) )
+        sat( contact(ss[i].end(), ss[i+1].begin()) )
     )
-    begin: (->transform(@pos, @scale, @angle, @ss[0].begin()))
-    end:   (->transform(@pos, @scale, @angle, @ss[num-1].end()))
+    begin: (->transform(@pos, @scale, @angle, ss[0].begin()))
+    end:   (->transform(@pos, @scale, @angle, ss[num-1].end()))
 })
 
 skeletonA = skeleton(5)
 
 main = skeletonA{
+    ss[2] = kite{pos.x = 100, pos.y = 500}
     sat( contact(begin(), {x: 30, y:200}) )
     sat( contact(end(), {x: 200, y:150}) )
 }

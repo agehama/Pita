@@ -2087,8 +2087,8 @@ namespace cgl
 
 						for (size_t constraintID : currentConstraintIDs)
 						{
-							CGL_DBG1("Constraint:");
-							printExpr(adderUnitConstraints[constraintID], pEnv, std::cout);
+							//CGL_DBG1("Constraint:");
+							//printExpr(adderUnitConstraints[constraintID], pEnv, std::cout);
 							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 						}
 
@@ -2391,6 +2391,12 @@ namespace cgl
 			{
 				Accessor result(closedVarExpr);
 				pEnv->currentRecords.back().get().freeVariables.push_back(result);
+			}
+			else if (IsType<Reference>(closedVarExpr))
+			{
+				ここで返ってくるReferenceはaccessorの最後の要素への参照になっている？
+				closedVarExpr;
+				pEnv->currentRecords.back().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
 			}
 			else
 			{

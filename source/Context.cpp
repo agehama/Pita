@@ -835,7 +835,7 @@ namespace cgl
 
 	void Context::printContext(std::ostream& os)const
 	{
-		os << "Print Context Begin:\n";
+		os << "---------------------------\n";
 
 		/*os << "Values:\n";
 		for (const auto& keyval : m_values)
@@ -847,7 +847,21 @@ namespace cgl
 			printVal(val, m_weakThis.lock(), os);
 		}*/
 
-		os << "References:\n";
+		for (const auto& env : m_localEnvStack)
+		{
+			os << "Environment:\n";
+			size_t d = 0;
+			for (auto scopeIt = env.begin(); scopeIt != env.end(); ++scopeIt, ++d)
+			{
+				os << "Depth : " << d << "\n";
+				for (const auto& var : scopeIt->variables)
+				{
+					os << "    " << var.first << " : " << var.second.toString() << "\n";
+				}
+			}
+		}
+
+		/*os << "References:\n";
 		for (size_t d = 0; d < localEnv().size(); ++d)
 		{
 			os << "Depth : " << d << "\n";
@@ -857,9 +871,9 @@ namespace cgl
 			{
 				os << "    " << keyval.first << " : " << keyval.second.toString() << "\n";
 			}
-		}
+		}*/
 
-		os << "Print Context End:\n";
+		os << "---------------------------\n";
 	}
 
 	void Context::assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info)
@@ -980,6 +994,7 @@ namespace cgl
 		localEnv().back().temporaryAddresses.push_back(address);
 
 		const int thresholdGC = 20000;
+		//const int thresholdGC = 300;
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
 			garbageCollect();
@@ -2164,6 +2179,11 @@ namespace cgl
 		{
 			return;
 		}
+
+		static int count = 0;
+		std::cout << "garbageCollect(" << count << ")" << std::endl;
+		printContext(std::cout);
+		++count;
 
 		std::unordered_set<Address> referenceableAddresses;
 

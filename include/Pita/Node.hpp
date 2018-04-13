@@ -1861,7 +1861,8 @@ namespace cgl
 
 	struct DeclFree : public LocationInfo
 	{
-		std::vector<Accessor> accessors;
+		//std::vector<Accessor> accessors;
+		std::vector<Expr> accessors;
 		std::vector<Expr> ranges;
 
 		DeclFree() = default;
@@ -1877,7 +1878,8 @@ namespace cgl
 
 		void addAccessor(const Accessor& accessor)
 		{
-			accessors.push_back(accessor);
+			//accessors.push_back(accessor);
+			accessors.emplace_back(accessor);
 		}
 
 		void addRange(const Expr& range)
@@ -1887,7 +1889,12 @@ namespace cgl
 
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
 		{
-			decl.accessors.push_back(accessor);
+			decl.accessors.emplace_back(accessor);
+		}
+
+		static void AddAccessorDynamic(DeclFree& decl, const Accessor& accessor)
+		{
+			decl.accessors.push_back(UnaryExpr(accessor, UnaryOp::Dynamic));
 		}
 
 		static void AddRange(DeclFree& decl, const Expr& expr)
@@ -2046,7 +2053,9 @@ namespace cgl
 		boost::optional<Expr> constraint;
 
 		//var宣言で指定されたアクセッサ
-		std::vector<Accessor> freeVariables;
+		//std::vector<Accessor> freeVariables;
+		std::vector<Expr> freeVariables;// Accessor | UnaryExpr(Accessor, UnaryOp::Dynamic)
+
 		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
 
 		//var宣言で指定されたアクセッサの範囲

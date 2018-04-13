@@ -43,7 +43,7 @@ extern std::ofstream ofs;
 #define CGL_TagWarn  (std::string("[Warning] |> "))
 #define CGL_TagDebug (std::string("[Debug]   |> "))
 
-//#define OutputFileDesc
+#define OutputFileDesc
 
 #ifdef OutputFileDesc
 #define CGL_Error(message) (throw cgl::Exception(std::string("Error") + message + " | " + CGL_FileDesc))

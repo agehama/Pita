@@ -848,7 +848,6 @@ namespace cgl
 
 		result.problems = problems;
 		result.freeVariables = freeVariables;
-		//result.freeVariableRefs = freeVariableRefs;
 		result.freeRanges = freeRanges;
 		result.type = type;
 		result.isSatisfied = isSatisfied;

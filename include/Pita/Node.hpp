@@ -1876,7 +1876,7 @@ namespace cgl
 			return *this;
 		}
 
-		void addAccessor(const Accessor& accessor)
+		void addAccessor(const Expr& accessor)
 		{
 			//accessors.push_back(accessor);
 			accessors.emplace_back(accessor);
@@ -1943,7 +1943,11 @@ namespace cgl
 
 	enum class RecordType { Normal, Path, Text, ShapePath };
 
-	using FreeVariable = std::pair<Address, VariableRange>;
+	//using FreeVariable = std::pair<Address, VariableRange>;
+
+	using FreeVariableAddress = std::pair<Address, VariableRange>;
+
+	using FreeVarType = boost::variant<boost::recursive_wrapper<Accessor>, Reference>;
 
 	//unitConstraintに出現するfree変数のAddress
 	using ConstraintAppearance = std::unordered_set<Address>;
@@ -1957,7 +1961,8 @@ namespace cgl
 		OldRecordData() = default;
 
 		//変数ID->アドレス
-		std::vector<FreeVariable> freeVariableAddresses;
+		//std::vector<FreeVariable> freeVariableAddresses;
+		std::vector<FreeVarType> freeVars;
 
 		//分解された単位制約
 		std::vector<Expr> unitConstraints;
@@ -1989,7 +1994,8 @@ namespace cgl
 		boost::optional<Expr> constraint;
 
 		//var宣言で指定されたアクセッサ
-		std::vector<Accessor> freeVariables;
+		//std::vector<Accessor> freeVariables;
+		std::vector<FreeVarType> freeVariables;
 
 		//var宣言で指定されたアクセッサの範囲
 		std::vector<Expr> freeRanges;
@@ -2054,7 +2060,7 @@ namespace cgl
 
 		//var宣言で指定されたアクセッサ
 		//std::vector<Accessor> freeVariables;
-		std::vector<Expr> freeVariables;// Accessor | UnaryExpr(Accessor, UnaryOp::Dynamic)
+		std::vector<FreeVarType> freeVariables;// Accessor | Reference
 
 		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
 

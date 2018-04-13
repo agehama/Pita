@@ -772,6 +772,18 @@ namespace cgl
 		return newReference;
 	}
 
+	void Context::printReference(Reference reference, std::ostream & os) const
+	{
+		auto it = m_refAddressMap.find(reference);
+		const auto& deepReference = it->second;
+
+		os << deepReference.head.toString();
+		for (const auto& ref : deepReference.tail)
+		{
+			os << " -> " << ref.second.toString();
+		}
+	}
+
 	void Context::bindValueID(const std::string& name, const Address ID)
 	{
 		for (auto scopeIt = localEnv().rbegin(); scopeIt != localEnv().rend(); ++scopeIt)
@@ -1771,6 +1783,8 @@ namespace cgl
 
 	void Context::changeAddress(Address addressFrom, Address addressTo)
 	{
+		CGL_DBG1(addressFrom.toString() + " -> " + addressTo.toString());
+
 		if (addressFrom == addressTo)
 		{
 			return;

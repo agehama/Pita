@@ -254,9 +254,20 @@ namespace cgl
 					s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >>
 					-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)])
 					) >> s >> ')';*/
-			freeVals = lit("var") >> '(' >>s >> ((lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)])) | (accessor[Call(DeclFree::AddAccessor, _val, _1)])) >>
+			/*freeVals = lit("var") >> '(' >>s >> ((lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)])) | (accessor[Call(DeclFree::AddAccessor, _val, _1)])) >>
 				-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)]) >> *(
 					s >> ", " >> s >> ((lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)])) | (accessor[Call(DeclFree::AddAccessor, _val, _1)])) >>
+					-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)])
+					) >> s >> ')';*/
+			freeVals = lit("var") >> '(' >> s >> (
+					(lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)] | id[Call(DeclFree::AddAccessorDynamic, _val, Cast<Identifier, Accessor>())])) 
+					| (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
+				) >>
+				-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)]) >> *(
+					s >> ", " >> s >> (
+							(lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)] | id[Call(DeclFree::AddAccessorDynamic, _val, Cast<Identifier, Accessor>())]))
+							| (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
+						) >>
 					-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)])
 					) >> s >> ')';
 

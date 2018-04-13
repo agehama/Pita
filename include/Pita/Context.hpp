@@ -230,7 +230,6 @@ namespace cgl
 
 		Address evalReference(const Accessor& access);
 
-		//referenceで指されるオブジェクトの中にある全ての値への参照をリストで取得する
 		std::vector<Address> expandReferences(Address address, const LocationInfo& info);
 		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info);
 
@@ -243,6 +242,8 @@ namespace cgl
 		Address getReference(Reference reference)const;
 		Reference cloneReference(Reference reference, const std::unordered_map<Address, Address>& addressReplaceMap);
 		
+		void printReference(Reference reference, std::ostream& os)const;
+
 		//ローカル変数を全て展開する
 		//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
 		/*

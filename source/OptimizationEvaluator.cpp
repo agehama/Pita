@@ -4,6 +4,7 @@
 #include <Pita/Evaluator.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/BinaryEvaluator.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
@@ -396,7 +397,6 @@ namespace cgl
 		Eval evaluator(pEnv);
 
 		Accessor result;
-
 		//isDeterministicがtrueであれば、Evalしないとわからないところまで見に行く
 		//isDeterministicがfalseの時は、評価するまでアドレスが不定なので関数の中身までは見に行かない
 		bool isDeterministic = true;
@@ -432,6 +432,7 @@ namespace cgl
 					const List& list = As<List>(objRef);
 
 					Val indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index), node);
+					
 					if (auto indexOpt = AsOpt<int>(indexValue))
 					{
 						headAddress = list.get(indexOpt.get());

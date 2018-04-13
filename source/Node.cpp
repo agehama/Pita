@@ -405,7 +405,6 @@ namespace cgl
 		}
 
 		//printExpr(expr.get(), pEnv, std::cout);
-		
 		std::vector<char> usedInSat(freeVariableRefs.size(), 0);
 		//SatVariableBinder binder(pEnv, freeVariables);
 		SatVariableBinder binder(pEnv, freeVariableRefs, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
@@ -431,7 +430,7 @@ namespace cgl
 			freeVariableRefs.clear();
 			hasPlateausFunction = false;
 		}
-
+		
 		/*{
 			CGL_DebugLog("env:");
 			pEnv->printContext(true);
@@ -475,7 +474,6 @@ namespace cgl
 	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const LocationInfo& info, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
 	{
 		constructConstraint(pEnv);
-
 		std::cout << "Current constraint freeVariablesSize: " << std::to_string(freeVariableRefs.size()) << std::endl;
 
 		if (!initializeData(pEnv))
@@ -484,7 +482,6 @@ namespace cgl
 		}
 
 		std::vector<double> resultxs;
-
 		if (!freeVariableRefs.empty())
 		{
 			//varのアドレス(の内実際にsatに現れるもののリスト)から、OptimizationProblemSat中の変数リストへの対応付けを行うマップを作成
@@ -521,7 +518,6 @@ namespace cgl
 				}
 			}
 			CGL_DebugLog("End Record MakeMap");
-
 			if (hasPlateausFunction)
 			{
 				std::cout << "Solve constraint by CMA-ES...\n";

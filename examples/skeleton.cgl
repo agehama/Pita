@@ -16,10 +16,10 @@ skeleton = (num -> shape{
         var(@ss[i].pos, @ss[i].angle)
     )
     for i in 0:num-2 do(
-        sat( contact(@ss[i].end(), @ss[i+1].begin()) )
+        sat( contact(ss[i].end(), ss[i+1].begin()) )
     )
-    begin: (->transform(@pos, @scale, @angle, @ss[0].begin()))
-    end:   (->transform(@pos, @scale, @angle, @ss[num-1].end()))
+    begin: (->transform(@pos, @scale, @angle, ss[0].begin()))
+    end:   (->transform(@pos, @scale, @angle, ss[num-1].end()))
 })
 
 skeletonA = skeleton(5)

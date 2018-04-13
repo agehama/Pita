@@ -2136,6 +2136,10 @@ namespace cgl
 				}
 			}
 
+			for (const auto& oldExprs : node.original.unitConstraints)
+			{
+				CheckExpr(oldExprs, context, reachableAddressSet, newAddressSet);
+			}
 			/*const auto& problem = node.problem;
 			if (problem.candidateExpr)
 			{

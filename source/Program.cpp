@@ -1,4 +1,3 @@
-
 #include <Eigen/Core>
 
 #include <Pita/Program.hpp>
@@ -156,6 +155,73 @@ namespace cgl
 				if (e.hasInfo)
 				{
 					PrintErrorPos(filepath, e.info);
+				}
+				else
+				{
+					std::cerr << "Exception does not has any location info." << std::endl;
+				}
+			}
+
+			succeeded = false;
+		}
+		catch (const std::exception& other)
+		{
+			std::cerr << "Error: " << other.what() << std::endl;
+
+			succeeded = false;
+		}
+
+		calculating = false;
+	}
+
+	void Program::executeInline(const std::string& source, bool logOutput)
+	{
+		clear();
+
+		try
+		{
+			if (auto exprOpt = ParseFromSourceCode(source))
+			{
+				if (logOutput)
+				{
+					std::cerr << "parse succeeded" << std::endl;
+					//printExpr2(exprOpt.get(), pEnv, std::cerr);
+					printExpr(exprOpt.get(), pEnv, std::cerr);
+				}
+
+				if (logOutput) std::cerr << "execute..." << std::endl;
+				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
+				evaluated = pEnv->expand(lrvalue, LocationInfo());
+				if (logOutput)
+				{
+					std::cerr << "execute succeeded" << std::endl;
+					//printVal(evaluated.get(), pEnv, std::cout, 0);
+				}
+
+				if (logOutput)
+					std::cerr << "output SVG..." << std::endl;
+
+				OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape");
+
+				if (logOutput)
+					std::cerr << "completed" << std::endl;
+
+				succeeded = true;
+			}
+			else
+			{
+				std::cout << "Parse failed" << std::endl;
+				succeeded = false;
+			}
+		}
+		catch (const cgl::Exception& e)
+		{
+			if (!errorMessagePrinted)
+			{
+				std::cerr << e.what() << std::endl;
+				if (e.hasInfo)
+				{
+					PrintErrorPos("empty source", e.info);
 				}
 				else
 				{

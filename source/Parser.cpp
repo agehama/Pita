@@ -183,17 +183,8 @@ namespace cgl
 			boost::u8_to_u32_iterator<std::string::const_iterator>(input.end()));
 	}
 
-	boost::optional<Expr> Parse1(const std::string& filename)
+	std::string EscapedSourceCode(const std::string& sourceCode)
 	{
-		std::cout << "parsing: \"" << filename << "\"" << std::endl;
-
-		std::ifstream ifs(filename);
-		if (!ifs.is_open())
-		{
-			CGL_Error(std::string() + "Error file_path \"" + filename + "\" does not exists.");
-		}
-		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-
 		std::stringstream escapedStr;
 		{
 			const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
@@ -206,8 +197,7 @@ namespace cgl
 				return boost::none;
 			};
 
-			std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-			const auto utf32str = AsUtf32(original);
+			const auto utf32str = AsUtf32(sourceCode);
 
 			bool inLineComment = false;
 			bool inScopeComment = false;
@@ -275,6 +265,22 @@ namespace cgl
 			}
 		}
 
+		return escapedStr.str();
+	}
+
+	boost::optional<Expr> Parse1(const std::string& filename)
+	{
+		std::cout << "parsing: \"" << filename << "\"" << std::endl;
+
+		std::ifstream ifs(filename);
+		if (!ifs.is_open())
+		{
+			CGL_Error(std::string() + "Error file_path \"" + filename + "\" does not exists.");
+		}
+		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+		std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
 		/*std::stringstream tabRemovedStr;
 		char c;
 		while (ifs.get(c))
@@ -285,7 +291,7 @@ namespace cgl
 				tabRemovedStr << c;
 		}
 		std::string sourceCode = tabRemovedStr.str();*/
-		std::string sourceCode = escapedStr.str();
+		std::string sourceCode = EscapedSourceCode(original);
 
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
 
@@ -318,6 +324,55 @@ namespace cgl
 			if (!errorMessagePrinted)
 			{
 				std::cout << "Syntax Error: ramains input:\n" << std::string(it.base().base(), sourceCode.cend()) << std::endl;
+			}
+			if (!workingDirectories.empty())
+			{
+				workingDirectories.pop();
+			}
+			return boost::none;
+		}
+
+		Expr result = lines;
+
+		boost::apply_visitor(ParseImports(), result);
+
+		workingDirectories.pop();
+		return result;
+	}
+
+	boost::optional<Expr> ParseFromSourceCode(const std::string& originalSourceCode)
+	{
+		std::string escapedSourceCode = EscapedSourceCode(originalSourceCode);
+
+		workingDirectories.emplace(cgl::filesystem::current_path());
+
+		SourceT beginSource(escapedSourceCode.begin()), endSource(escapedSourceCode.end());
+		IteratorT beginIt(beginSource), endIt(endSource);
+
+		Lines lines;
+
+		auto it = beginIt;
+		SpaceSkipper<IteratorT> skipper;
+		Parser<SpaceSkipperT> grammer(beginSource, endSource, "empty source");
+
+		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
+		{
+			if (!errorMessagePrinted)
+			{
+				std::cout << "Syntax Error: parse failed\n";
+			}
+			if (!workingDirectories.empty())
+			{
+				workingDirectories.pop();
+			}
+			return boost::none;
+		}
+
+		if (it != endIt)
+		{
+			if (!errorMessagePrinted)
+			{
+				std::cout << "Syntax Error: ramains input:\n" << std::string(it.base().base(), escapedSourceCode.cend()) << std::endl;
 			}
 			if (!workingDirectories.empty())
 			{

@@ -2194,10 +2194,10 @@ namespace cgl
 			return;
 		}
 
-		static int count = 0;
+		/*static int count = 0;
 		std::cout << "garbageCollect(" << count << ")" << std::endl;
 		printContext(std::cout);
-		++count;
+		++count;*/
 
 		std::unordered_set<Address> referenceableAddresses;
 

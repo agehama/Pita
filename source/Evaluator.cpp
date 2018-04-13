@@ -734,27 +734,22 @@ namespace cgl
 			{
 				if (isLocalVariable(As<Identifier>(node.lhs)))
 				{
-					CGL_DBG;
 					return node;
 				}
-				CGL_DBG;
 				return LRValue(pEnv->bindReference(As<Identifier>(node.lhs))).setLocation(node);
 			}
 			else if (IsType<Accessor>(node.lhs))
 			{
 				if (IsType<Identifier>(As<Accessor>(node.lhs).head) && isLocalVariable(As<Identifier>(As<Accessor>(node.lhs).head)))
 				{
-					CGL_DBG;
 					return node;
 				}
-				CGL_DBG;
 				return LRValue(pEnv->bindReference(As<Accessor>(node.lhs), node)).setLocation(node);
 			}
 
 			CGL_ErrorNode(node, "参照演算子\"@\"の右辺には識別子かアクセッサしか用いることができません。");
 		}
 
-		CGL_DBG;
 		return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op).setLocation(node);
 	}
 
@@ -1765,20 +1760,19 @@ namespace cgl
 				const auto& accessor = freeVariables[i];
 				if (IsType<Accessor>(accessor))
 				{
-					std::cout << "expand accessor: ";
+					/*std::cout << "expand accessor: ";
 					const Expr expr = As<Accessor>(accessor);
 					printExpr2(expr, pContext, std::cout);
-					std::cout << "\n";
+					std::cout << "\n";*/
 
 					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), boost::none, recordConsractor);
 					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
 				}
-				//else if (IsType<LRValue>(accessor) && As<LRValue>(accessor).isReference())
 				else if(IsType<Reference>(accessor))
 				{
-					std::cout << "expand reference: ";
+					/*std::cout << "expand reference: ";
 					std::cout << As<Reference>(accessor).toString();
-					std::cout << "\n";
+					std::cout << "\n";*/
 
 					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), boost::none, recordConsractor);
 					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
@@ -1797,19 +1791,19 @@ namespace cgl
 				const auto& accessor = freeVariables[i];
 				if (IsType<Accessor>(accessor))
 				{
-					std::cout << "expand accessor: ";
+					/*std::cout << "expand accessor: ";
 					const Expr expr = As<Accessor>(accessor);
 					printExpr2(expr, pContext, std::cout);
-					std::cout << "\n";
+					std::cout << "\n";*/
 
 					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), packedRanges[i], recordConsractor);
 					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
 				}
 				else if (IsType<Reference>(accessor))
 				{
-					std::cout << "expand reference: ";
+					/*std::cout << "expand reference: ";
 					std::cout << As<Reference>(accessor).toString();
-					std::cout << "\n";
+					std::cout << "\n";*/
 
 					const auto reference = As<LRValue>(accessor).reference();
 					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), packedRanges[i], recordConsractor);
@@ -1975,7 +1969,7 @@ namespace cgl
 		//TODO: record.constraintには継承時のoriginalが持つ制約は含まれていないものとする
 		if (record.constraint || !original.unitConstraints.empty())
 		{
-			std::cout << "--------------------------------------------------------------\n";
+			//std::cout << "--------------------------------------------------------------\n";
 			//std::cout << "Solve Record Constraints:" << std::endl;
 			record.problems.clear();
 			
@@ -2029,18 +2023,18 @@ namespace cgl
 				}
 			}*/
 
-			std::cout << "margedFreeVars: " << margedFreeVars.size();
+			//std::cout << "margedFreeVars: " << margedFreeVars.size();
 			std::vector<FreeVariableAddress> mergedFreeVariableAddresses = (hasRange
 				? makeFreeVariableAddressesRange(pEnv, margedFreeVars, adderPackedRanges)
 				: makeFreeVariableAddresses(pEnv, margedFreeVars));
-			{
+			/*{
 				std::cout << "current variables: ";
 				for (const auto& val : mergedFreeVariableAddresses)
 				{
 					std::cout << "Address(" << val.first.toString() << "), ";
 				}
 				std::cout << "\n";
-			}
+			}*/
 
 			//std::cout << "  2. Constraints separation" << std::endl;
 			///////////////////////////////////
@@ -2055,17 +2049,17 @@ namespace cgl
 			{
 				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
 
-				std::cout << "constraint:\n";
+				/*std::cout << "constraint:\n";
 				printExpr(constraint, pEnv, std::cout);
 				std::stringstream ss;
 				for (const Address address: adderVariableAppearances.back())
 				{
 					ss << "Address(" << address.toString() << "), ";
 				}
-				std::cout << ss.str() << "\n\n";
+				std::cout << ss.str() << "\n\n";*/
 			}
 			
-			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
+			//std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
 
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
@@ -2578,12 +2572,12 @@ namespace cgl
 			const Expr varExpr = accessor;
 			const Expr closedVarExpr = boost::apply_visitor(closureMaker, varExpr);
 
-			std::cout << "VarExpr: ";
+			/*std::cout << "VarExpr: ";
 			printExpr2(varExpr, pEnv, std::cout);
 			std::cout << "\n";
 			std::cout << "closedVarExpr: ";
 			printExpr2(closedVarExpr,pEnv,std::cout);
-			std::cout << "\n";
+			std::cout << "\n";*/
 
 			if (IsType<Accessor>(closedVarExpr))
 			{

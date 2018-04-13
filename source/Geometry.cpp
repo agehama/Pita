@@ -1597,7 +1597,7 @@ namespace cgl
 
 	PackedList GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
 	{
-		//CGL_DBG;
+		//
 		const bool debugDraw = false;
 		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape);
 
@@ -1640,7 +1640,7 @@ namespace cgl
 			const auto offsetPath = GetOffsetPathImpl(targetPaths.front(), -currentHeight);
 			targetPaths.push_back(std::move(ReadPathPacked(offsetPath)));
 		}
-		//CGL_DBG;
+		//
 
 		PackedList packedList;
 		if (debugDraw)
@@ -1701,7 +1701,7 @@ namespace cgl
 		xs = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
 		ys = std::vector<std::vector<double>>(yNum, std::vector<double>(xNum, 0));
 		
-		//CGL_DBG;
+		//
 		for (int y = 0; y < yNum; ++y)
 		{
 			const auto frontPos = targetPaths[y].cs->front();
@@ -1750,16 +1750,16 @@ namespace cgl
 			}
 		}
 		
-		//CGL_DBG;
+		//
 		deformer.initialize(boundingRect, xs, ys);
-		//CGL_DBG;
+		//
 		auto geometries = GeosFromRecordPacked(shape);
-		//CGL_DBG;
+		//
 		const auto result = deformer.FFD(geometries);
 		//return GetPackedShapesFromGeos(result);
-		//CGL_DBG;
+		//
 		packedList.add(GetShapesFromGeosPacked(result));
-		//CGL_DBG;
+		//
 		return packedList;
 	}
 

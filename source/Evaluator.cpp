@@ -266,7 +266,10 @@ namespace cgl
 		{
 			if (auto listAccess = AsOpt<ListAccess>(access))
 			{
-				result.add(ListAccess(boost::apply_visitor(*this, listAccess.get().index)));
+				//result.add(ListAccess(boost::apply_visitor(*this, listAccess.get().index)));
+				ListAccess newListAccess(boost::apply_visitor(*this, listAccess.get().index));
+				newListAccess.isArbitrary = listAccess.get().isArbitrary;
+				result.add(newListAccess);
 			}
 			else if (auto recordAccess = AsOpt<RecordAccess>(access))
 			{
@@ -365,11 +368,10 @@ namespace cgl
 		}
 
 		result.problems = node.problems;
-		result.freeVariables = node.freeVariables;
-		//result.freeVariableRefs = node.freeVariableRefs;
 		result.type = node.type;
 		result.constraint = node.constraint;
 		result.isSatisfied = node.isSatisfied;
+		result.freeVariables = node.freeVariables;
 
 		//result.unitConstraints = node.unitConstraints;
 		//result.variableAppearances = node.variableAppearances;
@@ -504,6 +506,7 @@ namespace cgl
 				currentElem.first = newAddress;
 			}
 		}*/
+		/*
 		for (auto& currentElem : original.freeVars)
 		{
 			if (IsType<Accessor>(currentElem))
@@ -513,6 +516,20 @@ namespace cgl
 				//アクセッサの場合、ClosureMakerを通っているので先頭は必ずアドレスになっている
 			}
 			//elseの場合はReferenceであり、この場合はContextが勝手に参照先を切り替えるのでここでは何もしなくてよい
+		}
+		*/
+		for (auto& freeVariable : original.freeVars)
+		{
+			if (IsType<Accessor>(freeVariable))
+			{
+				const Expr expr = As<Accessor>(freeVariable);
+				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
+			}
+			else
+			{
+				const Reference reference = As<Reference>(freeVariable);
+				freeVariable = pEnv->cloneReference(reference, replaceMap);
+			}
 		}
 
 		for (auto& unitConstraint : original.unitConstraints)
@@ -577,16 +594,32 @@ namespace cgl
 
 		//constraintGroupsはただの数字だからそのままでよい
 
+		/*
 		for (auto& freeVariable : node.freeVariables)
 		{
 			if (IsType<Accessor>(freeVariable))
 			{
-				Expr expr = As<Accessor>(freeVariable);
+				const Expr expr = As<Accessor>(freeVariable);
 				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
 				//アクセッサの場合、ClosureMakerを通っているので先頭は必ずアドレスになっている
 			}
-			/*Expr expr = freeVariable;
-			freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));*/
+			//Expr expr = freeVariable;
+			//freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
+		}
+		*/
+
+		for (auto& freeVariable : node.freeVariables)
+		{
+			if (IsType<Accessor>(freeVariable))
+			{
+				const Expr expr = As<Accessor>(freeVariable);
+				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
+			}
+			else
+			{
+				const Reference reference = As<Reference>(freeVariable);
+				freeVariable = pEnv->cloneReference(reference, replaceMap);
+			}
 		}
 		
 		/*
@@ -1734,7 +1767,7 @@ namespace cgl
 				{
 					std::cout << "expand accessor: ";
 					const Expr expr = As<Accessor>(accessor);
-					printExpr(expr, pContext, std::cout);
+					printExpr2(expr, pContext, std::cout);
 					std::cout << "\n";
 
 					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), boost::none, recordConsractor);
@@ -1744,24 +1777,12 @@ namespace cgl
 				else if(IsType<Reference>(accessor))
 				{
 					std::cout << "expand reference: ";
-					As<Reference>(accessor).toString();
+					std::cout << As<Reference>(accessor).toString();
 					std::cout << "\n";
 
 					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), boost::none, recordConsractor);
 					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
 				}
-				/*else
-				{
-					if (IsType<LRValue>(accessor))
-					{
-						std::cout << "LRValue: " << As<LRValue>(accessor).toString() << "\n";
-						;
-					}
-					else
-					{
-						std::cout << "Else type: " << "\n";
-					}
-				}*/
 			}
 			return freeVariableAddresses;
 		};
@@ -1778,20 +1799,20 @@ namespace cgl
 				{
 					std::cout << "expand accessor: ";
 					const Expr expr = As<Accessor>(accessor);
-					printExpr(expr, pContext, std::cout);
+					printExpr2(expr, pContext, std::cout);
 					std::cout << "\n";
 
 					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), packedRanges[i], recordConsractor);
 					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
 				}
-				else if (IsType<LRValue>(accessor) && As<LRValue>(accessor).isReference())
+				else if (IsType<Reference>(accessor))
 				{
 					std::cout << "expand reference: ";
-					As<LRValue>(accessor).reference().toString();
+					std::cout << As<Reference>(accessor).toString();
 					std::cout << "\n";
 
 					const auto reference = As<LRValue>(accessor).reference();
-					const auto addresses = pContext->expandReferences(pEnv->getReference(reference), packedRanges[i], recordConsractor);
+					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), packedRanges[i], recordConsractor);
 					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
 				}
 			}
@@ -2384,8 +2405,6 @@ namespace cgl
 		(5) レコードをマージする //ローカル変数などの変更処理
 		*/
 
-		
-
 		if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("path"))
 		{
 			Record pathRecord;
@@ -2425,18 +2444,15 @@ namespace cgl
 		//(1)オリジナルのレコードaのクローン(a')を作る
 		Record clone = As<Record>(Clone(pEnv, recordOpt.get(), record));
 
-		
 		CGL_DebugLog("Clone:");
 		printVal(clone, pEnv);
 
-		
 		if (pEnv->temporaryRecord)
 		{
 			CGL_ErrorNodeInternal(record, "二重にレコード継承式を適用しようとしました。temporaryRecordは既に存在しています。");
 		}
 		pEnv->temporaryRecord = clone;
 
-		
 		//(2) a'の各キーと値に対する参照をローカルスコープに追加する
 		pEnv->enterScope();
 		for (auto& keyval : clone.values)
@@ -2446,12 +2462,10 @@ namespace cgl
 			CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 		}
 
-		
 		//(3) 追加するレコードの中身を評価する
 		Expr expr = record.adder;
 		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr), record);
 
-		
 		//(4) ローカルスコープの参照値を読みレコードに上書きする
 		//レコード中のコロン式はレコードの最後でkeylistを見て値が紐づけられるので問題ないが
 		//レコード中の代入式については、そのローカル環境の更新を手動でレコードに反映する必要がある

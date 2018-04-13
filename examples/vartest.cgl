@@ -1,0 +1,13 @@
+import "common.cgl"
+
+base = {
+    ls: [vec2(0,0), vec2(10,0)]
+    var(ls[0], ls[1])
+    sat(ls[0].x == ls[1].x)
+}
+
+main = base{
+    sat(ls[0].y == 20)
+}
+
+Print(main)

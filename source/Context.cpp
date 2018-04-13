@@ -1783,7 +1783,7 @@ namespace cgl
 
 	void Context::changeAddress(Address addressFrom, Address addressTo)
 	{
-		CGL_DBG1(addressFrom.toString() + " -> " + addressTo.toString());
+		//CGL_DBG1(addressFrom.toString() + " -> " + addressTo.toString());
 
 		if (addressFrom == addressTo)
 		{

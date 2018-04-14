@@ -4,18 +4,18 @@
 
 namespace cgl
 {
-	PackedList ShapeDiff(const PackedVal& lhs, const PackedVal& rhs);
+	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs);
 
-	PackedList ShapeUnion(const PackedVal& lhs, const PackedVal& rhs);
+	PackedRecord ShapeUnion(const PackedVal& lhs, const PackedVal& rhs);
 
-	PackedList ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs);
+	PackedRecord ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs);
 
-	PackedList ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs);
+	PackedRecord ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs);
 
 
-	PackedList ShapeBuffer(const PackedVal& shape, const PackedVal& amount);
+	PackedRecord ShapeBuffer(const PackedVal& shape, const PackedVal& amount);
 
-	PackedList ShapeSubDiv(const PackedVal& shape, int numSubDiv);
+	PackedRecord ShapeSubDiv(const PackedVal& shape, int numSubDiv);
 
 	double ShapeArea(const PackedVal& lhs);
 
@@ -23,8 +23,9 @@ namespace cgl
 
 	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs);
 
-	PackedList GetDefaultFontString(const std::string& str);
+	PackedRecord GetDefaultFontString(const std::string& str);
 
+	//ShapeResult;
 
 	PackedRecord BuildPath(const PackedList& passes, int numOfPoints = 10, const PackedList& obstacleList = PackedList());
 
@@ -38,15 +39,15 @@ namespace cgl
 
 	PackedRecord BuildText(const CharString& str, const PackedRecord& basePath = PackedRecord(), const CharString& fontPath = CharString());
 
-	PackedList GetShapeOuterPaths(const PackedRecord& shape);
+	PackedRecord GetShapeOuterPaths(const PackedRecord& shape);
 
-	PackedList GetShapePaths(const PackedRecord& shape);
+	PackedRecord GetShapePaths(const PackedRecord& shape);
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape);
 
-	PackedList GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
+	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
 
-	PackedList GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
+	PackedRecord GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
 
-	PackedList GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0, const PackedRecord& p1, const PackedRecord& targetPath);
+	PackedRecord GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0, const PackedRecord& p1, const PackedRecord& targetPath);
 }

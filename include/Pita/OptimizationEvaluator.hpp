@@ -236,7 +236,9 @@ namespace cgl
 		void operator()(const RecordConstractor& node) { conjunctions.push_back(node); }
 
 		void operator()(const RecordInheritor& node) { conjunctions.push_back(node); }
+
 		void operator()(const DeclSat& node) { conjunctions.push_back(node); }
+
 		void operator()(const DeclFree& node) { conjunctions.push_back(node); }
 
 		void operator()(const Accessor& node) { conjunctions.push_back(node); }
@@ -336,42 +338,42 @@ namespace cgl
 
 		boost::optional<double> expandFreeOpt(Address address)const;
 
-		LRValue operator()(const LRValue& node) { return Eval::operator()(node); }
+		LRValue operator()(const LRValue& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const Identifier& node) { return Eval::operator()(node); }
+		LRValue operator()(const Identifier& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const Import& node) { return Eval::operator()(node); }
+		LRValue operator()(const Import& node)override { return Eval::operator()(node); }
 
 		LRValue operator()(const UnaryExpr& node)override;
 
 		LRValue operator()(const BinaryExpr& node)override;
 
-		LRValue operator()(const DefFunc& node) { return Eval::operator()(node); }
+		LRValue operator()(const DefFunc& node)override { return Eval::operator()(node); }
 
-		LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments) { return Eval::callFunction(info, funcVal, expandedArguments); }
+		LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)override { return Eval::callFunction(info, funcVal, expandedArguments); }
 
-		LRValue operator()(const Range& node) { return Eval::operator()(node); }
+		LRValue operator()(const Range& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const Lines& node) { return Eval::operator()(node); }
+		LRValue operator()(const Lines& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const If& node) { return Eval::operator()(node); }
+		LRValue operator()(const If& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const For& node) { return Eval::operator()(node); }
+		LRValue operator()(const For& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const Return& node) { return Eval::operator()(node); }
+		LRValue operator()(const Return& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const ListConstractor& node) { return Eval::operator()(node); }
+		LRValue operator()(const ListConstractor& node)override { return Eval::operator()(node); }
 
 		LRValue operator()(const KeyExpr& node)override;
 
-		LRValue operator()(const RecordConstractor& node) { return Eval::operator()(node); }
+		LRValue operator()(const RecordConstractor& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const RecordInheritor& node) { return Eval::operator()(node); }
+		LRValue operator()(const RecordInheritor& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const DeclSat& node) { return Eval::operator()(node); }
+		LRValue operator()(const DeclSat& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const DeclFree& node) { return Eval::operator()(node); }
+		LRValue operator()(const DeclFree& node)override { return Eval::operator()(node); }
 
-		LRValue operator()(const Accessor& node) { return Eval::operator()(node); }
+		LRValue operator()(const Accessor& node)override { return Eval::operator()(node); }
 	};
 }

@@ -1,5 +1,8 @@
 Pita
 ===
+
+[![Build Status](https://travis-ci.org/agehama/Pita.svg?branch=master)](https://travis-ci.org/agehama/Pita)
+
 Constraint geometry processing language.
 
 ### Requirements

@@ -613,7 +613,7 @@ namespace cgl
 		switch (node.op)
 		{
 		case UnaryOp::Plus: return lhs;
-		case UnaryOp::Minus:  return Minus(lhs, *pEnv);
+		case UnaryOp::Minus:  return MinusFunc(lhs, *pEnv);
 		}
 
 		CGL_Error("TODO: 未対応");
@@ -642,23 +642,23 @@ namespace cgl
 
 			switch (node.op)
 			{
-			case BinaryOp::And: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
+			case BinaryOp::And: return AddFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Or:  return MinFunc(lhs, rhs, *pEnv);
 
-			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
-			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? true_cost : false_cost;
-			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterEqual: return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::Equal:        return AbsFunc(SubFunc(lhs, rhs, *pEnv), *pEnv);
+			case BinaryOp::NotEqual:     return EqualFunc(lhs, rhs, *pEnv) ? true_cost : false_cost;
+			case BinaryOp::LessThan:     return MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::LessEqual:    return MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::GreaterThan:  return MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::GreaterEqual: return MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv);
 
-			case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
-			case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
-			case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+			case BinaryOp::Add: return AddFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Sub: return SubFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Mul: return MulFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Div: return DivFunc(lhs, rhs, *pEnv);
 
-			case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
-			case BinaryOp::Concat: return Concat(lhs, rhs, *pEnv);
+			case BinaryOp::Pow:    return PowFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Concat: return ConcatFunc(lhs, rhs, *pEnv);
 			default:;
 			}
 		}
@@ -1021,7 +1021,7 @@ namespace cgl
 		switch (node.op)
 		{
 		case UnaryOp::Plus: return lhs;
-		case UnaryOp::Minus:  return Minus(lhs, *pEnv);
+		case UnaryOp::Minus:  return MinusFunc(lhs, *pEnv);
 		}
 
 		CGL_ErrorNodeInternal(node, "不明な単項演算子です。");
@@ -1049,23 +1049,23 @@ namespace cgl
 
 			switch (node.op)
 			{
-			case BinaryOp::And: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Or:  return Min(lhs, rhs, *pEnv);
+			case BinaryOp::And: return AddFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Or:  return MinFunc(lhs, rhs, *pEnv);
 
-			case BinaryOp::Equal:        return Abs(Sub(lhs, rhs, *pEnv), *pEnv);
-			case BinaryOp::NotEqual:     return Equal(lhs, rhs, *pEnv) ? LRValue(true_cost) : LRValue(false_cost);
-			case BinaryOp::LessThan:     return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::LessEqual:    return Max(Sub(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterThan:  return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterEqual: return Max(Sub(rhs, lhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::Equal:        return AbsFunc(SubFunc(lhs, rhs, *pEnv), *pEnv);
+			case BinaryOp::NotEqual:     return EqualFunc(lhs, rhs, *pEnv) ? LRValue(true_cost) : LRValue(false_cost);
+			case BinaryOp::LessThan:     return MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::LessEqual:    return MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::GreaterThan:  return MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::GreaterEqual: return MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv);
 
-			case BinaryOp::Add: return Add(lhs, rhs, *pEnv);
-			case BinaryOp::Sub: return Sub(lhs, rhs, *pEnv);
-			case BinaryOp::Mul: return Mul(lhs, rhs, *pEnv);
-			case BinaryOp::Div: return Div(lhs, rhs, *pEnv);
+			case BinaryOp::Add: return AddFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Sub: return SubFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Mul: return MulFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Div: return DivFunc(lhs, rhs, *pEnv);
 
-			case BinaryOp::Pow:    return Pow(lhs, rhs, *pEnv);
-			case BinaryOp::Concat: return Concat(lhs, rhs, *pEnv);
+			case BinaryOp::Pow:    return PowFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Concat: return ConcatFunc(lhs, rhs, *pEnv);
 			default:;
 			}
 		}

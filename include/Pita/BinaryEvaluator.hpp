@@ -8,49 +8,49 @@ namespace cgl
 
 	void MargeRecordInplace(Record& result, const Record& rec2);
 
-	Val Not(const Val& lhs, Context& env);
+	Val NotFunc(const Val& lhs, Context& env);
 
-	Val Plus(const Val& lhs, Context& env);
+	Val PlusFunc(const Val& lhs, Context& env);
 
-	Val Minus(const Val& lhs, Context& env);
+	Val MinusFunc(const Val& lhs, Context& env);
 
-	Val And(const Val& lhs, const Val& rhs, Context& env);
+	Val AndFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Or(const Val& lhs, const Val& rhs, Context& env);;
+	Val OrFunc(const Val& lhs, const Val& rhs, Context& env);;
 
-	bool Equal(const Val& lhs, const Val& rhs, Context& env);
+	bool EqualFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	bool NotEqual(const Val& lhs, const Val& rhs, Context& env);
+	bool NotEqualFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	bool LessThan(const Val& lhs, const Val& rhs, Context& env);
+	bool LessThanFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	bool LessEqual(const Val& lhs, const Val& rhs, Context& env);
+	bool LessEqualFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	bool GreaterThan(const Val& lhs, const Val& rhs, Context& env);
+	bool GreaterThanFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	bool GreaterEqual(const Val& lhs, const Val& rhs, Context& env);
+	bool GreaterEqualFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Max(const Val& lhs, const Val& rhs, Context& env);
+	Val MaxFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Min(const Val& lhs, const Val& rhs, Context& env);
+	Val MinFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Abs(const Val& lhs, Context& env);
+	Val AbsFunc(const Val& lhs, Context& env);
 
-	Val Sin(const Val& lhs);
+	Val SinFunc(const Val& lhs);
 
-	Val Cos(const Val& lhs);
+	Val CosFunc(const Val& lhs);
 
-	Val Add(const Val& lhs, const Val& rhs, Context& env);
+	Val AddFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Sub(const Val& lhs, const Val& rhs, Context& env);
+	Val SubFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Mul(const Val& lhs, const Val& rhs, Context& env);
+	Val MulFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Div(const Val& lhs, const Val& rhs, Context& env);
+	Val DivFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Pow(const Val& lhs, const Val& rhs, Context& env);
+	Val PowFunc(const Val& lhs, const Val& rhs, Context& env);
 
-	Val Concat(const Val& lhs, const Val& rhs, Context& env);
+	Val ConcatFunc(const Val& lhs, const Val& rhs, Context& env);
 
 
 #ifdef commentout

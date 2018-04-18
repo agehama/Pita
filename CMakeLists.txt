@@ -55,9 +55,11 @@ set(CGL_EIGEN_TARGET_DIR "eigen")
 set(CGL_GEOS_TARGET_DIR "geos")
 set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 
+#find_package(Boost 1.57.0 REQUIRED serialization)
 find_package(Boost 1.57.0)
 if(Boost_FOUND)
-  include_directories (${Boost_INCLUDE_DIRS})
+  include_directories(${Boost_INCLUDE_DIRS})
+#  target_link_libraries(Boost::serialization)
 endif()
 
 include_directories(external/Eigen)

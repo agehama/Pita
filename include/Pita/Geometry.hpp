@@ -25,8 +25,6 @@ namespace cgl
 
 	PackedRecord GetDefaultFontString(const std::string& str);
 
-	//ShapeResult;
-
 	PackedRecord BuildPath(const PackedList& passes, int numOfPoints = 10, const PackedList& obstacleList = PackedList());
 
 	PackedRecord GetBezierPath(const PackedRecord& p0, const PackedRecord& n0, const PackedRecord& p1, const PackedRecord& n1, int numOfPoints);

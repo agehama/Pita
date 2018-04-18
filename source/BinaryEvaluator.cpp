@@ -80,7 +80,7 @@ namespace cgl
 	}
 #endif
 
-	Val Not(const Val& lhs, Context& env)
+	Val NotFunc(const Val& lhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 
@@ -93,7 +93,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Plus(const Val& lhs, Context& env)
+	Val PlusFunc(const Val& lhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 
@@ -106,7 +106,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Minus(const Val& lhs, Context& env)
+	Val MinusFunc(const Val& lhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 
@@ -123,7 +123,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val And(const Val& lhs, const Val& rhs, Context& env)
+	Val AndFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -137,7 +137,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Or(const Val& lhs, const Val& rhs, Context& env)
+	Val OrFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -151,7 +151,7 @@ namespace cgl
 		return 0;
 	}
 
-	bool Equal(const Val& lhs, const Val& rhs, Context& env)
+	bool EqualFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -192,12 +192,12 @@ namespace cgl
 		return false;
 	}
 
-	bool NotEqual(const Val& lhs, const Val& rhs, Context& env)
+	bool NotEqualFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
 
-		return !Equal(lhs, rhs, env);
+		return !EqualFunc(lhs, rhs, env);
 		/*
 		if (IsType<int>(lhs))
 		{
@@ -232,7 +232,7 @@ namespace cgl
 		*/
 	}
 
-	bool LessThan(const Val& lhs, const Val& rhs, Context& env)
+	bool LessThanFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -264,7 +264,7 @@ namespace cgl
 		return false;
 	}
 
-	bool LessEqual(const Val& lhs, const Val& rhs, Context& env)
+	bool LessEqualFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -296,7 +296,7 @@ namespace cgl
 		return false;
 	}
 
-	bool GreaterThan(const Val& lhs, const Val& rhs, Context& env)
+	bool GreaterThanFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -328,7 +328,7 @@ namespace cgl
 		return false;
 	}
 
-	bool GreaterEqual(const Val& lhs, const Val& rhs, Context& env)
+	bool GreaterEqualFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -360,7 +360,7 @@ namespace cgl
 		return false;
 	}
 
-	Val Max(const Val& lhs, const Val& rhs, Context& env)
+	Val MaxFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -392,7 +392,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Min(const Val& lhs, const Val& rhs, Context& env)
+	Val MinFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -424,7 +424,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Abs(const Val& lhs, Context& env)
+	Val AbsFunc(const Val& lhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 
@@ -441,7 +441,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Sin(const Val& lhs)
+	Val SinFunc(const Val& lhs)
 	{
 		if (IsNum(lhs))
 		{
@@ -461,7 +461,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Cos(const Val& lhs)
+	Val CosFunc(const Val& lhs)
 	{
 		if (IsNum(lhs))
 		{
@@ -481,7 +481,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Add(const Val& lhs, const Val& rhs, Context& env)
+	Val AddFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -513,7 +513,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Sub(const Val& lhs, const Val& rhs, Context& env)
+	Val SubFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -545,7 +545,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Mul(const Val& lhs, const Val& rhs, Context& env)
+	Val MulFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -577,7 +577,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Div(const Val& lhs, const Val& rhs, Context& env)
+	Val DivFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -609,7 +609,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Pow(const Val& lhs, const Val& rhs, Context& env)
+	Val PowFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -641,7 +641,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val Concat(const Val& lhs, const Val& rhs, Context& env)
+	Val ConcatFunc(const Val& lhs, const Val& rhs, Context& env)
 	{
 		if (!IsType<List>(lhs) || !IsType<List>(rhs))
 		{

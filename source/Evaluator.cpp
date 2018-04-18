@@ -1051,9 +1051,9 @@ namespace cgl
 
 		switch (node.op)
 		{
-		case UnaryOp::Not:     return RValue(Not(lhs, *pEnv));
-		case UnaryOp::Minus:   return RValue(Minus(lhs, *pEnv));
-		case UnaryOp::Plus:    return RValue(Plus(lhs, *pEnv));
+		case UnaryOp::Not:     return RValue(NotFunc(lhs, *pEnv));
+		case UnaryOp::Minus:   return RValue(MinusFunc(lhs, *pEnv));
+		case UnaryOp::Plus:    return RValue(PlusFunc(lhs, *pEnv));
 		case UnaryOp::Dynamic: return RValue(lhs);
 		}
 
@@ -1076,23 +1076,23 @@ namespace cgl
 
 		switch (node.op)
 		{
-		case BinaryOp::And: return RValue(And(lhs, rhs, *pEnv));
-		case BinaryOp::Or:  return RValue(Or(lhs, rhs, *pEnv));
+		case BinaryOp::And: return RValue(AndFunc(lhs, rhs, *pEnv));
+		case BinaryOp::Or:  return RValue(OrFunc(lhs, rhs, *pEnv));
 
-		case BinaryOp::Equal:        return RValue(Equal(lhs, rhs, *pEnv));
-		case BinaryOp::NotEqual:     return RValue(NotEqual(lhs, rhs, *pEnv));
-		case BinaryOp::LessThan:     return RValue(LessThan(lhs, rhs, *pEnv));
-		case BinaryOp::LessEqual:    return RValue(LessEqual(lhs, rhs, *pEnv));
-		case BinaryOp::GreaterThan:  return RValue(GreaterThan(lhs, rhs, *pEnv));
-		case BinaryOp::GreaterEqual: return RValue(GreaterEqual(lhs, rhs, *pEnv));
+		case BinaryOp::Equal:        return RValue(EqualFunc(lhs, rhs, *pEnv));
+		case BinaryOp::NotEqual:     return RValue(NotEqualFunc(lhs, rhs, *pEnv));
+		case BinaryOp::LessThan:     return RValue(LessThanFunc(lhs, rhs, *pEnv));
+		case BinaryOp::LessEqual:    return RValue(LessEqualFunc(lhs, rhs, *pEnv));
+		case BinaryOp::GreaterThan:  return RValue(GreaterThanFunc(lhs, rhs, *pEnv));
+		case BinaryOp::GreaterEqual: return RValue(GreaterEqualFunc(lhs, rhs, *pEnv));
 
-		case BinaryOp::Add: return RValue(Add(lhs, rhs, *pEnv));
-		case BinaryOp::Sub: return RValue(Sub(lhs, rhs, *pEnv));
-		case BinaryOp::Mul: return RValue(Mul(lhs, rhs, *pEnv));
-		case BinaryOp::Div: return RValue(Div(lhs, rhs, *pEnv));
+		case BinaryOp::Add: return RValue(AddFunc(lhs, rhs, *pEnv));
+		case BinaryOp::Sub: return RValue(SubFunc(lhs, rhs, *pEnv));
+		case BinaryOp::Mul: return RValue(MulFunc(lhs, rhs, *pEnv));
+		case BinaryOp::Div: return RValue(DivFunc(lhs, rhs, *pEnv));
 
-		case BinaryOp::Pow:    return RValue(Pow(lhs, rhs, *pEnv));
-		case BinaryOp::Concat: return RValue(Concat(lhs, rhs, *pEnv));
+		case BinaryOp::Pow:    return RValue(PowFunc(lhs, rhs, *pEnv));
+		case BinaryOp::Concat: return RValue(ConcatFunc(lhs, rhs, *pEnv));
 		case BinaryOp::Assign:
 		{
 			//return Assign(lhs, rhs, *pEnv);
@@ -1440,16 +1440,16 @@ namespace cgl
 
 			const bool result_IsDouble = a_IsDouble || b_IsDouble;
 
-			const bool isInOrder = LessEqual(a, b, *pEnv);
+			const bool isInOrder = LessEqualFunc(a, b, *pEnv);
 
 			const int sign = isInOrder ? 1 : -1;
 
 			if (result_IsDouble)
 			{
-				return std::pair<Val, bool>(Mul(1.0, sign, *pEnv), isInOrder);
+				return std::pair<Val, bool>(MulFunc(1.0, sign, *pEnv), isInOrder);
 			}
 
-			return std::pair<Val, bool>(Mul(1, sign, *pEnv), isInOrder);
+			return std::pair<Val, bool>(MulFunc(1, sign, *pEnv), isInOrder);
 		};
 
 		const auto loopContinues = [&](const Val& loopCount, bool isInOrder)->boost::optional<bool>
@@ -1460,7 +1460,7 @@ namespace cgl
 			//isInOrder == false
 			//loopCountValue > endVal
 
-			const Val result = LessEqual(loopCount, endVal, *pEnv);
+			const Val result = LessEqualFunc(loopCount, endVal, *pEnv);
 			if (!IsType<bool>(result))
 			{
 				CGL_ErrorNodeInternal(forExpression, "loopCountの評価結果がブール値ではありませんでした。");
@@ -1509,7 +1509,7 @@ namespace cgl
 			}
 
 			//ループカウンタの更新
-			loopCountValue = Add(loopCountValue, step, *pEnv);
+			loopCountValue = AddFunc(loopCountValue, step, *pEnv);
 		}
 
 		pEnv->exitScope();
@@ -1950,7 +1950,7 @@ namespace cgl
 				}
 				else if (IsNum(result))
 				{
-					return Equal(AsDouble(result), 0.0, *pEnv);
+					return EqualFunc(AsDouble(result), 0.0, *pEnv);
 				}
 				else
 				{
@@ -2203,7 +2203,7 @@ namespace cgl
 						}
 						else if (IsNum(result))
 						{
-							currentConstraintIsSatisfied = Equal(AsDouble(result), 0.0, *pEnv);
+							currentConstraintIsSatisfied = EqualFunc(AsDouble(result), 0.0, *pEnv);
 						}
 						else
 						{
@@ -2319,15 +2319,15 @@ namespace cgl
 			record.append(key, address);
 		}
 
-		/*if (record.type == RecordType::Path)
+		/*if (record.type == RecordType::RecordTypePath)
 		{
 			GetPath(record, pEnv);
 		}
-		else if (record.type == RecordType::Text)
+		else if (record.type == RecordType::RecordTypeText)
 		{
 			GetText(record, pEnv);
 		}
-		else if (record.type == RecordType::ShapePath)
+		else if (record.type == RecordType::RecordTypeShapePath)
 		{
 			GetText(record, pEnv);
 		}*/
@@ -2402,19 +2402,19 @@ namespace cgl
 		if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("path"))
 		{
 			Record pathRecord;
-			pathRecord.type = RecordType::Path;
+			pathRecord.type = RecordType::RecordTypePath;
 			recordOpt = pathRecord;
 		}
 		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("text"))
 		{
 			Record pathRecord;
-			pathRecord.type = RecordType::Text;
+			pathRecord.type = RecordType::RecordTypeText;
 			recordOpt = pathRecord;
 		}
 		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("shapepath"))
 		{
 			Record pathRecord;
-			pathRecord.type = RecordType::ShapePath;
+			pathRecord.type = RecordType::RecordTypeShapePath;
 			recordOpt = pathRecord;
 		}
 		else

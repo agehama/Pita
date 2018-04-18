@@ -1087,7 +1087,7 @@ namespace cgl
 			record.add("b", 255);
 			result.add("stroke", record);
 		}
-		result.type = RecordType::Path;
+		result.type = RecordType::RecordTypePath;
 
 		return ShapeResult(result);
 	}

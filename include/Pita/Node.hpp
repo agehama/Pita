@@ -14,15 +14,23 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include <boost/version.hpp>
+#define CGL_BOOST_MAJOR_VERSION (BOOST_VERSION / 100000)
+#define CGL_BOOST_MINOR_VERSION (BOOST_VERSION / 100 % 1000)
+
 #include <boost/fusion/include/vector.hpp>
 
 #include <boost/variant.hpp>
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
 
-#include <boost/version.hpp>
-#define CGL_BOOST_MAJOR_VERSION (BOOST_VERSION / 100000)
-#define CGL_BOOST_MINOR_VERSION (BOOST_VERSION / 100 % 1000)
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/unordered_map.hpp>
+#include <boost/serialization/unordered_set.hpp>
+#include <boost/serialization/optional.hpp>
+#include <boost/serialization/variant.hpp>
 
 #include <Eigen/Core>
 
@@ -117,7 +125,8 @@ namespace cgl
 	}
 #endif
 
-	enum class UnaryOp
+	//enum class UnaryOp
+	enum UnaryOp
 	{
 		Not,
 
@@ -140,7 +149,8 @@ namespace cgl
 		return "UnknownUnaryOp";
 	}
 
-	enum class BinaryOp
+	//enum class BinaryOp
+	enum BinaryOp
 	{
 		And,
 		Or,
@@ -198,8 +208,8 @@ namespace cgl
 	public:
 		Identifier() = default;
 
-		explicit Identifier(const std::string& name_) :
-			name(name_)
+		explicit Identifier(const std::string& name) :
+			name(name)
 		{}
 
 		Identifier& setLocation(const LocationInfo& info)
@@ -235,7 +245,7 @@ namespace cgl
 
 		friend std::ostream& operator<<(std::ostream& os, const Identifier& node) { return os; }
 
-	private:
+	//private:
 		std::string name;
 	};
 
@@ -283,7 +293,7 @@ namespace cgl
 			return std::to_string(valueID);
 		}
 
-	private:
+	//private:
 		friend struct std::hash<Address>;
 
 		unsigned valueID;
@@ -313,7 +323,7 @@ namespace cgl
 			return std::to_string(referenceID);
 		}
 
-	private:
+	//private:
 		friend struct std::hash<Reference>;
 
 		unsigned referenceID;
@@ -450,7 +460,7 @@ namespace cgl
 			return str.empty();
 		}
 
-	private:
+	//private:
 		std::u32string str;
 	};
 
@@ -739,7 +749,7 @@ namespace cgl
 
 		friend std::ostream& operator<<(std::ostream& os, const Import& node) { return os; }
 
-	private:
+	//private:
 		void updateHash();
 
 		std::string importPath;
@@ -750,7 +760,6 @@ namespace cgl
 	struct OptimizationProblemSat
 	{
 	public:
-		//boost::optional<Expr> candidateExpr;
 		boost::optional<Expr> expr;
 
 		//制約式に含まれる全ての参照にIDを振る(=参照ID)
@@ -1941,7 +1950,8 @@ namespace cgl
 		friend std::ostream& operator<<(std::ostream& os, const DeclFree& node) { return os; }
 	};
 
-	enum class RecordType { Normal, Path, Text, ShapePath };
+	//enum class RecordType { Normal, Path, Text, ShapePath };
+	enum RecordType { RecordTypeNormal, RecordTypePath, RecordTypeText, RecordTypeShapePath };
 
 	//using FreeVariable = std::pair<Address, VariableRange>;
 
@@ -2002,7 +2012,7 @@ namespace cgl
 
 		OldRecordData original;
 
-		RecordType type = RecordType::Normal;
+		RecordType type = RecordType::RecordTypeNormal;
 		bool isSatisfied = true;
 		Vector<Eigen::Vector2d> pathPoints;
 
@@ -2069,7 +2079,7 @@ namespace cgl
 
 		OldRecordData original;
 
-		RecordType type = RecordType::Normal;
+		RecordType type = RecordType::RecordTypeNormal;
 		bool isSatisfied = true;
 		Vector<Eigen::Vector2d> pathPoints;
 
@@ -2233,7 +2243,6 @@ namespace cgl
 	{
 		//先頭のオブジェクト(識別子かもしくは関数・リスト・レコードのリテラル)
 		Expr head;
-
 		std::vector<Access> accesses;
 
 		Accessor() = default;
@@ -2492,5 +2501,277 @@ namespace cgl
 	};
 
 	Expr BuildString(const std::u32string& str);
+}
 
+namespace boost::serialization
+{
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Expr& expr, const unsigned int version);
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Val& val, const unsigned int version);
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Address& address, const unsigned int version)
+	{
+		ar & address.valueID;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Reference& reference, const unsigned int version)
+	{
+		ar & reference.referenceID;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Lines& node, const unsigned int version)
+	{
+		ar & node.exprs;
+		ar & node.locInfo_lineBegin;
+		ar & node.locInfo_lineEnd;
+		ar & node.locInfo_posBegin;
+		ar & node.locInfo_posEnd;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::BinaryExpr& node, const unsigned int version)
+	{
+		ar & node.lhs;
+		ar & node.rhs;
+		ar & node.op;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::LRValue& node, const unsigned int version)
+	{
+		ar & node.value;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Identifier& node, const unsigned int version)
+	{
+		ar & node.name;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Import& node, const unsigned int version)
+	{
+		ar & node.importPath;
+		ar & node.importName;
+		ar & node.seed;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::UnaryExpr& node, const unsigned int version)
+	{
+		ar & node.lhs;
+		ar & node.op;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Range& node, const unsigned int version)
+	{
+		ar & node.lhs;
+		ar & node.rhs;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::DefFunc& node, const unsigned int version)
+	{
+		ar & node.arguments;
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::If& node, const unsigned int version)
+	{
+		ar & node.cond_expr;
+		ar & node.then_expr;
+		ar & node.else_expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::For& node, const unsigned int version)
+	{
+		ar & node.loopCounter;
+		ar & node.rangeStart;
+		ar & node.rangeEnd;
+		ar & node.doExpr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Return& node, const unsigned int version)
+	{
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::ListConstractor& node, const unsigned int version)
+	{
+		ar & node.data;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::KeyExpr& node, const unsigned int version)
+	{
+		ar & node.name;
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RecordConstractor& node, const unsigned int version)
+	{
+		ar & node.exprs;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RecordInheritor& node, const unsigned int version)
+	{
+		ar & node.original;
+		ar & node.adder;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::ListAccess& node, const unsigned int version)
+	{
+		ar & node.index;
+		ar & node.isArbitrary;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RecordAccess& node, const unsigned int version)
+	{
+		ar & node.name;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::FunctionAccess& node, const unsigned int version)
+	{
+		ar & node.actualArguments;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Accessor& node, const unsigned int version)
+	{
+		ar & node.head;
+		ar & node.accesses;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::DeclSat& node, const unsigned int version)
+	{
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::DeclFree& node, const unsigned int version)
+	{
+		ar & node.accessors;
+		ar & node.ranges;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::CharString& node, const unsigned int version)
+	{
+		ar & node.str;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::List& node, const unsigned int version)
+	{
+		ar & node.data;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::KeyValue& node, const unsigned int version)
+	{
+		ar & node.name;
+		ar & node.value;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::VariableRange& node, const unsigned int version)
+	{
+		ar & node.minimum;
+		ar & node.maximum;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::OptimizationProblemSat& node, const unsigned int version)
+	{
+		ar & node.expr;
+		ar & node.data;
+		ar & node.refs;
+		ar & node.invRefs;
+		ar & node.freeVariableRefs;
+		ar & node.hasPlateausFunction;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::OldRecordData& node, const unsigned int version)
+	{
+		ar & node.freeVars;
+		ar & node.unitConstraints;
+		ar & node.variableAppearances;
+		ar & node.groupConstraints;
+		ar & node.constraintGroups;
+	}
+
+	template<class Archive>
+	inline void save(Archive& ar, const Eigen::Vector2d& node, const unsigned int version)
+	{
+		double x = node.x(), y = node.y();
+		ar & x;
+		ar & y;
+	}
+
+	template<class Archive>
+	inline void load(Archive& ar, Eigen::Vector2d& node, const unsigned int version)
+	{
+		double x, y;
+		ar & x;
+		ar & y;
+		node << x, y;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Record& node, const unsigned int version)
+	{
+		ar & node.values;
+		ar & node.problems;
+		ar & node.constraint;
+		ar & node.freeVariables;
+		ar & node.freeRanges;
+		ar & node.original;
+		ar & node.type;
+		ar & node.isSatisfied;
+		ar & node.pathPoints;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::FuncVal& node, const unsigned int version)
+	{
+		ar & node.arguments;
+		ar & node.expr;
+		ar & node.builtinFuncAddress;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Jump& node, const unsigned int version)
+	{
+		ar & node.lhs;
+		ar & node.op;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Expr& expr, const unsigned int version)
+	{
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Val& val, const unsigned int version)
+	{
+		ar & node.val;
+	}
 }

@@ -7,7 +7,7 @@ endif()
 
 
 add_executable(pita_test pita_test.cpp)
-target_link_libraries(pita_test pita_lib)
+target_link_libraries(pita_test pita_lib boost_serialization)
 
 add_test(
 	NAME pita_test
@@ -17,7 +17,7 @@ set_tests_properties(pita_test PROPERTIES LABELS pita)
 
 
 add_executable(pita_examples pita_examples.cpp)
-target_link_libraries(pita_examples pita_lib)
+target_link_libraries(pita_examples pita_lib boost_serialization)
 
 add_test(
 	NAME pita_strict

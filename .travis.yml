@@ -19,7 +19,7 @@ matrix:
       env: COMPILER=clang++-4.0
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install libboost-dev
+  - sudo apt-get install libboost-all-dev
   - sudo apt-get install libc++-dev libc++abi-dev
   - dpkg --search libc++ > test1
   - cat test1

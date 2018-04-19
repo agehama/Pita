@@ -24,20 +24,50 @@
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
 
-//#include <boost/serialization/serialization.hpp>
-//#include <boost/serialization/nvp.hpp>
-//#include <boost/serialization/vector.hpp>
-//#include <boost/serialization/unordered_map.hpp>
-//#include <boost/serialization/unordered_set.hpp>
-//#include <boost/serialization/optional.hpp>
-//#include <boost/serialization/variant.hpp>
-#include <cereal/cereal.hpp>
-#include <cereal/archives/json.hpp>
+#include <boost/regex/pending/unicode_iterator.hpp>
+
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/unordered_map.hpp>
+#include <boost/serialization/unordered_set.hpp>
+#include <boost/serialization/optional.hpp>
+#include <boost/serialization/variant.hpp>
+#include <boost/serialization/split_free.hpp>
+
+/*
+#include <cereal/types/memory.hpp>
+#include <cereal/types/array.hpp>
+#include <cereal/types/valarray.hpp>
 #include <cereal/types/vector.hpp>
+#include <cereal/types/deque.hpp>
+#include <cereal/types/forward_list.hpp>
+#include <cereal/types/list.hpp>
+#include <cereal/types/string.hpp>
+#include <cereal/types/map.hpp>
+#include <cereal/types/queue.hpp>
+#include <cereal/types/set.hpp>
+#include <cereal/types/stack.hpp>
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/unordered_set.hpp>
+#include <cereal/types/utility.hpp>
+#include <cereal/types/tuple.hpp>
+#include <cereal/types/bitset.hpp>
+#include <cereal/types/complex.hpp>
+#include <cereal/types/chrono.hpp>
+#include <cereal/types/polymorphic.hpp>
+
 #include <cereal/types/boost_variant.hpp>
+
+#include <cereal/archives/binary.hpp>
+#include <cereal/archives/portable_binary.hpp>
+#include <cereal/archives/xml.hpp>
+#include <cereal/archives/json.hpp>
+
 #include <cereal_boost_optional.hpp>
+*/
 
 #include <Eigen/Core>
 
@@ -51,6 +81,18 @@ namespace cgl
 
 	template<class T>
 	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
+
+	inline std::string AsUtf8(const std::u32string& input) {
+		return std::string(
+			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.begin()),
+			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.end()));
+	}
+
+	inline std::u32string AsUtf32(const std::string& input) {
+		return std::u32string(
+			boost::u8_to_u32_iterator<std::string::const_iterator>(input.begin()),
+			boost::u8_to_u32_iterator<std::string::const_iterator>(input.end()));
+	}
 
 	//std::string UTF8ToString(const std::string& str);
 
@@ -472,15 +514,15 @@ namespace cgl
 	};
 
 	using Val = boost::variant<
+		CharString,
 		bool,
 		int,
 		double,
-		CharString,
-		boost::recursive_wrapper<List>,
 		boost::recursive_wrapper<KeyValue>,
-		boost::recursive_wrapper<Record>,
+		boost::recursive_wrapper<Jump>,
 		boost::recursive_wrapper<FuncVal>,
-		boost::recursive_wrapper<Jump>
+		boost::recursive_wrapper<Record>,
+		boost::recursive_wrapper<List>
 	>;
 
 	using PackedVal = boost::variant<
@@ -2510,13 +2552,65 @@ namespace cgl
 	Expr BuildString(const std::u32string& str);
 }
 
+/*
 namespace cereal
 {
-	/*template<class Archive>
-	inline void serialize(Archive& ar, cgl::Expr& expr);
+	template<class Archive>
+	inline void save(Archive& ar, const cgl::CharString& node)
+	{
+		const std::string str = cgl::AsUtf8(node.str);
+		ar(str);
+	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::Val& val);*/
+	inline void load(Archive& ar, cgl::CharString& node)
+	{
+		std::string str;
+		ar(str);
+		node.str = cgl::AsUtf32(str);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::List& node)
+	{
+		ar(node.data);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::KeyValue& node)
+	{
+		ar(node.name);
+		ar(node.value);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Record& node)
+	{
+		ar(node.values);
+		ar(node.problems);
+		ar(node.constraint);
+		ar(node.freeVariables);
+		ar(node.freeRanges);
+		ar(node.original);
+		ar(node.type);
+		ar(node.isSatisfied);
+		ar(node.pathPoints);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::FuncVal& node)
+	{
+		ar(node.arguments);
+		ar(node.expr);
+		ar(node.builtinFuncAddress);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Jump& node)
+	{
+		ar(node.lhs);
+		ar(node.op);
+	}
 
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Address& address)
@@ -2531,20 +2625,9 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::DeepReference& reference)
-	{
-		ar(reference.head);
-		ar(reference.tail);
-	}
-
-	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Lines& node)
 	{
 		ar(node.exprs);
-		ar(node.locInfo_lineBegin);
-		ar(node.locInfo_lineEnd);
-		ar(node.locInfo_posBegin);
-		ar(node.locInfo_posEnd);
 	}
 
 	template<class Archive>
@@ -2553,6 +2636,12 @@ namespace cereal
 		ar(node.lhs);
 		ar(node.rhs);
 		ar(node.op);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RValue& node)
+	{
+		ar(node.value);
 	}
 
 	template<class Archive>
@@ -2685,25 +2774,6 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::CharString& node)
-	{
-		ar(node.str);
-	}
-
-	template<class Archive>
-	inline void serialize(Archive& ar, cgl::List& node)
-	{
-		ar(node.data);
-	}
-
-	template<class Archive>
-	inline void serialize(Archive& ar, cgl::KeyValue& node)
-	{
-		ar(node.name);
-		ar(node.value);
-	}
-
-	template<class Archive>
 	inline void serialize(Archive& ar, cgl::VariableRange& node)
 	{
 		ar(node.minimum);
@@ -2749,43 +2819,289 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::Record& node)
+	inline void serialize(Archive& ar, cgl::DeepReference& reference)
 	{
-		ar(node.values);
-		ar(node.problems);
-		ar(node.constraint);
-		ar(node.freeVariables);
-		ar(node.freeRanges);
-		ar(node.original);
-		ar(node.type);
-		ar(node.isSatisfied);
-		ar(node.pathPoints);
+		ar(reference.head);
+		ar(reference.tail);
+	}
+}
+*/
+
+namespace boost::serialization
+{
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::CharString& node, unsigned int version)
+	{
+		split_free(ar, node, version);
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::FuncVal& node)
+	inline void save(Archive& ar, const cgl::CharString& node, unsigned int)
 	{
-		ar(node.arguments);
-		ar(node.expr);
-		ar(node.builtinFuncAddress);
+		const std::string str = cgl::AsUtf8(node.str);
+		ar & str;
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::Jump& node)
+	inline void load(Archive& ar, cgl::CharString& node, unsigned int)
 	{
-		ar(node.lhs);
-		ar(node.op);
-	}
-
-	/*template<class Archive>
-	inline void serialize(Archive& ar, cgl::Expr& expr)
-	{
-		ar(node.expr);
+		std::string str;
+		ar & str;
+		node.str = cgl::AsUtf32(str);
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::Val& val)
+	inline void serialize(Archive& ar, cgl::List& node, unsigned int)
 	{
-		ar(node.val);
-	}*/
+		ar & node.data;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::KeyValue& node, unsigned int)
+	{
+		ar & node.name;
+		ar & node.value;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Record& node, unsigned int)
+	{
+		ar & node.values;
+		ar & node.problems;
+		ar & node.constraint;
+		ar & node.freeVariables;
+		ar & node.freeRanges;
+		ar & node.original;
+		ar & node.type;
+		ar & node.isSatisfied;
+		ar & node.pathPoints;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::FuncVal& node, unsigned int)
+	{
+		ar & node.arguments;
+		ar & node.expr;
+		ar & node.builtinFuncAddress;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Jump& node, unsigned int)
+	{
+		ar & node.lhs;
+		ar & node.op;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Address& address, unsigned int)
+	{
+		ar & address.valueID;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Reference& reference, unsigned int)
+	{
+		ar & reference.referenceID;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Lines& node, unsigned int)
+	{
+		ar & node.exprs;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::BinaryExpr& node, unsigned int)
+	{
+		ar & node.lhs;
+		ar & node.rhs;
+		ar & node.op;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RValue& node, unsigned int)
+	{
+		ar & node.value;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::LRValue& node, unsigned int)
+	{
+		ar & node.value;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Identifier& node, unsigned int)
+	{
+		ar & node.name;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Import& node, unsigned int)
+	{
+		ar & node.importPath;
+		ar & node.importName;
+		ar & node.seed;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::UnaryExpr& node, unsigned int)
+	{
+		ar & node.lhs;
+		ar & node.op;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Range& node, unsigned int)
+	{
+		ar & node.lhs;
+		ar & node.rhs;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::DefFunc& node, unsigned int)
+	{
+		ar & node.arguments;
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::If& node, unsigned int)
+	{
+		ar & node.cond_expr;
+		ar & node.then_expr;
+		ar & node.else_expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::For& node, unsigned int)
+	{
+		ar & node.loopCounter;
+		ar & node.rangeStart;
+		ar & node.rangeEnd;
+		ar & node.doExpr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Return& node, unsigned int)
+	{
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::ListConstractor& node, unsigned int)
+	{
+		ar & node.data;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::KeyExpr& node, unsigned int)
+	{
+		ar & node.name;
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RecordConstractor& node, unsigned int)
+	{
+		ar & node.exprs;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RecordInheritor& node, unsigned int)
+	{
+		ar & node.original;
+		ar & node.adder;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::ListAccess& node, unsigned int)
+	{
+		ar & node.index;
+		ar & node.isArbitrary;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RecordAccess& node, unsigned int)
+	{
+		ar & node.name;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::FunctionAccess& node, unsigned int)
+	{
+		ar & node.actualArguments;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Accessor& node, unsigned int)
+	{
+		ar & node.head;
+		ar & node.accesses;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::DeclSat& node, unsigned int)
+	{
+		ar & node.expr;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::DeclFree& node, unsigned int)
+	{
+		ar & node.accessors;
+		ar & node.ranges;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::VariableRange& node, unsigned int)
+	{
+		ar & node.minimum;
+		ar & node.maximum;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::OptimizationProblemSat& node, unsigned int)
+	{
+		ar & node.expr;
+		ar & node.data;
+		ar & node.refs;
+		ar & node.invRefs;
+		ar & node.freeVariableRefs;
+		ar & node.hasPlateausFunction;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::OldRecordData& node, unsigned int)
+	{
+		ar & node.freeVars;
+		ar & node.unitConstraints;
+		ar & node.variableAppearances;
+		ar & node.groupConstraints;
+		ar & node.constraintGroups;
+	}
+
+	template<class Archive>
+	inline void save(Archive& ar, const Eigen::Vector2d& node, unsigned int)
+	{
+		double x = node.x(), y = node.y();
+		ar & x;
+		ar & y;
+	}
+
+	template<class Archive>
+	inline void load(Archive& ar, Eigen::Vector2d& node, unsigned int)
+	{
+		double x, y;
+		ar & x;
+		ar & y;
+		node << x, y;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::DeepReference& reference, unsigned int)
+	{
+		ar & reference.head;
+		ar & reference.tail;
+	}
 }

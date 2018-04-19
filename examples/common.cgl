@@ -103,4 +103,4 @@ arrow = shape{
     end: (->globalPos(head.top()))
 }
 
-
+GC()

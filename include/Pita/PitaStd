@@ -1,0 +1,746 @@
+std::string(R"({
+    "value0": {
+        "value0": [
+            {
+                "key": {
+                    "value0": 20
+                },
+                "value": "ShapeOuterPath"
+            },
+            {
+                "key": {
+                    "value0": 4
+                },
+                "value": "Cmaes"
+            },
+            {
+                "key": {
+                    "value0": 15
+                },
+                "value": "BuildPath"
+            },
+            {
+                "key": {
+                    "value0": 16
+                },
+                "value": "BuildText"
+            },
+            {
+                "key": {
+                    "value0": 17
+                },
+                "value": "OffsetPath"
+            },
+            {
+                "key": {
+                    "value0": 18
+                },
+                "value": "SubPath"
+            },
+            {
+                "key": {
+                    "value0": 19
+                },
+                "value": "FunctionPath"
+            },
+            {
+                "key": {
+                    "value0": 21
+                },
+                "value": "ShapePath"
+            },
+            {
+                "key": {
+                    "value0": 22
+                },
+                "value": "Diff"
+            },
+            {
+                "key": {
+                    "value0": 23
+                },
+                "value": "Union"
+            },
+            {
+                "key": {
+                    "value0": 24
+                },
+                "value": "Intersect"
+            },
+            {
+                "key": {
+                    "value0": 25
+                },
+                "value": "SymDiff"
+            },
+            {
+                "key": {
+                    "value0": 26
+                },
+                "value": "Buffer"
+            },
+            {
+                "key": {
+                    "value0": 27
+                },
+                "value": "DeformShapeByPath"
+            },
+            {
+                "key": {
+                    "value0": 28
+                },
+                "value": "DeformShapeByPath2"
+            },
+            {
+                "key": {
+                    "value0": 29
+                },
+                "value": "BezierPath"
+            },
+            {
+                "key": {
+                    "value0": 30
+                },
+                "value": "SubDiv"
+            },
+            {
+                "key": {
+                    "value0": 31
+                },
+                "value": "Area"
+            }
+        ],
+        "value1": [
+            {
+                "key": {
+                    "value0": 9
+                },
+                "value": {
+                    "value0": {
+                        "value0": 136
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 1
+                },
+                "value": {
+                    "value0": {
+                        "value0": 42
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 2
+                },
+                "value": {
+                    "value0": {
+                        "value0": 46
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 3
+                },
+                "value": {
+                    "value0": {
+                        "value0": 47
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 4
+                },
+                "value": {
+                    "value0": {
+                        "value0": 90
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 5
+                },
+                "value": {
+                    "value0": {
+                        "value0": 93
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 6
+                },
+                "value": {
+                    "value0": {
+                        "value0": 94
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 7
+                },
+                "value": {
+                    "value0": {
+                        "value0": 132
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 8
+                },
+                "value": {
+                    "value0": {
+                        "value0": 135
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 10
+                },
+                "value": {
+                    "value0": {
+                        "value0": 177
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 11
+                },
+                "value": {
+                    "value0": {
+                        "value0": 180
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 12
+                },
+                "value": {
+                    "value0": {
+                        "value0": 181
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 13
+                },
+                "value": {
+                    "value0": {
+                        "value0": 266
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 14
+                },
+                "value": {
+                    "value0": {
+                        "value0": 269
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 15
+                },
+                "value": {
+                    "value0": {
+                        "value0": 270
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 16
+                },
+                "value": {
+                    "value0": {
+                        "value0": 287
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 17
+                },
+                "value": {
+                    "value0": {
+                        "value0": 308
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 18
+                },
+                "value": {
+                    "value0": {
+                        "value0": 292
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 19
+                },
+                "value": {
+                    "value0": {
+                        "value0": 1218
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 20
+                },
+                "value": {
+                    "value0": {
+                        "value0": 1242
+                    },
+                    "value1": []
+                }
+            },
+            {
+                "key": {
+                    "value0": 21
+                },
+                "value": {
+                    "value0": {
+                        "value0": 1222
+                    },
+                    "value1": []
+                }
+            }
+        ],
+        "value2": [
+            {
+                "key": {
+                    "value0": 90
+                },
+                "value": {
+                    "value0": 4
+                }
+            },
+            {
+                "key": {
+                    "value0": 1222
+                },
+                "value": {
+                    "value0": 21
+                }
+            },
+            {
+                "key": {
+                    "value0": 42
+                },
+                "value": {
+                    "value0": 1
+                }
+            },
+            {
+                "key": {
+                    "value0": 1218
+                },
+                "value": {
+                    "value0": 19
+                }
+            },
+            {
+                "key": {
+                    "value0": 94
+                },
+                "value": {
+                    "value0": 6
+                }
+            },
+            {
+                "key": {
+                    "value0": 46
+                },
+                "value": {
+                    "value0": 2
+                }
+            },
+            {
+                "key": {
+                    "value0": 135
+                },
+                "value": {
+                    "value0": 8
+                }
+            },
+            {
+                "key": {
+                    "value0": 47
+                },
+                "value": {
+                    "value0": 3
+                }
+            },
+            {
+                "key": {
+                    "value0": 93
+                },
+                "value": {
+                    "value0": 5
+                }
+            },
+            {
+                "key": {
+                    "value0": 132
+                },
+                "value": {
+                    "value0": 7
+                }
+            },
+            {
+                "key": {
+                    "value0": 136
+                },
+                "value": {
+                    "value0": 9
+                }
+            },
+            {
+                "key": {
+                    "value0": 266
+                },
+                "value": {
+                    "value0": 13
+                }
+            },
+            {
+                "key": {
+                    "value0": 177
+                },
+                "value": {
+                    "value0": 10
+                }
+            },
+            {
+                "key": {
+                    "value0": 180
+                },
+                "value": {
+                    "value0": 11
+                }
+            },
+            {
+                "key": {
+                    "value0": 270
+                },
+                "value": {
+                    "value0": 15
+                }
+            },
+            {
+                "key": {
+                    "value0": 181
+                },
+                "value": {
+                    "value0": 12
+                }
+            },
+            {
+                "key": {
+                    "value0": 269
+                },
+                "value": {
+                    "value0": 14
+                }
+            },
+            {
+                "key": {
+                    "value0": 287
+                },
+                "value": {
+                    "value0": 16
+                }
+            },
+            {
+                "key": {
+                    "value0": 292
+                },
+                "value": {
+                    "value0": 18
+                }
+            },
+            {
+                "key": {
+                    "value0": 308
+                },
+                "value": {
+                    "value0": 17
+                }
+            },
+            {
+                "key": {
+                    "value0": 1242
+                },
+                "value": {
+                    "value0": 20
+                }
+            }
+        ],
+        "value3": [
+            [
+                {
+                    "value0": [
+                        {
+                            "key": "Rad",
+                            "value": {
+                                "value0": 5
+                            }
+                        },
+                        {
+                            "key": "SinRad",
+                            "value": {
+                                "value0": 11
+                            }
+                        },
+                        {
+                            "key": "Cmaes",
+                            "value": {
+                                "value0": 4
+                            }
+                        },
+                        {
+                            "key": "Print",
+                            "value": {
+                                "value0": 1
+                            }
+                        },
+                        {
+                            "key": "SymDiff",
+                            "value": {
+                                "value0": 25
+                            }
+                        },
+                        {
+                            "key": "RandomSeed",
+                            "value": {
+                                "value0": 14
+                            }
+                        },
+                        {
+                            "key": "Mod",
+                            "value": {
+                                "value0": 8
+                            }
+                        },
+                        {
+                            "key": "Buffer",
+                            "value": {
+                                "value0": 26
+                            }
+                        },
+                        {
+                            "key": "PrintContext",
+                            "value": {
+                                "value0": 2
+                            }
+                        },
+                        {
+                            "key": "Abs",
+                            "value": {
+                                "value0": 7
+                            }
+                        },
+                        {
+                            "key": "Cos",
+                            "value": {
+                                "value0": 10
+                            }
+                        },
+                        {
+                            "key": "Size",
+                            "value": {
+                                "value0": 3
+                            }
+                        },
+                        {
+                            "key": "GC",
+                            "value": {
+                                "value0": 35
+                            }
+                        },
+                        {
+                            "key": "Deg",
+                            "value": {
+                                "value0": 6
+                            }
+                        },
+                        {
+                            "key": "Sin",
+                            "value": {
+                                "value0": 9
+                            }
+                        },
+                        {
+                            "key": "CosRad",
+                            "value": {
+                                "value0": 12
+                            }
+                        },
+                        {
+                            "key": "Distance",
+                            "value": {
+                                "value0": 32
+                            }
+                        },
+                        {
+                            "key": "Random",
+                            "value": {
+                                "value0": 13
+                            }
+                        },
+                        {
+                            "key": "BuildText",
+                            "value": {
+                               )"),std::string(R"( "value0": 16
+                            }
+                        },
+                        {
+                            "key": "BuildPath",
+                            "value": {
+                                "value0": 15
+                            }
+                        },
+                        {
+                            "key": "OffsetPath",
+                            "value": {
+                                "value0": 17
+                            }
+                        },
+                        {
+                            "key": "Intersect",
+                            "value": {
+                                "value0": 24
+                            }
+                        },
+                        {
+                            "key": "SubPath",
+                            "value": {
+                                "value0": 18
+                            }
+                        },
+                        {
+                            "key": "FunctionPath",
+                            "value": {
+                                "value0": 19
+                            }
+                        },
+                        {
+                            "key": "ShapeOuterPath",
+                            "value": {
+                                "value0": 20
+                            }
+                        },
+                        {
+                            "key": "ShapePath",
+                            "value": {
+                                "value0": 21
+                            }
+                        },
+                        {
+                            "key": "Diff",
+                            "value": {
+                                "value0": 22
+                            }
+                        },
+                        {
+                            "key": "Union",
+                            "value": {
+                                "value0": 23
+                            }
+                        },
+                        {
+                            "key": "DeformShapeByPath",
+                            "value": {
+                                "value0": 27
+                            }
+                        },
+                        {
+                            "key": "DeformShapeByPath2",
+                            "value": {
+                                "value0": 28
+                            }
+                        },
+                        {
+                            "key": "BezierPath",
+                            "value": {
+                                "value0": 29
+                            }
+                        },
+                        {
+                            "key": "EnableGC",
+                            "value": {
+                                "value0": 36
+                            }
+                        },
+                        {
+                            "key": "SubDiv",
+                            "value": {
+                                "value0": 30
+                            }
+                        },
+                        {
+                            "key": "Area",
+                            "value": {
+                                "value0": 31
+                            }
+                        },
+                        {
+                            "key": "ClosestPoints",
+                            "value": {
+                                "value0": 33
+                            }
+                        },
+                        {
+                            "key": "BoundingBox",
+                            "value": {
+                                "value0": 34
+                            }
+                        }
+                    ],
+                    "value1": []
+                }
+            ]
+        ],
+        "value4": 21,
+        "value5": 0,
+        "value6": true,
+        "value7": true
+    }
+})")

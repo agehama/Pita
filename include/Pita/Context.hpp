@@ -14,6 +14,8 @@ namespace cgl
 	public:
 		using ValueList = std::unordered_map<Address, ValueType>;
 
+		Values() = default;
+
 		Address add(const ValueType& value)
 		{
 			m_values.insert({ newAddress(), value });
@@ -160,65 +162,65 @@ namespace cgl
 		/*
 		boost::optional<Address> find(const std::string& name)const
 		{
-			const auto valueIDOpt = findAddress(name);
-			if (!valueIDOpt)
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return boost::none;
-			}
+		const auto valueIDOpt = findAddress(name);
+		if (!valueIDOpt)
+		{
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return boost::none;
+		}
 
-			//return m_values[valueIDOpt.get()];
+		//return m_values[valueIDOpt.get()];
 		}
 		*/
 
 		/*bool isValid(Address address)const
 		{
-			return m_values.at(address) != m_values.end();
+		return m_values.at(address) != m_values.end();
 		}*/
 
 		//Address dereference(const Val& reference);
 		/*
 		boost::optional<const Val&> dereference(const Val& reference)const
 		{
-			if (!IsType<Address>(reference))
-			{
-				return boost::none;
-			}
+		if (!IsType<Address>(reference))
+		{
+		return boost::none;
+		}
 
-			//return m_values.at(As<Address>(reference));
+		//return m_values.at(As<Address>(reference));
 
-			auto it = m_values.at(As<Address>(reference));
-			if (it == m_values.end())
-			{
-				return boost::none;
-			}
+		auto it = m_values.at(As<Address>(reference));
+		if (it == m_values.end())
+		{
+		return boost::none;
+		}
 
-			return it->second;
+		return it->second;
 		}
 		*/
 
 		/*Val expandRef(const Val& reference)const
 		{
-			if (!IsType<Address>(reference))
-			{
-				return reference;
-			}
+		if (!IsType<Address>(reference))
+		{
+		return reference;
+		}
 
-			if (Address address = As<Address>(reference))
-			{
-				if (auto opt = m_values.at(address))
-				{
-					return expandRef(opt.get());
-				}
-				else
-				{
-					CGL_Error("reference error");
-					return 0;
-				}
-			}
+		if (Address address = As<Address>(reference))
+		{
+		if (auto opt = m_values.at(address))
+		{
+		return expandRef(opt.get());
+		}
+		else
+		{
+		CGL_Error("reference error");
+		return 0;
+		}
+		}
 
-			CGL_Error("reference error");
-			return 0;
+		CGL_Error("reference error");
+		return 0;
 		}*/
 
 		const Val& expand(const LRValue& lrvalue, const LocationInfo& info)const;
@@ -242,7 +244,7 @@ namespace cgl
 		Reference bindReference(const Accessor& accessor, const LocationInfo& info);
 		Address getReference(Reference reference)const;
 		Reference cloneReference(Reference reference, const std::unordered_map<Address, Address>& addressReplaceMap);
-		
+
 		void printReference(Reference reference, std::ostream& os)const;
 
 		//ローカル変数を全て展開する
@@ -250,40 +252,40 @@ namespace cgl
 		/*
 		Val expandObject(const Val& reference)
 		{
-			if (auto opt = AsOpt<Record>(reference))
-			{
-				Record expanded;
-				for (const auto& elem : opt.get().values)
-				{
-					expanded.append(elem.first, expandObject(elem.second));
-				}
-				return expanded;
-			}
-			else if (auto opt = AsOpt<List>(reference))
-			{
-				List expanded;
-				for (const auto& elem : opt.get().data)
-				{
-					expanded.append(expandObject(elem));
-				}
-				return expanded;
-			}
+		if (auto opt = AsOpt<Record>(reference))
+		{
+		Record expanded;
+		for (const auto& elem : opt.get().values)
+		{
+		expanded.append(elem.first, expandObject(elem.second));
+		}
+		return expanded;
+		}
+		else if (auto opt = AsOpt<List>(reference))
+		{
+		List expanded;
+		for (const auto& elem : opt.get().data)
+		{
+		expanded.append(expandObject(elem));
+		}
+		return expanded;
+		}
 
-			return dereference(reference);
+		return dereference(reference);
 		}
 		*/
 
 		/*void bindObjectRef(const std::string& name, const ObjectReference& ref)
 		{
-			if (auto valueIDOpt = AsOpt<unsigned>(ref.headValue))
-			{
-				bindValueID(name, valueIDOpt.get());
-			}
-			else
-			{
-				const auto& valueRhs = dereference(ref);
-				bindNewValue(name, valueRhs);
-			}
+		if (auto valueIDOpt = AsOpt<unsigned>(ref.headValue))
+		{
+		bindValueID(name, valueIDOpt.get());
+		}
+		else
+		{
+		const auto& valueRhs = dereference(ref);
+		bindNewValue(name, valueRhs);
+		}
 		}*/
 		void bindObjectRef(const std::string& name, Address ref)
 		{
@@ -293,10 +295,10 @@ namespace cgl
 		/*
 		void bindNewValue(const std::string& name, const Val& value)
 		{
-			CGL_DebugLog("");
-			const Address newAddress = m_values.add(value);
-			//Clone(m_weakThis.lock(), value);
-			bindValueID(name, newAddress);
+		CGL_DebugLog("");
+		const Address newAddress = m_values.add(value);
+		//Clone(m_weakThis.lock(), value);
+		bindValueID(name, newAddress);
 		}
 		*/
 		void bindNewValue(const std::string& name, const Val& value)
@@ -307,43 +309,43 @@ namespace cgl
 
 		/*void bindReference(const std::string& nameLhs, const std::string& nameRhs)
 		{
-			const Address address = findAddress(nameRhs);
-			if (!address.isValid())
-			{
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return;
-			}
+		const Address address = findAddress(nameRhs);
+		if (!address.isValid())
+		{
+		std::cerr << "Error(" << __LINE__ << ")\n";
+		return;
+		}
 
-			bindValueID(nameLhs, address);
+		bindValueID(nameLhs, address);
 		}*/
 
 		/*
 		void bindValueID(const std::string& name, unsigned valueID)
 		{
-			//レコード
-			//レコード内の:式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合は新たに定義
-			//レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアス（スコープを抜けたら元に戻る≒遮蔽）
+		//レコード
+		//レコード内の:式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合は新たに定義
+		//レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアス（スコープを抜けたら元に戻る≒遮蔽）
 
-			//現在の環境に変数が存在しなければ、
-			//環境リストの末尾（＝最も内側のスコープ）に変数を追加する
-			m_bindingNames.back().bind(name, valueID);
+		//現在の環境に変数が存在しなければ、
+		//環境リストの末尾（＝最も内側のスコープ）に変数を追加する
+		m_bindingNames.back().bind(name, valueID);
 		}
 		*/
 
 		//void bindValueID(const std::string& name, unsigned ID)
 		/*void bindValueID(const std::string& name, const Address ID)
 		{
-			for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
-			{
-				auto valIt = scopeIt->find(name);
-				if (valIt != scopeIt->end())
-				{
-					valIt->second = ID;
-					return;
-				}
-			}
+		for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
+		{
+		auto valIt = scopeIt->find(name);
+		if (valIt != scopeIt->end())
+		{
+		valIt->second = ID;
+		return;
+		}
+		}
 
-			m_variables.back()[name] = ID;
+		m_variables.back()[name] = ID;
 		}*/
 		void bindValueID(const std::string& name, const Address ID);
 
@@ -354,7 +356,7 @@ namespace cgl
 		{
 			auto& variables = localEnv().back().variables;
 			auto it = variables.find(name);
-			
+
 			//変数宣言文は、最も内側のスコープにある変数に対してのみ代入文としても振舞うことができる
 			//したがってこの場合は代入文と同様にアドレスの変更も捕捉する必要がある
 			if (it != variables.end())
@@ -367,7 +369,7 @@ namespace cgl
 				variables[name] = ID;
 			}
 		}
-		
+
 		void printContext(bool flag = false)const;
 		void printContext(std::ostream& os)const;
 
@@ -380,14 +382,14 @@ namespace cgl
 		/*
 		void assignToObject(Address address, const Val& newValue)
 		{
-			m_values[address] = newValue;
+		m_values[address] = newValue;
 		}
 
 		//これで正しい？
 		void assignAddress(Address addressTo, Address addressFrom)
 		{
-			m_values[addressTo] = m_values[addressFrom];
-			//m_values[addressTo] = expandRef(m_values[addressFrom]);
+		m_values[addressTo] = m_values[addressFrom];
+		//m_values[addressTo] = expandRef(m_values[addressFrom]);
 		}*/
 
 		//Accessorの示すリスト or レコードの持つアドレスを書き換える
@@ -408,54 +410,54 @@ namespace cgl
 
 		Context() = default;
 
-/*
-式中に現れ得る識別子は次の3種類に分けられる。
+		/*
+		式中に現れ得る識別子は次の3種類に分けられる。
 
-1. コロンの左側に出てくる識別子：
-　　最も内側のスコープにその変数が有ればその変数への参照
-　　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
+		1. コロンの左側に出てくる識別子：
+		　　最も内側のスコープにその変数が有ればその変数への参照
+		  　　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
 
-2. イコールの左側に出てくる識別子：
-　　スコープのどこかにその変数が有ればその変数への参照
-　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
+						   2. イコールの左側に出てくる識別子：
+						   　　スコープのどこかにその変数が有ればその変数への参照
+							 　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
 
-3. それ以外の場所に出てくる識別子：
-　　スコープのどこかにその変数が有ればその変数への参照
-　　　　　　　　　　　　　　　　無ければ無効な参照（エラー）
+											 3. それ以外の場所に出てくる識別子：
+											 　　スコープのどこかにその変数が有ればその変数への参照
+											   　　　　　　　　　　　　　　　　無ければ無効な参照（エラー）
 
-ここで、1の用法と2,3の用法を両立することは難しい（識別子を見ただけでは何を返すかが決定できないので）。
-しかし、1の用法はかなり特殊であるため、単に特別扱いしてもよい気がする。
-つまり、コロンの左側に出てこれるのは単一の識別子のみとする（複雑なものを書けてもそれほどメリットがなくデバッグが大変になるだけ）。
-これにより、コロン式を見た時に中の識別子も一緒に見れば済むので、上記の用法を両立できる。
-*/
-		/*boost::optional<Address> findValueID(const std::string& name)const
-		{
-			for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
-			{
-				auto variableIt = scopeIt->find(name);
-				if (variableIt != scopeIt->end())
-				{
-					return variableIt->second;
-				}
-			}
+															   ここで、1の用法と2,3の用法を両立することは難しい（識別子を見ただけでは何を返すかが決定できないので）。
+															   しかし、1の用法はかなり特殊であるため、単に特別扱いしてもよい気がする。
+															   つまり、コロンの左側に出てこれるのは単一の識別子のみとする（複雑なものを書けてもそれほどメリットがなくデバッグが大変になるだけ）。
+															   これにより、コロン式を見た時に中の識別子も一緒に見れば済むので、上記の用法を両立できる。
+															   */
+															   /*boost::optional<Address> findValueID(const std::string& name)const
+															   {
+															   for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
+															   {
+															   auto variableIt = scopeIt->find(name);
+															   if (variableIt != scopeIt->end())
+															   {
+															   return variableIt->second;
+															   }
+															   }
 
-			return boost::none;
-		}*/
+															   return boost::none;
+															   }*/
 
-		
-		/*Address findAddress(const std::string& name)const
-		{
-			for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
-			{
-				auto variableIt = scopeIt->find(name);
-				if (variableIt != scopeIt->end())
-				{
-					return variableIt->second;
-				}
-			}
 
-			return Address::Null();
-		}*/
+															   /*Address findAddress(const std::string& name)const
+															   {
+															   for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
+															   {
+															   auto variableIt = scopeIt->find(name);
+															   if (variableIt != scopeIt->end())
+															   {
+															   return variableIt->second;
+															   }
+															   }
+
+															   return Address::Null();
+															   }*/
 		Address findAddress(const std::string& name)const;
 
 		void garbageCollect();
@@ -489,18 +491,18 @@ namespace cgl
 		//内側のスコープから順番に変数を探して返す
 		/*boost::optional<unsigned> findValueID(const std::string& name)const
 		{
-			boost::optional<unsigned> valueIDOpt;
+		boost::optional<unsigned> valueIDOpt;
 
-			for (auto it = m_bindingNames.rbegin(); it != m_bindingNames.rend(); ++it)
-			{
-				valueIDOpt = it->find(name);
-				if (valueIDOpt)
-				{
-					break;
-				}
-			}
+		for (auto it = m_bindingNames.rbegin(); it != m_bindingNames.rend(); ++it)
+		{
+		valueIDOpt = it->find(name);
+		if (valueIDOpt)
+		{
+		break;
+		}
+		}
 
-			return valueIDOpt;
+		return valueIDOpt;
 		}*/
 
 	public:
@@ -528,6 +530,7 @@ namespace cgl
 	};
 }
 
+#ifdef commentout
 namespace cereal
 {
 	template<class Archive>
@@ -540,15 +543,15 @@ namespace cereal
 	/*template<class Archive>
 	inline void serialize(Archive& ar, cgl::Context::BuiltInFunction& function)
 	{
-		ar(values.m_values);
-		ar(values.m_ID);
+	ar(values.m_values);
+	ar(values.m_ID);
 	}
 
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Values<cgl::Context::BuiltInFunction>& values)
 	{
-		ar(values.m_values);
-		ar(values.m_ID);
+	ar(values.m_values);
+	ar(values.m_ID);
 	}*/
 
 	template<class Archive>
@@ -557,6 +560,20 @@ namespace cereal
 		ar(values.m_values);
 		ar(values.m_ID);
 	}
+
+	/*template<class Archive>
+	inline void save(Archive& ar, const cgl::Values<cgl::Val>& values)
+	{
+		ar(values.m_values);
+		ar(values.m_ID);
+	}
+
+	template<class Archive>
+	inline void load(Archive& ar, cgl::Values<cgl::Val>& values)
+	{
+		ar(values.m_values);
+		ar(values.m_ID);
+	}*/
 
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Context& context)
@@ -571,6 +588,43 @@ namespace cereal
 		ar(context.m_lastGCValueSize);
 		ar(context.m_automaticExtendMode);
 		ar(context.m_automaticGC);
+
+		//std::uniform_real_distribution<double> m_dist;
+		//std::mt19937 m_random;
+		//std::weak_ptr<Context> m_weakThis;
+	}
+}
+#endif
+
+namespace boost::serialization
+{
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Scope& scope, unsigned int)
+	{
+		ar & scope.variables;
+		ar & scope.temporaryAddresses;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Values<cgl::Val>& values, unsigned int)
+	{
+		ar & values.m_values;
+		ar & values.m_ID;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Context& context, unsigned int)
+	{
+		//ar & context.m_functions;
+		ar & context.m_plateausFunctions;
+		ar & context.m_refAddressMap;
+		ar & context.m_addressRefMap;
+		ar & context.m_values;
+		ar & context.m_localEnvStack;
+		ar & context.m_referenceID;
+		ar & context.m_lastGCValueSize;
+		ar & context.m_automaticExtendMode;
+		ar & context.m_automaticGC;
 
 		//std::uniform_real_distribution<double> m_dist;
 		//std::mt19937 m_random;

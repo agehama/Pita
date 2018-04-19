@@ -171,18 +171,6 @@ namespace cgl
 		void operator()(const DeclFree& node)const {}
 	};
 
-	std::string AsUtf8(const std::u32string& input) {
-		return std::string(
-			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.begin()),
-			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.end()));
-	}
-
-	std::u32string AsUtf32(const std::string& input) {
-		return std::u32string(
-			boost::u8_to_u32_iterator<std::string::const_iterator>(input.begin()),
-			boost::u8_to_u32_iterator<std::string::const_iterator>(input.end()));
-	}
-
 	std::string EscapedSourceCode(const std::string& sourceCode)
 	{
 		std::stringstream escapedStr;

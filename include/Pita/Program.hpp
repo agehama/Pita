@@ -10,10 +10,6 @@ namespace cgl
 	class Program
 	{
 	public:
-		/*Program() :
-			pEnv(Context::Make()),
-			evaluator(pEnv)
-		{}*/
 		Program();
 
 		//boost::optional<Val> execute(const std::string& program);

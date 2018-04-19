@@ -6,7 +6,7 @@
 #include <Pita/Printer.hpp>
 
 #ifdef __has_include
-#  if __has_include("PitaStd")
+#  if __has_include(<Pita/PitaStd>)
 #    define CGL_HAS_STANDARD_FILE
 #  endif
 #endif
@@ -22,21 +22,53 @@ namespace cgl
 		pEnv(Context::Make()),
 		evaluator(pEnv)
 	{
-		const std::string pitaStd =
-#include "PitaStd"
-			;
+		std::vector<std::string> pitaStdSplitted({
+#include <Pita/PitaStd>
+			});
+
+		/*std::string pitaStd;
+		pitaStd.reserve(940018);
+		for (const auto& str : pitaStdSplitted)
+		{
+			pitaStd.append(str);
+		}*/
 
 		std::stringstream ss;
-		ss << pitaStd;
-		cereal::JSONInputArchive iarchive(ss);
-		iarchive(pEnv);
+		//ss << pitaStd;
+		for (const auto& str : pitaStdSplitted)
+		{
+			//pitaStd.append(str);
+			ss << str;
+		}
+		/*cereal::JSONInputArchive iarchive(ss);
+		Context& context = *pEnv;
+		iarchive(context);*/
+
+		boost::archive::text_iarchive ar(ss);
+		Context& context = *pEnv;
+		ar >> boost::serialization::make_nvp("Context", context);
 	}
 #else
+#error "test"
 	Program::Program() :
 		pEnv(Context::Make()),
 		evaluator(pEnv)
 	{}
 #endif
+
+	inline std::vector<std::string> SplitStringVSCompatible(const std::string& str)
+	{
+		std::vector<std::string> result;
+
+		const int divLength = 16380;
+		while (result.size() * divLength < str.length())
+		{
+			const size_t offset = result.size() * divLength;
+			result.push_back(std::string(str.begin() + offset, str.begin() + std::min(offset + divLength, str.length())));
+		}
+
+		return result;
+	}
 
 	//boost::optional<Expr> Program::parse(const std::string& program)
 	//{
@@ -391,10 +423,29 @@ namespace cgl
 					std::cerr << "execute succeeded" << std::endl;
 				}
 
+				std::stringstream ss;
+				/*{
+					cereal::JSONOutputArchive oarchive(ss);
+					Context& context = *pEnv;
+					oarchive(context);
+				}*/
+				{
+					boost::archive::text_oarchive ar(ss);
+					Context& context = *pEnv;
+					ar << boost::serialization::make_nvp("Context", context);
+				}
+
 				std::ofstream ofs(output_filename);
-				cereal::JSONOutputArchive oarchive(ofs);
-				Context& context = *pEnv;
-				oarchive(context);
+				const auto splittedStr = SplitStringVSCompatible(ss.str());
+				for (size_t i = 0; i < splittedStr.size(); ++i)
+				{
+					ofs << "std::string(R\"(" << splittedStr[i] << ")\")";
+					if (i + 1 < splittedStr.size())
+					{
+						ofs << ',';
+					}
+				}
+
 				return true;
 			}
 			else

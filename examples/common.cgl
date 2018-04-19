@@ -1,4 +1,4 @@
-transform = (pos, scale, angle, vertex -> 
+Transform = (pos, scale, angle, vertex -> 
     cosT: Cos(angle), sinT: Sin(angle)
     {
         x: pos.x + cosT * scale.x * vertex.x - sinT * scale.y * vertex.y
@@ -6,44 +6,44 @@ transform = (pos, scale, angle, vertex ->
     }
 )
 
-shape = {
+Shape = {
     pos: {x:0, y:0}
     scale: {x:1, y:1}
     angle: 0
-    globalPos: (p -> transform(@pos, @scale, @angle, p))
+    globalPos: (p -> Transform(@pos, @scale, @angle, p))
 }
 
-mid = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
-mid3 = (a, b, c -> {x: (a.x + b.x + c.x)/3.0, y: (a.y + b.y + c.y)/3.0})
+Mid = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
+Mid3 = (a, b, c -> {x: (a.x + b.x + c.x)/3.0, y: (a.y + b.y + c.y)/3.0})
 
-moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
+Moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
 
-vec2 = (x, y -> {x: x, y: y})
-x2 = (v -> {x: v, y: v})
+Vec2 = (x, y -> {x: x, y: y})
+X2 = (v -> {x: v, y: v})
 
-add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
-sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
+Add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
+Sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
 
-mul = (v, a -> {x: v.x * a, y: v.y * a})
-div = (v, a -> {x: v.x / a, y: v.y / a})
+Mul = (v, a -> {x: v.x * a, y: v.y * a})
+Div = (v, a -> {x: v.x / a, y: v.y / a})
 
-lerp = (p0, p1, t -> add(p0, mul(sub(p1, p0), t)))
+Lerp = (p0, p1, t -> Add(p0, Mul(Sub(p1, p0), t)))
 
-sqrt = (x -> x^0.5)
+Sqrt = (x -> x^0.5)
 
-length = (v -> sqrt(v.x*v.x + v.y*v.y))
-setLength = (v, l -> mul(div(v, length(v)), l))
+Length = (v -> Sqrt(v.x*v.x + v.y*v.y))
+SetLength = (v, l -> Mul(Div(v, Length(v)), l))
 
-lineLength = (l -> ((l[1].x - l[0].x)^2 + (l[1].y - l[0].y)^2)^0.5)
+LineLength = (l -> ((l[1].x - l[0].x)^2 + (l[1].y - l[0].y)^2)^0.5)
 
-rgb = (r, g, b -> {r: r, g: g, b: b})
+Rgb = (r, g, b -> {r: r, g: g, b: b})
 
-contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
-distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
+Contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
+Distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
 
-parallel = (l1, l2 -> (l1[1].y - l1[0].y)*(l2[1].x - l2[0].x) == (l1[1].x - l1[0].x)*(l2[1].y - l2[0].y))
+Parallel = (l1, l2 -> (l1[1].y - l1[0].y)*(l2[1].x - l2[0].x) == (l1[1].x - l1[0].x)*(l2[1].y - l2[0].y))
 
-square = shape{
+Square = Shape{
     polygon: [
         {x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}
         {x: +0.5, y: +0.5}, {x: -0.5, y: +0.5}
@@ -52,14 +52,14 @@ square = shape{
     topRight:    (->globalPos( polygon[1] ))
     bottomRight: (->globalPos( polygon[2] ))
     bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( mid(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( mid(polygon[2], polygon[3]) ))
-    left:        (->globalPos( mid(polygon[0], polygon[3]) ))
-    right:       (->globalPos( mid(polygon[1], polygon[2]) ))
-    center:      (->mid(top(), bottom()))
+    top:         (->globalPos( Mid(polygon[0], polygon[1]) ))
+    bottom:      (->globalPos( Mid(polygon[2], polygon[3]) ))
+    left:        (->globalPos( Mid(polygon[0], polygon[3]) ))
+    right:       (->globalPos( Mid(polygon[1], polygon[2]) ))
+    center:      (->Mid(top(), bottom()))
 }
 
-triangle = shape{
+Triangle = Shape{
     polygon: [
         {x: 0, y: -0.5773502691896}
         {x: 0.5, y: 0.2886751345948}
@@ -72,33 +72,33 @@ triangle = shape{
     top:         (->globalPos( polygon[0] ))
     bottomRight: (->globalPos( polygon[1] ))
     bottomLeft:  (->globalPos( polygon[2] ))
-    bottom:      (->globalPos( mid(polygon[1], polygon[2]) ))
+    bottom:      (->globalPos( Mid(polygon[1], polygon[2]) ))
     left:        (->globalPos( polygon[2] ))
     right:       (->globalPos( polygon[1] ))
-    center:      (->globalPos( mid3(polygon[0], polygon[1], polygon[2]) ))
+    center:      (->globalPos( Mid3(polygon[0], polygon[1], polygon[2]) ))
     bottomEdge:  (->[p2(), p1()])
 }
 
-hexagon = shape{
+Hexagon = Shape{
     r = 0.5
     polygon: for i in 0:5 list(
-        vec2(r*Cos(60*i), r*Sin(60*i))
+        Vec2(r*Cos(60*i), r*Sin(60*i))
     )
     p: (index -> globalPos( polygon[index] ))
 }
 
-circle = (quality -> shape{
+Circle = (quality -> Shape{
     r = 0.5
     delta = 360.0 / quality
     polygon: for i in 0:quality list(
         angle = delta*i
-        vec2(r*Cos(angle), r*Sin(angle))
+        Vec2(r*Cos(angle), r*Sin(angle))
     )
 })
 
-arrow = shape{
-    body: square{scale = vec2(20, 200), sat(contact(bottom(), vec2(0, 0))), var(pos)}
-    head: triangle{scale = vec2(50, 50), sat(contact(bottom(), body.top())), var(pos)}
+Arrow = Shape{
+    body: Square{scale = Vec2(20, 200), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
+    head: Triangle{scale = Vec2(50, 50), sat(Contact(bottom(), body.top())), var(pos)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))
 }

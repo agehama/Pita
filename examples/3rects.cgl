@@ -1,11 +1,9 @@
-import "common.cgl"
+main = Shape{
+    a: Square{scale = {x: 30, y: 30}, fill: {r: 255, g: 0, b: 0}}
+    b: Square{scale = {x: 40, y: 40}, fill: {r: 0, g: 255, b: 0}}
+    c: Square{scale = {x: 50, y: 50}, fill: {r: 0, g: 0, b: 255}}
 
-main = shape{
-    a: square{scale = {x: 30, y: 30}, fill: {r: 255, g: 0, b: 0}}
-    b: square{scale = {x: 40, y: 40}, fill: {r: 0, g: 255, b: 0}}
-    c: square{scale = {x: 50, y: 50}, fill: {r: 0, g: 0, b: 255}}
-
-    sat( contact(a.topRight(), b.bottomLeft()) & contact(a.bottomRight(), c.topLeft()) )
-    sat( contact(b.bottomRight(), c.topRight()) )
+    sat( Contact(a.topRight(), b.bottomLeft()) & Contact(a.bottomRight(), c.topLeft()) )
+    sat( Contact(b.bottomRight(), c.topRight()) )
     var(b.pos in {x: [0, 10], y: [20, 30]}, c.pos in {x: [-10, 10], y: [45, 55]}, c.angle in [90, 180])
 }

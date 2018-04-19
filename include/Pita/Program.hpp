@@ -49,5 +49,6 @@ namespace cgl
 		Eval evaluator;
 		boost::optional<Val> evaluated;
 		bool succeeded;
+		bool isInitialized;
 	};
 }

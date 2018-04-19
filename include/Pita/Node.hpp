@@ -37,6 +37,7 @@
 #include <boost/serialization/variant.hpp>
 #include <boost/serialization/split_free.hpp>
 
+#pragma comment(lib, "libboost_serialization-vc141-mt-s-x32-1_66.lib")
 /*
 #include <cereal/types/memory.hpp>
 #include <cereal/types/array.hpp>
@@ -920,6 +921,8 @@ namespace cgl
 	{
 		Expr lhs;
 		UnaryOp op;
+
+		UnaryExpr() = default;
 
 		UnaryExpr(const Expr& lhs, UnaryOp op) :
 			lhs(lhs), op(op)
@@ -3079,6 +3082,12 @@ namespace boost::serialization
 		ar & node.variableAppearances;
 		ar & node.groupConstraints;
 		ar & node.constraintGroups;
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, Eigen::Vector2d& node, unsigned int version)
+	{
+		split_free(ar, node, version);
 	}
 
 	template<class Archive>

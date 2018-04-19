@@ -55,11 +55,14 @@ set(CGL_EIGEN_TARGET_DIR "eigen")
 set(CGL_GEOS_TARGET_DIR "geos")
 set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 
-#find_package(Boost 1.57.0 REQUIRED serialization)
-find_package(Boost 1.57.0)
+if(MSVC)
+  find_package(Boost 1.57.0)
+else()
+  find_package(Boost 1.57.0 REQUIRED serialization)
+endif()
+
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
-#  target_link_libraries(Boost::serialization)
 endif()
 
 include_directories(external/Eigen)
@@ -70,8 +73,6 @@ include_directories(external/geos)
 include_directories(external/libcmaes/src)
 include_directories(external/Siv3D)
 include_directories(external/cxxopts/include)
-include_directories(external/cereal/include)
-include_directories(external/cereal_compatible)
 
 #message("${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib")
 

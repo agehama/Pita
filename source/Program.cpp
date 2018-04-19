@@ -20,39 +20,29 @@ namespace cgl
 #ifdef CGL_HAS_STANDARD_FILE
 	Program::Program() :
 		pEnv(Context::Make()),
-		evaluator(pEnv)
+		evaluator(pEnv),
+		isInitialized(true)
 	{
+		std::cout << "Load PitaStd ..." << std::endl;
 		std::vector<std::string> pitaStdSplitted({
 #include <Pita/PitaStd>
 			});
 
-		/*std::string pitaStd;
-		pitaStd.reserve(940018);
-		for (const auto& str : pitaStdSplitted)
-		{
-			pitaStd.append(str);
-		}*/
-
 		std::stringstream ss;
-		//ss << pitaStd;
 		for (const auto& str : pitaStdSplitted)
 		{
-			//pitaStd.append(str);
 			ss << str;
 		}
-		/*cereal::JSONInputArchive iarchive(ss);
-		Context& context = *pEnv;
-		iarchive(context);*/
 
 		boost::archive::text_iarchive ar(ss);
 		Context& context = *pEnv;
-		ar >> boost::serialization::make_nvp("Context", context);
+		ar >> context;
 	}
 #else
-#error "test"
 	Program::Program() :
 		pEnv(Context::Make()),
-		evaluator(pEnv)
+		evaluator(pEnv),
+		isInitialized(false)
 	{}
 #endif
 
@@ -347,7 +337,11 @@ namespace cgl
 
 	void Program::clear()
 	{
-		pEnv = Context::Make();
+		if (!isInitialized)
+		{
+			pEnv = Context::Make();
+			isInitialized = true;
+		}
 		evaluated = boost::none;
 		evaluator = Eval(pEnv);
 		succeeded = false;
@@ -416,37 +410,53 @@ namespace cgl
 				}
 
 				if (logOutput) std::cerr << "execute..." << std::endl;
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
-				evaluated = pEnv->expand(lrvalue, LocationInfo());
-				if (logOutput)
-				{
-					std::cerr << "execute succeeded" << std::endl;
-				}
 
-				std::stringstream ss;
-				/*{
-					cereal::JSONOutputArchive oarchive(ss);
-					Context& context = *pEnv;
-					oarchive(context);
-				}*/
+				const Expr expr = exprOpt.get();
+				if (IsType<Lines>(expr))
 				{
-					boost::archive::text_oarchive ar(ss);
-					Context& context = *pEnv;
-					ar << boost::serialization::make_nvp("Context", context);
-				}
+					const Lines& lines = As<Lines>(expr);
+					pEnv->enterScope();
 
-				std::ofstream ofs(output_filename);
-				const auto splittedStr = SplitStringVSCompatible(ss.str());
-				for (size_t i = 0; i < splittedStr.size(); ++i)
-				{
-					ofs << "std::string(R\"(" << splittedStr[i] << ")\")";
-					if (i + 1 < splittedStr.size())
+					Val result;
+					for (const auto& expr : lines.exprs)
 					{
-						ofs << ',';
-					}
-				}
+						result = pEnv->expand(boost::apply_visitor(evaluator, expr), lines);
 
-				return true;
+						if (IsType<Jump>(result))
+						{
+							break;
+						}
+					}
+
+					if (logOutput)
+					{
+						std::cerr << "execute succeeded" << std::endl;
+					}
+
+					std::stringstream ss;
+					{
+						boost::archive::text_oarchive ar(ss);
+						Context& context = *pEnv;
+						ar << context;
+					}
+
+					std::ofstream ofs(output_filename);
+					const auto splittedStr = SplitStringVSCompatible(ss.str());
+					for (size_t i = 0; i < splittedStr.size(); ++i)
+					{
+						ofs << "std::string(R\"(" << splittedStr[i] << ")\")";
+						if (i + 1 < splittedStr.size())
+						{
+							ofs << ',';
+						}
+					}
+
+					return true;
+				}
+				else
+				{
+					std::cout << "Execute failed" << std::endl;
+				}
 			}
 			else
 			{

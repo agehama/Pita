@@ -733,9 +733,12 @@ int main(int argc, char* argv[])
 
 	calculating = true;
 	cgl::Program program;
+
 	//program.execute1(input_file, output_file);
+	//*
 	const bool flag = program.preEvaluate(input_file, output_file);
 	std::cout << std::boolalpha << "Result: " << flag << std::endl;
+	//*/
 
 	return 0;
 }

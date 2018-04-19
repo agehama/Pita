@@ -1,10 +1,8 @@
-import "common.cgl"
-
-route = shape{
-    rect: square{scale = {x: 200, y: 100}, pos = {x: 100, y: 100}}
+route = Shape{
+    rect: Square{scale = {x: 200, y: 100}, pos = {x: 100, y: 100}}
     arrow: path{
         points: 10
-        passes: [rect.top(), moved(rect.right(), 50, 0), rect.bottom()]
+        passes: [rect.top(), Moved(rect.right(), 50, 0), rect.bottom()]
         obstacles: [Buffer(rect, 10)]
         stroke: {r: 0, g: 255, b: 0}
     }

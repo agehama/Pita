@@ -1,11 +1,9 @@
-import "common.cgl"
-
 main = {
-    a: square{scale=x2(100), angle=45}
+    a: Square{scale=X2(100), angle=45}
     b: a{pos= a.bottomLeft(), 
-        sat( distant(a.bottom(), top(), 10) & parallel([a.top(), a.bottom()], [a.bottom(), top()]) ), 
+        sat( Distant(a.bottom(), top(), 10) & parallel([a.top(), a.bottom()], [a.bottom(), top()]) ), 
         var(pos)}
     c: a{pos= a.topRight(), 
-        sat( distant(a.right(), left(), 10) & parallel([a.left(), a.right()], [a.right(), left()]) ), 
+        sat( Distant(a.right(), left(), 10) & parallel([a.left(), a.right()], [a.right(), left()]) ), 
         var(pos)}
 }

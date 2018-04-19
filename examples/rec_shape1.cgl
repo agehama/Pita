@@ -1,21 +1,19 @@
-import "common.cgl"
-
 shapeList = (f, depth -> 
-	if depth == 0
-	then shape{
-		a: triangle{}
-	}
-	else shape{
-		a: triangle{}
-		b: f(f, depth-1){
-			pos.y = -1
-			angle = 15
-			scale = x2(0.96)
-		}
-	}
+    if depth == 0
+    then Shape{
+        a: Triangle{}
+    }
+    else Shape{
+        a: Triangle{}
+        b: f(f, depth-1){
+            pos.y = -1
+            angle = 15
+            scale = X2(0.96)
+        }
+    }
 )
 
-tree = shape{
-	depth = 100
-	a: shapeList(shapeList, depth){scale = x2(60)}
+tree = Shape{
+    depth = 100
+    a: shapeList(shapeList, depth){scale = X2(60)}
 }

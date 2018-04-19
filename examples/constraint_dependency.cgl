@@ -1,10 +1,8 @@
-import "common.cgl"
-
-main = shape{
+main = Shape{
     ss: []
     num = 70
     for i in 0:num-1 do(
-        ss[i] = square{
+        ss[i] = Square{
             scale = {x: 30, y: 30}
             pos = {x: 45*i, y:200*Sin(170*i)}
             angle = i*35
@@ -12,7 +10,13 @@ main = shape{
         var(ss[i].pos, ss[i].angle)
     )
     for i in 0:num/2-1 do(
-        sat( contact(ss[i*2].bottomRight(), ss[i*2+1].bottomLeft()) )
+        sat( Contact(ss[i*2].bottomRight(), ss[i*2+1].bottomLeft()) )
     )
 }
 
+arrow = Shape{
+    body: Square{scale: Vec2(20, 200), pos: Vec2(0, 100)}
+    head: Triangle{scale: Vec2(50, 50), pos: Vec2(0, 0)}
+    begin: (->globalPos(body.bottom()))
+    end: (->globalPos(head.top()))
+}

@@ -1,16 +1,14 @@
-import "common.cgl"
-
 div3 = (p, q -> {x: (q.x - p.x) / 3.0, y: (q.y - p.y) / 3.0})
 
 koch_template = (p, q ->
-    v = sub(p, q)
+    v = Sub(p, q)
     n = {x: -v.y, y: v.x}
     vby3 = div3(p, q)
-    m = div(add(p, q), 2.0)
-    nby3 = setLength(n, 0.5*sqrt(3.0)*length(vby3))
-    m1 = add(p, vby3)
-    m2 = add(m1, vby3)
-    ps = [p, m1, add(m, nby3), m2, q]
+    m = Div(Add(p, q), 2.0)
+    nby3 = SetLength(n, 0.5*Sqrt(3.0)*length(vby3))
+    m1 = Add(p, vby3)
+    m2 = Add(m1, vby3)
+    ps = [p, m1, Add(m, nby3), m2, q]
     [[ps[0], ps[1]], [ps[1], ps[2]], [ps[2], ps[3]], [ps[3], ps[4]]]
 )
 
@@ -30,26 +28,26 @@ rec_curve = (f, depth, template, ps ->
     }
 )
 
-curve = (depth -> shape{
-    a: shape{
+curve = (depth -> Shape{
+    a: Shape{
         c: rec_curve(rec_curve, depth, koch_template, [{x:0,y:0}, {x:10,y:0}])
-        scale = x2(70)
+        scale = X2(70)
     }
-    stroke: rgb(0, 0, 0)
+    stroke: Rgb(0, 0, 0)
 })
 
-snowflake = (depth -> shape{
-    tri = square{scale = {x: 10, y: 10}}
-    a: shape{
+snowflake = (depth -> Shape{
+    tri = Square{scale = {x: 10, y: 10}}
+    a: Shape{
         l: [
             rec_curve(rec_curve, depth, koch_template, [tri.topLeft(), tri.topRight()])
             rec_curve(rec_curve, depth, koch_template, [tri.topRight(), tri.bottomRight()])
             rec_curve(rec_curve, depth, koch_template, [tri.bottomRight(), tri.bottomLeft()])
             rec_curve(rec_curve, depth, koch_template, [tri.bottomLeft(), tri.topLeft()])
         ]
-        scale = x2(70)
+        scale = X2(70)
     }
-    stroke: rgb(0, 0, 0)
+    stroke: Rgb(0, 0, 0)
 })
 
 main = snowflake(5){

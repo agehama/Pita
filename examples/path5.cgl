@@ -1,7 +1,7 @@
-route = shape{
-    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+route = Shape{
+    rect = Square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
     tri = hexagon{scale: {x:100, y:100}}
-    arrow: BuildPath([rect.top(), moved(rect.right(), 200, 0)], 10){
+    arrow: BuildPath([rect.top(), Moved(rect.right(), 200, 0)], 10){
         stroke: {r: 0, g: 255, b: 0}
     }
     arrow2: OffsetPath(arrow, 100.0){

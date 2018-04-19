@@ -1,23 +1,21 @@
-import "common.cgl"
+baseColor = Rgb(245, 245, 245)
+mainColor = Rgb(49, 187, 222)
+accentColor = Rgb(68, 84, 106)
 
-baseColor = rgb(245, 245, 245)
-mainColor = rgb(49, 187, 222)
-accentColor = rgb(68, 84, 106)
-
-arrow = shape{
-    body: square{scale: vec2(400, 20), pos: vec2(-200, 0)}
-    head: triangle{scale: x2(50), pos: x2(0), angle: 90}
+arrow = Shape{
+    body: Square{scale: Vec2(400, 20), pos: Vec2(-200, 0)}
+    head: Triangle{scale: X2(50), pos: X2(0), angle: 90}
 }
 
-kite = shape{
+kite = Shape{
     polygon: [
         {x: 0, y: 0}, {x: 20, y: -5}, {x: 40, y: 0}, {x: 20, y: +5}
     ]
-    begin: (->transform(@pos, @scale, @angle, polygon[0]))
-    end:   (->transform(@pos, @scale, @angle, polygon[2]))
+    begin: (->Transform(@pos, @scale, @angle, polygon[0]))
+    end:   (->Transform(@pos, @scale, @angle, polygon[2]))
 }
 
-skeleton = (num -> shape{
+skeleton = (num -> Shape{
     ss: []
     for i in 0:num-1 do(
         newKite = kite{pos.x = 100*i}
@@ -25,15 +23,15 @@ skeleton = (num -> shape{
         var(newKite.pos, newKite.angle)
     )
     for i in 0:num-2 do(
-        sat( contact(ss[i].end(), ss[i+1].begin()) )
+        sat( Contact(ss[i].end(), ss[i+1].begin()) )
     )
-    begin: (->transform(@pos, @scale, @angle, ss[0].begin()))
-    end:   (->transform(@pos, @scale, @angle, ss[num-1].end()))
+    begin: (->Transform(@pos, @scale, @angle, ss[0].begin()))
+    end:   (->Transform(@pos, @scale, @angle, ss[num-1].end()))
 })
 
-arrow = shape{
-    body: square{scale = vec2(20, 200), sat(contact(bottom(), vec2(0, 0))), var(pos)}
-    head: triangle{scale = vec2(50, 50), sat(contact(bottom(), body.top())), var(pos)}
+arrow = Shape{
+    body: Square{scale = Vec2(20, 200), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
+    head: Triangle{scale = Vec2(50, 50), sat(Contact(bottom(), body.top())), var(pos)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))
 }
@@ -41,33 +39,33 @@ arrow = shape{
 main = {
     xmax = 300.0
 
-    rect = square{scale: vec2(50, 20), pos: vec2(0, -100)}
+    rect = Square{scale: Vec2(50, 20), pos: Vec2(0, -100)}
     rectL: rect{sat(left().x == 0), var(pos.x)}
     rectR: rect{sat(right().x == xmax), var(pos.x)}
     
-    pole = square{scale: vec2(3, 20), fill: mainColor}
-    poleL: pole{sat( contact(lerp(rectL.top(), rectL.topRight(), 0.7), bottom()) ), var(pos)}
-    poleR: pole{sat( contact(lerp(rectR.top(), rectR.topLeft(), 0.7), bottom()) ), var(pos)}
+    pole = Square{scale: Vec2(3, 20), fill: mainColor}
+    poleL: pole{sat( Contact(Lerp(rectL.top(), rectL.topRight(), 0.7), bottom()) ), var(pos)}
+    poleR: pole{sat( Contact(Lerp(rectR.top(), rectR.topLeft(), 0.7), bottom()) ), var(pos)}
 
-    rail: shape{
+    rail: Shape{
         line: [poleL.top(), poleR.top()]
         stroke: mainColor
-        center: (->globalPos(mid(line[0], line[1])))
+        center: (->globalPos(Mid(line[0], line[1])))
     }
 
-    s: circle(20){scale: x2(10), pos: rail.center()}
+    s: Circle(20){scale: X2(10), pos: rail.center()}
 
-    sinPath = FunctionPath(Sin, 0, 1440, 500){ scale: vec2(xmax/1440.0, 10) }
-    ocean: shape{
-        polygon: sinPath.line @ [vec2(1440, 5), vec2(0, 5)]
+    sinPath = FunctionPath(Sin, 0, 1440, 500){ scale: Vec2(xmax/1440.0, 10) }
+    ocean: Shape{
+        polygon: sinPath.line @ [Vec2(1440, 5), Vec2(0, 5)]
         scale: sinPath.scale
         fill: mainColor
     }
 
     bridge: skeleton(7){
-        pos: vec2(xmax*0.5 - (end().x + begin().x)*0.5, 0)
-        sat( contact(begin(), rectL.topRight()) )
-        sat( contact(end(), rectR.topLeft()) )
+        pos: Vec2(xmax*0.5 - (end().x + begin().x)*0.5, 0)
+        sat( Contact(begin(), rectL.topRight()) )
+        sat( Contact(end(), rectR.topLeft()) )
     }
     
     fill: baseColor

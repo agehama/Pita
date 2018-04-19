@@ -1,13 +1,12 @@
+NotIntersectsMin = (a, b -> intersection(a, b) + Area(BoundingBox(a, b)))
 
-NotIntersectsMin = (a, b -> intersection(a, b) + area(BoundingBox(a, b)))
-
-main = shape{
-	a: text{
-		str: "図"
-	}
-	b: text{
-		str: "形"
-	}
-	sat(NotIntersectsMin(a, b))
-	var(b.pos)
+main = Shape{
+    a: text{
+        str: "図"
+    }
+    b: text{
+        str: "形"
+    }
+    sat(NotIntersectsMin(a, b))
+    var(b.pos)
 }

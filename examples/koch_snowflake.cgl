@@ -1,16 +1,14 @@
-import "common.cgl"
-
 div3 = (p, q -> {x: (q.x - p.x) / 3.0, y: (q.y - p.y) / 3.0})
 
 koch_template = (p, q ->
-    v = sub(p, q)
+    v = Sub(p, q)
     n = {x: -v.y, y: v.x}
     vby3 = div3(p, q)
-    m = div(add(p, q), 2.0)
-    nby3 = setLength(n, 0.5*sqrt(3.0)*length(vby3))
-    m1 = add(p, vby3)
-    m2 = add(m1, vby3)
-    ps = [p, m1, add(m, nby3), m2, q]
+    m = Div(Add(p, q), 2.0)
+    nby3 = SetLength(n, 0.5*Sqrt(3.0)*length(vby3))
+    m1 = Add(p, vby3)
+    m2 = Add(m1, vby3)
+    ps = [p, m1, Add(m, nby3), m2, q]
     [[ps[0], ps[1]], [ps[1], ps[2]], [ps[2], ps[3]], [ps[3], ps[4]]]
 )
 
@@ -31,16 +29,16 @@ rec_curve = (f, depth, template, ps ->
     }
 )
 
-tree = shape{
-    tri = triangle{scale = {x: 10, y: 10}}
+tree = Shape{
+    tri = Triangle{scale = {x: 10, y: 10}}
     depth = 5
-    a: shape{
+    a: Shape{
         l: [
             rec_curve(rec_curve, depth, koch_template, [tri.p0(), tri.p1()])
             rec_curve(rec_curve, depth, koch_template, [tri.p1(), tri.p2()])
             rec_curve(rec_curve, depth, koch_template, [tri.p2(), tri.p0()])
         ]
-        scale = x2(70)
+        scale = X2(70)
     }
     stroke: {r: 91, g: 155, b: 213}
 }

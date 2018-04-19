@@ -1,81 +1,79 @@
-import "common.cgl"
-
-baseColor = rgb(49, 187, 222)
-mainColor = rgb(245, 245, 245)
+baseColor = Rgb(49, 187, 222)
+mainColor = Rgb(245, 245, 245)
 
 fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
 fontTitle = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/34828"
 
-arrow = shape{
-    body: square{scale = vec2(20, 100), sat(contact(bottom(), vec2(0, 0))), var(pos)}
-    head: triangle{scale = vec2(50, 50), sat(contact(bottom(), body.top())), var(pos)}
+arrow = Shape{
+    body: Square{scale = Vec2(20, 100), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
+    head: Triangle{scale = Vec2(50, 50), sat(Contact(bottom(), body.top())), var(pos)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))
-    length: (->length(sub(begin(), end())))
+    length: (->length(Sub(begin(), end())))
 }
 
 main = {
     arrowDown = arrow{angle: 180}
 
-    interval = vec2(0, 50)
-    a= square{scale: vec2(500, 100), fill:baseColor}
-    b= square{scale: vec2(500, 100), fill:baseColor, sat( contact(moved(a.bottom(), interval.x, interval.y), top()) ), var(pos)}
-    c= square{scale: vec2(500, 100), fill:baseColor, sat( contact(moved(b.bottom(), interval.x, interval.y), top()) ), var(pos)}
+    interval = Vec2(0, 50)
+    a= Square{scale: Vec2(500, 100), fill:baseColor}
+    b= Square{scale: Vec2(500, 100), fill:baseColor, sat( Contact(Moved(a.bottom(), interval.x, interval.y), top()) ), var(pos)}
+    c= Square{scale: Vec2(500, 100), fill:baseColor, sat( Contact(Moved(b.bottom(), interval.x, interval.y), top()) ), var(pos)}
 
-    a_ : shape{
+    a_ : Shape{
         a: ShapeOuterPath(a)
         stroke: baseColor
     }
-    b_ : shape{
+    b_ : Shape{
         a: ShapeOuterPath(b)
         stroke: baseColor
     }
-    c_ : shape{
+    c_ : Shape{
         a: ShapeOuterPath(c)
         stroke: baseColor
     }
 
     d: [
-        shape{
-            text: BuildText("依存性解析", {}, fontPath){pos:x2(0)}
-            sat( contact(BoundingBox(text).center, a.center()) )
+        Shape{
+            text: BuildText("依存性解析", {}, fontPath){pos:X2(0)}
+            sat( Contact(BoundingBox(text).center, a.center()) )
             var(text.pos)
             fill: baseColor
         }
-        shape{
-            text: BuildText("成立判定", {}, fontPath){pos:x2(0)}
-            sat( contact(BoundingBox(text).center, b.center()) )
+        Shape{
+            text: BuildText("成立判定", {}, fontPath){pos:X2(0)}
+            sat( Contact(BoundingBox(text).center, b.center()) )
             var(text.pos)
             fill: baseColor
         }
-        shape{
-            text: BuildText("数値計算", {}, fontPath){pos:x2(0)}
-            sat( contact(BoundingBox(text).center, c.center()) )
+        Shape{
+            text: BuildText("数値計算", {}, fontPath){pos:X2(0)}
+            sat( Contact(BoundingBox(text).center, c.center()) )
             var(text.pos)
             fill: baseColor
         }
     ]
 
     e: [
-        shape{
+        Shape{
             p: DeformShapeByPath2(arrowDown, {line: [a.bottom(), b.top()]}, arrowDown.begin(), arrowDown.end())
             fill: baseColor
         }
-        shape{
+        Shape{
             p: DeformShapeByPath2(arrowDown, {line: [b.bottom(), c.top()]}, arrowDown.begin(), arrowDown.end())
             fill: baseColor
         }
     ]
 
-    title: shape{
-        text: BuildText("制約処理の手順", {}, fontTitle){pos:vec2(0, -100), scale: x2(1.2)}
+    title: Shape{
+        text: BuildText("制約処理の手順", {}, fontTitle){pos:Vec2(0, -100), scale: X2(1.2)}
         sat( BoundingBox(text).topLeft.x == a.topLeft().x )
         var(text.pos.x)
         fill: baseColor
     }
 }
 
-main2 = shape{
+main2 = Shape{
     ss: [
         
         main

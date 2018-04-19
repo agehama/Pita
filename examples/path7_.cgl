@@ -22,34 +22,34 @@ getParallelotope = (f, df, xmin, xmax ->
     ycenter_left = ymid - xhalf*amid
     ycenter_right = ymid + xhalf*amid
 
-    shape{
+    Shape{
         polygon: [
-            vec2(xmin, ycenter_left + ywidth_half)
-            vec2(xmax, ycenter_right + ywidth_half)
-            vec2(xmax, ycenter_right - ywidth_half)
-            vec2(xmin, ycenter_left - ywidth_half)
+            Vec2(xmin, ycenter_left + ywidth_half)
+            Vec2(xmax, ycenter_right + ywidth_half)
+            Vec2(xmax, ycenter_right - ywidth_half)
+            Vec2(xmin, ycenter_left - ywidth_half)
         ]
         ls: [
             {
-                line: [vec2(xmid - xhalf, ymid - xhalf*amin), vec2(xmid + xhalf, ymid + xhalf*amin)]
-                stroke: rgb(0, 255, 255)
+                line: [Vec2(xmid - xhalf, ymid - xhalf*amin), Vec2(xmid + xhalf, ymid + xhalf*amin)]
+                stroke: Rgb(0, 255, 255)
             }
             {
-                line: [vec2(xmid - xhalf, ymid - xhalf*amax), vec2(xmid + xhalf, ymid + xhalf*amax)]
-                stroke: rgb(0, 255, 0)
+                line: [Vec2(xmid - xhalf, ymid - xhalf*amax), Vec2(xmid + xhalf, ymid + xhalf*amax)]
+                stroke: Rgb(0, 255, 0)
             }
         ]
     }
 )
 
-route = shape{
+route = Shape{
     begin = 0
     end = 90
     b: FunctionPath(Sin, begin, end, 100){
-        stroke: rgb(255, 0, 0)
+        stroke: Rgb(255, 0, 0)
     }
     a: getParallelotope(Sin, Cos, begin, end){
-        fill: rgb(64, 64, 64)
+        fill: Rgb(64, 64, 64)
     }
     scale: {x:200, y:-100}
 }

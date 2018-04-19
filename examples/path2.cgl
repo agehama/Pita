@@ -1,10 +1,8 @@
-import "common.cgl"
-
 cs = {
-    rect = square{scale = {x: 50, y: 25}, pos = {x:0, y:0}}
+    rect = Square{scale = {x: 50, y: 25}, pos = {x:0, y:0}}
     interval = 70
-    start: square{scale = {x: 5, y: 5}, pos = {x:90, y:50}}
-    end: square{scale = {x: 5, y: 5}, pos = {x:260, y:380}}
+    start: Square{scale = {x: 5, y: 5}, pos = {x:90, y:50}}
+    end: Square{scale = {x: 5, y: 5}, pos = {x:260, y:380}}
     p: path{
         points: 10
         passes: [start.pos, end.pos]

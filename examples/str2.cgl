@@ -1,7 +1,5 @@
-import "common.cgl"
-
 main = text{
-    rect: square{scale= {x: 400, y: 300}}
+    rect: Square{scale= {x: 400, y: 300}}
     str: "図形記述言語図形記述言語図形記述言語図形記述言語図形記述言語"
     base: path{
         points: 17

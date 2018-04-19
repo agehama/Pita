@@ -1,20 +1,18 @@
-import "common.cgl"
-
-main = shape{
-	ss: []
-	rect = square{scale = x2(20)}
-	i = 0
-	interval = 25
-	for yi in 0:9 do(
-		for xi in 0:9 do(
-			ss[i] = 
-				(if Random(0,1) < 0.3
-				then rect{
-					pos.x = interval*xi
-					pos.y = interval*yi
-				}
-				else {})
-			i = i+1
-		)
-	)
+main = Shape{
+    ss: []
+    rect = Square{scale = X2(20)}
+    i = 0
+    interval = 25
+    for yi in 0:9 do(
+        for xi in 0:9 do(
+            ss[i] = 
+                (if Random(0,1) < 0.3
+                then rect{
+                    pos.x = interval*xi
+                    pos.y = interval*yi
+                }
+                else {})
+            i = i+1
+        )
+    )
 }

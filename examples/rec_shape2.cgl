@@ -1,22 +1,20 @@
-import "common.cgl"
-
 shapeList = (f, depth, template -> 
-	if depth == 0
-	then shape{
-		a: template{}
-	}
-	else shape{
-		a: template{}
-		b: f(f, depth-1, template){
-			pos.y = -1
-			angle = 30
-			scale = x2(0.9)
-		}
-	}
+    if depth == 0
+    then Shape{
+        a: template{}
+    }
+    else Shape{
+        a: template{}
+        b: f(f, depth-1, template){
+            pos.y = -1
+            angle = 30
+            scale = X2(0.9)
+        }
+    }
 )
 
-tree = shape{
-	depth = 50
-	a: shapeList(shapeList, depth, shape{a:Diff(triangle{}, Buffer(triangle{}, -0.1))}){scale = x2(100)}
-	a.b.b.b.b.b = 0
+tree = Shape{
+    depth = 50
+    a: shapeList(shapeList, depth, Shape{a:Diff(Triangle{}, Buffer(Triangle{}, -0.1))}){scale = X2(100)}
+    a.b.b.b.b.b = 0
 }

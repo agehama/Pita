@@ -1,12 +1,10 @@
-import "common.cgl"
-
 koch = (p, q ->
-    v = sub(p, q)
+    v = Sub(p, q)
     n = {x: -v.y, y: v.x}
     ps = [p
-        lerp(p, q, 1.0/3.0) 
-        add(mid(p, q), div(n, 2*3.0^0.5))
-        lerp(p, q, 2.0/3.0)
+        Lerp(p, q, 1.0/3.0) 
+        Add(Mid(p, q), Div(n, 2*3.0^0.5))
+        Lerp(p, q, 2.0/3.0)
         q]
     for i in 0:3 list([ps[i], ps[i+1]])
 )
@@ -20,11 +18,11 @@ rec = (f, depth, template, ps ->
     }
 )
 
-snowflake = shape{
-    tri = triangle{scale: x2(10)}
+snowflake = Shape{
+    tri = Triangle{scale: X2(10)}
     l: for i in 0:2 list(
         rec(rec, 5, koch, [tri.p(i), tri.p(Mod(i+1,3))])
     )
-    scale: x2(70)
-    stroke: rgb(49, 187, 222)
+    scale: X2(70)
+    stroke: Rgb(49, 187, 222)
 }

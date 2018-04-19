@@ -1,42 +1,40 @@
-import "common.cgl"
-
-testDiff = shape{
-    a= square{scale=x2(100), angle=45} 
-    b= a{pos=vec2(75, 0)}
-    c: shape{a: Diff(a, b)}
+testDiff = Shape{
+    a= Square{scale=X2(100), angle=45} 
+    b= a{pos=Vec2(75, 0)}
+    c: Shape{a: Diff(a, b)}
 }
 
-testUnion = shape{
-    a= square{scale=x2(100), angle=45} 
-    b= a{pos=vec2(75, 0)}
-    c: shape{a: Union(a, b)}
+testUnion = Shape{
+    a= Square{scale=X2(100), angle=45} 
+    b= a{pos=Vec2(75, 0)}
+    c: Shape{a: Union(a, b)}
 }
 
-testIntersect = shape{
-    a= square{scale=x2(100), angle=45} 
-    b= a{pos=vec2(75, 0)}
-    c: shape{a: Intersect(a, b)}
+testIntersect = Shape{
+    a= Square{scale=X2(100), angle=45} 
+    b= a{pos=Vec2(75, 0)}
+    c: Shape{a: Intersect(a, b)}
 }
 
-testSymDiff = shape{
-    a= square{scale=x2(100), angle=45} 
-    b= a{pos=vec2(75, 0)}
-    c: shape{a: SymDiff(a, b)}
+testSymDiff = Shape{
+    a= Square{scale=X2(100), angle=45} 
+    b= a{pos=Vec2(75, 0)}
+    c: Shape{a: SymDiff(a, b)}
 }
 
-main = shape{
+main = Shape{
     ss: [
-        testDiff{pos=vec2(0, 0)}
-        testUnion{pos=vec2(0, 150)}
-        testIntersect{pos=vec2(0, 300)}
-        testSymDiff{pos=vec2(0, 450)}
+        testDiff{pos=Vec2(0, 0)}
+        testUnion{pos=Vec2(0, 150)}
+        testIntersect{pos=Vec2(0, 300)}
+        testSymDiff{pos=Vec2(0, 450)}
     ]
     ss2: for i in 0:3 list(
-        shape{
+        Shape{
             s: ShapeOuterPath(ss[i])
-            stroke: rgb(0,0,0)
+            stroke: Rgb(0,0,0)
             stroke_width: 5.0
-            pos=vec2(250,0)
+            pos=Vec2(250,0)
         }
     )
 }

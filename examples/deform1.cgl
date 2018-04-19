@@ -1,31 +1,29 @@
-import "common.cgl"
-
 arcPath = (r, begin, end, num -> 
 {
     delta = 1.0*(end - begin)/num
     line: for i in 0:num list(
         angle = begin + delta*i
-        vec2(r*Cos(angle), r*Sin(angle))
+        Vec2(r*Cos(angle), r*Sin(angle))
     )
 })
 
-arrow = shape{
-    body: square{scale = vec2(20, 200), sat(contact(bottom(), vec2(0, 0))), var(pos)}
-    head: triangle{scale = vec2(50, 50), sat(contact(bottom(), body.top())), var(pos)}
+arrow = Shape{
+    body: Square{scale = Vec2(20, 200), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
+    head: Triangle{scale = Vec2(50, 50), sat(Contact(bottom(), body.top())), var(pos)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))
-    length: (->length(sub(begin(), end())))
+    length: (->length(Sub(begin(), end())))
 }
 
-main = shape{
+main = Shape{
     a = arrow{}
     b: DeformShapeByPath2(a, arcPath(100, 0, 120, 50), a.begin(), a.end())
     c: DeformShapeByPath2(a, arcPath(100, 120, 240, 50), a.begin(), a.end())
     d: DeformShapeByPath2(a, arcPath(100, 240, 360, 50), a.begin(), a.end())
 }
 
-main2 = shape{
+main2 = Shape{
     a = arrow{}
-    p = ShapeOuterPath(shape{s:Buffer(triangle{scale= x2(100)}, 30)})[0]
+    p = ShapeOuterPath(Shape{s:Buffer(Triangle{scale= X2(100)}, 30)})[0]
     b: DeformShapeByPath2(a, p, a.begin(), a.end())
 }

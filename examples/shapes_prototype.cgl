@@ -1,5 +1,5 @@
 main = shapepath{
-    shapes: [square{scale: {x: 100, y: 100}}, square{scale: {x: 200, y: 50}}, square{scale: {x: 40, y: 70}}]
+    shapes: [Square{scale: {x: 100, y: 100}}, Square{scale: {x: 200, y: 50}}, Square{scale: {x: 40, y: 70}}]
     base: path{
         points: 4
         passes: [rect.top(), rect.right(), rect.bottom(), rect.left()]

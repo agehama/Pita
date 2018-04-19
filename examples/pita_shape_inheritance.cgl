@@ -1,19 +1,17 @@
-import "common.cgl"
-
-triangle{
-	scale: {x: 200, y: 100}
-    fill: rgb(49, 187, 222)
+Triangle{
+    scale: {x: 200, y: 100}
+    fill: Rgb(49, 187, 222)
 }
 
-square{
-	scale: {x: 100, y: 100}
-	angle: 45
-    fill: rgb(49, 187, 222)
+Square{
+    scale: {x: 100, y: 100}
+    angle: 45
+    fill: Rgb(49, 187, 222)
 }
 
-arrow = shape{
-    head: triangle{scale: {x: 100, y: 100}, pos: {x: 0, y: -75}}
-    body: square{scale: {x: 50, y: 100}}
+arrow = Shape{
+    head: Triangle{scale: {x: 100, y: 100}, pos: {x: 0, y: -75}}
+    body: Square{scale: {x: 50, y: 100}}
     angle: 90
-    fill: rgb(49, 187, 222)
+    fill: Rgb(49, 187, 222)
 }

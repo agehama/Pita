@@ -1,7 +1,5 @@
-import "common.cgl"
-
-baseColor = rgb(245, 245, 245)
-mainColor = rgb(49, 187, 222)
+baseColor = Rgb(245, 245, 245)
+mainColor = Rgb(49, 187, 222)
 
 fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
 sourceFontPath = "C:/Windows/Fonts/SourceCodePro-Regular.ttf"
@@ -21,79 +19,79 @@ sourceCodeShape = {
 }
 
 main = {
-    a: square{scale: x2(300), angle: 45, fill: mainColor, 
-        basePos: (->lerp(topLeft(), bottomRight(), 0.3))}
+    a: Square{scale: X2(300), angle: 45, fill: mainColor, 
+        basePos: (->Lerp(topLeft(), bottomRight(), 0.3))}
     b: a{pos: a.topLeft(), fill: mainColor
-        sat( distant(a.top(), bottom(), 10) & parallel([a.bottom(), a.top()], [a.top(), bottom()]) ), 
+        sat( Distant(a.top(), bottom(), 10) & parallel([a.bottom(), a.top()], [a.top(), bottom()]) ), 
         var(pos)}
     c: a{pos: a.topRight(), fill: mainColor
-        sat( distant(a.right(), left(), 10) & parallel([a.left(), a.right()], [a.right(), left()]) ), 
+        sat( Distant(a.right(), left(), 10) & parallel([a.left(), a.right()], [a.right(), left()]) ), 
         var(pos)}
-    d: shape{
+    d: Shape{
         text: BuildText("構文", {}, fontPath)
         fill: baseColor
         pos: b.bottomRight()
     }
-    e: shape{
+    e: Shape{
         text: BuildText("図形演算", {}, fontPath)
         fill: baseColor
         pos: a.bottomRight()
     }
-    f: shape{
+    f: Shape{
         text: BuildText("制約処理", {}, fontPath)
         fill: baseColor
         pos: c.center()
     }
-    aOut: shape{
+    aOut: Shape{
         line: [a.topLeft(), a.topRight()]
     }
-    bOut: shape{
+    bOut: Shape{
         line: [b.topLeft(), b.topRight()]
     }
-    cOut: shape{
+    cOut: Shape{
         line: [c.topLeft(), c.topRight()]
     }
 
-    g: shape{
+    g: Shape{
         s: Intersect(Buffer(sourceCodeShape{
             bb = BoundingBox(b)
             tl = bb.topLeft
             br = bb.bottomRight
-            pos: vec2(
+            pos: Vec2(
                 tl.x + (br.x - tl.x)*0.3,
                 tl.y + (br.y - tl.y)*0.35)
-            scale: x2(0.4)
+            scale: X2(0.4)
         }, 0.5), b)
         fill: baseColor
     }
-    h: shape{
-        bens: shape{
-            left= circle(60){scale: x2(120)}
-            right= left{pos: vec2(80, 0)}
+    h: Shape{
+        bens: Shape{
+            left= Circle(60){scale: X2(120)}
+            right= left{pos: Vec2(80, 0)}
             s: SymDiff(left, right)
-            pos: lerp(a.topLeft(), a.bottomRight(), 0.6)
+            pos: Lerp(a.topLeft(), a.bottomRight(), 0.6)
         }
         sat(BoundingBox(bens).center.x == a.topLeft().x)
         var(bens.pos.x)
         fill: baseColor
     }
-    i: shape{
-        s: shape{
+    i: Shape{
+        s: Shape{
             ss: []
             for i in -3:3 do(
                 index = 3+i
-                ss[index] = square{
-                    scale: x2(30)
+                ss[index] = Square{
+                    scale: X2(30)
                     pos: {x: 35*i, y: 0}
                 }
-                sat( contact(ss[index].topLeft(), vec2(ss[index].topLeft().x, 40*Sin(-2*ss[index].topLeft().x))) )
-                sat( contact(ss[index].bottomRight(), vec2(ss[index].bottomRight().x, 40*Sin(-2*ss[index].bottomRight().x))) )
+                sat( Contact(ss[index].topLeft(), Vec2(ss[index].topLeft().x, 40*Sin(-2*ss[index].topLeft().x))) )
+                sat( Contact(ss[index].bottomRight(), Vec2(ss[index].bottomRight().x, 40*Sin(-2*ss[index].bottomRight().x))) )
             )
             for i in -3:2 do(
                 index = 3+i
-                sat( contact(ss[index].bottomRight(), ss[index + 1].topLeft()) )
+                sat( Contact(ss[index].bottomRight(), ss[index + 1].topLeft()) )
             )
-            pos: lerp(c.topLeft(), c.bottomRight(), 0.6)
+            pos: Lerp(c.topLeft(), c.bottomRight(), 0.6)
             var(ss[*].pos, ss[*].angle)
         }
         sat(BoundingBox(s).center.x == c.topLeft().x)
@@ -114,7 +112,7 @@ main = {
 }
 
 
-main2 = shape{
+main2 = Shape{
     m: main
     l: {
         stroke: baseColor
@@ -132,8 +130,8 @@ main2 = shape{
         ls: for i in 0:5 list(
             currentLine = ls1[i].line
             {
-                line: [currentLine[0], lerp(currentLine[0], currentLine[1], 0.75)]
-                s: circle(10){scale: x2(2.0), pos: line[1]}
+                line: [currentLine[0], Lerp(currentLine[0], currentLine[1], 0.75)]
+                s: Circle(10){scale: X2(2.0), pos: line[1]}
             }
         )
     }

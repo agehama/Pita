@@ -1,4 +1,3 @@
-import "common.cgl"
 import "koch_curve.cgl" as koch_curve
 
 arcPath = (r, begin, end, num -> 
@@ -6,12 +5,12 @@ arcPath = (r, begin, end, num ->
     delta = 1.0*(end - begin)/num
     line: for i in 0:num list(
         angle = begin + delta*i
-        vec2(r*Cos(angle), r*Sin(angle))
+        Vec2(r*Cos(angle), r*Sin(angle))
     )
 })
 
-main = shape{
-    rect = square{scale = {x: 60, y: 30}, pos = {x: 100, y: 100}, angle = 30}
+main = Shape{
+    rect = Square{scale = {x: 60, y: 30}, pos = {x: 100, y: 100}, angle = 30}
     tri = hexagon{scale = {x:100, y:100}}
     
     koch_shape = koch_curve.curve(5)
@@ -22,15 +21,15 @@ main = shape{
     arc1 = arcPath(300, 0, 120, 10)
     arc2 = arcPath(300, 120, 240, 10)
     arc3 = arcPath(300, 240, 360, 10)
-    result1: shape{
+    result1: Shape{
         a:DeformShapeByPath(koch_shape, arc1)
         stroke: {r: 0, g: 128, b: 128}
     }
-    result2: shape{
+    result2: Shape{
         a:DeformShapeByPath(koch_shape, arc2)
         stroke: {r: 0, g: 128, b: 128}
     }
-    result3: shape{
+    result3: Shape{
         a:DeformShapeByPath(koch_shape, arc3)
         stroke: {r: 0, g: 128, b: 128}
     }

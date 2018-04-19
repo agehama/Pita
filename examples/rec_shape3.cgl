@@ -1,10 +1,8 @@
-import "common.cgl"
-
 shapeTree = (f, depth, template -> 
     mergin = 4
     if depth == 0
-    then shape{}
-    else shape{
+    then Shape{}
+    else Shape{
         a: template{}
         b:  if Random(0, 1) < 0.15
             then([
@@ -25,10 +23,11 @@ shapeTree = (f, depth, template ->
     }
 )
 
-tree = shape{
+tree = Shape{
     depth = 20
-    templateShape1 = square{scale = vec2(1,3)}
-    templateShape2 = shape{a: Diff(triangle{}, Buffer(triangle{}, -0.1)), scale = vec2(1,3)}
-    templateShape3 = shape{s: text{str: "樹木"}, scale = x2(0.05)}
-    a: shapeTree(shapeTree, depth, templateShape2{}){scale = x2(10)}
+    templateShape1 = Square{scale = Vec2(1,3)}
+    templateShape2 = Shape{a: Diff(Triangle{}, Buffer(Triangle{}, -0.1)), scale = Vec2(1,3)}
+    templateShape3 = Shape{s: text{str: "樹木"}, scale = X2(0.05)}
+    //a: shapeTree(shapeTree, depth, templateShape2{}){scale = X2(10)}
+    a: templateShape3{}
 }

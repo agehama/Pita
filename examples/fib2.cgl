@@ -1,11 +1,11 @@
 memo = [1, 1]
 fib = (x, fib ->
-	if x <= 1
-	then 1
-	else 
-		if memo[x] != 0
-		then memo[x]
-		else memo[x] = fib(x-1, fib) + fib(x-2, fib)
+    if x <= 1
+    then 1
+    else 
+        if memo[x] != 0
+        then memo[x]
+        else memo[x] = fib(x-1, fib) + fib(x-2, fib)
 )
 
 Print(fib(45, fib))

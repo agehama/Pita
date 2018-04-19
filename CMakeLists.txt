@@ -89,7 +89,6 @@ configure_file(${PROJECT_SOURCE_DIR}/external/Eigen/cmake/UseEigen3.cmake
 
 set(Eigen3_DIR "${PROJECT_BINARY_DIR}/${CGL_EIGEN_TARGET_DIR}" CACHE PATH "set Eigen3_DIR to ${PROJECT_BINARY_DIR}/${CGL_EIGEN_TARGET_DIR}")
 
-
 add_subdirectory(external/libcmaes ${CGL_LIBCMAES_TARGET_DIR})
 
 include_directories(${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/include)

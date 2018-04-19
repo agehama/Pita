@@ -1,8 +1,5 @@
-
-import "common.cgl"
-
-route = shape{
-    rect = square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
+route = Shape{
+    rect = Square{scale: {x: 60, y: 30}, pos: {x: 100, y: 100}, angle: 30}
     tri = hexagon{scale: {x:100, y:100}}
     textShape = BuildText("図形記述言語Pita"){
     }
@@ -10,7 +7,7 @@ route = shape{
         scale: {x: 2, y:100}
         stroke: {r: 255, g: 128, b: 128}
     }
-    result: shape{
+    result: Shape{
         a:DeformShapeByPath(textShape, arrow3)
     }
 }

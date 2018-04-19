@@ -58,7 +58,7 @@ set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 if(MSVC)
   find_package(Boost 1.57.0)
 else()
-  find_package(Boost 1.57.0 REQUIRED serialization)
+  find_package(Boost 1.57.0 serialization)
 endif()
 
 if(Boost_FOUND)

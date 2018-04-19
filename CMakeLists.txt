@@ -70,6 +70,8 @@ include_directories(external/geos)
 include_directories(external/libcmaes/src)
 include_directories(external/Siv3D)
 include_directories(external/cxxopts/include)
+include_directories(external/cereal/include)
+include_directories(external/cereal_compatible)
 
 #message("${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib")
 

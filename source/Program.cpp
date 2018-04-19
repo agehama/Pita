@@ -5,12 +5,39 @@
 #include <Pita/Vectorizer.hpp>
 #include <Pita/Printer.hpp>
 
+#ifdef __has_include
+#  if __has_include("PitaStd")
+#    define CGL_HAS_STANDARD_FILE
+#  endif
+#endif
+
 std::ofstream ofs;
 bool calculating;
 int constraintViolationCount;
 
 namespace cgl
 {
+#ifdef CGL_HAS_STANDARD_FILE
+	Program::Program() :
+		pEnv(Context::Make()),
+		evaluator(pEnv)
+	{
+		const std::string pitaStd =
+#include "PitaStd"
+			;
+
+		std::stringstream ss;
+		ss << pitaStd;
+		cereal::JSONInputArchive iarchive(ss);
+		iarchive(pEnv);
+	}
+#else
+	Program::Program() :
+		pEnv(Context::Make()),
+		evaluator(pEnv)
+	{}
+#endif
+
 	//boost::optional<Expr> Program::parse(const std::string& program)
 	//{
 	//	using namespace cgl;
@@ -335,5 +362,66 @@ namespace cgl
 		}
 
 		return boost::none;
+	}
+
+	bool Program::preEvaluate(const std::string& input_filename, const std::string& output_filename, bool logOutput)
+	{
+		clear();
+
+		if (logOutput)
+		{
+			std::cerr << "Parse \"" << input_filename << "\" ..." << std::endl;
+		}
+
+		try
+		{
+			if (auto exprOpt = Parse1(input_filename))
+			{
+				if (logOutput)
+				{
+					std::cerr << "parse succeeded" << std::endl;
+					printExpr(exprOpt.get(), pEnv, std::cerr);
+				}
+
+				if (logOutput) std::cerr << "execute..." << std::endl;
+				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
+				evaluated = pEnv->expand(lrvalue, LocationInfo());
+				if (logOutput)
+				{
+					std::cerr << "execute succeeded" << std::endl;
+				}
+
+				std::ofstream ofs(output_filename);
+				cereal::JSONOutputArchive oarchive(ofs);
+				Context& context = *pEnv;
+				oarchive(context);
+				return true;
+			}
+			else
+			{
+				std::cout << "Parse failed" << std::endl;
+			}
+		}
+		catch (const cgl::Exception& e)
+		{
+			if (!errorMessagePrinted)
+			{
+				std::cerr << e.what() << std::endl;
+				if (e.hasInfo)
+				{
+					PrintErrorPos(input_filename, e.info);
+				}
+				else
+				{
+					std::cerr << "Exception does not has any location info." << std::endl;
+				}
+			}
+		}
+		catch (const std::exception& other)
+		{
+			std::cerr << "Error: " << other.what() << std::endl;
+		}
+
+		return false;
 	}
 }

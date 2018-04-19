@@ -105,6 +105,7 @@ namespace cgl
 			return Address(++m_ID);
 		}
 
+	public:
 		ValueList m_values;
 
 		unsigned m_ID = 0;
@@ -502,11 +503,10 @@ namespace cgl
 			return valueIDOpt;
 		}*/
 
+	public:
 		Values<BuiltInFunction> m_functions;
 		std::unordered_map<Address, std::string> m_plateausFunctions;
 
-		//std::unordered_map<Reference, Address> m_refAddressMap;
-		//std::unordered_map<Reference, std::vector<Address>> m_refAddressMap;
 		std::unordered_map<Reference, DeepReference> m_refAddressMap;
 		std::unordered_multimap<Address, Reference> m_addressRefMap;
 
@@ -526,4 +526,54 @@ namespace cgl
 
 		std::weak_ptr<Context> m_weakThis;
 	};
+}
+
+namespace cereal
+{
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Scope& scope)
+	{
+		ar(scope.variables);
+		ar(scope.temporaryAddresses);
+	}
+
+	/*template<class Archive>
+	inline void serialize(Archive& ar, cgl::Context::BuiltInFunction& function)
+	{
+		ar(values.m_values);
+		ar(values.m_ID);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Values<cgl::Context::BuiltInFunction>& values)
+	{
+		ar(values.m_values);
+		ar(values.m_ID);
+	}*/
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Values<cgl::Val>& values)
+	{
+		ar(values.m_values);
+		ar(values.m_ID);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Context& context)
+	{
+		//ar(context.m_functions);
+		ar(context.m_plateausFunctions);
+		ar(context.m_refAddressMap);
+		ar(context.m_addressRefMap);
+		ar(context.m_values);
+		ar(context.m_localEnvStack);
+		ar(context.m_referenceID);
+		ar(context.m_lastGCValueSize);
+		ar(context.m_automaticExtendMode);
+		ar(context.m_automaticGC);
+
+		//std::uniform_real_distribution<double> m_dist;
+		//std::mt19937 m_random;
+		//std::weak_ptr<Context> m_weakThis;
+	}
 }

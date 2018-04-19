@@ -50,7 +50,7 @@ namespace cgl
 
 		//mplus-1-medium-sub.ttf
 		std::vector<std::string> fontDataJPOriginal({
-#include<Pita/FontDataJP>
+#include <Pita/FontDataJP>
 		});
 
 		std::string fontDataJP;
@@ -79,6 +79,7 @@ namespace cgl
 			stbtt_InitFont(fontInfo2, pc, stbtt_GetFontOffsetForIndex(pc, 0));
 			stbtt_GetFontVMetrics(fontInfo2, &ascent2, &descent2, &lineGap2);
 		}
+
 		checkClockWise();
 	}
 

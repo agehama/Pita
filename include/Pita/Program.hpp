@@ -10,10 +10,11 @@ namespace cgl
 	class Program
 	{
 	public:
-		Program() :
+		/*Program() :
 			pEnv(Context::Make()),
 			evaluator(pEnv)
-		{}
+		{}*/
+		Program();
 
 		//boost::optional<Val> execute(const std::string& program);
 
@@ -44,6 +45,8 @@ namespace cgl
 
 		boost::optional<int> asIntOpt();
 		boost::optional<double> asDoubleOpt();
+
+		bool preEvaluate(const std::string& input_filename, const std::string& output_filename, bool logOutput = true);
 
 	private:
 		std::shared_ptr<Context> pEnv;

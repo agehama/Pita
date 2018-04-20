@@ -18,9 +18,7 @@ matrix:
             - clang-4.0
       env: COMPILER=clang++-4.0
 before_install:
-  - sudo add-apt-repository ppa:samuel-bachmann/boost -y
   - sudo apt-get update -qq
-  - sudo apt-get install boost1.60
   - sudo apt-get install libc++-dev libc++abi-dev
   - dpkg --search libc++ > test1
   - cat test1
@@ -36,6 +34,16 @@ before_install:
   - sudo ln -s /usr/lib/x86_64-linux-gnu/libc++experimental.a /usr/lib/libstdc++fs.a
   - cat test2
   - dpkg --search boost | grep serial
+  - if [ "$CXX" == "g++" ]; then sudo add-apt-repository ppa:samuel-bachmann/boost -y; fi
+  - if [ "$CXX" == "g++" ]; then sudo apt-get install boost1.60; fi
+  - if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
+  - if [ "$CXX" == "clang++" ]; then sudo wget -O boost_1_66_0.tar.gz http://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz/download; fi
+  - if [ "$CXX" == "clang++" ]; then sudo tar xzvf boost_1_66_0.tar.gz; fi
+  - if [ "$CXX" == "clang++" ]; then cd boost_1_66_0/; fi
+  - if [ "$CXX" == "clang++" ]; then sudo ./bootstrap.sh --prefix=/usr/local --with-libraries=serialization,filesystem,system; fi
+  - if [ "$CXX" == "clang++" ]; then sudo ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" link=static threading=multi variant=release; fi
+  - if [ "$CXX" == "clang++" ]; then sudo ./b2 install; fi
+  - if [ "$CXX" == "clang++" ]; then cd ../; fi
 script:
   - ls /usr/include/c++/v1/experimental
   - mkdir build

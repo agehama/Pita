@@ -37,6 +37,8 @@ namespace cgl
 			ss << str;
 		}
 
+		std::cout << ss.str() << std::endl;
+
 		boost::archive::text_iarchive ar(ss);
 		Context& context = *pEnv;
 		ar >> context;

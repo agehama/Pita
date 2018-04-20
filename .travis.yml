@@ -33,7 +33,6 @@ before_install:
   - dpkg --search libc++ > test2
   - sudo ln -s /usr/lib/x86_64-linux-gnu/libc++experimental.a /usr/lib/libstdc++fs.a
   - cat test2
-  - dpkg --search boost | grep serial
   - if [ "$CXX" == "g++" ]; then sudo add-apt-repository ppa:samuel-bachmann/boost -y; fi
   - if [ "$CXX" == "g++" ]; then sudo apt-get install boost1.60; fi
   - if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi

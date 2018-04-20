@@ -29,6 +29,9 @@ namespace cgl
 			});
 
 		std::stringstream ss;
+		{
+			boost::archive::text_oarchive ar(ss);
+		}
 		for (const auto& str : pitaStdSplitted)
 		{
 			ss << str;
@@ -439,9 +442,10 @@ namespace cgl
 						Context& context = *pEnv;
 						ar << context;
 					}
+					const auto serializedStr = ss.str();
 
 					std::ofstream ofs(output_filename);
-					const auto splittedStr = SplitStringVSCompatible(ss.str());
+					const auto splittedStr = SplitStringVSCompatible(std::string(serializedStr.begin() + 28, serializedStr.end()));
 					for (size_t i = 0; i < splittedStr.size(); ++i)
 					{
 						ofs << "std::string(R\"(" << splittedStr[i] << ")\")";

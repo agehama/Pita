@@ -113,7 +113,8 @@ else()
 endif()
 
 add_executable(pita source/Source.cpp)
-target_link_libraries(pita pita_lib boost_serialization boost_system boost_filesystem)
+#target_link_libraries(pita pita_lib boost_serialization boost_system boost_filesystem)
+target_link_libraries(pita pita_lib)
 
 enable_testing()
 add_subdirectory(test)

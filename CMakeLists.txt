@@ -48,7 +48,8 @@ if(MSVC)
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024 -stdlib=libc++")
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024 -stdlib=libc++")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024")
 endif()
 
 set(CGL_EIGEN_TARGET_DIR "eigen")
@@ -106,12 +107,13 @@ add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 else()
-  target_link_libraries(pita_lib geos cmaes stdc++fs boost_serialization)
-#  target_link_libraries(pita_lib geos cmaes c++experimental)
+  target_link_libraries(pita_lib geos cmaes boost_serialization boost_system boost_filesystem)
+  #target_link_libraries(pita_lib geos cmaes stdc++fs boost_serialization boost_system boost_filesystem)
+  #target_link_libraries(pita_lib geos cmaes c++experimental)
 endif()
 
 add_executable(pita source/Source.cpp)
-target_link_libraries(pita pita_lib boost_serialization)
+target_link_libraries(pita pita_lib boost_serialization boost_system boost_filesystem)
 
 enable_testing()
 add_subdirectory(test)

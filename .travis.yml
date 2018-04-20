@@ -35,6 +35,7 @@ before_install:
   - dpkg --search libc++ > test2
   - sudo ln -s /usr/lib/x86_64-linux-gnu/libc++experimental.a /usr/lib/libstdc++fs.a
   - cat test2
+  - dpkg --search boost | grep serial
 script:
   - ls /usr/include/c++/v1/experimental
   - mkdir build

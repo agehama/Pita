@@ -41,6 +41,7 @@ script:
   - if [ "$CXX" == "clang++" ]; then cd boost_1_66_0/; fi
   - if [ "$CXX" == "clang++" ]; then clang++ --version; fi
   - if [ "$CXX" == "clang++" ]; then sudo ./bootstrap.sh --with-toolset=clang --with-libraries=serialization,filesystem,system; fi
+  - if [ "$CXX" == "clang++" ]; then cat ./bootstrap.log; fi
   - if [ "$CXX" == "clang++" ]; then sudo ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" link=static threading=multi variant=release; fi
   - if [ "$CXX" == "clang++" ]; then sudo ./b2 install; fi
   - if [ "$CXX" == "clang++" ]; then cd ../; fi

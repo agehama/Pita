@@ -22,7 +22,7 @@ else()
   message("CMAKE_COMPILER_IS_GNUCC False")
 endif()
 
-set(Boost_USE_STATIC_LIBS ON)
+#set(Boost_USE_STATIC_LIBS ON)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
 

@@ -40,7 +40,7 @@ before_install:
   - if [ "$CXX" == "clang++" ]; then cd boost_1_66_0/; fi
   - if [ "$CXX" == "clang++" ]; then ls -la; fi
   - if [ "$CXX" == "clang++" ]; then sudo ./bootstrap.sh --with-libraries=serialization,filesystem,system; fi
-  - if [ "$CXX" == "clang++" ]; then sudo ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" link=static threading=multi variant=release; fi
+  - if [ "$CXX" == "clang++" ]; then sudo ./b2 toolset=clang++-4.0 cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" link=static threading=multi variant=release; fi
   - if [ "$CXX" == "clang++" ]; then sudo ./b2 install; fi
   - if [ "$CXX" == "clang++" ]; then cd ../; fi
 script:

@@ -35,7 +35,6 @@ before_install:
   - cat test2
   - if [ "$CXX" == "g++" ]; then sudo add-apt-repository ppa:samuel-bachmann/boost -y; fi
   - if [ "$CXX" == "g++" ]; then sudo apt-get install boost1.60; fi
-  - if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
   - if [ "$CXX" == "clang++" ]; then sudo wget -O boost_1_66_0.tar.gz http://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz/download; fi
   - if [ "$CXX" == "clang++" ]; then sudo tar xzvf boost_1_66_0.tar.gz; fi
   - if [ "$CXX" == "clang++" ]; then cd boost_1_66_0/; fi

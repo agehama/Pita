@@ -37,6 +37,7 @@ before_install:
   - if [ "$CXX" == "g++" ]; then sudo apt-get install boost1.60; fi
   - if [ "$CXX" == "clang++" ]; then sudo wget -O boost_1_57_0.tar.gz http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.tar.gz/download; fi
   - if [ "$CXX" == "clang++" ]; then sudo tar xzf boost_1_57_0.tar.gz; fi
+  - if [ "$CXX" == "clang++" ]; then sudo chmod -R 755 ./boost_1_57_0/; fi
   - if [ "$CXX" == "clang++" ]; then cd ./boost_1_57_0/; fi
   - if [ "$CXX" == "clang++" ]; then clang++ --version; fi
   - if [ "$CXX" == "clang++" ]; then sudo ./bootstrap.sh --with-toolset=clang --with-icu=/usr/include/x86_64-linux-gnu --with-libraries=serialization,filesystem,system; fi

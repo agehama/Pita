@@ -33,7 +33,6 @@ before_install:
   - dpkg --search libc++ > test2
   - sudo ln -s /usr/lib/x86_64-linux-gnu/libc++experimental.a /usr/lib/libstdc++fs.a
   - cat test2
-script:
   - if [ "$CXX" == "g++" ]; then sudo add-apt-repository ppa:samuel-bachmann/boost -y; fi
   - if [ "$CXX" == "g++" ]; then sudo apt-get install boost1.60; fi
   - if [ "$CXX" == "clang++" ]; then sudo wget -O boost_1_57_0.tar.gz http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.tar.gz/download; fi
@@ -45,6 +44,7 @@ script:
   - if [ "$CXX" == "clang++" ]; then sudo ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" link=static threading=multi variant=release; fi
   - if [ "$CXX" == "clang++" ]; then sudo ./b2 install; fi
   - if [ "$CXX" == "clang++" ]; then cd ../; fi
+script:
   - ls /usr/include/c++/v1/experimental
   - mkdir build
   - cd build

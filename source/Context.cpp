@@ -1005,8 +1005,8 @@ namespace cgl
 
 		localEnv().back().temporaryAddresses.push_back(address);
 
-		const int thresholdGC = 20000;
-		//const int thresholdGC = 300;
+		//const int thresholdGC = 20000;
+		const int thresholdGC = 300;
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
 			garbageCollect();
@@ -1043,6 +1043,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
+			std::cout << "Address(" << arguments[0].toString() << "): ";
 			printVal(pEnv->expand(arguments[0], info), pEnv, std::cout, 0);
 			return 0;
 		},
@@ -1338,6 +1339,31 @@ namespace cgl
 				return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal), As<PackedList>(As<List>(obstaclesValOpt.get()).packed(*this))).unpacked(*this);
 			}
 			return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal)).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"Free",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& arg1 = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(arg1))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			Val clone = Clone(pEnv, arg1, info);
+			Record& record = As<Record>(clone);
+			record.original = OldRecordData();
+			record.constraint = boost::none;
+			return clone;
 		},
 			true
 			);

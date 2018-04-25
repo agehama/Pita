@@ -722,8 +722,9 @@ namespace cgl
 			return LRValue(address).setLocation(node);
 		}
 
-		CGL_ErrorNode(node, msgs::Undefined(node));
-		return LRValue(0);
+		//それ以外の場合は実行してみないと分からないため、とりあえずローカル変数と仮定する
+		//例：f = (s -> s{g()}) のgがsのメンバかどうかはfのクロージャ生成時点では分からない
+		return node;
 	}
 
 	Expr ClosureMaker::operator()(const UnaryExpr& node)

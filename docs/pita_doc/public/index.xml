@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Pita 作図のためのプログラミング言語</title>
+    <link>https://agehama.github.io/pita/</link>
+    <description>Recent content on Pita 作図のためのプログラミング言語</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>ja-jp</language>
+    <copyright>(c) 2018 agehama.</copyright>
+    <lastBuildDate>Thu, 26 Apr 2018 16:08:18 +0900</lastBuildDate>
+    
+	<atom:link href="https://agehama.github.io/pita/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Pita Home</title>
+      <link>https://agehama.github.io/pita/pita-home/</link>
+      <pubDate>Thu, 26 Apr 2018 16:08:18 +0900</pubDate>
+      
+      <guid>https://agehama.github.io/pita/pita-home/</guid>
+      <description>Test</description>
+    </item>
+    
+  </channel>
+</rss>

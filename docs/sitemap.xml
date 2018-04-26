@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <url>
+    <loc>https://agehama.github.io/pita/pita-home/</loc>
+    <lastmod>2018-04-26T16:08:18+09:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/pita/</loc>
+    <lastmod>2018-04-26T16:08:18+09:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/pita/post/</loc>
+    <lastmod>2018-04-26T16:08:18+09:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/pita/tags/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/pita/topics/</loc>
+    <priority>0</priority>
+  </url>
+  
+</urlset>

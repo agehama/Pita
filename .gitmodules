@@ -19,3 +19,6 @@
 [submodule "external/cereal"]
 	path = external/cereal
 	url = https://github.com/USCiLab/cereal.git
+[submodule "docs/pita_doc/themes/hyde-y"]
+	path = docs/pita_doc/themes/hyde-y
+	url = https://github.com/enten/hyde-y.git

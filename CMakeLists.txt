@@ -10,11 +10,7 @@ endif()
 
 project(Pita)
 
-if(MSVC)
-  set(CMAKE_CXX_STANDARD 14)
-else()
-  set(CMAKE_CXX_STANDARD 14)
-endif()
+set(CMAKE_CXX_STANDARD 14)
 
 if(CMAKE_COMPILER_IS_GNUCC)
   message("CMAKE_COMPILER_IS_GNUCC True")

@@ -87,17 +87,17 @@
   <nav class="container nav primary no-print">
   
 
-<a class="homelink" href="https://agehama.github.io/Pita/">ホーム</a>
+<a class="homelink" href="https://agehama.github.io/Pita/">はじめに</a>
 
 
   
-<a href="https://agehama.github.io/pita/pita-home" title="Show list of posts">ダウンロード</a>
+<a href="https://agehama.github.io/download" title="Show list of posts">ダウンロード</a>
 
-<a href="https://agehama.github.io/pita/pita-home" title="Show list of posts">チュートリアル</a>
+<a href="https://agehama.github.io/tutorial" title="Show list of posts">チュートリアル</a>
 
-<a href="https://agehama.github.io/pita/tags" title="Show list of tags">構文</a>
+<a href="https://agehama.github.io/syntax" title="Show list of tags">構文</a>
 
-<a href="https://agehama.github.io/pita/about">About</a>
+<a href="https://agehama.github.io/about">About</a>
 
 
 </nav>
@@ -147,11 +147,134 @@
     <h1>Pita 作図のためのプログラミング言語
 </h1>
 
-    <span>last update: <time datetime="2018-04-26T16:08:18&#43;09:00">26 April at 4:08pm</time>
+    <span>last update: <time datetime="2018-04-26T17:20:56&#43;09:00">26 April at 5:20pm</time>
 </span>
 
   </header>
   
+  
+    <article class="container content summary">
+  <div class="container hat">
+  <h2><a href="https://agehama.github.io/Pita/about/">About
+</a>
+</h2>
+
+  <time datetime="2018-04-26">26 Apr, 2018</time>
+
+</div>
+
+  <p class="container content">
+  
+  
+    
+  
+
+
+</p>
+
+
+  <div class="container readlink">
+  <a href="https://agehama.github.io/Pita/about/">Read more &rarr;</a>
+
+</div>
+
+
+</article>
+
+  
+    <article class="container content summary">
+  <div class="container hat">
+  <h2><a href="https://agehama.github.io/Pita/syntax/">構文
+</a>
+</h2>
+
+  <time datetime="2018-04-26">26 Apr, 2018</time>
+
+</div>
+
+  <p class="container content">
+  
+  
+    
+  
+
+
+</p>
+
+
+  <div class="container readlink">
+  <a href="https://agehama.github.io/Pita/syntax/">Read more &rarr;</a>
+
+</div>
+
+
+</article>
+
+  
+    <article class="container content summary">
+  <div class="container hat">
+  <h2><a href="https://agehama.github.io/Pita/tutorial/">チュートリアル
+</a>
+</h2>
+
+  <time datetime="2018-04-26">26 Apr, 2018</time>
+
+</div>
+
+  <p class="container content">
+  
+  
+    1. 図形を描く Pitaでは、次のようにして図形を描くことができます。
+Shape{ s1: Square{} }  2. 複数の図形を描く 図形を呼び出した後の{}の中に位置や大きさを指定することができます。
+また、Pitaでは式と式はカンマ(,)で区切りますが、カンマの代わりに改行を入れて省略することもできます。
+Shape{ a: Square{pos: Vec2(100, 0), angle: 45} b: Triangle{} }  3. 関数を定義する 関数は(引数-&gt;定義)の形で記述します。 関数は最後に評価した式の値を戻り値として返します。
+min = (a, b -&gt; if a &lt; b then a else b )  4. 図形を定義する Shape{}で作った図形を使って、さらに別の図形を作ることもできます。
+x = Shape{ a: Square{scale: Vec2(100, 10), angle: +45} b: Square{scale: Vec2(100, 10), angle: -45} } Shape{ a: x{pos: Vec2(-100, 0)} b: x{pos: Vec2(+100, 0)} }  5.
+  
+
+
+</p>
+
+
+  <div class="container readlink">
+  <a href="https://agehama.github.io/Pita/tutorial/">Read more &rarr;</a>
+
+</div>
+
+
+</article>
+
+  
+    <article class="container content summary">
+  <div class="container hat">
+  <h2><a href="https://agehama.github.io/Pita/download/">ダウンロードとインストール
+</a>
+</h2>
+
+  <time datetime="2018-04-26">26 Apr, 2018</time>
+
+</div>
+
+  <p class="container content">
+  
+  
+    Windows ダウンロードリンク
+Mac brewからのインストール手順
+Ubuntu aptからのインストール手順
+  
+
+
+</p>
+
+
+  <div class="container readlink">
+  <a href="https://agehama.github.io/Pita/download/">Read more &rarr;</a>
+
+</div>
+
+
+</article>
+
   
     <article class="container content summary">
   <div class="container hat">

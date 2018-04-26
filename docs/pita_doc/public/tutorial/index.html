@@ -5,7 +5,7 @@
 <!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <title>Pita Home  &middot; Pita 作図のためのプログラミング言語</title>
+  <title>チュートリアル  &middot; Pita 作図のためのプログラミング言語</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="HandheldFriendly" content="True">
 <meta name="MobileOptimized" content="320">
@@ -17,16 +17,16 @@
 <meta name="keywords" content="">
 
 
-<meta property="og:title" content="Pita Home  &middot; Pita 作図のためのプログラミング言語 ">
+<meta property="og:title" content="チュートリアル  &middot; Pita 作図のためのプログラミング言語 ">
 <meta property="og:site_name" content="Pita 作図のためのプログラミング言語"/>
-<meta property="og:url" content="https://agehama.github.io/Pita/pita-home/" />
+<meta property="og:url" content="https://agehama.github.io/Pita/tutorial/" />
 <meta property="og:locale" content="ja-jp">
 
 
 <meta property="og:type" content="article" />
 <meta property="og:description" content=""/>
-<meta property="og:article:published_time" content="2018-04-26T16:08:18&#43;09:00" />
-<meta property="og:article:modified_time" content="2018-04-26T16:08:18&#43;09:00" />
+<meta property="og:article:published_time" content="2018-04-26T17:20:39&#43;09:00" />
+<meta property="og:article:modified_time" content="2018-04-26T17:20:39&#43;09:00" />
 
   
 
@@ -34,9 +34,9 @@
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:site" content="@agehama_" />
 <meta name="twitter:creator" content="@agehama_" />
-<meta name="twitter:title" content="Pita Home" />
+<meta name="twitter:title" content="チュートリアル" />
 <meta name="twitter:description" content="" />
-<meta name="twitter:url" content="https://agehama.github.io/Pita/pita-home/" />
+<meta name="twitter:url" content="https://agehama.github.io/Pita/tutorial/" />
 <meta name="twitter:domain" content="https://agehama.github.io/Pita/">
   
 
@@ -44,20 +44,20 @@
   {
     "@context": "http://schema.org",
     "@type": "Article",
-    "headline": "Pita Home",
+    "headline": "チュートリアル",
     "author": {
       "@type": "Person",
       "name": "http://profiles.google.com/+?rel=author"
     },
     "datePublished": "2018-04-26",
     "description": "",
-    "wordCount": 1
+    "wordCount": 98
   }
 </script>
 
 
 
-<link rel="canonical" href="https://agehama.github.io/Pita/pita-home/" />
+<link rel="canonical" href="https://agehama.github.io/Pita/tutorial/" />
 
 <link rel="apple-touch-icon-precomposed" sizes="144x144" href="https://agehama.github.io/touch-icon-144-precomposed.png">
 <link href="https://agehama.github.io/favicon.png" rel="icon">
@@ -172,7 +172,7 @@
 
 <article id="main-content" class="container main_content single">
   <header class="container hat">
-  <h1>Pita Home
+  <h1>チュートリアル
 </h1>
 
   <div class="metas">
@@ -181,7 +181,7 @@
 
   
   &middot; Read in about 1 min
-  &middot; (1 Words)
+  &middot; (98 Words)
   <br>
   
 
@@ -191,7 +191,69 @@
 </header>
 
   <div class="container content">
-  <p>Test</p>
+  
+
+<h3 id="1-図形を描く">1. 図形を描く</h3>
+
+<p>Pitaでは、次のようにして図形を描くことができます。</p>
+
+<pre><code class="language-ruby">Shape{
+    s1: Square{}
+}
+</code></pre>
+
+<h3 id="2-複数の図形を描く">2. 複数の図形を描く</h3>
+
+<p>図形を呼び出した後の{}の中に位置や大きさを指定することができます。</p>
+
+<p>また、Pitaでは式と式はカンマ(,)で区切りますが、カンマの代わりに改行を入れて省略することもできます。</p>
+
+<pre><code class="language-ruby">Shape{
+    a: Square{pos: Vec2(100, 0), angle: 45}
+    b: Triangle{}
+}
+</code></pre>
+
+<h3 id="3-関数を定義する">3. 関数を定義する</h3>
+
+<p>関数は(引数-&gt;定義)の形で記述します。
+関数は最後に評価した式の値を戻り値として返します。</p>
+
+<pre><code class="language-ruby">min = (a, b -&gt; 
+    if a &lt; b
+    then a
+    else b
+)
+</code></pre>
+
+<h3 id="4-図形を定義する">4. 図形を定義する</h3>
+
+<p>Shape{}で作った図形を使って、さらに別の図形を作ることもできます。</p>
+
+<pre><code class="language-ruby">x = Shape{
+    a: Square{scale: Vec2(100, 10), angle: +45}
+    b: Square{scale: Vec2(100, 10), angle: -45}
+}
+
+Shape{
+    a: x{pos: Vec2(-100, 0)}
+    b: x{pos: Vec2(+100, 0)}
+}
+</code></pre>
+
+<h3 id="5-図形を返す関数を定義する">5. 図形を返す関数を定義する</h3>
+
+<h3 id="6-再帰的な図形を定義する">6. 再帰的な図形を定義する</h3>
+
+<pre><code class="language-ruby">stick = Square{scale: Vec2(0.1, 1)}
+
+shapes = (f, depth -&gt; Shape{
+    s: stick{}
+    child: if 0 &lt; depth then f(f, depth-1){pos: Vec2(0, 100)}
+})
+</code></pre>
+
+<h3 id="7-制約を使って図形を定義する">7. 制約を使って図形を定義する</h3>
 
 </div>
 
@@ -203,9 +265,13 @@
   
 
     
+    <a class="prev" href="https://agehama.github.io/Pita/download/" title="ダウンロードとインストール">
+      Previous
+    </a>
+    
 
     
-    <a class="next" href="https://agehama.github.io/Pita/download/" title="ダウンロードとインストール">
+    <a class="next" href="https://agehama.github.io/Pita/syntax/" title="構文">
       Next
     </a>
     

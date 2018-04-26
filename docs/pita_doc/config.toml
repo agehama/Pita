@@ -4,7 +4,7 @@
 #theme = "hyde-y"
 
 # hostname (and path) to the root eg. http://spf13.com/
-baseurl = "https://agehama.github.io/pita/"
+baseurl = "https://agehama.github.io/"
 
 # Site title
 title = "Pita 作図のためのプログラミング言語"

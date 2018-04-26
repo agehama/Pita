@@ -1,18 +1,18 @@
 [a_download]
     Name = "ダウンロード"
     Title = "Show list of posts"
-    URL = "/pita-home"
+    URL = "/pita/pita-home"
 
 [b_tutorial]
     Name = "チュートリアル"
     Title = "Show list of posts"
-    URL = "/pita-home"
+    URL = "/pita/pita-home"
 
 [c_syntax]
     Name = "構文"
     Title = "Show list of tags"
-    URL = "/tags"
+    URL = "/pita/tags"
 
 [d_about]
     Name = "About"
-    URL = "/about"
+    URL = "/pita/about"

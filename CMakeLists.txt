@@ -11,7 +11,7 @@ endif()
 project(Pita)
 
 if(MSVC)
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 14)
 else()
   set(CMAKE_CXX_STANDARD 14)
 endif()

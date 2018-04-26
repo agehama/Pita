@@ -37,7 +37,8 @@
 #include <boost/serialization/variant.hpp>
 #include <boost/serialization/split_free.hpp>
 
-#pragma comment(lib, "libboost_serialization-vc141-mt-s-x32-1_66.lib")
+//#pragma comment(lib, "libboost_serialization-vc141-mt-s-x32-1_66.lib")
+#pragma comment(lib, "libboost_serialization-vc141-mt-s-1_64.lib")
 /*
 #include <cereal/types/memory.hpp>
 #include <cereal/types/array.hpp>

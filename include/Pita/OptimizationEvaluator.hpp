@@ -76,7 +76,8 @@ namespace cgl
 		boost::optional<size_t> freeVariableIndex(Address reference)const;
 
 		//Address -> 参照ID
-		boost::optional<int> addSatRef(Address reference);
+		boost::optional<int> addSatRefImpl(Address reference);
+		bool addSatRef(Address reference);
 
 		bool operator()(const LRValue& node);
 

@@ -33,7 +33,7 @@ namespace cgl
 	}
 
 	//Address -> 参照ID
-	boost::optional<int> SatVariableBinder::addSatRef(Address reference)
+	boost::optional<int> SatVariableBinder::addSatRefImpl(Address reference)
 	{
 		//以前に出現して登録済みのfree変数はそのまま返す
 		auto refID_It = invRefs.find(reference);
@@ -46,6 +46,7 @@ namespace cgl
 		//初めて出現したfree変数は登録してから返す
 		if (auto indexOpt = freeVariableIndex(reference))
 		{
+			//std::cout << "Register Free Variable" << std::endl;
 			const int referenceID = refs.size();
 			usedInSat[indexOpt.get()] = 1;
 			invRefs[reference] = referenceID;
@@ -55,11 +56,22 @@ namespace cgl
 			{
 				pEnv->printContext(true);
 			}
-				
+
 			return referenceID;
 		}
 
 		return boost::none;
+	}
+
+	bool SatVariableBinder::addSatRef(Address reference)
+	{
+		bool result = false;
+		const auto addresses = pEnv->expandReferences(reference, LocationInfo());
+		for (Address address : addresses)
+		{
+			result = static_cast<bool>(addSatRefImpl(address)) || result;
+		}
+		return result;
 	}
 
 	bool SatVariableBinder::operator()(const LRValue& node)
@@ -76,7 +88,7 @@ namespace cgl
 			}
 
 			//free変数にあった場合は制約用の参照値を追加する
-			return static_cast<bool>(addSatRef(address));
+			return addSatRef(address);
 		}
 
 		return false;
@@ -99,7 +111,7 @@ namespace cgl
 		}
 
 		//free変数にあった場合は制約用の参照値を追加する
-		return static_cast<bool>(addSatRef(address));
+		return addSatRef(address);
 	}
 
 	bool SatVariableBinder::operator()(const UnaryExpr& node)
@@ -192,7 +204,7 @@ namespace cgl
 				const auto addresses = pEnv->expandReferences(argument, info);
 				for (Address address : addresses)
 				{
-					result = static_cast<bool>(addSatRef(address)) || result;
+					result = addSatRef(address) || result;
 				}
 			}
 
@@ -359,6 +371,10 @@ namespace cgl
 		Address headAddress;
 		const Expr& head = node.head;
 
+		//isDeterministicがtrueであれば、Evalしないとわからないところまで見に行く
+		//isDeterministicがfalseの時は、評価するまでアドレスが不定なので関数の中身までは見に行かない
+		bool isDeterministic = true;
+
 		//headがsat式中のローカル変数
 		if (auto headOpt = AsOpt<Identifier>(head))
 		{
@@ -389,17 +405,17 @@ namespace cgl
 
 			headAddress = headAddressValue.address(*pEnv);
 		}
+		//それ以外であれば、headはその場で作られるローカル変数とみなす
 		else
 		{
-			CGL_Error("sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
+			//CGL_Error("sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
+			//isDeterministic = !boost::apply_visitor(*this, head);
+			isDeterministic = false;
 		}
 
 		Eval evaluator(pEnv);
 
 		Accessor result;
-		//isDeterministicがtrueであれば、Evalしないとわからないところまで見に行く
-		//isDeterministicがfalseの時は、評価するまでアドレスが不定なので関数の中身までは見に行かない
-		bool isDeterministic = true;
 
 		for (const auto& access : node.accesses)
 		{
@@ -1082,8 +1098,8 @@ namespace cgl
 			if (address.isValid())
 			{
 				//pEnv->assignToObject(address, rhs);
-				//pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
-				CGL_ErrorNode(node, "制約式中では変数への再代入は行えません。");
+				pEnv->bindValueID(identifier, pEnv->makeTemporaryValue(rhs));
+				//CGL_ErrorNode(node, "制約式中では変数への再代入は行えません。");
 			}
 			//変数が存在しない：変数宣言式
 			else

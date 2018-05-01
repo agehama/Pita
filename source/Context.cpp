@@ -551,7 +551,8 @@ namespace cgl
 						auto it = record.values.find(recordAccessOpt.get().name);
 						if (it == record.values.end())
 						{
-							CGL_Error("指定された識別子がレコード中に存在しない");
+							//CGL_Error("指定された識別子がレコード中に存在しない");
+							CGL_Error(std::string() + "指定された識別子\"" + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しない");
 						}
 
 						writeBuffer().push_back(it->second);

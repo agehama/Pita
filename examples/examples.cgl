@@ -1,0 +1,27 @@
+import "rec_shape2.cgl" as rec2
+import "koch_snowflake.cgl" as koch
+import "pita_p2.cgl" as p2
+import "pita_constraint_example.cgl" as cs
+
+Center = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.center())
+Left = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.left())
+Right = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.right())
+
+main = Shape{
+    a: (s = rec2.tree, s{})
+    b: (s = koch.tree, s{scale: X2(0.4), pos: Vec2(500,0)})
+    c: (s = p2.main, s{scale: X2(0.5), pos: Vec2(800,0)})
+    d: (s = cs.main, s{scale: X2(2.0), pos: Vec2(1200,0)})
+    sat((Center(a).y - Center(b).y)^2 == 0)
+    sat((Center(b).y - Center(c).y)^2 == 0)
+    sat((Center(c).y - Center(d).y)^2 == 0)
+    var(b.pos.y, c.pos.y, d.pos.y)
+}
+
+s = Free(main)
+main2 = s{
+    dd = (Right(s.a).x - Left(s.b).x)
+    sat( (dd - (Right(b).x - Left(c).x))^2 == 0)
+    sat( (dd - (Right(c).x - Left(d).x))^2 == 0)
+    var(c.pos.x, d.pos.x)
+} 

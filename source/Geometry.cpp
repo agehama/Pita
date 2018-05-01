@@ -399,6 +399,75 @@ namespace cgl
 		}
 	};
 
+	PackedRecord GetOffsetPathImpl(const Path& originalPath, double offset)
+	{
+		auto factory = gg::GeometryFactory::create();
+		gg::PrecisionModel model(gg::PrecisionModel::Type::FLOATING);
+
+		//gob::BufferParameters param(10, gob::BufferParameters::CAP_ROUND, gob::BufferParameters::JOIN_BEVEL, 10.0);
+		gob::BufferParameters param(10, gob::BufferParameters::CAP_FLAT, gob::BufferParameters::JOIN_BEVEL, 10.0);
+
+		gob::OffsetCurveBuilder builder(&model, param);
+
+		std::vector<gg::CoordinateSequence*> resultLines;
+		bool isClosedPath = false;
+		if (originalPath.empty())
+		{
+			CGL_Error("Original Path is Empty");
+		}
+
+		if (2 <= originalPath.cs->size())
+		{
+			const auto front = originalPath.cs->front();
+			const auto back = originalPath.cs->back();
+
+			isClosedPath = (front.x == back.x && front.y == back.y);
+		}
+
+		const bool isLeftSide = 0.0 <= offset;
+		//builder.getLineCurve(&points, 15.0, result);
+		builder.getSingleSidedLineCurve(originalPath.cs.get(), std::abs(offset), resultLines, isLeftSide, !isLeftSide);
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+
+		PackedList polygonList;
+		for (size_t i = 0; i < resultLines.size(); ++i)
+		{
+			const auto line = resultLines[i];
+			for (size_t p = 0; p < line->getSize(); ++p)
+			{
+				appendCoord(polygonList, line->getX(p), line->getY(p));
+			}
+		}
+
+		//getSingleSidedLineCurveがClosedPathを返すので最後の点を消す
+		if (!isClosedPath)
+		{
+			polygonList.data.pop_back();
+		}
+
+		//getSingleSidedLineCurveに左と右を指定したとき方向が逆になるので合わせる
+		if (!isLeftSide)
+		{
+			std::reverse(polygonList.data.begin(), polygonList.data.end());
+		}
+
+		PackedRecord result;
+		result.add("line", polygonList);
+		return result;
+	}
+
 	PackedRecord ShapeResult(const PackedVal& lhs = PackedList())
 	{
 		return MakeRecord(
@@ -1114,75 +1183,6 @@ namespace cgl
 		}
 
 		return ShapeResult(MakeRecord("line", polygonList));
-	}
-
-	PackedRecord GetOffsetPathImpl(const Path& originalPath, double offset)
-	{
-		auto factory = gg::GeometryFactory::create();
-		gg::PrecisionModel model(gg::PrecisionModel::Type::FLOATING);
-
-		//gob::BufferParameters param(10, gob::BufferParameters::CAP_ROUND, gob::BufferParameters::JOIN_BEVEL, 10.0);
-		gob::BufferParameters param(10, gob::BufferParameters::CAP_FLAT, gob::BufferParameters::JOIN_BEVEL, 10.0);
-
-		gob::OffsetCurveBuilder builder(&model, param);
-
-		std::vector<gg::CoordinateSequence*> resultLines;
-		bool isClosedPath = false;
-		if (originalPath.empty())
-		{
-			CGL_Error("Original Path is Empty");
-		}
-
-		if (2 <= originalPath.cs->size())
-		{
-			const auto front = originalPath.cs->front();
-			const auto back = originalPath.cs->back();
-
-			isClosedPath = (front.x == back.x && front.y == back.y);
-		}
-
-		const bool isLeftSide = 0.0 <= offset;
-		//builder.getLineCurve(&points, 15.0, result);
-		builder.getSingleSidedLineCurve(originalPath.cs.get(), std::abs(offset), resultLines, isLeftSide, !isLeftSide);
-
-		const auto coord = [&](double x, double y)
-		{
-			PackedRecord record;
-			record.add("x", x);
-			record.add("y", y);
-			return record;
-		};
-		const auto appendCoord = [&](PackedList& list, double x, double y)
-		{
-			const auto record = coord(x, y);
-			list.add(record);
-		};
-
-		PackedList polygonList;
-		for (size_t i = 0; i < resultLines.size(); ++i)
-		{
-			const auto line = resultLines[i];
-			for (size_t p = 0; p < line->getSize(); ++p)
-			{
-				appendCoord(polygonList, line->getX(p), line->getY(p));
-			}
-		}
-
-		//getSingleSidedLineCurveがClosedPathを返すので最後の点を消す
-		if (!isClosedPath)
-		{
-			polygonList.data.pop_back();
-		}
-
-		//getSingleSidedLineCurveに左と右を指定したとき方向が逆になるので合わせる
-		if (!isLeftSide)
-		{
-			std::reverse(polygonList.data.begin(), polygonList.data.end());
-		}
-
-		PackedRecord result;
-		result.add("line", polygonList);
-		return ShapeResult(result);
 	}
 
 	PackedRecord GetOffsetPath(const PackedRecord& packedPathRecord, double offset)

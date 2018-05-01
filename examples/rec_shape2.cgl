@@ -5,16 +5,16 @@ shapeList = (f, depth, template ->
     }
     else Shape{
         a: template{}
-        b: f(f, depth-1, template){
+        b: (c = f(f, depth-1, template), c{
             pos.y = -1
             angle = 30
             scale = X2(0.9)
-        }
+        })
     }
 )
 
 tree = Shape{
     depth = 50
-    a: shapeList(shapeList, depth, Shape{a:Diff(Triangle{}, Buffer(Triangle{}, -0.1))}){scale = X2(100)}
-    a.b.b.b.b.b = 0
+    a: (c = shapeList(shapeList, depth, Shape{a:Diff(Triangle{}, Buffer(Triangle{}, -0.1))}), c{scale = X2(100)})
+    //a.b.b.b.b.b = 0
 }

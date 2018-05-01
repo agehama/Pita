@@ -18,6 +18,7 @@ main = Shape{
     a: tri{scale: X2(0.6), angle: -90}
     b: pita{}
     //sat(Contact(Moved(getRight(a), 10,0), getLeft(b)))
-    sat(Contact(getRight(a), Moved(getLeft(b), -10, 0) ))
+    sat(Contact(getRight(a), Moved(getLeft(b), -20, 0) ))
     var(b.pos)
+    fill: Rgb(255,255,255)
 }

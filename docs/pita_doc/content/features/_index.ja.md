@@ -1,5 +1,5 @@
 ---
-title: "Pitaの特徴"
+title: "1. Pitaの特徴"
 ---
 
 ## Pitaの特徴

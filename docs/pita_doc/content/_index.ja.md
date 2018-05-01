@@ -2,30 +2,37 @@
 title: "はじめに"
 ---
 
-# 作図用プログラミング言語 Pita
+# Pita 作図のためのプログラミング言語
 
-**Pita**は、作図のためのプログラミング言語です。
+Pitaは、ベクター画像を生成するためのプログラミング言語です。
+ユーザーが記述した図形の仕様（ルール）を受け取り、それを満たすような図形を計算します。
+手続きを用いた生成的な図形表現や、制約を用いた宣言的な図形の定義を高速に行うことができます。
+Pitaは容易に図形の定義ができて後からの変更を行いやすいように設計されています。
 
+---
 
-## Pitaの特徴
+![Pitaで記述した図の例](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/pita_examples.png?classes=shadow)
 
-* [簡潔な構文]({{%relref "/features/syntax/_index.md" %}})
-* [図形処理]({{%relref "/features/geometry/_index.md" %}})
-* [制約]({{%relref "/features/constraint/_index.md" %}})
+### 1. 制約による図形記述
+Pitaの最大の特徴は、図を定義するのに座標やアルゴリズムを書く必要がないという点です。
+Pitaは図の定義に、図が満たすべき仕様（図形同士が接触している、平行である、...）を与えることができます。
+処理系はこの仕様を満たす図形を自動的に計算します。
 
-![Screenshot](https://github.com/matcornic/hugo-theme-learn/raw/master/images/screenshot.png?width=40pc&classes=shadow)
+### 2. 図形の部品化
+Pitaは一度図形を作ったら、それを継承することで似たような図形を簡単に作ることができます。
+また、図形同士のブーリアン演算も行うことができます。
+さらに図形定義から他の図形定義を参照することもでき、作図工程のモジュール化を支援します。
 
+### 3. 高い表現力
+Pitaは図形に関する高度な演算機能（図形をパスに沿うよう変形させる、障害物を迂回する経路を探索する、...）を提供します。
+また、分岐やループなどの制御構文、レコードやリストなどのデータ構造、第一級関数など汎用性の高い言語機能を備えているので、複雑な図形も簡潔に記述することが可能です。
 
-## Contribute to this documentation
-Feel free to update this content, just click the **Edit this page** link displayed on top right of each page, and pullrequest it
+#### 他の特徴
+他にもPitaは次のような特徴を備えています。
 
-{{% notice info %}}
-Your modification will be deployed automatically when merged.
-{{% /notice %}}
-
-## Documentation website
-This current documentation has been statically generated with Hugo with a simple command : `hugo -t hugo-theme-learn` -- source code is [available here at GitHub](https://github.com/matcornic/hugo-theme-learn)
-
-{{% notice note %}}
-Automatically published and hosted thanks to [Netlify](https://www.netlify.com/). Read more about [Automated HUGO deployments with Netlify](https://www.netlify.com/blog/2015/07/30/hosting-hugo-on-netlifyinsanely-fast-deploys/)
-{{% /notice %}}
+- Windows, MacOS, Ubuntu のサポート
+- 数値計算による高速な制約計算
+- フォント対応
+- SVG出力対応
+- パスに関する演算機能
+- MITライセンス

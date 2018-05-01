@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ja" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="generator" content="Hugo 0.40.1" />
+    <meta name="description" content="">
+
+
+    <link rel="shortcut icon" href="/Pita/images/favicon.png" type="image/x-icon" />
+<link rel="icon" href="/Pita/images/favicon.png" type="image/x-icon" />
+    <title>Pitaの構文 :: Documentation for Pita</title>
+    
+    
+    <link href="/Pita/css/nucleus.css?1525165220" rel="stylesheet">
+    <link href="/Pita/css/font-awesome.min.css?1525165220" rel="stylesheet">
+    <link href="/Pita/css/hybrid.css?1525165220" rel="stylesheet">
+    <link href="/Pita/css/featherlight.min.css?1525165220" rel="stylesheet">
+    <link href="/Pita/css/perfect-scrollbar.min.css?1525165220" rel="stylesheet">
+    <link href="/Pita/css/auto-complete.css?1525165220" rel="stylesheet">
+    <link href="/Pita/css/theme.css?1525165220" rel="stylesheet">
+    <link href="/Pita/css/hugo-theme.css?1525165220" rel="stylesheet">
+    
+
+    <script src="/Pita/js/jquery-2.x.min.js?1525165220"></script>
+    
+    <style type="text/css">
+      :root #header + #content > #left > #rlblock_left{ 
+          display:none !important;
+      }
+      
+    </style>
+    
+  </head>
+  <body class="" data-url="/Pita/ja/features/syntax/">
+    <nav id="sidebar" class="">
+
+
+
+  <div id="header-wrapper">
+    <div id="header">
+      <a id="logo" href="http://agehama.github.io/Pita">
+  <svg xmlns="http://www.w3.org/2000/svg" width="270.242" height="95" viewBox="-54.4615 -47.5 270.242 95">
+    <g id="shape" fill="rgb(255, 255, 255)" >
+      <g id="a" >
+        <g id="c" >
+            <g id="result[0]" >
+              <path d="M18.3712,18.3712 L6.72432,-25.0955 L-25.0955,6.72432 L18.3712,18.3712 z M0,-17.3205 L15,8.66025 L-15,8.66025 L0,-17.3205 z "/>
+            </g>
+            <g id="result[1]" >
+              <path d="M25.9808,45 L25.9808,-45 L-51.9615,7.76632e-10 L25.9808,45 z M8.96575,-33.4607 L24.4949,24.4949 L-33.4607,8.96575 L8.96575,-33.4607 z "/>
+            </g>
+        </g>
+      </g>
+      <g id="b" >
+        <g id="text" >
+          <g id="result" >
+                <g id="shapes[0][0]" >
+                  <path d="M85.7608,-18.236 L85.1008,-22.244 L84.0008,-25.724 L82.4608,-28.676 L80.4808,-31.1 L78.0648,-33.044 L75.1368,-34.556 L71.6968,-35.636 L67.7448,-36.284 L63.2808,-36.5 L59.7088,-36.44 L56.1928,-36.26 L52.7328,-35.96 L49.3288,-35.54 L45.9808,-35 L45.9808,37.5 L57.1808,37.5 L57.1808,9.2 L58.6568,9.38 L60.0448,9.52 L61.3448,9.62 L62.5568,9.68 L63.6808,9.7 L68.0008,9.48 L71.8408,8.82 L75.2008,7.72 L78.0808,6.18 L80.4808,4.2 L82.4608,1.692 L84.0008,-1.352 L85.1008,-4.932 L85.7608,-9.048 L85.9808,-13.7 L85.7608,-18.236 z M75.2808,-13.7 L75.1568,-10.8 L74.7848,-8.26 L74.1648,-6.08 L73.2968,-4.26 L72.1808,-2.8 L70.8408,-1.684 L69.2208,-0.816 L67.3208,-0.196 L65.1408,0.176 L62.6808,0.3 L61.5008,0.28 L60.3608,0.22 L59.2608,0.12 L58.2008,-0.02 L57.1808,-0.2 L57.1808,-26.5 L58.1688,-26.752 L59.2128,-26.948 L60.3128,-27.088 L61.4688,-27.172 L62.6808,-27.2 L65.1088,-27.072 L67.2728,-26.688 L69.1728,-26.048 L70.8088,-25.152 L72.1808,-24 L73.2968,-22.564 L74.1648,-20.816 L74.7848,-18.756 L75.1568,-16.384 L75.2808,-13.7 z "/>
+                </g>
+                <g id="shapes[1][0]" >
+                  <polygon points="116.881,-14.5 116.881,28.7 127.381,28.7 127.381,37.5 92.3808,37.5 92.3808,28.7 105.781,28.7 105.781,-5.7 95.3808,-5.7 95.3808,-14.5 116.881,-14.5 "/>
+                </g>
+                <g id="shapes[1][1]" >
+                  <polygon points="103.781,-38.5 116.881,-38.5 116.881,-26 103.781,-26 103.781,-38.5 "/>
+                </g>
+                <g id="shapes[2][0]" >
+                  <polygon points="168.281,-3.6 151.381,-3.6 151.381,20.5 151.433,22.688 151.589,24.532 151.849,26.032 152.213,27.188 152.681,28 153.341,28.54 154.281,28.96 155.501,29.26 157.001,29.44 158.781,29.5 160.657,29.432 162.445,29.228 164.145,28.888 165.757,28.412 167.281,27.8 167.281,37 165.165,37.54 163.057,37.96 160.957,38.26 158.865,38.44 156.781,38.5 153.361,38.364 150.381,37.956 147.841,37.276 145.741,36.324 144.081,35.1 142.821,33.508 141.841,31.452 141.141,28.932 140.721,25.948 140.581,22.5 140.581,-3.6 130.281,-3.6 130.281,-12.5 140.581,-12.5 140.581,-31.5 151.381,-31.5 151.381,-12.5 168.281,-12.5 168.281,-3.6 "/>
+                </g>
+                <g id="shapes[3][0]" >
+                  <path d="M176.781,-2.7 L178.321,-3.284 L179.981,-3.836 L181.761,-4.356 L183.661,-4.844 L185.681,-5.3 L187.721,-5.732 L189.601,-6.068 L191.321,-6.308 L192.881,-6.452 L194.281,-6.5 L196.045,-6.42 L197.577,-6.18 L198.877,-5.78 L199.945,-5.22 L200.781,-4.5 L201.465,-3.62 L201.997,-2.5 L202.377,-1.14 L202.605,0.46 L202.681,2.3 L202.681,4 L199.081,4 L194.401,4.196 L190.201,4.784 L186.481,5.764 L183.241,7.136 L180.481,8.9 L178.249,11.02 L176.513,13.46 L175.273,16.22 L174.529,19.3 L174.281,22.7 L174.437,25.568 L174.905,28.172 L175.685,30.512 L176.777,32.588 L178.181,34.4 L179.885,35.876 L181.797,37.024 L183.917,37.844 L186.245,38.336 L188.781,38.5 L192.353,38.18 L195.549,37.22 L198.369,35.62 L200.813,33.38 L202.881,30.5 L203.081,30.5 L203.281,37.5 L213.281,37.5 L213.281,4.3 L213.117,0.064 L212.625,-3.604 L211.805,-6.704 L210.657,-9.236 L209.181,-11.2 L207.281,-12.748 L204.861,-13.952 L201.921,-14.812 L198.461,-15.328 L194.481,-15.5 L193.009,-15.456 L191.393,-15.324 L189.633,-15.104 L187.729,-14.796 L185.681,-14.4 L183.661,-13.984 L181.761,-13.536 L179.981,-13.056 L178.321,-12.544 L176.781,-12 L176.781,-2.7 z M202.681,11.5 L202.681,14.3 L202.561,17.264 L202.201,19.916 L201.601,22.256 L200.761,24.284 L199.681,26 L198.393,27.404 L196.929,28.496 L195.289,29.276 L193.473,29.744 L191.481,29.9 L190.253,29.82 L189.129,29.58 L188.109,29.18 L187.193,28.62 L186.381,27.9 L185.697,26.992 L185.165,25.948 L184.785,24.768 L184.557,23.452 L184.481,22 L184.625,20.092 L185.057,18.368 L185.777,16.828 L186.785,15.472 L188.081,14.3 L189.705,13.292 L191.617,12.508 L193.817,11.948 L196.305,11.612 L199.081,11.5 L202.681,11.5 z "/>
+                </g>
+          </g>
+        </g>
+      </g>
+    </g>
+    </svg>
+    
+</a>
+
+    </div>
+    
+        <div class="searchbox">
+    <label for="search-by"><i class="fa fa-search"></i></label>
+    <input data-search-input id="search-by" type="text" placeholder="">
+    <span data-search-clear=""><i class="fa fa-close"></i></span>
+</div>
+
+<script type="text/javascript" src="/Pita/js/lunr.min.js?1525165220"></script>
+<script type="text/javascript" src="/Pita/js/auto-complete.js?1525165220"></script>
+<script type="text/javascript">
+    
+        var baseurl = "\/Pita\/ja";
+    
+</script>
+<script type="text/javascript" src="/Pita/js/search.js?1525165220"></script>
+
+    
+  </div>
+
+    <div class="highlightable">
+    <ul class="topics">
+
+        
+          
+          
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/start/" title="クイックスタート" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/start/">
+          <b>1. </b>クイックスタート
+          
+      </a>
+      
+      
+        <ul>
+          
+          
+            
+          
+          
+          
+        
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/start/download/" title="ダウンロードとインストール" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/start/download/">
+          ダウンロードとインストール
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+        
+        </ul>
+              
+    </li>
+  
+ 
+
+          
+          
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/features/" title="1. Pitaの特徴" class="dd-item 
+        parent
+        
+        
+        ">
+      <a href="/Pita/ja/features/">
+          1. Pitaの特徴
+          
+      </a>
+      
+      
+        <ul>
+          
+          
+            
+          
+          
+          
+        
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/features/constraint/" title="Pitaの制約処理" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/features/constraint/">
+          Pitaの制約処理
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/features/geometry/" title="Pitaの図形処理" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/features/geometry/">
+          Pitaの図形処理
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/features/syntax/" title="Pitaの構文" class="dd-item 
+        parent
+        active
+        
+        ">
+      <a href="/Pita/ja/features/syntax/">
+          Pitaの構文
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+        
+        </ul>
+              
+    </li>
+  
+ 
+
+          
+         
+    </ul>
+
+    
+    
+      <section id="shortcuts">
+        <h3></h3>
+        <ul>
+          
+              <li> 
+                  <a class="padding" href="https://github.com/agehama/Pita"><i class='fa fa-fw fa-github'></i> Github repo</a>
+              </li>
+          
+        </ul>
+      </section>
+    
+
+    
+    <section id="prefooter">
+      <hr/>
+      <ul>
+      
+        <li>
+          <a class="padding">
+            <i class="fa fa-fw fa-language"></i>
+          <div class="select-style">
+            <select id="select-language" onchange="location = this.value;">
+          
+          
+          
+              
+              
+                  
+              
+                  
+                    
+                    
+                      <option id="ja" value="/Pita/ja/features/syntax/" selected>Japanese</option>
+                    
+                  
+              
+          
+        </select>
+        <svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+          width="255px" height="255px" viewBox="0 0 255 255" style="enable-background:new 0 0 255 255;" xml:space="preserve">
+          <g>
+            <g id="arrow-drop-down">
+              <polygon points="0,63.75 127.5,191.25 255,63.75 		" />
+            </g>
+          </g>
+        </svg>
+        </div>
+        </a>
+        </li>
+       
+      
+      
+      </ul>
+    </section>
+    
+    <section id="footer">
+      <p>Built with <a href="https://github.com/matcornic/hugo-theme-learn"><i class="fa fa-heart"></i></a> from <a href="http://getgrav.org">Grav</a> and <a href="http://gohugo.io/">Hugo</a></p>
+
+    </section>
+  </div>
+</nav>
+
+
+
+
+
+        <section id="body">
+        <div id="overlay"></div>
+        <div class="padding highlightable">
+              
+              <div>
+                <div id="top-bar">
+                
+                
+                <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                    <span id="sidebar-toggle-span">
+                        <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                          <i class="fa fa-bars"></i>
+                        </a>
+                    </span>
+                  
+                  <span id="toc-menu"><i class="fa fa-list-alt"></i></span>
+                  
+                  <span class="links">
+                    
+          
+          
+            
+            
+          
+          
+            
+            
+          
+          
+            <a href='/Pita/ja/'>はじめに</a> > <a href='/Pita/ja/features/'>1. Pitaの特徴</a> > Pitaの構文
+          
+         
+          
+         
+          
+           
+                  </span>
+                </div>
+                
+                    <div class="progress">
+    <div class="wrapper">
+
+    </div>
+</div>
+
+                
+              </div>
+            </div>
+            
+
+        
+        <div id="body-inner">
+          
+            <h1>Pitaの構文</h1>
+          
+
+        
+
+
+<p>Pitaは作図のための簡潔な構文を提供します。</p>
+
+
+<footer class=" footline" >
+	
+</footer>
+
+        
+        </div> 
+        
+
+      </div>
+
+    <div id="navigation">
+        
+        
+        
+        
+            
+            
+                
+                    
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                        
+                        
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                        
+                        
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+            
+        
+                    
+            
+        
+        
+        
+
+
+        
+            <a class="nav nav-prev" href="/Pita/ja/features/geometry/" title="Pitaの図形処理"> <i class="fa fa-chevron-left"></i></a>
+        
+        
+            <a class="nav nav-next" href="/Pita/ja/features/constraint/" title="Pitaの制約処理" style="margin-right: 0px;"><i class="fa fa-chevron-right"></i></a>
+        
+    </div>
+
+    </section>
+    
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/Pita/js/clipboard.min.js?1525165220"></script>
+    <script src="/Pita/js/perfect-scrollbar.min.js?1525165220"></script>
+    <script src="/Pita/js/perfect-scrollbar.jquery.min.js?1525165220"></script>
+    <script src="/Pita/js/jquery.sticky.js?1525165220"></script>
+    <script src="/Pita/js/featherlight.min.js?1525165220"></script>
+    <script src="/Pita/js/html5shiv-printshiv.min.js?1525165220"></script>
+    <script src="/Pita/js/highlight.pack.js?1525165220"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/Pita/js/modernizr.custom.71422.js?1525165220"></script>
+    <script src="/Pita/js/learn.js?1525165220"></script>
+    <script src="/Pita/js/hugo-learn.js?1525165220"></script>
+
+    <link href="/Pita/mermaid/mermaid.css?1525165220" type="text/css" rel="stylesheet" />
+    <script src="/Pita/mermaid/mermaid.js?1525165220"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    
+
+  </body>
+</html>

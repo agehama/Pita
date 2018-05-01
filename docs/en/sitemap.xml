@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/en/categories/</loc>
+    <priority>0</priority>
+    <xhtml:link
+                rel="alternate"
+                hreflang="ja"
+                href="https://agehama.github.io/Pita/ja/categories/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://agehama.github.io/Pita/en/categories/"
+                />
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/en/</loc>
+    <priority>0</priority>
+    <xhtml:link
+                rel="alternate"
+                hreflang="ja"
+                href="https://agehama.github.io/Pita/ja/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://agehama.github.io/Pita/en/"
+                />
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/en/tags/</loc>
+    <priority>0</priority>
+    <xhtml:link
+                rel="alternate"
+                hreflang="ja"
+                href="https://agehama.github.io/Pita/ja/tags/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://agehama.github.io/Pita/en/tags/"
+                />
+  </url>
+  
+</urlset>

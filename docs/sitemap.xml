@@ -1,52 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-  xmlns:xhtml="http://www.w3.org/1999/xhtml">
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/about/</loc>
-    <lastmod>2018-04-26T17:20:56+09:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/syntax/</loc>
-    <lastmod>2018-04-26T17:20:47+09:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/tutorial/</loc>
-    <lastmod>2018-04-26T17:20:39+09:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/download/</loc>
-    <lastmod>2018-04-26T17:20:28+09:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/pita-home/</loc>
-    <lastmod>2018-04-26T16:08:18+09:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/</loc>
-    <lastmod>2018-04-26T17:20:56+09:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/post/</loc>
-    <lastmod>2018-04-26T17:20:56+09:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/tags/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://agehama.github.io/Pita/topics/</loc>
-    <priority>0</priority>
-  </url>
-  
-</urlset>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	
+	<sitemap>
+	   	<loc>https://agehama.github.io/Pita/en/sitemap.xml</loc>
+		
+	</sitemap>
+	
+	<sitemap>
+	   	<loc>https://agehama.github.io/Pita/ja/sitemap.xml</loc>
+		
+	</sitemap>
+	
+</sitemapindex>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/start/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/start/download/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/features/constraint/</loc>
+    <lastmod>2016-04-09T16:50:16+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/features/geometry/</loc>
+    <lastmod>2016-04-09T16:50:16+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/features/syntax/</loc>
+    <lastmod>2016-04-09T16:50:16+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/features/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/categories/</loc>
+    <priority>0</priority>
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://agehama.github.io/Pita/en/categories/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="ja"
+                href="https://agehama.github.io/Pita/ja/categories/"
+                />
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/tags/</loc>
+    <priority>0</priority>
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://agehama.github.io/Pita/en/tags/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="ja"
+                href="https://agehama.github.io/Pita/ja/tags/"
+                />
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/</loc>
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://agehama.github.io/Pita/en/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="ja"
+                href="https://agehama.github.io/Pita/ja/"
+                />
+  </url>
+  
+</urlset>

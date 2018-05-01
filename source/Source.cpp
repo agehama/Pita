@@ -671,22 +671,6 @@ int main(int argc, char* argv[])
 			return 0;
 		}
 
-		if (result.count("input"))
-		{
-			input_file = result["input"].as<std::string>();
-		}
-		else
-		{
-			std::cout << "Input file is not specified.\n" << std::endl;
-			std::cout << options.help() << std::endl;
-			return 0;
-		}
-
-		if (result.count("output"))
-		{
-			output_file = result["output"].as<std::string>();
-		}
-
 		if (result.count("licence"))
 		{
 			std::cout << R"(
@@ -1517,6 +1501,24 @@ apply, that proxy's public statement of acceptance of any version is
 permanent authorization for you to choose that version for the
 Library.
 )" << std::endl;
+
+			return 0;
+		}
+
+		if (result.count("input"))
+		{
+			input_file = result["input"].as<std::string>();
+		}
+		else
+		{
+			std::cout << "Input file is not specified.\n" << std::endl;
+			std::cout << options.help() << std::endl;
+			return 0;
+		}
+
+		if (result.count("output"))
+		{
+			output_file = result["output"].as<std::string>();
 		}
 
 		/*

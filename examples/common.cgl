@@ -48,14 +48,14 @@ Square = Shape{
         {x: -0.5, y: -0.5}, {x: +0.5, y: -0.5}
         {x: +0.5, y: +0.5}, {x: -0.5, y: +0.5}
     ]
-    topLeft:     (->globalPos( polygon[0] ))
-    topRight:    (->globalPos( polygon[1] ))
-    bottomRight: (->globalPos( polygon[2] ))
-    bottomLeft:  (->globalPos( polygon[3] ))
-    top:         (->globalPos( Mid(polygon[0], polygon[1]) ))
-    bottom:      (->globalPos( Mid(polygon[2], polygon[3]) ))
-    left:        (->globalPos( Mid(polygon[0], polygon[3]) ))
-    right:       (->globalPos( Mid(polygon[1], polygon[2]) ))
+    topLeft:     (->globalPos( @polygon[0] ))
+    topRight:    (->globalPos( @polygon[1] ))
+    bottomRight: (->globalPos( @polygon[2] ))
+    bottomLeft:  (->globalPos( @polygon[3] ))
+    top:         (->globalPos( Mid(@polygon[0], @polygon[1]) ))
+    bottom:      (->globalPos( Mid(@polygon[2], @polygon[3]) ))
+    left:        (->globalPos( Mid(@polygon[0], @polygon[3]) ))
+    right:       (->globalPos( Mid(@polygon[1], @polygon[2]) ))
     center:      (->Mid(top(), bottom()))
 }
 

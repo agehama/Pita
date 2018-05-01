@@ -3,85 +3,33 @@ baseurl = "https://agehama.github.io/Pita/"
 
 # Site title
 title = "Pita 作図のためのプログラミング言語"
+theme = "hugo-theme-learn"
+
+# Metadata format
+# "yaml", "toml", "json"
+metaDataFormat = "yaml"
+defaultContentLanguageInSubdir= true
 
 # Copyright
 copyright = "(c) 2018 agehama."
 
 # Language
-languageCode = "ja-jp"
+languageCode = "ja-JP"
+defaultContentLanguage = "ja"
 
-# Metadata format
-# "yaml", "toml", "json"
-metaDataFormat = "yaml"
+[Languages]
+[Languages.ja]
+title = "Documentation for Pita"
+weight = 1
+languageName = "Japanese"
 
-# Theme to use (located in /themes/THEMENAME/)
-theme = "hyde-y"
+[[Languages.ja.menu.shortcuts]] 
+name = "<i class='fa fa-fw fa-github'></i> Github repo"
+identifier = "ds"
+url = "https://github.com/agehama/Pita"
+weight = 10
 
-# Pagination
-paginate = 10
-paginatePath = "page"
-
-# Enable Disqus integration
-disqusShortname = "your_disqus_shortname"
-
-[permalinks]
-    #post = "/:year/:month/:day/:slug/"
-    post = "/:slug/"
-    code = "/:slug/"
-
-[taxonomies]
-    tag = "tags"
-    topic = "topics"
-
-[author]
-    name = "yourname"
-    # email = "yourname@example.com"
-
-#
-# All parameters below here are optional and can be mixed and matched.
-#
-[params]
-    # You can use markdown here.
-    brand = "Pita"
-    topline = "A language for geometry processing"
-    #footline = "code with <i class='fa fa-heart'></i>"
-
-    # Sidebar position
-    # false, true, "left", "right"
-    sidebar = "left"
-
-    # Text for the top menu link, which goes the root URL for the site.
-    # Default (if omitted) is "Home".
-    home = "はじめに"
-
-    # Select a syntax highight.
-    # Check the static/css/highlight directory for options.
-    highlight = "default"
-
-    # Google Analytics.
-    googleAnalytics = "Your Google Analytics tracking code"
-
-    # Sidebar social links.
-    github = "agehama/Pita" # Your Github profile ID
-    bitbucket = "" # Your Bitbucket profile ID
-    linkedin = "" # Your LinkedIn profile ID (from public URL)
-    googleplus = "" # Your Google+ profile ID
-    facebook = "" # Your Facebook profile ID
-    twitter = "agehama_" # Your Twitter profile ID
-    youtube = ""  # Your Youtube channel ID
-    flattr = ""  # populate with your flattr uid
-    flickr = "" # Your Flickr profile ID
-    vimeo = "" # Your Vimeo profile ID
-
-    # Sidebar RSS link: will only show up if there is a RSS feed
-    # associated with the current page
-    #rss = true
-
-[blackfriday]
-    angledQuotes = true
-    fractions = false
-    hrefTargetBlank = false
-    latexDashes = true
-    plainIdAnchors = true
-    extensions = []
-    extensionmask = []
+[[Languages.en.menu.shortcuts]]
+name = "<i class='fa fa-fw fa-bullhorn'></i> License"
+url = "/license"
+weight = 30

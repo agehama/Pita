@@ -1,0 +1,23 @@
+getLeft = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.left())
+getRight = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.right())
+
+tri = Shape{
+    a = Triangle{scale=X2(50), angle: 90}
+    b = SymDiff(a, Shape{s:a,scale:X2(1.5), angle: 15})
+    c: SymDiff(b, Shape{s:b,scale:X2(2.0), angle: 15})
+}
+
+text = Shape{
+    text: (BuildText("Pita")){scale: X2(2.0)}
+    /*
+    rect = BoundingBox(text).result
+    rect2 = Square{polygon=rect.polygon}
+    Print(getLeft(text))
+    a: Shape{
+        a: ShapeOuterPath(rect).result
+        stroke: Rgb(0,0,0)
+    }
+    */
+}
+
+//main

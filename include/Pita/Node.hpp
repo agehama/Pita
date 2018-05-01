@@ -2511,6 +2511,11 @@ namespace cgl
 			return RecordInheritor(original);
 		}
 
+		static RecordInheritor MakeLines(const Lines& original)
+		{
+			return RecordInheritor(original);
+		}
+
 		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
 		{
 			rec.adder.exprs.push_back(KeyExpr);

@@ -322,7 +322,11 @@ namespace cgl
 			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
 			//record{} の間には改行は挟めない（record,{}と区別できなくなるので）
-			record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
+			//record_inheritor = (accessor[_val = Call(RecordInheritor::MakeAccessor, _1)] | id[_val = Call(RecordInheritor::MakeIdentifier, _1)]) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
+			record_inheritor = (
+				id[_val = Call(RecordInheritor::MakeIdentifier, _1)] |
+				(encode::char_('(') >> expr_seq[_val = Call(RecordInheritor::MakeLines, _1)] >> encode::char_(')'))
+				) >> record_maker[Call(RecordInheritor::AppendRecord, _val, _1)];
 
 			record_maker = encode::char_('{') >> s >
 				-( 
@@ -350,8 +354,11 @@ namespace cgl
 
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
-				| (record_maker[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]));
+				| (record_maker[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
+				| (record_inheritor[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]));
 			
+			//accessor = (factor[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]));
+
 			access = functionAccess[_val = Cast<FunctionAccess, Access>()]
 				| listAccess[_val = Cast<ListAccess, Access>()]
 				| recordAccess[_val = Cast<RecordAccess, Access>()];
@@ -370,9 +377,10 @@ namespace cgl
 				| ('(' >> s > expr_seq[_val = _1] > s > ')')
 				| ('\"' > char_string[_val = Call(BuildString, _1)] > '\"')
 				| constraints[_val = _1]
-				| record_inheritor[_val = _1]
+				//| record_inheritor[_val = _1]
 				| freeVals[_val = _1]
 				| accessor[_val = _1]
+				| record_inheritor[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]

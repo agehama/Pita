@@ -50,6 +50,6 @@ snowflake = (depth -> Shape{
     stroke: Rgb(0, 0, 0)
 })
 
-main = snowflake(5){
+main = (s = snowflake(5), s{
     angle = 45
-}
+})

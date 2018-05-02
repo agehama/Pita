@@ -8,7 +8,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
-      env: COMPILER=g++-5
+      env: COMPILER=g++-5 BOOST_VERSION=default BOOST_BUILD=true
 
     - compiler: clang
       addons:
@@ -17,10 +17,11 @@ matrix:
             - llvm-toolchain-trusty-4.0
           packages:
             - clang-4.0
-      env: COMPILER=clang++-4.0
+      env: COMPILER=clang++-4.0 BOOST_VERSION=default BOOST_BUILD=true
 
     - os: osx
       osx_image: xcode9.1
+      env: BOOST_VERSION=default BOOST_BUILD=true
 
 before_install:
   - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then sudo apt-get update -qq; fi
@@ -56,9 +57,7 @@ install:
         mkdir -p ${BOOST_DIR}
         { travis_retry wget -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
       fi
-      # Make sure we don't conflict with the Hana shipped with Boost
-      rm -r ${BOOST_DIR}/boost/{hana,hana.hpp} || exit 1
-
+      
       CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"
     fi
 
@@ -122,6 +121,8 @@ script:
   - cd Pita
   - mkdir build
   - cd build
-  - cmake -DCMAKE_CXX_COMPILER=$COMPILER ..
+  - CMAKE_OPTIONS+=" -DCMAKE_CXX_COMPILER=${COMPILER}"
+  - cmake .. ${CMAKE_OPTIONS}
+  #- cmake -DCMAKE_CXX_COMPILER=$COMPILER .. 
   - make -j4
   - ctest -V

@@ -1,5 +1,3 @@
-//EnableGC(false)
-
 main = Shape{
     ss: []
     num = 70

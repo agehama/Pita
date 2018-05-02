@@ -55,7 +55,7 @@ set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 if(MSVC)
   find_package(Boost 1.53.0)
 else()
-  find_package(Boost 1.53.0 REQUIRED serialization)
+  find_package(Boost 1.53.0 REQUIRED)
 endif()
 
 if(Boost_FOUND)
@@ -70,6 +70,7 @@ include_directories(external/geos)
 include_directories(external/libcmaes/src)
 include_directories(external/Siv3D)
 include_directories(external/cxxopts/include)
+include_directories(external/cereal/include)
 
 #message("${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib")
 

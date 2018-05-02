@@ -117,7 +117,7 @@ install:
     fi
     
 script:
-  - cd ~/build
+  - cd ~/build/agehama
   - ls -la
   - cd Pita
   - mkdir build

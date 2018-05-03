@@ -80,7 +80,8 @@ install:
   - |
     if [[ "${BOOST_BUILD}" == "true" ]]; then
       #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
-      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2)
+      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
+      ls -la ${DEPS_DIR}
       #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && sudo ./b2 install)
       sudo apt-get install tree
       tree ${DEPS_DIR}/b2

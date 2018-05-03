@@ -258,8 +258,10 @@ namespace cgl
 
 	boost::optional<Expr> Parse1(const std::string& filename)
 	{
+		CGL_DBG;
 		std::cout << "parsing: \"" << filename << "\"" << std::endl;
 
+		CGL_DBG;
 		std::ifstream ifs(filename);
 		if (!ifs.is_open())
 		{
@@ -268,7 +270,7 @@ namespace cgl
 		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
 		std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-
+		CGL_DBG;
 		/*std::stringstream tabRemovedStr;
 		char c;
 		while (ifs.get(c))
@@ -282,7 +284,7 @@ namespace cgl
 		std::string sourceCode = EscapedSourceCode(original);
 
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
-
+		CGL_DBG;
 		workingDirectories.emplace(currentDirectory);
 
 		SourceT beginSource(sourceCode.begin()), endSource(sourceCode.end());
@@ -293,9 +295,10 @@ namespace cgl
 		auto it = beginIt;
 		SpaceSkipper<IteratorT> skipper;
 		Parser<SpaceSkipperT> grammer(beginSource, endSource, filename);
-
+		CGL_DBG;
 		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
 		{
+			CGL_DBG;
 			if (!errorMessagePrinted)
 			{
 				std::cout << "Syntax Error: parse failed\n";
@@ -306,6 +309,7 @@ namespace cgl
 			}
 			return boost::none;
 		}
+		CGL_DBG;
 
 		if (it != endIt)
 		{

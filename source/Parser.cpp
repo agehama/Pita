@@ -285,9 +285,19 @@ namespace cgl
 		}
 		std::string sourceCode = tabRemovedStr.str();*/
 		std::string sourceCode = EscapedSourceCode(original);
-		CGL_DBG;
 
+		CGL_DBG;
+		std::cout << "filepath: " << filename << std::endl;
+
+		CGL_DBG;
+		std::cout << "absolute filepath: " << cgl::filesystem::absolute(cgl::filesystem::path(filename)).string() << std::endl;
+
+		CGL_DBG;
+		std::cout << "absolute parent filepath: " << cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path().string() << std::endl;
+
+		CGL_DBG;
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
+
 		CGL_DBG;
 		workingDirectories.emplace(currentDirectory);
 

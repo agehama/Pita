@@ -58,7 +58,7 @@ install:
         { travis_retry wget -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
       fi
       
-      CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"
+      #CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"
     fi
 
   ############################################################################
@@ -96,6 +96,7 @@ install:
       sudo mv ./boost.conf /etc/ld.so.conf.d/
       sudo ldconfig
       ldconfig -p
+      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
       #b2 --version || true # b2 --version returns 1
     fi
 

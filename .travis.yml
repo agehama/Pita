@@ -79,12 +79,13 @@ install:
   ############################################################################
   - |
     if [[ "${BOOST_BUILD}" == "true" ]]; then
-      (cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
-      export PATH=${DEPS_DIR}/b2/bin:${PATH}
+      #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
+      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
       #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && sudo ./b2 install)
       sudo apt-get install tree
       tree ${DEPS_DIR}/b2
       #ls -la ${DEPS_DIR}/b2/bin/b2
+      export PATH=${DEPS_DIR}/b2/bin:${PATH}
       ls -la /etc/ld.so.conf.d
       sudo ldconfig
       echo $LD_LIBLARY_PATH

@@ -55,7 +55,7 @@ set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 if(MSVC)
   find_package(Boost 1.53.0)
 else()
-  find_package(Boost 1.53.0 REQUIRED filesystem)
+  find_package(Boost 1.53.0 COMPONENTS system filesystem REQUIRED)
 endif()
 
 if(Boost_FOUND)

@@ -92,10 +92,10 @@ install:
       #sudo ldconfig
       #echo $LD_LIBLARY_PATH
       #export LD_LIBLARY_PATH=${DEPS_DIR}/b2/lib:${LD_LIBLARY_PATH}
-      echo ${DEPS_DIR}/b2/lib > boost.conf
-      sudo mv ./boost.conf /etc/ld.so.conf.d/
-      sudo ldconfig
-      ldconfig -p
+      #echo ${DEPS_DIR}/b2/lib > boost.conf
+      #sudo mv ./boost.conf /etc/ld.so.conf.d/
+      #sudo ldconfig
+      #ldconfig -p
       CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
       #b2 --version || true # b2 --version returns 1
     fi

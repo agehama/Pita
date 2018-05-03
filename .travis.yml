@@ -91,8 +91,12 @@ install:
       #ls -la /etc/ld.so.conf.d
       #sudo ldconfig
       #echo $LD_LIBLARY_PATH
-      export LD_LIBLARY_PATH=${DEPS_DIR}/b2/lib:${LD_LIBLARY_PATH}
-      b2 --version || true # b2 --version returns 1
+      #export LD_LIBLARY_PATH=${DEPS_DIR}/b2/lib:${LD_LIBLARY_PATH}
+      echo ${DEPS_DIR}/b2/lib > boost.conf
+      sudo mv ./boost.conf /etc/ld.so.conf.d/
+      sudo ldconfig
+      ldconfig -p
+      #b2 --version || true # b2 --version returns 1
     fi
 
   ############################################################################

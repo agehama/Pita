@@ -78,26 +78,11 @@ install:
   # Install Boost.Build
   ############################################################################
   - |
-    if [[ "${BOOST_BUILD}" == "true" ]]; then
-      #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      sudo apt-get install boost-all-dev
+    else
       (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
-      #ls -la ${DEPS_DIR}/b2
-      #ls -la ${DEPS_DIR}/b2/lib
-      #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && sudo ./b2 install)
-      #sudo apt-get install tree
-      #tree ${DEPS_DIR}/b2
-      #ls -la ${DEPS_DIR}/b2/bin/b2
-      #export PATH=${DEPS_DIR}/b2/bin:${PATH}
-      #ls -la /etc/ld.so.conf.d
-      #sudo ldconfig
-      #echo $LD_LIBLARY_PATH
-      #export LD_LIBLARY_PATH=${DEPS_DIR}/b2/lib:${LD_LIBLARY_PATH}
-      #echo ${DEPS_DIR}/b2/lib > boost.conf
-      #sudo mv ./boost.conf /etc/ld.so.conf.d/
-      #sudo ldconfig
-      #ldconfig -p
-      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
-      #b2 --version || true # b2 --version returns 1
+      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"      
     fi
 
   ############################################################################

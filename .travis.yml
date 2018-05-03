@@ -79,7 +79,8 @@ install:
   ############################################################################
   - |
     if [[ "${BOOST_BUILD}" == "true" ]]; then
-      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=/usr/local > b2_log)
+      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem > b2_log)
+      #(cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=/usr/local > b2_log)
       #echo ${DEPS_DIR}/b2/lib > boost.conf
       #sudo mv ./boost.conf /etc/ld.so.conf.d/
       sudo ldconfig

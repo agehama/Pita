@@ -173,6 +173,7 @@ namespace cgl
 
 	std::string EscapedSourceCode(const std::string& sourceCode)
 	{
+		CGL_DBG;
 		std::stringstream escapedStr;
 		{
 			const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
@@ -253,6 +254,8 @@ namespace cgl
 			}
 		}
 
+		CGL_DBG;
+
 		return escapedStr.str();
 	}
 
@@ -282,6 +285,7 @@ namespace cgl
 		}
 		std::string sourceCode = tabRemovedStr.str();*/
 		std::string sourceCode = EscapedSourceCode(original);
+		CGL_DBG;
 
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
 		CGL_DBG;

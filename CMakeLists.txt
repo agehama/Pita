@@ -104,13 +104,13 @@ add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 else()
-  target_link_libraries(pita_lib geos cmaes boost_serialization boost_system boost_filesystem)
-  #target_link_libraries(pita_lib geos cmaes stdc++fs boost_serialization boost_system boost_filesystem)
+  target_link_libraries(pita_lib geos cmaes boost_system boost_filesystem)
+  #target_link_libraries(pita_lib geos cmaes stdc++fs boost_system boost_filesystem)
   #target_link_libraries(pita_lib geos cmaes c++experimental)
 endif()
 
 add_executable(pita source/Source.cpp)
-#target_link_libraries(pita pita_lib boost_serialization boost_system boost_filesystem)
+#target_link_libraries(pita pita_lib boost_system boost_filesystem)
 target_link_libraries(pita pita_lib)
 
 enable_testing()

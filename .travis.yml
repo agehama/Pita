@@ -79,9 +79,11 @@ install:
   ############################################################################
   - |
     if [[ "${BOOST_BUILD}" == "true" ]]; then
-      #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
-      #export PATH=${DEPS_DIR}/b2/bin:${PATH}
-      (cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && sudo ./b2 install)
+      (cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && ./b2 install --prefix=${DEPS_DIR}/b2)
+      export PATH=${DEPS_DIR}/b2/bin:${PATH}
+      #(cd ${BOOST_DIR}/tools/build && ./bootstrap.sh && sudo ./b2 install)
+      ls -la ${DEPS_DIR}/b2/bin
+      ls -la /etc/ld.so.conf.d
       sudo ldconfig
       echo $LD_LIBLARY_PATH
       b2 --version || true # b2 --version returns 1

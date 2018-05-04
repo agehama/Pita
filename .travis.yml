@@ -75,17 +75,6 @@ install:
   - cmake --version
 
   ############################################################################
-  # Install Boost.Build
-  ############################################################################
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      sudo apt-get install libboost-all-dev
-    else
-      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
-      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"      
-    fi
-
-  ############################################################################
   # Install libc++ and libc++abi if needed
   ############################################################################
   - |
@@ -115,7 +104,21 @@ install:
       export LDFLAGS="-L ${DEPS_DIR}/llvm/install/lib -l c++ -l c++abi"
       export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DEPS_DIR}/llvm/install/lib"
     fi
-    
+
+  ############################################################################
+  # Install Boost.Build
+  ############################################################################
+  - |
+    if [[ "${CXX%%+*}" == "gcc" ]]; then
+      sudo apt-get install libboost-all-dev
+    elif [[ "${CXX%%+*}" == "clang" ]]; then
+      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
+      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
+    else
+      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
+      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
+    fi
+
 script:
   - cd ~/build/agehama
   - ls -la

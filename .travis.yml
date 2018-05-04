@@ -109,16 +109,10 @@ install:
   # Install Boost.Build
   ############################################################################
   - |
-    if [[ "${CXX%%+*}" == "gcc" ]]; then
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
       sudo apt-get install libboost-all-dev
-    elif [[ "${CXX%%+*}" == "clang" ]]; then
-      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
-      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
-      #export CXXFLAGS="-isystem ${DEPS_DIR}/llvm/install/include/c++/v1"
-      #export LDFLAGS="-L ${DEPS_DIR}/llvm/install/lib -l c++ -l c++abi"
-      export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DEPS_DIR}/b2/lib"
     else
-      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
+      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
       CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
     fi
 

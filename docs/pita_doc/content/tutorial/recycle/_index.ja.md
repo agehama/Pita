@@ -3,7 +3,7 @@ title: "リサイクルマークを作る"
 weight: 3
 ---
 
-![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.svg?classes=shadow)
+![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.png?classes=shadow)
 このチャプターでは、上記のようなリサイクルマークを作ります。
 
 まず最初に、原型となる矢印の形を作りましょう。
@@ -19,7 +19,7 @@ arrow = Shape{
 一旦ここで`rycycle.cgl`のように名前を付けて保存し、実行してみましょう。
 実行の仕方は[ダウンロードとインストール]({{%relref "/start/_index.md" %}})を参照してください。
 正しく実行されると、次のような図が出力されるはずです。
-![矢印の形](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/arrow.svg?classes=shadow)
+![矢印の形](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/arrow.png?classes=shadow)
 
 次に、円の弧に沿った形のパスを作ります。
 先ほどの後ろに続けて次のように書いてみましょう。
@@ -43,7 +43,7 @@ Shape{
 }
 ```
 ここまでのコードを実行すると、次のような図が出力されるはずです。
-![円弧の形](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/arc.svg?classes=shadow)
+![円弧の形](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/arc.png?classes=shadow)
 
 最後に矢印を定義した円の弧に沿って曲げることで、リサイクルマークの形を作ります。
 先ほどの後ろに続けて次のように書いてみましょう。
@@ -61,7 +61,7 @@ recycle = Shape{
 ```
 
 ここまで書いて実行し、冒頭に示したリサイクルマークの図が出力されれば成功です。
-![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.svg?classes=shadow)
+![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.png?classes=shadow)
 
 
 以下にこの例で用いたソースコードの全体を記載します。

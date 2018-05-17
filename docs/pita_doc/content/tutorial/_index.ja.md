@@ -8,6 +8,6 @@ weight: 2
 ---
 ### [1. リサイクルマークを作る]({{%relref "/tutorial/recycle/_index.md" %}})
 
-![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.svg?classes=shadow)
+![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.png?classes=shadow)
 
 ---

@@ -9,7 +9,7 @@
 
     <link rel="shortcut icon" href="/Pita/images/favicon.png" type="image/x-icon" />
 <link rel="icon" href="/Pita/images/favicon.png" type="image/x-icon" />
-    <title>ダウンロードとインストール :: Documentation for Pita</title>
+    <title>チュートリアル :: Documentation for Pita</title>
     
     
     <link href="/Pita/css/nucleus.css?1526537964" rel="stylesheet">
@@ -32,7 +32,7 @@
     </style>
     
   </head>
-  <body class="" data-url="/Pita/ja/start/">
+  <body class="" data-url="/Pita/ja/tutorial/">
     <nav id="sidebar" class="">
 
 
@@ -110,8 +110,8 @@
   
     
     <li data-nav-id="/Pita/ja/start/" title="ダウンロードとインストール" class="dd-item 
-        parent
-        active
+        
+        
         
         ">
       <a href="/Pita/ja/start/">
@@ -132,8 +132,8 @@
   
     
     <li data-nav-id="/Pita/ja/tutorial/" title="チュートリアル" class="dd-item 
-        
-        
+        parent
+        active
         
         ">
       <a href="/Pita/ja/tutorial/">
@@ -220,7 +220,7 @@
                   
                     
                     
-                      <option id="ja" value="/Pita/ja/start/" selected>Japanese</option>
+                      <option id="ja" value="/Pita/ja/tutorial/" selected>Japanese</option>
                     
                   
               
@@ -279,7 +279,7 @@
             
           
           
-            <a href='/Pita/ja/'>はじめに</a> > ダウンロードとインストール
+            <a href='/Pita/ja/'>はじめに</a> > チュートリアル
           
          
           
@@ -295,22 +295,11 @@
 <ul>
 <li>
 <ul>
-<li><a href="#windowsの場合">Windowsの場合</a>
+<li>
 <ul>
-<li><a href="#ダウンロード">ダウンロード</a></li>
-<li><a href="#サンプルの実行">サンプルの実行</a></li>
+<li><a href="#いくつかの使用例を紹介しながら-pitaの使い方について説明します">いくつかの使用例を紹介しながら、Pitaの使い方について説明します。</a></li>
 </ul></li>
-<li><a href="#macosの場合">MacOSの場合</a>
-<ul>
-<li><a href="#ダウンロード-1">ダウンロード</a></li>
-<li><a href="#サンプルの実行-1">サンプルの実行</a></li>
-</ul></li>
-<li><a href="#ubuntuの場合">Ubuntuの場合</a>
-<ul>
-<li><a href="#ダウンロード-2">ダウンロード</a></li>
-<li><a href="#サンプルの実行-2">サンプルの実行</a></li>
-</ul></li>
-<li><a href="#その他のos">その他のOS</a></li>
+<li><a href="#1-リサイクルマークを作る-hahahugoshortcode-0xc0423b6f00-1-hbhb"><a href="HAHAHUGOSHORTCODE-0xc0423b6f00-1-HBHB">1. リサイクルマークを作る</a></a></li>
 </ul></li>
 </ul></li>
 </ul>
@@ -326,7 +315,7 @@
         
         <div id="body-inner">
           
-            <h1>ダウンロードとインストール</h1>
+            <h1>チュートリアル</h1>
           
 
         
@@ -334,75 +323,15 @@
 
 
 
-<hr />
-
-<h3 id="windowsの場合">Windowsの場合</h3>
-
-<h4 id="ダウンロード">ダウンロード</h4>
-
-<p><a href="https://github.com/agehama/Pita/releases/download/v_0.5.0/pita-0.5.0-alpha-x86-win.zip">Pita(v0.5.0) for win</a> からダウンロードしてください。</p>
-
-<h4 id="サンプルの実行">サンプルの実行</h4>
-
-<p>ダウンロードしたファイルを解凍したら、コマンドプロンプトを起動してpita.exeのあるディレクトリへ移動してください。
-そして、以下のコマンドを入力し、SVGファイルが出力されればインストールは成功です。</p>
-
-<pre><code>...\pita-0.5.0-alpha-x86-win&gt; pita.exe examples/3rects.cgl -o 3rects.svg
-</code></pre>
+<h4 id="いくつかの使用例を紹介しながら-pitaの使い方について説明します">いくつかの使用例を紹介しながら、Pitaの使い方について説明します。</h4>
 
 <hr />
 
-<h3 id="macosの場合">MacOSの場合</h3>
+<h3 id="1-リサイクルマークを作る-hahahugoshortcode-0xc0423b6f00-1-hbhb"><a href="/Pita/ja/tutorial/recycle/">1. リサイクルマークを作る</a></h3>
 
-<h4 id="ダウンロード-1">ダウンロード</h4>
-
-<p><a href="https://github.com/agehama/Pita/releases/download/v_0.5.0/pita-0.5.0-alpha-x86-win.zip">Pita 0.5.0</a> からダウンロードしてください。</p>
-
-<h4 id="サンプルの実行-1">サンプルの実行</h4>
-
-<p>ダウンロードしたファイルを解凍したら、コマンドプロンプトを起動してpita.exeのあるディレクトリへ移動してください。
-そして、以下のコマンドを入力し、SVGファイルが出力されればインストールは成功です。</p>
-
-<pre><code>...\pita-0.5.0-alpha-x86-win&gt;pita.exe examples/3rects.cgl -o 3rects.svg
-</code></pre>
+<p><img src="https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.svg?classes=shadow" alt="リサイクルマーク" /></p>
 
 <hr />
-
-<h3 id="ubuntuの場合">Ubuntuの場合</h3>
-
-<h4 id="ダウンロード-2">ダウンロード</h4>
-
-<p><a href="https://github.com/agehama/Pita/releases/download/v_0.5.0/pita-0.5.0-alpha-x86-win.zip">Pita 0.5.0</a> からダウンロードしてください。</p>
-
-<h4 id="サンプルの実行-2">サンプルの実行</h4>
-
-<p>ダウンロードしたファイルを解凍したら、コマンドプロンプトを起動してpita.exeのあるディレクトリへ移動してください。
-そして、以下のコマンドを入力し、SVGファイルが出力されればインストールは成功です。</p>
-
-<pre><code>...\pita-0.5.0-alpha-x86-win&gt;pita.exe examples/3rects.cgl -o 3rects.svg
-</code></pre>
-
-<hr />
-
-<h3 id="その他のos">その他のOS</h3>
-
-<p>上記以外のOSの場合は、ソースコードからPitaをビルドすることができます。
-Pita(v0.5.0)のビルドに必要な要件は以下の通りです。</p>
-
-<ul>
-<li>Boost 1.54</li>
-<li>CMake 3.1</li>
-<li>C++14をサポートするコンパイラ</li>
-</ul>
-
-<p>上記を満たす環境であれば、次のようにしてビルドすることができます。</p>
-
-<pre><code>git clone --recursive https://github.com/agehama/Pita.git
-mkdir build
-cd build
-cmake ../Pita
-make -j
-</code></pre>
 
 
 <footer class=" footline" >
@@ -440,6 +369,8 @@ make -j
             
                 
                     
+                        
+                        
                     
                 
                 
@@ -457,8 +388,6 @@ make -j
             
                 
                     
-                        
-                        
                     
                 
                 
@@ -475,6 +404,9 @@ make -j
             
                 
                     
+                        
+                        
+                    
                 
                 
 
@@ -496,10 +428,10 @@ make -j
 
 
         
-            <a class="nav nav-prev" href="/Pita/ja/" title="はじめに"> <i class="fa fa-chevron-left"></i></a>
+            <a class="nav nav-prev" href="/Pita/ja/start/" title="ダウンロードとインストール"> <i class="fa fa-chevron-left"></i></a>
         
         
-            <a class="nav nav-next" href="/Pita/ja/tutorial/" title="チュートリアル" style="margin-right: 0px;"><i class="fa fa-chevron-right"></i></a>
+            <a class="nav nav-next" href="/Pita/ja/tutorial/recycle/" title="リサイクルマークを作る" style="margin-right: 0px;"><i class="fa fa-chevron-right"></i></a>
         
     </div>
 

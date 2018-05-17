@@ -12,11 +12,17 @@ arcPath = (r, begin, end, num ->
     )
 })
 
-main = Shape{
+Shape{
+    path: arcPath(100, 0, 120, 50)
+    stroke: Rgb(0, 0, 0)
+}
+
+recycle = Shape{
     a = arrow{}
     arrows: for i in 0:2 list(
         DeformShapeByPath2(a, 
             arcPath(100, 120*i, 120*(i+1), 50),
             a.body.left(), a.head.top())
     )
+    fill: Rgb(0, 162, 232)
 }

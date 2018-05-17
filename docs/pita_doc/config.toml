@@ -2,7 +2,7 @@
 baseurl = "https://agehama.github.io/Pita/"
 
 # Site title
-title = "Pita 作図のためのプログラミング言語"
+title = "Pita デザインのためのプログラミング言語"
 theme = "hugo-theme-learn"
 
 # Metadata format

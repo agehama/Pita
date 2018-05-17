@@ -2005,7 +2005,6 @@ namespace cgl
 
 			std::vector<FreeVarType> margedFreeVars = original.freeVars;
 			margedFreeVars.insert(margedFreeVars.end(), record.freeVariables.begin(), record.freeVariables.end());
-
 			/*{
 				std::cout << "margedFreeVars: ";
 				for (const auto& var : margedFreeVars)
@@ -2036,7 +2035,6 @@ namespace cgl
 				}
 				std::cout << "\n";
 			}*/
-
 			//std::cout << "  2. Constraints separation" << std::endl;
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
@@ -2061,7 +2059,6 @@ namespace cgl
 			}
 			
 			//std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
-
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
 				//std::cout << "  3. Dependency analysis" << std::endl;

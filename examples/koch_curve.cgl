@@ -5,7 +5,7 @@ koch_template = (p, q ->
     n = {x: -v.y, y: v.x}
     vby3 = div3(p, q)
     m = Div(Add(p, q), 2.0)
-    nby3 = SetLength(n, 0.5*Sqrt(3.0)*length(vby3))
+    nby3 = SetLength(n, 0.5*Sqrt(3.0)*Length(vby3))
     m1 = Add(p, vby3)
     m2 = Add(m1, vby3)
     ps = [p, m1, Add(m, nby3), m2, q]
@@ -50,6 +50,6 @@ snowflake = (depth -> Shape{
     stroke: Rgb(0, 0, 0)
 })
 
-main = snowflake(5){
+main = (s = snowflake(5), s{
     angle = 45
-}
+})

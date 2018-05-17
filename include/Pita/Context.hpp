@@ -530,7 +530,6 @@ namespace cgl
 	};
 }
 
-#ifdef commentout
 namespace cereal
 {
 	template<class Archive>
@@ -540,40 +539,12 @@ namespace cereal
 		ar(scope.temporaryAddresses);
 	}
 
-	/*template<class Archive>
-	inline void serialize(Archive& ar, cgl::Context::BuiltInFunction& function)
-	{
-	ar(values.m_values);
-	ar(values.m_ID);
-	}
-
-	template<class Archive>
-	inline void serialize(Archive& ar, cgl::Values<cgl::Context::BuiltInFunction>& values)
-	{
-	ar(values.m_values);
-	ar(values.m_ID);
-	}*/
-
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Values<cgl::Val>& values)
 	{
 		ar(values.m_values);
 		ar(values.m_ID);
 	}
-
-	/*template<class Archive>
-	inline void save(Archive& ar, const cgl::Values<cgl::Val>& values)
-	{
-		ar(values.m_values);
-		ar(values.m_ID);
-	}
-
-	template<class Archive>
-	inline void load(Archive& ar, cgl::Values<cgl::Val>& values)
-	{
-		ar(values.m_values);
-		ar(values.m_ID);
-	}*/
 
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Context& context)
@@ -592,45 +563,5 @@ namespace cereal
 		//std::uniform_real_distribution<double> m_dist;
 		//std::mt19937 m_random;
 		//std::weak_ptr<Context> m_weakThis;
-	}
-}
-#endif
-
-namespace boost
-{
-	namespace serialization
-	{
-		template<class Archive>
-		inline void serialize(Archive& ar, cgl::Scope& scope, unsigned int)
-		{
-			ar & scope.variables;
-			ar & scope.temporaryAddresses;
-		}
-
-		template<class Archive>
-		inline void serialize(Archive& ar, cgl::Values<cgl::Val>& values, unsigned int)
-		{
-			ar & values.m_values;
-			ar & values.m_ID;
-		}
-
-		template<class Archive>
-		inline void serialize(Archive& ar, cgl::Context& context, unsigned int)
-		{
-			//ar & context.m_functions;
-			ar & context.m_plateausFunctions;
-			ar & context.m_refAddressMap;
-			ar & context.m_addressRefMap;
-			ar & context.m_values;
-			ar & context.m_localEnvStack;
-			ar & context.m_referenceID;
-			ar & context.m_lastGCValueSize;
-			ar & context.m_automaticExtendMode;
-			ar & context.m_automaticGC;
-
-			//std::uniform_real_distribution<double> m_dist;
-			//std::mt19937 m_random;
-			//std::weak_ptr<Context> m_weakThis;
-		}
 	}
 }

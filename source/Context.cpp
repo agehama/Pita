@@ -2163,36 +2163,60 @@ namespace cgl
 				}
 			}
 
+			for (const auto& freeVar : node.freeVariables)
+			{
+				if (IsType<Accessor>(freeVar))
+				{
+					const Expr expr = As<Accessor>(freeVar);
+					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
+				}
+				else
+				{
+					const Expr expr = LRValue(As<Reference>(freeVar));
+					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
+				}
+			}
+
+			for (const auto& expr : node.freeRanges)
+			{
+				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
+			}
+
+
+			for (const auto& freeVar : node.original.freeVars)
+			{
+				if (IsType<Accessor>(freeVar))
+				{
+					const Expr expr = As<Accessor>(freeVar);
+					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
+				}
+				else
+				{
+					const Expr expr = LRValue(As<Reference>(freeVar));
+					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
+				}
+			}
+
 			for (const auto& oldExprs : node.original.unitConstraints)
 			{
 				CheckExpr(oldExprs, context, reachableAddressSet, newAddressSet);
 			}
-			/*const auto& problem = node.problem;
-			if (problem.candidateExpr)
-			{
-				CheckExpr(problem.candidateExpr.get(), context, reachableAddressSet, newAddressSet);
-			}*/
 
-			/*
-			if (problem.expr)
+			for (const auto& appears : node.original.variableAppearances)
 			{
-				CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
-			}
-			for (Address address : problem.refs)
-			{
-				update(address);
+				for (const Address address : appears)
+				{
+					update(address);
+				}
 			}
 
-			for (Address address : node.freeVariableRefs)
+			for (const auto& problem : node.original.groupConstraints)
 			{
-				update(address);
+				if (problem.expr)
+				{
+					CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
+				}
 			}
-			for (const auto& accessor : node.freeVariables)
-			{
-				Expr expr = accessor;
-				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-			}
-			*/
 		}
 
 		void operator()(const FuncVal& node)

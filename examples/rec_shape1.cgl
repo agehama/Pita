@@ -5,15 +5,15 @@ shapeList = (f, depth ->
     }
     else Shape{
         a: Triangle{}
-        b: f(f, depth-1){
+        b: (s = f(f, depth-1), s{
             pos.y = -1
             angle = 15
             scale = X2(0.96)
-        }
+        })
     }
 )
 
 tree = Shape{
     depth = 100
-    a: shapeList(shapeList, depth){scale = X2(60)}
+    a: (s = shapeList(shapeList, depth), s{scale = X2(60)})
 }

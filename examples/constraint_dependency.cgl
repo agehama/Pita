@@ -14,9 +14,11 @@ main = Shape{
     )
 }
 
+/*
 arrow = Shape{
     body: Square{scale: Vec2(20, 200), pos: Vec2(0, 100)}
     head: Triangle{scale: Vec2(50, 50), pos: Vec2(0, 0)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))
 }
+*/

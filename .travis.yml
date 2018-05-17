@@ -8,47 +8,122 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
-      env: COMPILER=g++-5
-    - compiler: clang
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-4.0
-          packages:
-            - clang-4.0
-      env: COMPILER=clang++-4.0
+      env: COMPILER=g++-5 BOOST_VERSION=default BOOST_BUILD=true
+
+    #- compiler: clang
+    #  addons:
+    #    apt:
+    #      sources:
+    #        - llvm-toolchain-trusty-4.0
+    #      packages:
+    #        - clang-4.0
+    #  env: COMPILER=clang++-4.0 BOOST_VERSION=default BOOST_BUILD=true
+
+    - os: osx
+      osx_image: xcode9.1
+      env: BOOST_VERSION=default BOOST_BUILD=true
+
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install libc++-dev libc++abi-dev
-  - dpkg --search libc++ > test1
-  - cat test1
-  - wget http://launchpadlibrarian.net/331689507/libc++1_3.9.1-3_amd64.deb
-  - wget http://launchpadlibrarian.net/331689503/libc++-dev_3.9.1-3_amd64.deb
-  - wget http://launchpadlibrarian.net/331689511/libc++abi1_3.9.1-3_amd64.deb
-  - wget http://launchpadlibrarian.net/331689509/libc++abi-dev_3.9.1-3_amd64.deb
-  - sudo dpkg -i libc++1_3.9.1-3_amd64.deb
-  - sudo dpkg -i libc++-dev_3.9.1-3_amd64.deb
-  - sudo dpkg -i libc++abi1_3.9.1-3_amd64.deb
-  - sudo dpkg -i libc++abi-dev_3.9.1-3_amd64.deb
-  - dpkg --search libc++ > test2
-  - sudo ln -s /usr/lib/x86_64-linux-gnu/libc++experimental.a /usr/lib/libstdc++fs.a
-  - cat test2
-  - if [ "$CXX" == "g++" ]; then sudo add-apt-repository ppa:samuel-bachmann/boost -y; fi
-  - if [ "$CXX" == "g++" ]; then sudo apt-get install boost1.60; fi
-  - if [ "$CXX" == "clang++" ]; then sudo wget -O boost_1_57_0.tar.gz http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.tar.gz/download; fi
-  - if [ "$CXX" == "clang++" ]; then sudo tar xzf boost_1_57_0.tar.gz; fi
-  - if [ "$CXX" == "clang++" ]; then sudo chmod -R 755 ./boost_1_57_0/; fi
-  - if [ "$CXX" == "clang++" ]; then cd ./boost_1_57_0/; fi
-  - if [ "$CXX" == "clang++" ]; then clang++ --version; fi
-  - if [ "$CXX" == "clang++" ]; then sudo ./bootstrap.sh --with-toolset=clang --with-icu=/usr/include/x86_64-linux-gnu --with-libraries=serialization,filesystem,system; fi
-  - if [ "$CXX" == "clang++" ]; then cat ./bootstrap.log; fi
-  - if [ "$CXX" == "clang++" ]; then sudo ./b2 toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" link=static threading=multi variant=release; fi
-  - if [ "$CXX" == "clang++" ]; then sudo ./b2 install; fi
-  - if [ "$CXX" == "clang++" ]; then cd ../; fi
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then sudo apt-get update -qq; fi
+
+install:
+  ############################################################################
+  # All the dependencies are installed in ${HOME}/deps/
+  ############################################################################
+  - DEPS_DIR="${HOME}/deps"
+  - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+
+  ############################################################################
+  # Setup default versions and override CXX set by Travis if needed
+  ############################################################################
+  - if [[ "${COMPILER}" == "default" ]]; then COMPILER=clang++-5.0; fi
+  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.66.0; fi
+
+  - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
+  - ${CXX} --version
+
+  ############################################################################
+  # Install Boost headers
+  ############################################################################
+  - |
+    if [[ "${BOOST_VERSION}" != "" ]]; then
+      BOOST_DIR=${DEPS_DIR}/boost-${BOOST_VERSION}
+      if [[ "${BOOST_VERSION}" == "trunk" ]]; then
+        BOOST_URL="http://github.com/boostorg/boost.git"
+        travis_retry git clone --depth 1 --recursive ${BOOST_URL} ${BOOST_DIR} || exit 1
+        (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 headers) || exit 1
+      else
+        BOOST_URL="https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//\./_}.tar.gz"
+        mkdir -p ${BOOST_DIR}
+        { travis_retry wget -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
+      fi
+      
+      #CMAKE_OPTIONS+=" -DBOOST_ROOT=${BOOST_DIR}"
+    fi
+
+  ############################################################################
+  # Install a recent CMake
+  ############################################################################
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      CMAKE_URL="https://cmake.org/files/v3.10/cmake-3.10.0-Linux-x86_64.tar.gz"
+      mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
+      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+    else
+      brew install cmake || brew upgrade cmake
+    fi
+  - cmake --version
+
+  ############################################################################
+  # Install libc++ and libc++abi if needed
+  ############################################################################
+  - |
+    if [[ "${CXX%%+*}" == "clang" ]]; then
+      if   [[ "${CXX}" == "clang++-3.5" ]]; then LLVM_VERSION="3.5.2";
+      elif [[ "${CXX}" == "clang++-3.6" ]]; then LLVM_VERSION="3.6.2";
+      elif [[ "${CXX}" == "clang++-3.7" ]]; then LLVM_VERSION="3.7.1";
+      elif [[ "${CXX}" == "clang++-3.8" ]]; then LLVM_VERSION="3.8.1";
+      elif [[ "${CXX}" == "clang++-3.9" ]]; then LLVM_VERSION="3.9.1";
+      elif [[ "${CXX}" == "clang++-4.0" ]]; then LLVM_VERSION="4.0.1";
+      elif [[ "${CXX}" == "clang++-5.0" ]]; then LLVM_VERSION="5.0.1";
+      fi
+
+      LLVM_URL="http://llvm.org/releases/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz"
+      LIBCXX_URL="http://llvm.org/releases/${LLVM_VERSION}/libcxx-${LLVM_VERSION}.src.tar.xz"
+      LIBCXXABI_URL="http://llvm.org/releases/${LLVM_VERSION}/libcxxabi-${LLVM_VERSION}.src.tar.xz"
+
+      mkdir -p llvm llvm/build llvm/projects/libcxx llvm/projects/libcxxabi
+      travis_retry wget -O - ${LLVM_URL} | tar --strip-components=1 -xJ -C llvm || exit 1
+      travis_retry wget -O - ${LIBCXX_URL} | tar --strip-components=1 -xJ -C llvm/projects/libcxx || exit 1
+      travis_retry wget -O - ${LIBCXXABI_URL} | tar --strip-components=1 -xJ -C llvm/projects/libcxxabi || exit 1
+      (cd llvm/build && cmake .. -DCMAKE_INSTALL_PREFIX=${DEPS_DIR}/llvm/install) || exit 1
+      (cd llvm/build/projects/libcxx && make install -j2) || exit 1
+      (cd llvm/build/projects/libcxxabi && make install -j2) || exit 1
+
+      export CXXFLAGS="-isystem ${DEPS_DIR}/llvm/install/include/c++/v1"
+      export LDFLAGS="-L ${DEPS_DIR}/llvm/install/lib -l c++ -l c++abi"
+      export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DEPS_DIR}/llvm/install/lib"
+    fi
+
+  ############################################################################
+  # Install Boost.Build
+  ############################################################################
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      sudo apt-get install libboost-all-dev
+    else
+      (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
+      CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
+    fi
+
 script:
-  - ls /usr/include/c++/v1/experimental
+  - cd ~/build/agehama
+  - ls -la
+  - cd Pita
   - mkdir build
   - cd build
-  - cmake -DCMAKE_CXX_COMPILER=$COMPILER ..
+  - CMAKE_OPTIONS+=" -DCMAKE_CXX_COMPILER=${COMPILER}"
+  - cmake .. ${CMAKE_OPTIONS}
+  #- cmake -DCMAKE_CXX_COMPILER=$COMPILER .. 
   - make -j4
   - ctest -V

@@ -55,7 +55,7 @@ set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 if(MSVC)
   find_package(Boost 1.53.0)
 else()
-  find_package(Boost 1.53.0 REQUIRED serialization)
+  find_package(Boost 1.53.0 COMPONENTS system filesystem REQUIRED)
 endif()
 
 if(Boost_FOUND)
@@ -70,6 +70,7 @@ include_directories(external/geos)
 include_directories(external/libcmaes/src)
 include_directories(external/Siv3D)
 include_directories(external/cxxopts/include)
+include_directories(external/cereal/include)
 
 #message("${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib")
 
@@ -103,13 +104,13 @@ add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 else()
-  target_link_libraries(pita_lib geos cmaes boost_serialization boost_system boost_filesystem)
-  #target_link_libraries(pita_lib geos cmaes stdc++fs boost_serialization boost_system boost_filesystem)
+  target_link_libraries(pita_lib geos cmaes boost_system boost_filesystem)
+  #target_link_libraries(pita_lib geos cmaes stdc++fs boost_system boost_filesystem)
   #target_link_libraries(pita_lib geos cmaes c++experimental)
 endif()
 
 add_executable(pita source/Source.cpp)
-#target_link_libraries(pita pita_lib boost_serialization boost_system boost_filesystem)
+#target_link_libraries(pita pita_lib boost_system boost_filesystem)
 target_link_libraries(pita pita_lib)
 
 enable_testing()

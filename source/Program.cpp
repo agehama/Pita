@@ -24,24 +24,26 @@ namespace cgl
 		isInitialized(true)
 	{
 		std::cout << "Load PitaStd ..." << std::endl;
+		CGL_DBG;
 		std::vector<std::string> pitaStdSplitted({
 #include <Pita/PitaStd>
 			});
-
+		
+		CGL_DBG;
 		std::stringstream ss;
-		{
-			boost::archive::text_oarchive ar(ss);
-		}
 		for (const auto& str : pitaStdSplitted)
 		{
 			ss << str;
 		}
+		CGL_DBG;
 
 		//std::cout << ss.str() << std::endl;
 
-		boost::archive::text_iarchive ar(ss);
+		cereal::JSONInputArchive ar(ss);
 		Context& context = *pEnv;
-		ar >> context;
+		CGL_DBG;
+		ar(context);
+		CGL_DBG;
 	}
 #else
 	Program::Program() :
@@ -64,36 +66,6 @@ namespace cgl
 
 		return result;
 	}
-
-	//boost::optional<Expr> Program::parse(const std::string& program)
-	//{
-	//	using namespace cgl;
-
-	//	boost::u8_to_u32_iterator<std::string::const_iterator> tbegin(program.begin()), tend(program.end());
-
-	//	Lines lines;
-
-	//	SpaceSkipper<IteratorT> skipper;
-	//	Parser<IteratorT, SpaceSkipperT> grammer;
-
-	//	auto it = tbegin;
-	//	if (!boost::spirit::qi::phrase_parse(it, tend, grammer, skipper, lines))
-	//	{
-	//		//std::cerr << "Syntax Error: parse failed\n";
-	//		std::cout << "Syntax Error: parse failed\n";
-	//		return boost::none;
-	//	}
-
-	//	if (it != tend)
-	//	{
-	//		//std::cout << "Syntax Error: ramains input\n" << std::string(it, program.end());
-	//		std::cout << "Syntax Error: ramains input\n";
-	//		return boost::none;
-	//	}
-
-	//	Expr result = lines;
-	//	return result;
-	//}
 
 	/*
 	boost::optional<Val> Program::execute(const std::string& program)
@@ -158,8 +130,10 @@ namespace cgl
 
 		try
 		{
+			CGL_DBG;
 			if (auto exprOpt = Parse1(filepath))
 			{
+				CGL_DBG;
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
@@ -440,14 +414,14 @@ namespace cgl
 
 					std::stringstream ss;
 					{
-						boost::archive::text_oarchive ar(ss);
+						cereal::JSONOutputArchive ar(ss, cereal::JSONOutputArchive::Options::NoIndent());
 						Context& context = *pEnv;
-						ar << context;
+						ar(context);
 					}
 					const auto serializedStr = ss.str();
 
 					std::ofstream ofs(output_filename);
-					const auto splittedStr = SplitStringVSCompatible(std::string(serializedStr.begin() + 28, serializedStr.end()));
+					const auto splittedStr = SplitStringVSCompatible(std::string(serializedStr.begin(), serializedStr.end()));
 					for (size_t i = 0; i < splittedStr.size(); ++i)
 					{
 						ofs << "std::string(R\"(" << splittedStr[i] << ")\")";

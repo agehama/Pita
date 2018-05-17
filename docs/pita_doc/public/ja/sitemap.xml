@@ -3,7 +3,19 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>https://agehama.github.io/Pita/ja/tutorial/recycle/</loc>
+  </url>
+  
+  <url>
     <loc>https://agehama.github.io/Pita/ja/start/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/syntax/entry/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/reference/function/</loc>
   </url>
   
   <url>
@@ -11,7 +23,27 @@
   </url>
   
   <url>
-    <loc>https://agehama.github.io/Pita/ja/tutorial/recycle/</loc>
+    <loc>https://agehama.github.io/Pita/ja/syntax/basic/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/reference/record/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/syntax/advanced/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/syntax/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/reference/constraint/</loc>
+  </url>
+  
+  <url>
+    <loc>https://agehama.github.io/Pita/ja/reference/</loc>
   </url>
   
   <url>

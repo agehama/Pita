@@ -4,7 +4,7 @@ weight: 3
 ---
 
 ![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.png?classes=shadow)
-このチャプターでは、上記のようなリサイクルマークを作ります。
+このチャプターでは、上に示すようなリサイクルマークを作ります。
 
 まず最初に、原型となる矢印の形を作りましょう。
 矢印の形はPitaに初めから入っており、`Arrow{}`という風に呼び出すこともできますが、ここでは練習のために自分で定義してみます。
@@ -63,8 +63,9 @@ recycle = Shape{
 ここまで書いて実行し、冒頭に示したリサイクルマークの図が出力されれば成功です。
 ![リサイクルマーク](https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/recycle.png?classes=shadow)
 
+---
 
-以下にこの例で用いたソースコードの全体を記載します。
+以下にこの例で用いたソースコード全体を記載します。
 
 ```
 arrow = Shape{

@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ja" class="js csstransforms3d">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="generator" content="Hugo 0.40.1" />
+    <meta name="description" content="">
+
+
+    <link rel="shortcut icon" href="/Pita/images/favicon.png" type="image/x-icon" />
+<link rel="icon" href="/Pita/images/favicon.png" type="image/x-icon" />
+    <title>初級編 :: Documentation for Pita</title>
+    
+    
+    <link href="/Pita/css/nucleus.css?1526547884" rel="stylesheet">
+    <link href="/Pita/css/font-awesome.min.css?1526547884" rel="stylesheet">
+    <link href="/Pita/css/hybrid.css?1526547884" rel="stylesheet">
+    <link href="/Pita/css/featherlight.min.css?1526547884" rel="stylesheet">
+    <link href="/Pita/css/perfect-scrollbar.min.css?1526547884" rel="stylesheet">
+    <link href="/Pita/css/auto-complete.css?1526547884" rel="stylesheet">
+    <link href="/Pita/css/theme.css?1526547884" rel="stylesheet">
+    <link href="/Pita/css/hugo-theme.css?1526547884" rel="stylesheet">
+    
+
+    <script src="/Pita/js/jquery-2.x.min.js?1526547884"></script>
+    
+    <style type="text/css">
+      :root #header + #content > #left > #rlblock_left{ 
+          display:none !important;
+      }
+      
+    </style>
+    
+  </head>
+  <body class="" data-url="/Pita/ja/syntax/entry/">
+    <nav id="sidebar" class="">
+
+
+
+  <div id="header-wrapper">
+    <div id="header">
+      <a id="logo" href="http://agehama.github.io/Pita">
+  <svg xmlns="http://www.w3.org/2000/svg" width="270.242" height="95" viewBox="-54.4615 -47.5 270.242 95">
+    <g id="shape" fill="rgb(255, 255, 255)" >
+      <g id="a" >
+        <g id="c" >
+            <g id="result[0]" >
+              <path d="M18.3712,18.3712 L6.72432,-25.0955 L-25.0955,6.72432 L18.3712,18.3712 z M0,-17.3205 L15,8.66025 L-15,8.66025 L0,-17.3205 z "/>
+            </g>
+            <g id="result[1]" >
+              <path d="M25.9808,45 L25.9808,-45 L-51.9615,7.76632e-10 L25.9808,45 z M8.96575,-33.4607 L24.4949,24.4949 L-33.4607,8.96575 L8.96575,-33.4607 z "/>
+            </g>
+        </g>
+      </g>
+      <g id="b" >
+        <g id="text" >
+          <g id="result" >
+                <g id="shapes[0][0]" >
+                  <path d="M85.7608,-18.236 L85.1008,-22.244 L84.0008,-25.724 L82.4608,-28.676 L80.4808,-31.1 L78.0648,-33.044 L75.1368,-34.556 L71.6968,-35.636 L67.7448,-36.284 L63.2808,-36.5 L59.7088,-36.44 L56.1928,-36.26 L52.7328,-35.96 L49.3288,-35.54 L45.9808,-35 L45.9808,37.5 L57.1808,37.5 L57.1808,9.2 L58.6568,9.38 L60.0448,9.52 L61.3448,9.62 L62.5568,9.68 L63.6808,9.7 L68.0008,9.48 L71.8408,8.82 L75.2008,7.72 L78.0808,6.18 L80.4808,4.2 L82.4608,1.692 L84.0008,-1.352 L85.1008,-4.932 L85.7608,-9.048 L85.9808,-13.7 L85.7608,-18.236 z M75.2808,-13.7 L75.1568,-10.8 L74.7848,-8.26 L74.1648,-6.08 L73.2968,-4.26 L72.1808,-2.8 L70.8408,-1.684 L69.2208,-0.816 L67.3208,-0.196 L65.1408,0.176 L62.6808,0.3 L61.5008,0.28 L60.3608,0.22 L59.2608,0.12 L58.2008,-0.02 L57.1808,-0.2 L57.1808,-26.5 L58.1688,-26.752 L59.2128,-26.948 L60.3128,-27.088 L61.4688,-27.172 L62.6808,-27.2 L65.1088,-27.072 L67.2728,-26.688 L69.1728,-26.048 L70.8088,-25.152 L72.1808,-24 L73.2968,-22.564 L74.1648,-20.816 L74.7848,-18.756 L75.1568,-16.384 L75.2808,-13.7 z "/>
+                </g>
+                <g id="shapes[1][0]" >
+                  <polygon points="116.881,-14.5 116.881,28.7 127.381,28.7 127.381,37.5 92.3808,37.5 92.3808,28.7 105.781,28.7 105.781,-5.7 95.3808,-5.7 95.3808,-14.5 116.881,-14.5 "/>
+                </g>
+                <g id="shapes[1][1]" >
+                  <polygon points="103.781,-38.5 116.881,-38.5 116.881,-26 103.781,-26 103.781,-38.5 "/>
+                </g>
+                <g id="shapes[2][0]" >
+                  <polygon points="168.281,-3.6 151.381,-3.6 151.381,20.5 151.433,22.688 151.589,24.532 151.849,26.032 152.213,27.188 152.681,28 153.341,28.54 154.281,28.96 155.501,29.26 157.001,29.44 158.781,29.5 160.657,29.432 162.445,29.228 164.145,28.888 165.757,28.412 167.281,27.8 167.281,37 165.165,37.54 163.057,37.96 160.957,38.26 158.865,38.44 156.781,38.5 153.361,38.364 150.381,37.956 147.841,37.276 145.741,36.324 144.081,35.1 142.821,33.508 141.841,31.452 141.141,28.932 140.721,25.948 140.581,22.5 140.581,-3.6 130.281,-3.6 130.281,-12.5 140.581,-12.5 140.581,-31.5 151.381,-31.5 151.381,-12.5 168.281,-12.5 168.281,-3.6 "/>
+                </g>
+                <g id="shapes[3][0]" >
+                  <path d="M176.781,-2.7 L178.321,-3.284 L179.981,-3.836 L181.761,-4.356 L183.661,-4.844 L185.681,-5.3 L187.721,-5.732 L189.601,-6.068 L191.321,-6.308 L192.881,-6.452 L194.281,-6.5 L196.045,-6.42 L197.577,-6.18 L198.877,-5.78 L199.945,-5.22 L200.781,-4.5 L201.465,-3.62 L201.997,-2.5 L202.377,-1.14 L202.605,0.46 L202.681,2.3 L202.681,4 L199.081,4 L194.401,4.196 L190.201,4.784 L186.481,5.764 L183.241,7.136 L180.481,8.9 L178.249,11.02 L176.513,13.46 L175.273,16.22 L174.529,19.3 L174.281,22.7 L174.437,25.568 L174.905,28.172 L175.685,30.512 L176.777,32.588 L178.181,34.4 L179.885,35.876 L181.797,37.024 L183.917,37.844 L186.245,38.336 L188.781,38.5 L192.353,38.18 L195.549,37.22 L198.369,35.62 L200.813,33.38 L202.881,30.5 L203.081,30.5 L203.281,37.5 L213.281,37.5 L213.281,4.3 L213.117,0.064 L212.625,-3.604 L211.805,-6.704 L210.657,-9.236 L209.181,-11.2 L207.281,-12.748 L204.861,-13.952 L201.921,-14.812 L198.461,-15.328 L194.481,-15.5 L193.009,-15.456 L191.393,-15.324 L189.633,-15.104 L187.729,-14.796 L185.681,-14.4 L183.661,-13.984 L181.761,-13.536 L179.981,-13.056 L178.321,-12.544 L176.781,-12 L176.781,-2.7 z M202.681,11.5 L202.681,14.3 L202.561,17.264 L202.201,19.916 L201.601,22.256 L200.761,24.284 L199.681,26 L198.393,27.404 L196.929,28.496 L195.289,29.276 L193.473,29.744 L191.481,29.9 L190.253,29.82 L189.129,29.58 L188.109,29.18 L187.193,28.62 L186.381,27.9 L185.697,26.992 L185.165,25.948 L184.785,24.768 L184.557,23.452 L184.481,22 L184.625,20.092 L185.057,18.368 L185.777,16.828 L186.785,15.472 L188.081,14.3 L189.705,13.292 L191.617,12.508 L193.817,11.948 L196.305,11.612 L199.081,11.5 L202.681,11.5 z "/>
+                </g>
+          </g>
+        </g>
+      </g>
+    </g>
+    </svg>
+    
+</a>
+
+    </div>
+    
+        <div class="searchbox">
+    <label for="search-by"><i class="fa fa-search"></i></label>
+    <input data-search-input id="search-by" type="text" placeholder="">
+    <span data-search-clear=""><i class="fa fa-close"></i></span>
+</div>
+
+<script type="text/javascript" src="/Pita/js/lunr.min.js?1526547884"></script>
+<script type="text/javascript" src="/Pita/js/auto-complete.js?1526547884"></script>
+<script type="text/javascript">
+    
+        var baseurl = "\/Pita\/ja";
+    
+</script>
+<script type="text/javascript" src="/Pita/js/search.js?1526547884"></script>
+
+    
+  </div>
+
+    <div class="highlightable">
+    <ul class="topics">
+
+        
+          
+          
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/start/" title="ダウンロードとインストール" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/start/">
+          ダウンロードとインストール
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+          
+          
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/tutorial/" title="チュートリアル" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/tutorial/">
+          チュートリアル
+          
+      </a>
+      
+      
+        <ul>
+          
+          
+            
+          
+          
+          
+        
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/tutorial/recycle/" title="リサイクルマークを作る" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/tutorial/recycle/">
+          リサイクルマークを作る
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+        
+        </ul>
+              
+    </li>
+  
+ 
+
+          
+          
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/syntax/" title="構文" class="dd-item 
+        parent
+        
+        
+        ">
+      <a href="/Pita/ja/syntax/">
+          構文
+          
+      </a>
+      
+      
+        <ul>
+          
+          
+            
+          
+          
+          
+        
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/syntax/entry/" title="初級編" class="dd-item 
+        parent
+        active
+        
+        ">
+      <a href="/Pita/ja/syntax/entry/">
+          初級編
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/syntax/basic/" title="中級編" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/syntax/basic/">
+          中級編
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/syntax/advanced/" title="上級編" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/syntax/advanced/">
+          上級編
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+        
+        </ul>
+              
+    </li>
+  
+ 
+
+          
+          
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/reference/" title="リファレンス" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/reference/">
+          リファレンス
+          
+      </a>
+      
+      
+        <ul>
+          
+          
+            
+          
+          
+          
+        
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/reference/function/" title="組み込みの関数" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/reference/function/">
+          組み込みの関数
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/reference/record/" title="組み込みのレコード" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/reference/record/">
+          組み込みのレコード
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+            
+            
+
+
+ 
+  
+    
+    <li data-nav-id="/Pita/ja/reference/constraint/" title="組み込みの制約" class="dd-item 
+        
+        
+        
+        ">
+      <a href="/Pita/ja/reference/constraint/">
+          組み込みの制約
+          
+      </a>
+      
+              
+    </li>
+  
+ 
+
+            
+          
+        
+        </ul>
+              
+    </li>
+  
+ 
+
+          
+         
+    </ul>
+
+    
+    
+      <section id="shortcuts">
+        <h3></h3>
+        <ul>
+          
+              <li> 
+                  <a class="padding" href="https://github.com/agehama/Pita"><i class='fa fa-fw fa-github'></i> Github repo</a>
+              </li>
+          
+        </ul>
+      </section>
+    
+
+    
+    <section id="prefooter">
+      <hr/>
+      <ul>
+      
+        <li>
+          <a class="padding">
+            <i class="fa fa-fw fa-language"></i>
+          <div class="select-style">
+            <select id="select-language" onchange="location = this.value;">
+          
+          
+          
+              
+              
+                  
+              
+                  
+                    
+                    
+                      <option id="ja" value="/Pita/ja/syntax/entry/" selected>Japanese</option>
+                    
+                  
+              
+          
+        </select>
+        <svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+          width="255px" height="255px" viewBox="0 0 255 255" style="enable-background:new 0 0 255 255;" xml:space="preserve">
+          <g>
+            <g id="arrow-drop-down">
+              <polygon points="0,63.75 127.5,191.25 255,63.75 		" />
+            </g>
+          </g>
+        </svg>
+        </div>
+        </a>
+        </li>
+       
+      
+      
+      </ul>
+    </section>
+    
+    <section id="footer">
+      <p>Built with <a href="https://github.com/matcornic/hugo-theme-learn"><i class="fa fa-heart"></i></a> from <a href="http://getgrav.org">Grav</a> and <a href="http://gohugo.io/">Hugo</a></p>
+
+    </section>
+  </div>
+</nav>
+
+
+
+
+
+        <section id="body">
+        <div id="overlay"></div>
+        <div class="padding highlightable">
+              
+              <div>
+                <div id="top-bar">
+                
+                
+                <div id="breadcrumbs" itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb">
+                    <span id="sidebar-toggle-span">
+                        <a href="#" id="sidebar-toggle" data-sidebar-toggle="">
+                          <i class="fa fa-bars"></i>
+                        </a>
+                    </span>
+                  
+                  <span id="toc-menu"><i class="fa fa-list-alt"></i></span>
+                  
+                  <span class="links">
+                    
+          
+          
+            
+            
+          
+          
+            
+            
+          
+          
+            <a href='/Pita/ja/'>はじめに</a> > <a href='/Pita/ja/syntax/'>構文</a> > 初級編
+          
+         
+          
+         
+          
+           
+                  </span>
+                </div>
+                
+                    <div class="progress">
+    <div class="wrapper">
+<nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li>
+<ul>
+<li><a href="#pitaプログラム">Pitaプログラム</a></li>
+<li><a href="#基本的な演算子">基本的な演算子</a>
+<ul>
+<li><a href="#四則演算">四則演算</a></li>
+<li><a href="#代入演算">代入演算</a></li>
+<li><a href="#論理演算">論理演算</a></li>
+</ul></li>
+<li><a href="#変数の定義">変数の定義</a></li>
+<li><a href="#リスト">リスト</a></li>
+<li><a href="#レコード">レコード</a></li>
+<li><a href="#図形を呼び出す">図形を呼び出す</a></li>
+<li><a href="#ループ">ループ</a></li>
+<li><a href="#条件分岐">条件分岐</a></li>
+<li><a href="#コメント">コメント</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+    </div>
+</div>
+
+                
+              </div>
+            </div>
+            
+
+        
+        <div id="body-inner">
+          
+            <h1>初級編</h1>
+          
+
+        
+
+
+
+
+<h3 id="pitaプログラム">Pitaプログラム</h3>
+
+<p>Pitaのプログラムは複数の式が並んだものです。
+処理系は上から式を順番に評価していき、最後に評価した値を結果として出力します。</p>
+
+<hr />
+
+<h3 id="基本的な演算子">基本的な演算子</h3>
+
+<p>通常のプログラミング言語と同じような演算子を使うことができます。
+剰余はMod関数を使って求めることができます。</p>
+
+<h4 id="四則演算">四則演算</h4>
+
+<table>
+<thead>
+<tr>
+<th>演算子</th>
+<th>意味</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>+a</td>
+<td>a の値</td>
+</tr>
+
+<tr>
+<td>-a</td>
+<td>-a の値</td>
+</tr>
+
+<tr>
+<td>a + b</td>
+<td>a ＋ b</td>
+</tr>
+
+<tr>
+<td>a - b</td>
+<td>a － b</td>
+</tr>
+
+<tr>
+<td>a * b</td>
+<td>a × b</td>
+</tr>
+
+<tr>
+<td>a / b</td>
+<td>a ÷ b</td>
+</tr>
+
+<tr>
+<td>a ^ b</td>
+<td>a の b 乗</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="代入演算">代入演算</h4>
+
+<table>
+<thead>
+<tr>
+<th>演算子</th>
+<th>意味</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>a = b</td>
+<td>a に b を代入</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="論理演算">論理演算</h4>
+
+<table>
+<thead>
+<tr>
+<th>演算子</th>
+<th>意味</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>!a</td>
+<td>a の否定</td>
+</tr>
+
+<tr>
+<td>a | b</td>
+<td>a または b</td>
+</tr>
+
+<tr>
+<td>a &amp; b</td>
+<td>a かつ b</td>
+</tr>
+
+<tr>
+<td>a &lt; b</td>
+<td>a が b より小さい</td>
+</tr>
+
+<tr>
+<td>a &lt;= b</td>
+<td>a が b 以下である</td>
+</tr>
+
+<tr>
+<td>a &gt; b</td>
+<td>a が b より大きい</td>
+</tr>
+
+<tr>
+<td>a &gt;= b</td>
+<td>a が b 以上である</td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h3 id="変数の定義">変数の定義</h3>
+
+<p><code>変数名 = 値</code>と書くことで変数を定義することができます。</p>
+
+<pre><code>a = 4
+b = 5
+a + b
+</code></pre>
+
+<p>新しい変数の定義と、既に存在する変数への代入はどちらも=演算子によって行われます。
+したがって、=の左辺の変数がすでに存在したら再代入、存在しなかったら変数の定義とみなされます。</p>
+
+<pre><code>a = 4 //変数定義
+a = 5 //再代入
+a
+</code></pre>
+
+<hr />
+
+<h3 id="リスト">リスト</h3>
+
+<p>[]で囲むことで値のリストを作ることができます。</p>
+
+<pre><code>xs = [1, 2, 3]
+xs[0]
+</code></pre>
+
+<pre><code>xs = [1, 2, 3]
+xs[0]
+</code></pre>
+
+<hr />
+
+<h3 id="レコード">レコード</h3>
+
+<hr />
+
+<h3 id="図形を呼び出す">図形を呼び出す</h3>
+
+<hr />
+
+<h3 id="ループ">ループ</h3>
+
+<hr />
+
+<h3 id="条件分岐">条件分岐</h3>
+
+<hr />
+
+<h3 id="コメント">コメント</h3>
+
+
+<footer class=" footline" >
+	
+</footer>
+
+        
+        </div> 
+        
+
+      </div>
+
+    <div id="navigation">
+        
+        
+        
+        
+            
+            
+                
+                    
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                        
+                        
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                        
+                        
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+            
+        
+                    
+            
+        
+        
+        
+
+
+        
+            <a class="nav nav-prev" href="/Pita/ja/syntax/" title="構文"> <i class="fa fa-chevron-left"></i></a>
+        
+        
+            <a class="nav nav-next" href="/Pita/ja/syntax/basic/" title="中級編" style="margin-right: 0px;"><i class="fa fa-chevron-right"></i></a>
+        
+    </div>
+
+    </section>
+    
+    <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
+      <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
+    </div>
+    <script src="/Pita/js/clipboard.min.js?1526547884"></script>
+    <script src="/Pita/js/perfect-scrollbar.min.js?1526547884"></script>
+    <script src="/Pita/js/perfect-scrollbar.jquery.min.js?1526547884"></script>
+    <script src="/Pita/js/jquery.sticky.js?1526547884"></script>
+    <script src="/Pita/js/featherlight.min.js?1526547884"></script>
+    <script src="/Pita/js/html5shiv-printshiv.min.js?1526547884"></script>
+    <script src="/Pita/js/highlight.pack.js?1526547884"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="/Pita/js/modernizr.custom.71422.js?1526547884"></script>
+    <script src="/Pita/js/learn.js?1526547884"></script>
+    <script src="/Pita/js/hugo-learn.js?1526547884"></script>
+
+    <link href="/Pita/mermaid/mermaid.css?1526547884" type="text/css" rel="stylesheet" />
+    <script src="/Pita/mermaid/mermaid.js?1526547884"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    
+
+  </body>
+</html>

@@ -16,3 +16,6 @@
 [submodule "external/cxxopts"]
 	path = external/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+[submodule "external/cereal"]
+	path = external/cereal
+	url = https://github.com/agehama/cereal.git

@@ -24,26 +24,21 @@ namespace cgl
 		isInitialized(true)
 	{
 		std::cout << "Load PitaStd ..." << std::endl;
-		CGL_DBG;
 		std::vector<std::string> pitaStdSplitted({
 #include <Pita/PitaStd>
 			});
-		
-		CGL_DBG;
+
 		std::stringstream ss;
 		for (const auto& str : pitaStdSplitted)
 		{
 			ss << str;
 		}
-		CGL_DBG;
 
 		//std::cout << ss.str() << std::endl;
 
 		cereal::JSONInputArchive ar(ss);
 		Context& context = *pEnv;
-		CGL_DBG;
 		ar(context);
-		CGL_DBG;
 	}
 #else
 	Program::Program() :

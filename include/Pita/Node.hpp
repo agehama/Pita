@@ -2692,6 +2692,7 @@ namespace cereal
 		ar(node.rangeStart);
 		ar(node.rangeEnd);
 		ar(node.doExpr);
+		ar(node.asList);
 	}
 
 	template<class Archive>

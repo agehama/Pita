@@ -1,0 +1,25 @@
+Center = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.center())
+Left = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.left())
+Right = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.right())
+
+arc = (quality, beginAngle, endAngle -> Shape{
+    r = 0.5
+    polygon: [
+        Vec2(0, 0)
+        Vec2(r*Cos(beginAngle), r*Sin(beginAngle))
+        Vec2(r*Cos(endAngle), r*Sin(endAngle))
+    ]
+})
+
+
+s1 = Shape{
+    circle = (s = Circle(100), s{scale: X2(500)})
+    ring = Diff(circle, Buffer(circle, -20))
+    a = (s = arc(100, -30, 30), s{scale: X2(1000)})
+    result: Intersect(ring, a)
+}
+
+s2 = Shape{
+    a: Square{scale: Vec2(200, 100)}
+    b: (s = Circle(100), s{scale: X2(100), pos: Right(a)})
+}

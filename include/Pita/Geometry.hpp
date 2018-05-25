@@ -43,9 +43,21 @@ namespace cgl
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape);
 
+	PackedRecord GetGlobalShape(const PackedRecord& shape);
+
 	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
 
 	PackedRecord GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
 
 	PackedRecord GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0, const PackedRecord& p1, const PackedRecord& targetPath);
+
+	PackedRecord ShapeLeft(const PackedRecord& shape);
+	PackedRecord ShapeRight(const PackedRecord& shape);
+	PackedRecord ShapeTop(const PackedRecord& shape);
+	PackedRecord ShapeBottom(const PackedRecord& shape);
+
+	PackedRecord ShapeTopLeft(const PackedRecord& shape);
+	PackedRecord ShapeTopRight(const PackedRecord& shape);
+	PackedRecord ShapeBottomLeft(const PackedRecord& shape);
+	PackedRecord ShapeBottomRight(const PackedRecord& shape);
 }

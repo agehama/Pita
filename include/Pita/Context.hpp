@@ -395,6 +395,9 @@ namespace cgl
 		//Accessorの示すリスト or レコードの持つアドレスを書き換える
 		void assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info);
 
+		//Referenceの示すアドレスを書き換える
+		void assignToReference(const Reference& accessor, const LRValue& newValue, const LocationInfo& info);
+
 		static std::shared_ptr<Context> Make();
 
 		static std::shared_ptr<Context> Make(const Context& other);
@@ -486,7 +489,11 @@ namespace cgl
 			return m_localEnvStack.back();
 		}
 
+		//外部の変更を参照変数で捕捉
 		void changeAddress(Address addressFrom, Address addressTo);
+
+		//参照変数への変更を外部に伝播
+		void replaceGlobalContextAddress(Address addressFrom, Address addressTo);
 
 		//内側のスコープから順番に変数を探して返す
 		/*boost::optional<unsigned> findValueID(const std::string& name)const

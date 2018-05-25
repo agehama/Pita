@@ -811,6 +811,16 @@ namespace cgl
 
 			return BinaryExpr(lhs, rhs, node.op).setLocation(node);
 		}
+		//左辺に参照変数が来るケース：@a = x
+		else if (auto valOpt = AsOpt<UnaryExpr>(node.lhs))
+		{
+			if (valOpt.get().op == UnaryOp::Dynamic)
+			{
+				const Expr lhs = boost::apply_visitor(*this, node.lhs);
+
+				return BinaryExpr(lhs, rhs, node.op).setLocation(node);
+			}
+		}
 
 		CGL_ErrorNode(node, "二項演算子\"=\"の左辺は単一の左辺値でなければなりません。");
 		return LRValue(0);
@@ -1104,7 +1114,16 @@ namespace cgl
 			//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
 			if (auto valOpt = AsOpt<LRValue>(node.lhs))
 			{
-				CGL_ErrorNodeInternal(node, "一時オブジェクトへの代入はできません。");
+				//代入式の左辺が参照変数のケースは許す：@a = 10
+				if (valOpt.get().isReference())
+				{
+					pEnv->assignToReference(valOpt.get().reference(), rhs_, node);
+					return RValue(rhs);
+				}
+				else
+				{
+					CGL_ErrorNodeInternal(node, "一時オブジェクトへの代入はできません。");
+				}
 			}
 			else if (auto valOpt = AsOpt<Identifier>(node.lhs))
 			{

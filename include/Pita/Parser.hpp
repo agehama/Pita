@@ -379,6 +379,7 @@ namespace cgl
 				| constraints[_val = _1]
 				//| record_inheritor[_val = _1]
 				| freeVals[_val = _1]
+				| ("shapeOf(" > accessor[_val = _1] >')')
 				| accessor[_val = _1]
 				| record_inheritor[_val = _1]
 				| def_func[_val = _1]

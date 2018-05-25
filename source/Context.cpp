@@ -983,6 +983,13 @@ namespace cgl
 		}
 	}
 
+	void Context::assignToReference(const Reference& reference, const LRValue& newValue, const LocationInfo& info)
+	{
+		const Address oldAddress = getReference(reference);
+		const Address newAddress = newValue.isLValue() ? newValue.address(*this) : makeTemporaryValue(newValue.evaluated());
+		replaceGlobalContextAddress(oldAddress, newAddress);
+	}
+
 	std::shared_ptr<Context> Context::Make()
 	{
 		auto p = std::make_shared<Context>();
@@ -1751,6 +1758,174 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Left",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeLeft(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Right",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeRight(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Top",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeTop(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Bottom",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeBottom(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"TopLeft",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeTopLeft(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"TopRight",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeTopRight(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"BottomLeft",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeBottomLeft(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"BottomRight",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return ShapeBottomRight(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"BoundingBox",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -1767,6 +1942,27 @@ namespace cgl
 			}
 
 			return GetBoundingBox(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"GlobalShape",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetGlobalShape(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
 		},
 			false
 			);
@@ -1912,6 +2108,22 @@ namespace cgl
 			m_addressRefMap.insert({ addressTo, it->second });
 			m_addressRefMap.erase(it);
 		}
+	}
+
+	void Context::replaceGlobalContextAddress(Address addressFrom, Address addressTo)
+	{
+		/*m_localEnvStack;
+
+		for (LocalContext& localContext : m_localEnvStack)
+		{
+			for (Scope& scope: localContext)
+			{
+				scope.temporaryAddresses;
+			}
+		}*/
+
+
+		//TODO: GCと同じ要領で環境から参照可能な全てのアドレスを参照し、該当アドレスを書き換える
 	}
 
 	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);

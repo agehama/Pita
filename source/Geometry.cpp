@@ -1557,15 +1557,30 @@ namespace cgl
 			"top", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
 			"bottom", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY)))
 		);*/
-
 		resultRecord.adds(
 			"polygon", MakeList(
 				MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY), MakeRecord("x", maxX, "y", maxY), MakeRecord("x", minX, "y", maxY)
 			),
 			"min", MakeRecord("x", minX, "y", minY),
 			"max", MakeRecord("x", maxX, "y", maxY),
-			"topEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
-			"bottomEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY))),
+			//"topEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
+			//"bottomEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY))),
+			"topEdge", FuncVal({}, 
+				MakeRecordConstructor(
+					Identifier("line"), MakeListConstractor(
+						MakeRecordConstructor(Identifier("x"), Expr(LRValue(minX)), Identifier("y"), Expr(LRValue(minY))), 
+						MakeRecordConstructor(Identifier("x"), Expr(LRValue(maxX)), Identifier("y"), Expr(LRValue(minY)))
+					)
+				)
+			),
+			"bottomEdge", FuncVal({},
+				MakeRecordConstructor(
+					Identifier("line"), MakeListConstractor(
+						MakeRecordConstructor(Identifier("x"), Expr(LRValue(minX)), Identifier("y"), Expr(LRValue(maxY))),
+						MakeRecordConstructor(Identifier("x"), Expr(LRValue(maxX)), Identifier("y"), Expr(LRValue(maxY)))
+					)
+				)
+			),
 			"topLeft", MakeRecord("x", minX, "y", minY),
 			"topRight", MakeRecord("x", maxX, "y", minY),
 			"bottomLeft", MakeRecord("x", minX, "y", maxY),
@@ -1574,6 +1589,12 @@ namespace cgl
 		);
 
 		return ShapeResult(resultRecord);
+	}
+
+	PackedRecord GetGlobalShape(const PackedRecord& shape)
+	{
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape);
+		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
 	}
 
 	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
@@ -1923,5 +1944,134 @@ namespace cgl
 		);
 
 		return ShapeResult(GetCenterLineDeformedShape(transformedShape, targetPath));
+	}
+
+	PackedRecord ShapeDirectedPoint(const PackedRecord& shape, const Eigen::Vector2d& v)
+	{
+		double maxDot = -1.0;
+		Eigen::Vector2d maxDotPoint;
+
+		const BoundingRect boundingRect = BoundingRectRecordPacked(shape);
+		const auto center = boundingRect.center();
+
+		std::vector<gg::Geometry*> shapePolygon = GeosFromRecordPacked(shape);
+
+		/*for (const gg::Geometry* polygon : shapePolygon)
+		{
+			const gg::CoordinateSequence* points = polygon->getCoordinates();
+			for (size_t i = 0; i < points->getSize(); ++i)
+			{
+				Eigen::Vector2d p;
+				p << points->getX(i), points->getY(i);
+				const double currentDot = p.dot(v);
+				if (maxDot < currentDot)
+				{
+					maxDot = currentDot;
+					maxDotPoint = p;
+				}
+			}
+		}*/
+
+		const double eps = 1.e-3;
+
+		for (const gg::Geometry* polygon : shapePolygon)
+		{
+			const gg::CoordinateSequence* points = polygon->getCoordinates();
+
+			if (points->isEmpty() || polygon->getGeometryTypeId() == gg::GeometryTypeId::GEOS_POINT)
+			{
+				continue;
+			}
+
+			Eigen::Vector2d prevPoint(points->getX(0), points->getY(0));
+			{
+				const double currentDot = (prevPoint - center).dot(v);
+				if (maxDot < currentDot)
+				{
+					maxDot = currentDot;
+					maxDotPoint = prevPoint;
+				}
+			}
+
+			const auto update = [&](const Eigen::Vector2d& currentPoint)
+			{
+				const double currentDot = (currentPoint - center).dot(v);
+
+				//std::string result= ToS(prevPoint) + " -> " + ToS(currentPoint);
+				if (maxDot < currentDot + eps)
+				{
+					//result += ": true";
+
+					//Top(Square{})のように該当頂点が連続して存在する場合はその中点を取る
+					//TODO: 共線上に三点以上あるケースの考慮
+					if ((currentPoint - prevPoint).dot(v) < eps)
+					{
+						//result += "(colinear)";
+						maxDot = currentDot;
+						maxDotPoint = (prevPoint + currentPoint)*0.5;
+					}
+					else if (maxDot + eps < currentDot)
+					{
+						maxDot = currentDot;
+						maxDotPoint = currentPoint;
+					}
+				}
+				else
+				{
+					//result += ": false";
+				}
+
+				//CGL_DBG1(result);
+			};
+
+			for (size_t i = 1; i < points->getSize(); ++i)
+			{
+				Eigen::Vector2d currentPoint(points->getX(i), points->getY(i));
+				update(currentPoint);
+				prevPoint = currentPoint;
+			}
+		}
+
+		return MakeRecord("x", maxDotPoint.x(), "y", maxDotPoint.y());
+	}
+
+	PackedRecord ShapeLeft(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, 0));
+	}
+
+	PackedRecord ShapeRight(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, 0));
+	}
+
+	PackedRecord ShapeTop(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, -1));
+	}
+
+	PackedRecord ShapeBottom(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, +1));
+	}
+
+	PackedRecord ShapeTopLeft(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, -1));
+	}
+
+	PackedRecord ShapeTopRight(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, -1));
+	}
+
+	PackedRecord ShapeBottomLeft(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, +1));
+	}
+
+	PackedRecord ShapeBottomRight(const PackedRecord& shape)
+	{
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, +1));
 	}
 }

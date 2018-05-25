@@ -91,8 +91,8 @@ Circle = (quality -> Shape{
     r = 0.5
     delta = 360.0 / quality
     polygon: for i in 0:quality list(
-        angle = delta*i
-        Vec2(r*Cos(angle), r*Sin(angle))
+        currentAngle = delta*i
+        Vec2(r*Cos(currentAngle), r*Sin(currentAngle))
     )
 })
 

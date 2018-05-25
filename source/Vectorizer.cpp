@@ -1403,17 +1403,31 @@ namespace cgl
 					currentLine = ToLineString(polygon);
 				}
 			}
-			else if (member.first == "fill" && IsType<PackedRecord>(value))
+			else if (member.first == "fill")
 			{
-				Color currentColor;
-				ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
-				currentStream << "fill=\"" << currentColor.toString() << "\" ";
+				if (IsType<PackedRecord>(value))
+				{
+					Color currentColor;
+					ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
+					currentStream << "fill=\"" << currentColor.toString() << "\" ";
+				}
+				else
+				{
+					currentStream << "fill=\"none\" ";
+				}
 			}
-			else if (member.first == "stroke" && IsType<PackedRecord>(value))
+			else if (member.first == "stroke")
 			{
-				Color currentColor;
-				ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
-				currentStream << "stroke=\"" << currentColor.toString() << "\" ";
+				if (IsType<PackedRecord>(value))
+				{
+					Color currentColor;
+					ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
+					currentStream << "stroke=\"" << currentColor.toString() << "\" ";
+				}
+				else
+				{
+					currentStream << "stroke=\"none\" ";
+				}
 			}
 			else if (member.first == "stroke_width")
 			{

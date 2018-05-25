@@ -1,0 +1,73 @@
+/*
+arc = (quality, beginAngle, endAngle -> Shape{
+    r = 0.5
+    polygon: [
+        Vec2(0, 0)
+        Vec2(r*Cos(beginAngle), r*Sin(beginAngle))
+        Vec2(r*Cos(endAngle), r*Sin(endAngle))
+    ]
+    delta = (endAngle - beginAngle) / quality
+    polygon: for i in 0:quality list(
+        angle = beginAngle + delta*i
+        Vec2(r*Cos(angle), r*Sin(angle))
+    )
+})
+*/
+
+
+arc = (quality, beginAngle, endAngle -> Shape{
+    r = 0.5
+    delta = 1.0*(endAngle - beginAngle) / quality
+    polygon: for i in 0:quality list(
+        currentAngle = beginAngle + delta*i
+        Vec2(r*Cos(currentAngle), r*Sin(currentAngle))
+    )
+    polygon = [Vec2(0, 0)] @ polygon
+})
+
+width = 20
+
+base_circle = (s = Circle(100), s{scale: X2(500)})
+arc_scope = (s = arc(100, 30.0, -30.0), s{scale: X2(500)})
+
+text_p_ = Shape{
+    p_bar = Shape{
+        ring = Diff(base_circle, Buffer(base_circle, -width))
+        result: Intersect(ring, arc_scope)
+    }
+    p_ring = Shape{
+        height = 120
+        a = Square{scale: Vec2(150, height)}
+        b = (s = Circle(100), s{scale: X2(height), pos: Right(a)})
+        c = a{scale.y = scale.y - width*2}
+        d = b{scale = Sub(scale, X2(width*2))}
+        res: Diff(Union(a, b), Union(c, d))
+    }
+    bar: p_bar
+    ring: p_ring
+    sat(Contact(TopLeft(ring), Top(bar)))
+    var(ring.pos)
+}
+
+text_p = Shape{
+    bar: text_p_.bar
+    ring: Diff(text_p_.ring, arc_scope{scale = Mul(scale, 0.99) })
+    fill: Rgb(200,200,200)
+}
+
+main = Shape{
+    a: [
+        Shape{
+            s: [
+                Intersect(base_circle, Shape{polygon:[Top(base_circle), TopRight(base_circle), BottomRight(base_circle), Bottom(base_circle)]})
+                arc_scope
+            ]
+            fill: Rgb(255,255,255)
+            stroke: Rgb(0,0,0)
+        }
+    ]
+    b: [
+        text_p{}
+        (s = Circle(100), s{scale: X2(300), pos: Vec2(600, 0)})
+    ]
+}

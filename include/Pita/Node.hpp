@@ -1466,7 +1466,38 @@ namespace cgl
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const ListConstractor& node) { return os; }
+
+		template <typename... Args>
+		ListConstractor& adds(const Args&... args)
+		{
+			addsImpl(args...);
+			return *this;
+		}
+
+	private:
+
+		template<typename Head>
+		void addsImpl(const Head& head)
+		{
+			add(head);
+		}
+
+		template<typename Head, typename... Tail>
+		void addsImpl(const Head& head, const Tail&... tail)
+		{
+			add(head);
+			addsImpl(tail...);
+		}
 	};
+
+	template <typename... Args>
+	static Expr MakeListConstractor(const Args&... args)
+	{
+		ListConstractor instance;
+		instance.adds(args...);
+		Expr result = instance;
+		return result;
+	}
 
 	struct PackedList
 	{
@@ -1687,7 +1718,38 @@ namespace cgl
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const RecordConstractor& node) { return os; }
+
+		template <typename... Args>
+		RecordConstractor& adds(const Args&... args)
+		{
+			addsImpl(args...);
+			return *this;
+		}
+
+	private:
+
+		template<typename HeadName, typename HeadVal>
+		void addsImpl(const HeadName& headName, const HeadVal& headVal)
+		{
+			add(KeyExpr(headName, headVal));
+		}
+
+		template<typename HeadName, typename HeadVal, typename... Tail>
+		void addsImpl(const HeadName& headName, const HeadVal& headVal, const Tail&... tail)
+		{
+			add(KeyExpr(headName, headVal));
+			addsImpl(tail...);
+		}
 	};
+
+	template <typename... Args>
+	static Expr MakeRecordConstructor(const Args&... args)
+	{
+		RecordConstractor instance;
+		instance.adds(args...);
+		Expr result = instance;
+		return result;
+	}
 
 	struct KeyValue
 	{

@@ -321,6 +321,24 @@ namespace cgl
 		return expr;
 	}
 
+	//Expr BuildShapeExpander(const Accessor& accessor)
+	//{
+	//	Expr expr;
+	//	//expr = LRValue(CharString(str32));
+	//	//Accessor callFunction;
+	//	//callFunction.AppendFunction(FunctionAccess());
+	//	//FunctionAccess f;
+
+	//	/*FuncVal({},
+	//		MakeRecordConstructor(
+	//			Identifier("line"), MakeListConstractor(
+	//				MakeRecordConstructor(Identifier("x"), Expr(LRValue(minX)), Identifier("y"), Expr(LRValue(minY))),
+	//				MakeRecordConstructor(Identifier("x"), Expr(LRValue(maxX)), Identifier("y"), Expr(LRValue(minY)))
+	//			)
+	//		)*/
+	//	return expr;
+	//}
+
 	class ConstraintProblem : public cppoptlib::Problem<double>
 	{
 	public:

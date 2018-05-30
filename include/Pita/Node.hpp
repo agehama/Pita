@@ -2070,7 +2070,6 @@ namespace cgl
 		OldRecordData() = default;
 
 		//変数ID->アドレス
-		//std::vector<FreeVariable> freeVariableAddresses;
 		std::vector<FreeVarType> freeVars;
 
 		//分解された単位制約

@@ -2332,7 +2332,8 @@ namespace cgl
 				}
 				else
 				{
-					CGL_ErrorInternal("不正なアドレスを参照しました。");
+					//CGL_ErrorInternal("不正なアドレスを参照しました。");
+					CGL_ErrorInternal(std::string("不正なアドレスを参照しました。: Address(") + address.toString() + ")");
 				}
 			}
 		}
@@ -2353,7 +2354,10 @@ namespace cgl
 			}
 		}
 
-		void operator()(const KeyValue& node) {}
+		void operator()(const KeyValue& node)
+		{
+			//CheckValue(node.value, context, reachableAddressSet, newAddressSet);
+		}
 
 		void operator()(const Record& node)
 		{
@@ -2393,7 +2397,6 @@ namespace cgl
 			{
 				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
 			}
-
 
 			for (const auto& freeVar : node.original.freeVars)
 			{
@@ -2537,24 +2540,11 @@ namespace cgl
 			referenceableAddresses.emplace(keyval.first);
 		}
 
-		//std::cout << "Address(44) " << (referenceableAddresses.find(Address(44)) == referenceableAddresses.end() ? "does not exist." : "exists.") << std::endl;
-		//printContext(std::cout);
 		const size_t prevGC = m_values.size();
 
 		m_values.gc(referenceableAddresses);
 
 		const size_t postGC = m_values.size();
-
-		//printContext(std::cout);
-
-		/*if (m_values.find(Address(44)) == m_values.end())
-		{
-			std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ vec2 is deleted";
-		}
-		else
-		{
-			std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ vec2 is remain";
-		}*/
 
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
 	}

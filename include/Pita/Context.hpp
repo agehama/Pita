@@ -528,7 +528,7 @@ namespace cgl
 		size_t m_lastGCValueSize = 0;
 
 		bool m_automaticExtendMode = true;
-		bool m_automaticGC = true;
+		bool m_automaticGC = false;
 
 		std::uniform_real_distribution<double> m_dist;
 		std::mt19937 m_random;
@@ -565,7 +565,7 @@ namespace cereal
 		ar(context.m_referenceID);
 		ar(context.m_lastGCValueSize);
 		ar(context.m_automaticExtendMode);
-		ar(context.m_automaticGC);
+		//ar(context.m_automaticGC);
 
 		//std::uniform_real_distribution<double> m_dist;
 		//std::mt19937 m_random;

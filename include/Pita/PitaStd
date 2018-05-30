@@ -15759,7 +15759,6 @@ std::string(R"({
 ],
 "value5": 45,
 "value6": 282,
-"value7": true,
-"value8": true
+"value7": true
 }
 })")

@@ -21,4 +21,4 @@
 	url = https://github.com/agehama/cereal.git
 [submodule "docs/pita_doc/themes/hugo-theme-learn"]
 	path = docs/pita_doc/themes/hugo-theme-learn
-	url = git@github.com:agehama/hugo-theme-learn.git
+	url = https://github.com/agehama/hugo-theme-learn.git

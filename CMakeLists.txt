@@ -113,7 +113,7 @@ add_executable(pita source/Source.cpp)
 #target_link_libraries(pita pita_lib boost_system boost_filesystem)
 target_link_libraries(pita pita_lib)
 
-install(TARGETS pita DESTINATION bin)
+install(TARGETS pita PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ DESTINATION bin)
 
 enable_testing()
 add_subdirectory(test)

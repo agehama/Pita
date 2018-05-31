@@ -33,7 +33,6 @@ text_p = Shape{
         var(p_ring.pos)
     }
 
-    /*
     bar: s.p_bar
     currentring = s.p_ring
     currentring.frames = {}
@@ -43,13 +42,14 @@ text_p = Shape{
     currentring2 = s.p_ring
     currentring2.res = {}
     add_value(GlobalShape(currentring2))
-    */
 
+    /*
     bar: s.p_bar
     ring: Diff(shapeOf(s.p_ring.res), (_ = arc_scope(), _{scale = Mul(scale, 0.99) }))
     fill: Rgb(200,200,200)
 
     add_value(shapeOf(s.p_ring.frames))
+    */
 }
 
 text_i = Shape{
@@ -83,12 +83,3 @@ main = Shape{
         }
     ]
 }
-
-
-/*a = 0
-add = (x -> @a = a + x)
-add(1)
-add(2)
-add(3)
-Print(a)
-*/

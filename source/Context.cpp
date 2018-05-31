@@ -806,45 +806,7 @@ namespace cgl
 		return localEnv().back().variables.find(name) != localEnv().back().variables.end();
 	}
 
-#ifdef CGL_EnableLogOutput
-	void Context::printContext(bool flag)const
-	{
-		if (!flag)
-		{
-			return;
-		}
-
-		std::ostream& os = ofs;
-
-		os << "Print Context Begin:\n";
-
-		os << "Values:\n";
-		for (const auto& keyval : m_values)
-		{
-			const auto& val = keyval.second;
-
-			os << keyval.first.toString() << " : ";
-
-			printVal(val, m_weakThis.lock(), os);
-		}
-
-		os << "References:\n";
-		for (size_t d = 0; d < localEnv().size(); ++d)
-		{
-			os << "Depth : " << d << "\n";
-			const auto& names = localEnv()[d];
-
-			for (const auto& keyval : names)
-			{
-				os << keyval.first << " : " << keyval.second.toString() << "\n";
-			}
-		}
-
-		os << "Print Context End:\n";
-	}
-#else
 	void Context::printContext(bool flag)const {}
-#endif
 
 	void Context::printContext(std::ostream& os)const
 	{
@@ -2001,7 +1963,6 @@ namespace cgl
 		},
 			false
 			);
-		;
 	}
 
 	void Context::changeAddress(Address addressFrom, Address addressTo)

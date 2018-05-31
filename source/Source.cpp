@@ -15,7 +15,7 @@ extern bool calculating;
 #ifdef CGL_DO_TEST
 int main()
 {
-	ofs.open("log.txt");
+	//ofs.open("log.txt");
 
 	using namespace cgl;
 
@@ -1541,7 +1541,7 @@ Library.
 		exit(1);
 	}
 
-	ofs.open("log.txt");
+	//ofs.open("log.txt");
 
 	calculating = true;
 	cgl::Program program;

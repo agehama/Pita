@@ -5,8 +5,6 @@
 
 #include <Pita/Printer.hpp>
 
-extern std::ofstream ofs;
-
 namespace cgl
 {
 	std::string ValuePrinter::indent()const

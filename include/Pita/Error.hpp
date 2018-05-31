@@ -35,7 +35,7 @@ namespace cgl
 	}
 }
 
-extern std::ofstream ofs;
+//extern std::ofstream ofs;
 
 #define CGL_FileName (strchr(__FILE__, '\\') ? strchr(__FILE__, '\\') + 1 : __FILE__)
 #define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ")")

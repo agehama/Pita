@@ -11,7 +11,6 @@
 #  endif
 #endif
 
-std::ofstream ofs;
 bool calculating;
 int constraintViolationCount;
 

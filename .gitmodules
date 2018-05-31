@@ -3,7 +3,7 @@
 	url = https://github.com/nothings/stb.git
 [submodule "external/libcmaes"]
 	path = external/libcmaes
-	url = https://github.com/beniz/libcmaes.git
+	url = https://github.com/agehama/libcmaes.git
 [submodule "external/CppNumericalSolvers"]
 	path = external/CppNumericalSolvers
 	url = https://github.com/PatWie/CppNumericalSolvers.git

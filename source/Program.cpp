@@ -22,7 +22,7 @@ namespace cgl
 		evaluator(pEnv),
 		isInitialized(true)
 	{
-		std::cout << "Load PitaStd ..." << std::endl;
+		std::cout << "load PitaStd ..." << std::endl;
 		std::vector<std::string> pitaStdSplitted({
 #include <Pita/PitaStd>
 			});
@@ -32,8 +32,6 @@ namespace cgl
 		{
 			ss << str;
 		}
-
-		//std::cout << ss.str() << std::endl;
 
 		cereal::JSONInputArchive ar(ss);
 		Context& context = *pEnv;
@@ -61,73 +59,14 @@ namespace cgl
 		return result;
 	}
 
-	/*
-	boost::optional<Val> Program::execute(const std::string& program)
-	{
-		if (auto exprOpt = Parse(program))
-		{
-			try
-			{
-				return pEnv->expand(boost::apply_visitor(evaluator, exprOpt.get()));
-			}
-			catch (const cgl::Exception& e)
-			{
-				std::cerr << "Exception: " << e.what() << std::endl;
-			}
-		}
-
-		return boost::none;
-	}
-
-	bool Program::draw(const std::string& program, bool logOutput)
-	{
-		if (logOutput) std::cout << "parse..." << std::endl;
-
-		if (auto exprOpt = Parse(program))
-		{
-			try
-			{
-				if (logOutput)
-				{
-					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.get());
-				}
-
-				if (logOutput) std::cout << "execute..." << std::endl;
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
-				const Val result = pEnv->expand(lrvalue);
-				if (logOutput) std::cout << "execute succeeded" << std::endl;
-
-				if (logOutput) std::cout << "output SVG..." << std::endl;
-				OutputSVG(std::cout, result, pEnv);
-				if (logOutput) std::cout << "output succeeded" << std::endl;
-			}
-			catch (const cgl::Exception& e)
-			{
-				std::cerr << "Exception: " << e.what() << std::endl;
-			}
-		}
-
-		return false;
-	}
-	*/
-
-	//void Program::execute1(const std::string& program, const std::string& output_filename, bool logOutput)
 	void Program::execute1(const std::string& filepath, const std::string& output_filename, bool logOutput)
 	{
 		clear();
 
-		if (logOutput)
-		{
-			std::cerr << "Parse \"" << filepath << "\" ..." << std::endl;
-		}
-
 		try
 		{
-			CGL_DBG;
 			if (auto exprOpt = Parse1(filepath))
 			{
-				CGL_DBG;
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
@@ -135,7 +74,7 @@ namespace cgl
 					printExpr(exprOpt.get(), pEnv, std::cerr);
 				}
 
-				if (logOutput) std::cerr << "execute..." << std::endl;
+				if (logOutput) std::cerr << "execute ..." << std::endl;
 				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
 				if (logOutput)
@@ -145,7 +84,7 @@ namespace cgl
 				}
 
 				if (logOutput)
-					std::cerr << "output SVG..." << std::endl;
+					std::cerr << "output SVG ..." << std::endl;
 
 				if (output_filename.empty())
 				{
@@ -211,7 +150,7 @@ namespace cgl
 					printExpr(exprOpt.get(), pEnv, std::cerr);
 				}
 
-				if (logOutput) std::cerr << "execute..." << std::endl;
+				if (logOutput) std::cerr << "execute ..." << std::endl;
 				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
 				if (logOutput)
@@ -221,7 +160,7 @@ namespace cgl
 				}
 
 				if (logOutput)
-					std::cerr << "output SVG..." << std::endl;
+					std::cerr << "output SVG ..." << std::endl;
 
 				OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape");
 
@@ -382,7 +321,7 @@ namespace cgl
 					printExpr(exprOpt.get(), pEnv, std::cerr);
 				}
 
-				if (logOutput) std::cerr << "execute..." << std::endl;
+				if (logOutput) std::cerr << "execute ..." << std::endl;
 
 				const Expr expr = exprOpt.get();
 				if (IsType<Lines>(expr))

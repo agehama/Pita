@@ -173,7 +173,6 @@ namespace cgl
 
 	std::string EscapedSourceCode(const std::string& sourceCode)
 	{
-		CGL_DBG;
 		std::stringstream escapedStr;
 		{
 			const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
@@ -254,51 +253,24 @@ namespace cgl
 			}
 		}
 
-		CGL_DBG;
-
 		return escapedStr.str();
 	}
 
 	boost::optional<Expr> Parse1(const std::string& filename)
 	{
-		CGL_DBG;
-		std::cout << "parsing: \"" << filename << "\"" << std::endl;
+		std::cout << "parse \"" << filename << "\" ..." << std::endl;
 
-		CGL_DBG;
 		std::ifstream ifs(filename);
 		if (!ifs.is_open())
 		{
 			CGL_Error(std::string() + "Error file_path \"" + filename + "\" does not exists.");
 		}
-		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
 		std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-		CGL_DBG;
-		/*std::stringstream tabRemovedStr;
-		char c;
-		while (ifs.get(c))
-		{
-			if (c == '\t')
-				tabRemovedStr << "    ";
-			else
-				tabRemovedStr << c;
-		}
-		std::string sourceCode = tabRemovedStr.str();*/
 		std::string sourceCode = EscapedSourceCode(original);
 
-		CGL_DBG;
-		std::cout << "filepath: " << filename << std::endl;
-
-		CGL_DBG;
-		std::cout << "absolute filepath: " << cgl::filesystem::absolute(cgl::filesystem::path(filename)).string() << std::endl;
-
-		CGL_DBG;
-		std::cout << "absolute parent filepath: " << cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path().string() << std::endl;
-
-		CGL_DBG;
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
 
-		CGL_DBG;
 		workingDirectories.emplace(currentDirectory);
 
 		SourceT beginSource(sourceCode.begin()), endSource(sourceCode.end());
@@ -309,10 +281,8 @@ namespace cgl
 		auto it = beginIt;
 		SpaceSkipper<IteratorT> skipper;
 		Parser<SpaceSkipperT> grammer(beginSource, endSource, filename);
-		CGL_DBG;
 		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
 		{
-			CGL_DBG;
 			if (!errorMessagePrinted)
 			{
 				std::cout << "Syntax Error: parse failed\n";
@@ -323,7 +293,6 @@ namespace cgl
 			}
 			return boost::none;
 		}
-		CGL_DBG;
 
 		if (it != endIt)
 		{

@@ -63,23 +63,31 @@ text_i = Shape{
     fill: Rgb(200,200,200)
 }
 
+text_t = Shape{
+    base_circle_t: (_ = Circle(100), _2 = _{scale: X2(300), pos: Vec2(1000, 0)}, (->_2))
+    fill: Rgb(200,200,200)
+}
+
 main = Shape{
-    a: [
-        (s = Circle(100), s{scale: X2(300), pos: Vec2(600, 0), fill:Rgb(150,150,150)})
-        text_p
-        text_i
-    ]
-    b: [
-        Shape{
-            s: [
-                Intersect(text_p.base_circle(), Shape{rect = BoundingBox(text_p.base_circle()), polygon:[Top(rect), TopRight(rect), BottomRight(rect), Bottom(rect)]})
-                Intersect(text_i.base_circle_i(), Shape{rect = BoundingBox(text_i.base_circle_i()), polygon:[Top(rect), TopRight(rect), BottomRight(rect), Bottom(rect)]})
-                text_p.arc_scope()
-                text_p.fs.func[0]()
-                //text_p.fs.func[1]()
-            ]
-            fill: 0
-            stroke: Rgb(0,0,0)
-        }
+    ss: [
+        [
+            (s = Circle(100), s{scale: X2(300), pos: Vec2(600, 0), fill:Rgb(150,150,150)})
+            text_p
+            text_i
+            text_t
+        ]
+        [
+            Shape{
+                s: [
+                    Intersect(text_p.base_circle(), Shape{rect = BoundingBox(text_p.base_circle()), polygon:[Top(rect), TopRight(rect), BottomRight(rect), Bottom(rect)]})
+                    Intersect(text_i.base_circle_i(), Shape{rect = BoundingBox(text_i.base_circle_i()), polygon:[Top(rect), TopRight(rect), BottomRight(rect), Bottom(rect)]})
+                    text_p.arc_scope()
+                    text_p.fs.func[0]()
+                    //text_p.fs.func[1]()
+                ]
+                fill: 0
+                stroke: Rgb(0,0,0)
+            }
+        ]
     ]
 }

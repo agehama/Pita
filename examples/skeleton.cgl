@@ -20,7 +20,7 @@ skeleton = (num -> Shape{
     end:   (->Transform(@pos, @scale, @angle, ss[num-1].end()))
 })
 
-skeletonA = skeleton(5)
+skeletonA = skeleton(7)
 
 main = skeletonA{
     sat( Contact(begin(), {x: 30, y:200}) )

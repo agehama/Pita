@@ -6,8 +6,10 @@
 #include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/Geometry.hpp>
+#include <Pita/Program.hpp>
 
 extern int constraintViolationCount;
+extern bool isInConstraint;
 
 namespace cgl
 {
@@ -1074,6 +1076,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const BinaryExpr& node)
 	{
+		UpdateCurrentLocation(node);
+
 		const LRValue rhs_ = boost::apply_visitor(*this, node.rhs);
 
 		Val lhs;
@@ -1176,6 +1180,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const DefFunc& defFunc)
 	{
+		UpdateCurrentLocation(defFunc);
 		return pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr);
 	}
 
@@ -1333,6 +1338,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const Lines& statement)
 	{
+		//UpdateCurrentLocation(statement);
+
 		pEnv->enterScope();
 
 		Val result;
@@ -1413,6 +1420,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const If& if_statement)
 	{
+		UpdateCurrentLocation(if_statement);
+
 		const Val cond = pEnv->expand(boost::apply_visitor(*this, if_statement.cond_expr), if_statement);
 		if (!IsType<bool>(cond))
 		{
@@ -1439,6 +1448,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const For& forExpression)
 	{
+		UpdateCurrentLocation(forExpression);
+
 		const Val startVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeStart), forExpression);
 		const Val endVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeEnd), forExpression);
 
@@ -1551,6 +1562,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const ListConstractor& listConstractor)
 	{
+		UpdateCurrentLocation(listConstractor);
+
 		List list;
 		for (const auto& expr : listConstractor.data)
 		{
@@ -1570,6 +1583,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const KeyExpr& node)
 	{
+		UpdateCurrentLocation(node);
 		/*
 		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
 		Val rhs = pEnv->expand(rhs_, node);
@@ -1601,6 +1615,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const RecordConstractor& recordConsractor)
 	{
+		UpdateCurrentLocation(recordConsractor);
 		
 		//CGL_DebugLog("");
 		//pEnv->enterScope();
@@ -1989,6 +2004,7 @@ namespace cgl
 		//TODO: record.constraintには継承時のoriginalが持つ制約は含まれていないものとする
 		if (record.constraint || !original.unitConstraints.empty())
 		{
+			isInConstraint = true;
 			//std::cout << "--------------------------------------------------------------\n";
 			//std::cout << "Solve Record Constraints:" << std::endl;
 			record.problems.clear();
@@ -2320,6 +2336,8 @@ namespace cgl
 			record.constraint = boost::none;
 			record.freeVariables.clear();
 			record.freeRanges.clear();
+
+			isInConstraint = false;
 		}
 		
 		for (const auto& key : keyList)
@@ -2376,6 +2394,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const RecordInheritor& record)
 	{
+		UpdateCurrentLocation(record);
+
 		boost::optional<Record> recordOpt;
 
 		/*
@@ -2552,6 +2572,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const DeclSat& node)
 	{
+		UpdateCurrentLocation(node);
+
 		//ここでクロージャを作る必要がある
 		ClosureMaker closureMaker(pEnv, std::set<std::string>());
 		const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
@@ -2576,6 +2598,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const DeclFree& node)
 	{
+		UpdateCurrentLocation(node);
+
 		//std::cout << "Begin LRValue Eval::operator()(const DeclFree& node)" << std::endl;
 		for (const auto& accessor : node.accessors)
 		{

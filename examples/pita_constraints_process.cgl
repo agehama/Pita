@@ -35,19 +35,19 @@ main = {
 
     d: [
         Shape{
-            text: BuildText("依存性解析", {}, fontPath){pos:X2(0)}
+            text: (_ = BuildText("依存性解析", {}, fontPath), _{pos:X2(0)})
             sat( Contact(BoundingBox(text).center, a.center()) )
             var(text.pos)
             fill: baseColor
         }
         Shape{
-            text: BuildText("成立判定", {}, fontPath){pos:X2(0)}
+            text: (_ = BuildText("成立判定", {}, fontPath), _{pos:X2(0)})
             sat( Contact(BoundingBox(text).center, b.center()) )
             var(text.pos)
             fill: baseColor
         }
         Shape{
-            text: BuildText("数値計算", {}, fontPath){pos:X2(0)}
+            text: (_ = BuildText("数値計算", {}, fontPath), _{pos:X2(0)})
             sat( Contact(BoundingBox(text).center, c.center()) )
             var(text.pos)
             fill: baseColor
@@ -66,7 +66,7 @@ main = {
     ]
 
     title: Shape{
-        text: BuildText("制約処理の手順", {}, fontTitle){pos:Vec2(0, -100), scale: X2(1.2)}
+        text: (_ = BuildText("制約処理の手順", {}, fontTitle), _{pos:Vec2(0, -100), scale: X2(1.2)})
         sat( BoundingBox(text).topLeft.x == a.topLeft().x )
         var(text.pos.x)
         fill: baseColor
@@ -75,7 +75,6 @@ main = {
 
 main2 = Shape{
     ss: [
-        
         main
     ]
 }

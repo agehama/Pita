@@ -7,6 +7,8 @@
 
 namespace cgl
 {
+	void UpdateCurrentLocation(const LocationInfo& info);
+
 	class Program
 	{
 	public:
@@ -20,7 +22,7 @@ namespace cgl
 		void executeInline(const std::string& source, bool logOutput = true);
 		//void run(const std::string& program, bool logOutput = true);
 
-		void clear();
+		void clearState();
 
 		bool test(const std::string& input_filepath, const Expr& expr);
 

@@ -12,6 +12,11 @@ namespace cgl
 		unsigned locInfo_lineBegin = 0, locInfo_lineEnd = 0;
 		unsigned locInfo_posBegin = 0, locInfo_posEnd = 0;
 		std::string getInfo() const;
+
+		bool isValid()const
+		{
+			return !(locInfo_lineBegin == 0 && locInfo_lineEnd == 0 && locInfo_posBegin == 0 && locInfo_posEnd == 0);
+		}
 	};
 
 	class Exception : public std::exception

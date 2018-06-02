@@ -66,7 +66,7 @@ main = {
     }
     h: Shape{
         bens: Shape{
-            left= Circle(60){scale: X2(120)}
+            left= (_ = Circle(60), _{scale: X2(120)})
             right= left{pos: Vec2(80, 0)}
             s: SymDiff(left, right)
             pos: Lerp(a.topLeft(), a.bottomRight(), 0.6)
@@ -131,7 +131,7 @@ main2 = Shape{
             currentLine = ls1[i].line
             {
                 line: [currentLine[0], Lerp(currentLine[0], currentLine[1], 0.75)]
-                s: Circle(10){scale: X2(2.0), pos: line[1]}
+                s: (_ = Circle(10), _{scale: X2(2.0), pos: line[1]})
             }
         )
     }

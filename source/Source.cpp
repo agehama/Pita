@@ -18,6 +18,7 @@
 
 extern bool calculating;
 extern bool isDebugMode;
+extern bool isBlockingMode;
 
 /* Trap interrupt */
 void trap(int sig)
@@ -44,6 +45,7 @@ int main(int argc, char* argv[])
 			("i,input", "Input file path", cxxopts::value<std::string>())
 			("o,output", "Output file path (if unspecified, result is printed to standard output)", cxxopts::value<std::string>())
 			("d,debug", "Enable debug mode")
+			("b,block", "Enable blocking mode")
 			("help", "Show help")
 			("licence", "Show licence")
 			//("seed", "Random seed (if unspecified, seed is generated non-deterministically)", cxxopts::value<int>(), "N")
@@ -911,6 +913,7 @@ Library.
 		}
 
 		isDebugMode = false;
+		isBlockingMode = false;
 		if (result.count("debug"))
 		{
 			isDebugMode = true;
@@ -963,6 +966,11 @@ Library.
 				refresh();
 				napms(100);
 			}*/
+		}
+
+		if (result.count("block"))
+		{
+			isBlockingMode = true;
 		}
 
 		/*

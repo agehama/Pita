@@ -27,6 +27,7 @@
 bool calculating;
 int constraintViolationCount;
 bool isDebugMode;
+bool isBlockingMode;
 bool isInConstraint = false;
 
 namespace cgl
@@ -55,7 +56,7 @@ namespace cgl
 			currentBeginPos = LinePos(info.locInfo_posBegin, info.locInfo_lineBegin);
 			currentEndPos = LinePos(info.locInfo_posEnd, info.locInfo_lineEnd);
 
-			if (isDebugMode && !isInConstraint)
+			if (isDebugMode && isBlockingMode && !isInConstraint)
 			{
 				while (true)
 				{
@@ -159,7 +160,6 @@ namespace cgl
 				const int windowWidth = COLS;
 				const int windowHeight = LINES;
 
-
 				const auto LinePosToAbsolutePos = [](const std::vector<std::string>& lines, const LinePos& pos, int windowWidth)
 				{
 					if (lines.size() <= pos.y)
@@ -171,14 +171,6 @@ namespace cgl
 					for (int ly = 0; ly < pos.y; ++ly)
 					{
 						currentPos.y += (std::max(0, static_cast<int>(lines[ly].length()) - 1) / windowWidth) + 1;
-						/*currentPos.x = 0;
-						int offsetX = 0;
-						while (windowWidth < static_cast<int>(lines[ly].length()) - offsetX)
-						{
-							offsetX += windowWidth;
-							++currentPos.y;
-						}
-						currentPos.x += static_cast<int>(lines[ly].length()) - offsetX;*/
 					}
 
 					currentPos.y += pos.x / windowWidth;
@@ -222,6 +214,7 @@ namespace cgl
 					return result;
 				};
 
+				int focusLine = 0;
 				const auto draw = [&](const std::vector<std::string>& lines, const LinePos& focusBegin, const LinePos& focusEnd)
 				{
 					int locInfo_lineBegin = focusBegin.y, locInfo_lineEnd = focusEnd.y;
@@ -236,16 +229,30 @@ namespace cgl
 						locInfo_posEnd = std::max(static_cast<int>(locInfo_posEnd) - 1, 0);
 					}
 
-					const int focusLineBegin = static_cast<int>(locInfo_lineBegin) - 1;
-					const int focusLineEnd = static_cast<int>(locInfo_lineEnd) - 1;
+					const int focusLineBegin = std::max(static_cast<int>(locInfo_lineBegin) - 1, 0);
+					const int focusLineEnd = std::max(static_cast<int>(locInfo_lineEnd) - 1, 0);
 
-					const int printLineSize = windowHeight;
-					const int focusLine = (focusLineBegin + focusLineEnd) / 2;
+					while(true)
+					{
+						const auto focusBeginDrawPos = LinePosToScreenPos(lines, LinePos(locInfo_posBegin, focusLineBegin), windowWidth, windowHeight, focusLine);
+
+						if (focusBeginDrawPos.y < 0)
+						{
+							--focusLine;
+						}
+						else if(windowHeight <= focusBeginDrawPos.y)
+						{
+							++focusLine;
+						}
+						else
+						{
+							break;
+						}
+					}
 
 					const auto searchTargetLineY = [&](const ScreenPos& targetPos)->int
 					{
 						LinePos left(0, 0), right(0, static_cast<int>(lines.size()) - 1);
-
 						{
 							const auto leftResult = LinePosToScreenPos(lines, left, windowWidth, windowHeight, focusLine);
 							if (targetPos.y <= leftResult.y)
@@ -464,51 +471,6 @@ namespace cgl
 
 		calculating = false;
 	}
-
-	/*
-	void Program::run(const std::string& program, bool logOutput)
-	{
-		clearState();
-
-		if (logOutput)
-		{
-			std::cout << "parse..." << std::endl;
-			std::cout << program << std::endl;
-		}
-
-		if (auto exprOpt = Parse(program))
-		{
-			try
-			{
-				if (logOutput)
-				{
-					std::cout << "parse succeeded" << std::endl;
-					printExpr(exprOpt.get(), pEnv, std::cout);
-				}
-
-				if (logOutput) std::cout << "execute..." << std::endl;
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
-				evaluated = pEnv->expand(lrvalue);
-				if (logOutput) std::cout << "completed" << std::endl;
-
-				succeeded = true;
-			}
-			catch (const cgl::Exception& e)
-			{
-				//std::cerr << "Exception: " << e.what() << std::endl;
-				std::cout << "Exception: " << e.what() << std::endl;
-
-				succeeded = false;
-			}
-		}
-		else
-		{
-			succeeded = false;
-		}
-
-		calculating = false;
-	}
-	*/
 
 	void Program::clearState()
 	{

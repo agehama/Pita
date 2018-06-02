@@ -407,7 +407,6 @@ namespace cgl
 		std::string line;
 		int l = 0;
 		int printedLines = 0;
-		//for (; std::getline(ifs, line); ++l)
 		for (; std::getline(is, line); ++l)
 		{
 			if (printLineBegin <= l && l <= printLineEnd)

@@ -281,6 +281,8 @@ namespace cgl
 		auto it = beginIt;
 		SpaceSkipper<IteratorT> skipper;
 		Parser<SpaceSkipperT> grammer(beginSource, endSource, filename);
+		
+		const double parseBegin = GetSec();
 		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
 		{
 			if (!errorMessagePrinted)
@@ -293,6 +295,8 @@ namespace cgl
 			}
 			return boost::none;
 		}
+		const double parseSec = GetSec() - parseBegin;
+		std::cerr << "parse(Qi) : " << parseSec << "[sec]" << std::endl;
 
 		if (it != endIt)
 		{

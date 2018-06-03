@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include <exception>
+#include <chrono>
 
 namespace cgl
 {
@@ -37,6 +38,12 @@ namespace cgl
 	{
 		std::regex regex("\n");
 		os << std::regex_replace(str, regex, "\n          |> ") << "\n";
+	}
+
+	inline double GetSec() {
+		return static_cast<double>(
+			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()
+			) / 1000000000.0;
 	}
 }
 

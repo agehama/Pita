@@ -29,6 +29,8 @@
 
 #include "Node.hpp"
 
+extern bool isDebugMode;
+
 namespace cgl
 {
 //#if defined(CGL_EXPERIMENTAL_FILESYSTEM) || defined(_MSC_VER)
@@ -250,19 +252,6 @@ namespace cgl
 
 			constraints = lit("sat") >> '(' >> s >> statement[_val = Call(DeclSat::Make, _1)] >> s >> ')';
 
-			/*freeVals = lit("var") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >> *(
-				s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
-				) >> s >> ')';*/
-			/*freeVals = lit("var") >> '(' >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >>
-				-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)]) >> *(
-					s >> ", " >> s >> (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())]) >>
-					-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)])
-					) >> s >> ')';*/
-			/*freeVals = lit("var") >> '(' >>s >> ((lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)])) | (accessor[Call(DeclFree::AddAccessor, _val, _1)])) >>
-				-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)]) >> *(
-					s >> ", " >> s >> ((lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)])) | (accessor[Call(DeclFree::AddAccessor, _val, _1)])) >>
-					-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)])
-					) >> s >> ')';*/
 			freeVals = lit("var") >> '(' >> s >> (
 					(lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)] | id[Call(DeclFree::AddAccessorDynamic, _val, Cast<Identifier, Accessor>())])) 
 					| (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
@@ -406,105 +395,86 @@ namespace cgl
 
 			s = *(encode::space);
 
-			auto errorInfo = errorHandler(_1, _3, _4);
-			qi::on_error<qi::fail>(general_expr, errorInfo);
-			qi::on_error<qi::fail>(logic_expr, errorInfo);
-			qi::on_error<qi::fail>(logic_term, errorInfo);
-			qi::on_error<qi::fail>(logic_factor, errorInfo);
-			qi::on_error<qi::fail>(compare_expr, errorInfo);
-			qi::on_error<qi::fail>(arith_expr, errorInfo);
-			qi::on_error<qi::fail>(basic_arith_expr, errorInfo);
-			qi::on_error<qi::fail>(term, errorInfo);
-			qi::on_error<qi::fail>(factor, errorInfo);
-			qi::on_error<qi::fail>(pow_term, errorInfo);
-			qi::on_error<qi::fail>(pow_term1, errorInfo);
-			qi::on_error<qi::fail>(constraints, errorInfo);
-			qi::on_error<qi::fail>(freeVals, errorInfo);
-			//qi::on_error<qi::fail>(functionAccess, errorInfo);
-			//qi::on_error<qi::fail>(recordAccess, errorInfo);
-			//qi::on_error<qi::fail>(listAccess, errorInfo);
-			qi::on_error<qi::fail>(accessor, errorInfo);
-			//qi::on_error<qi::fail>(access, errorInfo);
-			qi::on_error<qi::fail>(record_keyexpr, errorInfo);
-			qi::on_error<qi::fail>(record_maker, errorInfo);
-			qi::on_error<qi::fail>(record_inheritor, errorInfo);
-			qi::on_error<qi::fail>(list_maker, errorInfo);
-			qi::on_error<qi::fail>(import_expr, errorInfo);
-			qi::on_error<qi::fail>(for_expr, errorInfo);
-			qi::on_error<qi::fail>(if_expr, errorInfo);
-			qi::on_error<qi::fail>(return_expr, errorInfo);
-			qi::on_error<qi::fail>(def_func, errorInfo);
-			//qi::on_error<qi::fail>(arguments, errorInfo);
-			qi::on_error<qi::fail>(id, errorInfo);
-			qi::on_error<qi::fail>(key_expr, errorInfo);
-			//qi::on_error<qi::fail>(char_string, errorInfo);
-			qi::on_error<qi::fail>(general_expr, errorInfo);
-			qi::on_error<qi::fail>(logic_expr, errorInfo);
-			qi::on_error<qi::fail>(logic_term, errorInfo);
-			qi::on_error<qi::fail>(logic_factor, errorInfo);
-			qi::on_error<qi::fail>(compare_expr, errorInfo);
-			qi::on_error<qi::fail>(arith_expr, errorInfo);
-			qi::on_error<qi::fail>(basic_arith_expr, errorInfo);
-			qi::on_error<qi::fail>(term, errorInfo);
-			qi::on_error<qi::fail>(factor, errorInfo);
-			qi::on_error<qi::fail>(pow_term, errorInfo);
-			qi::on_error<qi::fail>(pow_term1, errorInfo);
-			qi::on_error<qi::fail>(expr_seq, errorInfo);
-			qi::on_error<qi::fail>(statement, errorInfo);
+			if (isDebugMode)
+			{
+				auto errorInfo = errorHandler(_1, _3, _4);
+				qi::on_error<qi::fail>(general_expr, errorInfo);
+				qi::on_error<qi::fail>(logic_expr, errorInfo);
+				qi::on_error<qi::fail>(logic_term, errorInfo);
+				qi::on_error<qi::fail>(logic_factor, errorInfo);
+				qi::on_error<qi::fail>(compare_expr, errorInfo);
+				qi::on_error<qi::fail>(arith_expr, errorInfo);
+				qi::on_error<qi::fail>(basic_arith_expr, errorInfo);
+				qi::on_error<qi::fail>(term, errorInfo);
+				qi::on_error<qi::fail>(factor, errorInfo);
+				qi::on_error<qi::fail>(pow_term, errorInfo);
+				qi::on_error<qi::fail>(pow_term1, errorInfo);
+				qi::on_error<qi::fail>(constraints, errorInfo);
+				qi::on_error<qi::fail>(freeVals, errorInfo);
+				//qi::on_error<qi::fail>(functionAccess, errorInfo);
+				//qi::on_error<qi::fail>(recordAccess, errorInfo);
+				//qi::on_error<qi::fail>(listAccess, errorInfo);
+				qi::on_error<qi::fail>(accessor, errorInfo);
+				//qi::on_error<qi::fail>(access, errorInfo);
+				qi::on_error<qi::fail>(record_keyexpr, errorInfo);
+				qi::on_error<qi::fail>(record_maker, errorInfo);
+				qi::on_error<qi::fail>(record_inheritor, errorInfo);
+				qi::on_error<qi::fail>(list_maker, errorInfo);
+				qi::on_error<qi::fail>(import_expr, errorInfo);
+				qi::on_error<qi::fail>(for_expr, errorInfo);
+				qi::on_error<qi::fail>(if_expr, errorInfo);
+				qi::on_error<qi::fail>(return_expr, errorInfo);
+				qi::on_error<qi::fail>(def_func, errorInfo);
+				//qi::on_error<qi::fail>(arguments, errorInfo);
+				qi::on_error<qi::fail>(id, errorInfo);
+				qi::on_error<qi::fail>(key_expr, errorInfo);
+				//qi::on_error<qi::fail>(char_string, errorInfo);
+				qi::on_error<qi::fail>(expr_seq, errorInfo);
+				qi::on_error<qi::fail>(statement, errorInfo);
 
-			auto setLocationInfo = annotate(_val, _1, _3);
-			qi::on_success(general_expr, setLocationInfo);
-			qi::on_success(logic_expr, setLocationInfo);
-			qi::on_success(logic_term, setLocationInfo);
-			qi::on_success(logic_factor, setLocationInfo);
-			qi::on_success(compare_expr, setLocationInfo);
-			qi::on_success(arith_expr, setLocationInfo);
-			qi::on_success(basic_arith_expr, setLocationInfo);
-			qi::on_success(term, setLocationInfo);
-			qi::on_success(factor, setLocationInfo);
-			qi::on_success(pow_term, setLocationInfo);
-			qi::on_success(pow_term1, setLocationInfo);
-			qi::on_success(constraints, setLocationInfo);
-			qi::on_success(freeVals, setLocationInfo);
-			//qi::on_success(functionAccess, setLocationInfo);
-			//qi::on_success(recordAccess, setLocationInfo);
-			//qi::on_success(listAccess, setLocationInfo);
-			qi::on_success(accessor, setLocationInfo);
-			//qi::on_success(access, setLocationInfo);
-			qi::on_success(record_keyexpr, setLocationInfo);
-			qi::on_success(record_maker, setLocationInfo);
-			qi::on_success(record_inheritor, setLocationInfo);
-			qi::on_success(list_maker, setLocationInfo);
-			qi::on_success(import_expr, setLocationInfo);
-			qi::on_success(for_expr, setLocationInfo);
-			qi::on_success(if_expr, setLocationInfo);
-			qi::on_success(return_expr, setLocationInfo);
-			qi::on_success(def_func, setLocationInfo);
-			//qi::on_success(arguments, setLocationInfo);
-			qi::on_success(id, setLocationInfo);
-			qi::on_success(key_expr, setLocationInfo);
-			//qi::on_success(char_string, setLocationInfo);
-			qi::on_success(general_expr, setLocationInfo);
-			qi::on_success(logic_expr, setLocationInfo);
-			qi::on_success(logic_term, setLocationInfo);
-			qi::on_success(logic_factor, setLocationInfo);
-			qi::on_success(compare_expr, setLocationInfo);
-			qi::on_success(arith_expr, setLocationInfo);
-			qi::on_success(basic_arith_expr, setLocationInfo);
-			qi::on_success(term, setLocationInfo);
-			qi::on_success(factor, setLocationInfo);
-			qi::on_success(pow_term, setLocationInfo);
-			qi::on_success(pow_term1, setLocationInfo);
-			qi::on_success(expr_seq, setLocationInfo);
-			qi::on_success(statement, setLocationInfo);
-			qi::on_success(program, setLocationInfo);
+				auto setLocationInfo = annotate(_val, _1, _3);
+				//qi::on_success(general_expr, setLocationInfo);
+				qi::on_success(logic_expr, setLocationInfo);
+				qi::on_success(logic_term, setLocationInfo);
+				qi::on_success(logic_factor, setLocationInfo);
+				qi::on_success(compare_expr, setLocationInfo);
+				qi::on_success(arith_expr, setLocationInfo);
+				qi::on_success(basic_arith_expr, setLocationInfo);
+				//qi::on_success(term, setLocationInfo);
+				//qi::on_success(factor, setLocationInfo);
+				//qi::on_success(pow_term, setLocationInfo);
+				//qi::on_success(pow_term1, setLocationInfo);
+				qi::on_success(constraints, setLocationInfo);
+				qi::on_success(freeVals, setLocationInfo);
+				//qi::on_success(functionAccess, setLocationInfo);
+				//qi::on_success(recordAccess, setLocationInfo);
+				//qi::on_success(listAccess, setLocationInfo);
+				qi::on_success(accessor, setLocationInfo);
+				//qi::on_success(access, setLocationInfo);
+				qi::on_success(record_keyexpr, setLocationInfo);
+				qi::on_success(record_maker, setLocationInfo);
+				qi::on_success(record_inheritor, setLocationInfo);
+				qi::on_success(list_maker, setLocationInfo);
+				qi::on_success(import_expr, setLocationInfo);
+				qi::on_success(for_expr, setLocationInfo);
+				qi::on_success(if_expr, setLocationInfo);
+				qi::on_success(return_expr, setLocationInfo);
+				//qi::on_success(def_func, setLocationInfo);
+				//qi::on_success(arguments, setLocationInfo);
+				qi::on_success(id, setLocationInfo);
+				qi::on_success(key_expr, setLocationInfo);
+				//qi::on_success(char_string, setLocationInfo);
+				//qi::on_success(expr_seq, setLocationInfo);
+				//qi::on_success(statement, setLocationInfo);
+				//qi::on_success(program, setLocationInfo);
 
-			BOOST_SPIRIT_DEBUG_NODES(
+				/*BOOST_SPIRIT_DEBUG_NODES(
 				(float_value)(unchecked_identifier)(distinct_keyword)(s)(s1)(program)
 				(expr_seq)(statement)(general_expr)(logic_expr)(logic_term)(logic_factor)(compare_expr)(arith_expr)(basic_arith_expr)(term)(factor)(pow_term)(pow_term1)
 				(char_string)(key_expr)(id)(arguments)(def_func)(return_expr)(if_expr)(for_expr)(import_expr)(list_maker)(record_inheritor)(record_maker)(record_keyexpr)
 				(access)(accessor)(listAccess)(recordAccess)(functionAccess)(freeVals)(constraints)
-			)
+				)*/
+			}
 		}
 	};
 

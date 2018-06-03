@@ -118,8 +118,15 @@ namespace cgl
 
 		try
 		{
+			double parseSec = 0;
+			double executeSec = 0;
+			double outputSec = 0;
+
+			const double parseBegin = GetSec();
 			if (auto exprOpt = Parse1(filepath))
 			{
+				parseSec = GetSec() - parseBegin;
+
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
@@ -129,7 +136,11 @@ namespace cgl
 
 				const auto executeAndOutputSVG = [&]() {
 					if (logOutput) std::cerr << "execute ..." << std::endl;
+					
+					const double executeBegin = GetSec();
 					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
+					executeSec = GetSec() - executeBegin;
+
 					evaluated = pEnv->expand(lrvalue, LocationInfo());
 					if (logOutput)
 					{
@@ -140,6 +151,7 @@ namespace cgl
 					if (logOutput)
 						std::cerr << "output SVG ..." << std::endl;
 
+					const double outputBegin = GetSec();
 					if (output_filename.empty())
 					{
 						OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape");
@@ -150,9 +162,16 @@ namespace cgl
 						OutputSVG2(file, Packed(evaluated.get(), *pEnv), "shape");
 						file.close();
 					}
+					outputSec = GetSec() - outputBegin;
 
 					if (logOutput)
+					{
 						std::cerr << "completed" << std::endl;
+					}
+
+					std::cerr << "parse     : " << parseSec << "[sec]" << std::endl;
+					std::cerr << "execute   : " << executeSec << "[sec]" << std::endl;
+					std::cerr << "output    : " << outputSec << "[sec]" << std::endl;
 
 					succeeded = true;
 				};

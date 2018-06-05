@@ -106,7 +106,7 @@ add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 else()
-  target_link_libraries(pita_lib geos cmaes boost_system boost_filesystem)
+  target_link_libraries(pita_lib geos cmaes boost_system boost_filesystem ncurses)
   #target_link_libraries(pita_lib geos cmaes stdc++fs boost_system boost_filesystem)
   #target_link_libraries(pita_lib geos cmaes c++experimental)
 endif()

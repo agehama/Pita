@@ -115,7 +115,7 @@ install:
     else
       (cd ${BOOST_DIR} && ./bootstrap.sh && ./b2 install --with-filesystem --prefix=${DEPS_DIR}/b2 > b2_log)
       CMAKE_OPTIONS+=" -DBOOST_ROOT=${DEPS_DIR}/b2"
-      brew install homebrew/dupes/ncurses
+      brew install homebrew/ncurses
     fi
 
 script:

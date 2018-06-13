@@ -6,7 +6,7 @@ chapter: false
 
 ---
 
-### Windowsの場合
+### Windows
 #### ダウンロード
 
 [Pita(v0.5.0) for win](https://github.com/agehama/Pita/releases/download/v_0.5.0/pita-0.5.0-alpha-x86-win.zip) からダウンロードしてください。
@@ -19,7 +19,7 @@ chapter: false
 ```
 
 ---
-### MacOSの場合
+### MacOS
 #### ダウンロード
 
 [Pita 0.5.0](https://github.com/agehama/Pita/releases/download/v_0.5.0/pita-0.5.0-alpha-x86-win.zip) からダウンロードしてください。
@@ -33,7 +33,7 @@ chapter: false
 
 
 ---
-### Ubuntuの場合
+### Ubuntu
 #### ダウンロード
 
 [Pita 0.5.0](https://github.com/agehama/Pita/releases/download/v_0.5.0/pita-0.5.0-alpha-x86-win.zip) からダウンロードしてください。
@@ -48,13 +48,14 @@ chapter: false
 
 ---
 
-### 他のOSの場合
+### その他のOS
 上記以外のOSの場合は、ソースコードからPitaをビルドすることができます。
 Pita(v0.5.0)のビルドに必要な要件は以下の通りです。
 
 - Boost 1.54
 - CMake 3.1
 - C++14をサポートするコンパイラ
+- ncurses
 
 上記を満たす環境であれば、次のようにしてビルドすることができます。
 ```

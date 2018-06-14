@@ -1565,10 +1565,10 @@ namespace cgl
 			"max", MakeRecord("x", maxX, "y", maxY),
 			//"topEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", minY), MakeRecord("x", maxX, "y", minY))),
 			//"bottomEdge", MakeRecord("line", MakeList(MakeRecord("x", minX, "y", maxY), MakeRecord("x", maxX, "y", maxY))),
-			"topEdge", FuncVal({}, 
+			"topEdge", FuncVal({},
 				MakeRecordConstructor(
 					Identifier("line"), MakeListConstractor(
-						MakeRecordConstructor(Identifier("x"), Expr(LRValue(minX)), Identifier("y"), Expr(LRValue(minY))), 
+						MakeRecordConstructor(Identifier("x"), Expr(LRValue(minX)), Identifier("y"), Expr(LRValue(minY))),
 						MakeRecordConstructor(Identifier("x"), Expr(LRValue(maxX)), Identifier("y"), Expr(LRValue(minY)))
 					)
 				)
@@ -1580,15 +1580,39 @@ namespace cgl
 						MakeRecordConstructor(Identifier("x"), Expr(LRValue(maxX)), Identifier("y"), Expr(LRValue(maxY)))
 					)
 				)
+			)/*,
+			"height", FuncVal({},
+				Lines({
+					BinaryExpr(Identifier("_"), DefFunc(
+						BinaryExpr(
+							Expr(Accessor(Identifier("polygon")).add(ListAccess(LRValue(2))).add(RecordAccess(Identifier("y")))),
+							Expr(Accessor(Identifier("polygon")).add(ListAccess(LRValue(0))).add(RecordAccess(Identifier("y")))),
+							BinaryOp::Sub
+						)
+					), BinaryOp::Assign),
+					Accessor(Identifier("_")).add(FunctionAccess())
+					}
+				)
+			),*/
+			,
+			"height", FuncVal({},
+				BinaryExpr(LRValue(maxY), LRValue(minY), BinaryOp::Sub)
+			),
+			"width", FuncVal({},
+				BinaryExpr(LRValue(maxX), LRValue(minX), BinaryOp::Sub)
 			),
 			"topLeft", MakeRecord("x", minX, "y", minY),
 			"topRight", MakeRecord("x", maxX, "y", minY),
 			"bottomLeft", MakeRecord("x", minX, "y", maxY),
 			"bottomRight", MakeRecord("x", maxX, "y", maxY),
-			"center", MakeRecord("x", (minX + maxX)*0.5, "y", (minY + maxY)*0.5)
+			"center", MakeRecord("x", (minX + maxX)*0.5, "y", (minY + maxY)*0.5),
+			"pos", MakeRecord("x", 0, "y", 0),
+			"scale", MakeRecord("x", 1.0, "y", 1.0),
+			"angle", 0
 		);
 
-		return ShapeResult(resultRecord);
+		//return ShapeResult(resultRecord);
+		return resultRecord;
 	}
 
 	PackedRecord GetGlobalShape(const PackedRecord& shape)

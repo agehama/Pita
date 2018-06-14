@@ -2805,7 +2805,7 @@ namespace cgl
 				auto it = record.values.find(recordAccessOpt.get().name);
 				if (it == record.values.end())
 				{
-					CGL_ErrorNode(accessor, std::string("指定された識別子") + recordAccessOpt.get().name.toString() + "がレコード中に存在しませんでした。");
+					CGL_ErrorNode(accessor, std::string("指定された識別子\"") + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しませんでした。");
 				}
 
 				address = it->second;

@@ -2075,20 +2075,14 @@ namespace cgl
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
 			
-			CGL_DBG;
-
 			//分解された単位制約
 			const std::vector<Expr> adderUnitConstraints = record.constraint ? separateUnitConstraints(record.constraint.get()) : std::vector<Expr>();
-
-			CGL_DBG;
 
 			//単位制約ごとの依存するfree変数の集合
 			std::vector<ConstraintAppearance> adderVariableAppearances;
 			for (const auto& constraint : adderUnitConstraints)
 			{
-				CGL_DBG;
 				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
-				CGL_DBG;
 				/*std::cout << "constraint:\n";
 				printExpr(constraint, pEnv, std::cout);
 				std::stringstream ss;

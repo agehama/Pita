@@ -283,8 +283,6 @@ namespace cgl
 			}
 		}*/
 
-		CGL_DBG;
-
 		//組み込み関数の場合は関数定義の中身と照らし合わせるという事ができないため、とりあえず引数から辿れる要素を全て指定する
 		if (funcVal.builtinFuncAddress)
 		{
@@ -306,7 +304,6 @@ namespace cgl
 
 			return result;
 		}
-		CGL_DBG;
 		/*std::vector<Address> expandedArguments(node.actualArguments.size());
 		for (size_t i = 0; i < expandedArguments.size(); ++i)
 		{
@@ -320,13 +317,11 @@ namespace cgl
 
 		pEnv->switchFrontScope();
 		pEnv->enterScope();
-		CGL_DBG;
 		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 		{
 			pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
 			//addLocalVariable(funcVal.arguments[i]);
 		}
-		CGL_DBG;
 		bool result;
 		{
 			SatVariableBinder child(*this);
@@ -335,7 +330,6 @@ namespace cgl
 			result = boost::apply_visitor(child, funcVal.expr);
 			//--depth;
 		}
-		CGL_DBG;
 		pEnv->exitScope();
 		pEnv->switchBackScope();
 
@@ -583,10 +577,12 @@ namespace cgl
 					//Case2(関数引数がfree)への対応
 					for (const auto& argument : funcAccess.actualArguments)
 					{
+						if (HasLocalVariable(argument, localVariables))
+						{
+							return false;
+						}
 						//++depth;
-						CGL_DBG;
 						isDeterministic = !boost::apply_visitor(*this, argument) && isDeterministic;
-						CGL_DBG;
 						//--depth;
 					}
 
@@ -633,19 +629,15 @@ namespace cgl
 							arguments.push_back(pEnv->makeTemporaryValue(lrvalue.evaluated()));
 						}
 					}
-					CGL_DBG;
 					isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
-					CGL_DBG;
 
 					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
 					if (isDeterministic)
 					{
-						CGL_DBG;
 						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
 						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
 						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
-						CGL_DBG;
 					}
 				}
 			}

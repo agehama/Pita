@@ -317,7 +317,6 @@ namespace cgl
 		boost::optional<double> m_solveTimeLimit;
 
 		std::uniform_real_distribution<double> m_dist;
-		std::uniform_int_distribution<int> m_distInt;
 		std::mt19937 m_random;
 
 		std::weak_ptr<Context> m_weakThis;

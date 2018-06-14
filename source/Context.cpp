@@ -1283,10 +1283,19 @@ namespace cgl
 			const Val& v0 = expand(arguments[0], info);
 			const Val& v1 = expand(arguments[1], info);
 
-			v0;
+			if (!IsNum(v0) || !IsNum(v1))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
 
-			const double x0 = AsDouble(expand(arguments[0], info));
-			const double x1 = AsDouble(expand(arguments[1], info));
+			if (IsType<int>(v0) && IsType<int>(v1))
+			{
+				std::uniform_int_distribution<int> distInt(As<int>(v0), As<int>(v1));
+				return distInt(m_random);
+			}
+
+			const double x0 = AsDouble(v0);
+			const double x1 = AsDouble(v1);
 			const double x01 = m_dist(m_random);
 			return x0 + (x1 - x0)*x01;
 		},

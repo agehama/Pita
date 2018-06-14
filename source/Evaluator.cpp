@@ -2267,7 +2267,7 @@ namespace cgl
 							}
 						}
 					}
-
+					CGL_DBG;
 					//次に、新たに追加される制約について解く
 
 					//同じfree変数への依存性を持つ単位制約の組
@@ -2300,37 +2300,41 @@ namespace cgl
 					original.constraintGroups = mergedConstraintGroups;
 
 					original.groupConstraints.clear();
-
+					CGL_DBG;
 					record.problems.resize(constraintGroups.size());
 					for (size_t constraintGroupID = 0; constraintGroupID < constraintGroups.size(); ++constraintGroupID)
 					{
 						auto& currentProblem = record.problems[constraintGroupID];
 						const auto& currentConstraintIDs = constraintGroups[constraintGroupID];
-
+						CGL_DBG;
 						for (size_t constraintID : currentConstraintIDs)
 						{
 							//CGL_DBG1("Constraint:");
 							//printExpr(adderUnitConstraints[constraintID], pEnv, std::cout);
 							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 						}
-
+						CGL_DBG;
 						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
-
+						CGL_DBG;
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
-
+						CGL_DBG;
 						readResult(pEnv, resultxs, currentProblem);
-
+						CGL_DBG;
 						const bool currentConstraintIsSatisfied = checkSatisfied(pEnv, currentProblem);
 						record.isSatisfied = record.isSatisfied && currentConstraintIsSatisfied;
 						if (!currentConstraintIsSatisfied)
 						{
 							++constraintViolationCount;
 						}
-
+						CGL_DBG;
 						original.groupConstraints.push_back(currentProblem);
+						CGL_DBG;
 					}
+					CGL_DBG;
 				}
 			}
+
+			CGL_DBG;
 			
 			record.problems.clear();
 			record.constraint = boost::none;

@@ -132,6 +132,11 @@ namespace cgl
 		{
 			return As<bool>(lhs) && As<bool>(rhs);
 		}
+		else if (IsNum(lhs) && IsNum(rhs))
+		{
+			const double eps = 1.e-4;
+			return AsDouble(lhs) < eps && AsDouble(rhs) < eps;
+		}
 
 		CGL_Error("不正な式です");
 		return 0;

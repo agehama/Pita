@@ -159,70 +159,6 @@ namespace cgl
 		Val callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments, const LocationInfo& info);
 		bool isPlateausBuiltInFunction(Address functionAddress);
 
-		/*
-		boost::optional<Address> find(const std::string& name)const
-		{
-		const auto valueIDOpt = findAddress(name);
-		if (!valueIDOpt)
-		{
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return boost::none;
-		}
-
-		//return m_values[valueIDOpt.get()];
-		}
-		*/
-
-		/*bool isValid(Address address)const
-		{
-		return m_values.at(address) != m_values.end();
-		}*/
-
-		//Address dereference(const Val& reference);
-		/*
-		boost::optional<const Val&> dereference(const Val& reference)const
-		{
-		if (!IsType<Address>(reference))
-		{
-		return boost::none;
-		}
-
-		//return m_values.at(As<Address>(reference));
-
-		auto it = m_values.at(As<Address>(reference));
-		if (it == m_values.end())
-		{
-		return boost::none;
-		}
-
-		return it->second;
-		}
-		*/
-
-		/*Val expandRef(const Val& reference)const
-		{
-		if (!IsType<Address>(reference))
-		{
-		return reference;
-		}
-
-		if (Address address = As<Address>(reference))
-		{
-		if (auto opt = m_values.at(address))
-		{
-		return expandRef(opt.get());
-		}
-		else
-		{
-		CGL_Error("reference error");
-		return 0;
-		}
-		}
-
-		CGL_Error("reference error");
-		return 0;
-		}*/
-
 		const Val& expand(const LRValue& lrvalue, const LocationInfo& info)const;
 
 		Val& mutableExpand(LRValue& lrvalue, const LocationInfo& info);
@@ -247,106 +183,17 @@ namespace cgl
 
 		void printReference(Reference reference, std::ostream& os)const;
 
-		//ローカル変数を全て展開する
-		//関数の戻り値などスコープが変わる時には参照を引き継げないので一度全て展開する必要がある
-		/*
-		Val expandObject(const Val& reference)
-		{
-		if (auto opt = AsOpt<Record>(reference))
-		{
-		Record expanded;
-		for (const auto& elem : opt.get().values)
-		{
-		expanded.append(elem.first, expandObject(elem.second));
-		}
-		return expanded;
-		}
-		else if (auto opt = AsOpt<List>(reference))
-		{
-		List expanded;
-		for (const auto& elem : opt.get().data)
-		{
-		expanded.append(expandObject(elem));
-		}
-		return expanded;
-		}
-
-		return dereference(reference);
-		}
-		*/
-
-		/*void bindObjectRef(const std::string& name, const ObjectReference& ref)
-		{
-		if (auto valueIDOpt = AsOpt<unsigned>(ref.headValue))
-		{
-		bindValueID(name, valueIDOpt.get());
-		}
-		else
-		{
-		const auto& valueRhs = dereference(ref);
-		bindNewValue(name, valueRhs);
-		}
-		}*/
 		void bindObjectRef(const std::string& name, Address ref)
 		{
 			bindValueID(name, ref);
 		}
 
-		/*
-		void bindNewValue(const std::string& name, const Val& value)
-		{
-		CGL_DebugLog("");
-		const Address newAddress = m_values.add(value);
-		//Clone(m_weakThis.lock(), value);
-		bindValueID(name, newAddress);
-		}
-		*/
 		void bindNewValue(const std::string& name, const Val& value)
 		{
 			CGL_DebugLog("");
 			makeVariable(name, makeTemporaryValue(value));
 		}
 
-		/*void bindReference(const std::string& nameLhs, const std::string& nameRhs)
-		{
-		const Address address = findAddress(nameRhs);
-		if (!address.isValid())
-		{
-		std::cerr << "Error(" << __LINE__ << ")\n";
-		return;
-		}
-
-		bindValueID(nameLhs, address);
-		}*/
-
-		/*
-		void bindValueID(const std::string& name, unsigned valueID)
-		{
-		//レコード
-		//レコード内の:式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合は新たに定義
-		//レコード内の=式　同じ階層に同名の:式がある場合はそれへの再代入、無い場合はそのスコープ内でのみ有効な値のエイリアス（スコープを抜けたら元に戻る≒遮蔽）
-
-		//現在の環境に変数が存在しなければ、
-		//環境リストの末尾（＝最も内側のスコープ）に変数を追加する
-		m_bindingNames.back().bind(name, valueID);
-		}
-		*/
-
-		//void bindValueID(const std::string& name, unsigned ID)
-		/*void bindValueID(const std::string& name, const Address ID)
-		{
-		for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
-		{
-		auto valIt = scopeIt->find(name);
-		if (valIt != scopeIt->end())
-		{
-		valIt->second = ID;
-		return;
-		}
-		}
-
-		m_variables.back()[name] = ID;
-		}*/
 		void bindValueID(const std::string& name, const Address ID);
 
 		bool existsInCurrentScope(const std::string& name)const;
@@ -379,19 +226,6 @@ namespace cgl
 			m_values.bind(address, newValue);
 		}
 
-		/*
-		void assignToObject(Address address, const Val& newValue)
-		{
-		m_values[address] = newValue;
-		}
-
-		//これで正しい？
-		void assignAddress(Address addressTo, Address addressFrom)
-		{
-		m_values[addressTo] = m_values[addressFrom];
-		//m_values[addressTo] = expandRef(m_values[addressFrom]);
-		}*/
-
 		//Accessorの示すリスト or レコードの持つアドレスを書き換える
 		void assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info);
 
@@ -413,54 +247,6 @@ namespace cgl
 
 		Context() = default;
 
-		/*
-		式中に現れ得る識別子は次の3種類に分けられる。
-
-		1. コロンの左側に出てくる識別子：
-		　　最も内側のスコープにその変数が有ればその変数への参照
-		  　　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
-
-						   2. イコールの左側に出てくる識別子：
-						   　　スコープのどこかにその変数が有ればその変数への参照
-							 　　　　　　　　　　　　　　　　無ければ新しく作った変数への束縛
-
-											 3. それ以外の場所に出てくる識別子：
-											 　　スコープのどこかにその変数が有ればその変数への参照
-											   　　　　　　　　　　　　　　　　無ければ無効な参照（エラー）
-
-															   ここで、1の用法と2,3の用法を両立することは難しい（識別子を見ただけでは何を返すかが決定できないので）。
-															   しかし、1の用法はかなり特殊であるため、単に特別扱いしてもよい気がする。
-															   つまり、コロンの左側に出てこれるのは単一の識別子のみとする（複雑なものを書けてもそれほどメリットがなくデバッグが大変になるだけ）。
-															   これにより、コロン式を見た時に中の識別子も一緒に見れば済むので、上記の用法を両立できる。
-															   */
-															   /*boost::optional<Address> findValueID(const std::string& name)const
-															   {
-															   for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
-															   {
-															   auto variableIt = scopeIt->find(name);
-															   if (variableIt != scopeIt->end())
-															   {
-															   return variableIt->second;
-															   }
-															   }
-
-															   return boost::none;
-															   }*/
-
-
-															   /*Address findAddress(const std::string& name)const
-															   {
-															   for (auto scopeIt = m_variables.rbegin(); scopeIt != m_variables.rend(); ++scopeIt)
-															   {
-															   auto variableIt = scopeIt->find(name);
-															   if (variableIt != scopeIt->end())
-															   {
-															   return variableIt->second;
-															   }
-															   }
-
-															   return Address::Null();
-															   }*/
 		Address findAddress(const std::string& name)const;
 
 		void garbageCollect();
@@ -495,22 +281,15 @@ namespace cgl
 		//参照変数への変更を外部に伝播
 		void replaceGlobalContextAddress(Address addressFrom, Address addressTo);
 
-		//内側のスコープから順番に変数を探して返す
-		/*boost::optional<unsigned> findValueID(const std::string& name)const
+		bool hasTimeLimit()const
 		{
-		boost::optional<unsigned> valueIDOpt;
-
-		for (auto it = m_bindingNames.rbegin(); it != m_bindingNames.rend(); ++it)
-		{
-		valueIDOpt = it->find(name);
-		if (valueIDOpt)
-		{
-		break;
-		}
+			return m_solveTimeLimit;
 		}
 
-		return valueIDOpt;
-		}*/
+		double timeLimit()const
+		{
+			return m_solveTimeLimit.get();
+		}
 
 	public:
 		Values<BuiltInFunction> m_functions;
@@ -529,6 +308,8 @@ namespace cgl
 
 		bool m_automaticExtendMode = true;
 		bool m_automaticGC = false;
+
+		boost::optional<double> m_solveTimeLimit;
 
 		std::uniform_real_distribution<double> m_dist;
 		std::mt19937 m_random;

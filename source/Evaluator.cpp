@@ -2005,11 +2005,11 @@ namespace cgl
 		if (record.constraint || !original.unitConstraints.empty())
 		{
 			isInConstraint = true;
-			//std::cout << "--------------------------------------------------------------\n";
-			//std::cout << "Solve Record Constraints:" << std::endl;
+			std::cout << "--------------------------------------------------------------\n";
+			std::cout << "Solve Record Constraints:" << std::endl;
 			record.problems.clear();
 			
-			//std::cout << "  1. Address expansion" << std::endl;
+			std::cout << "  1. Address expansion" << std::endl;
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
@@ -2058,31 +2058,37 @@ namespace cgl
 				}
 			}*/
 
-			//std::cout << "margedFreeVars: " << margedFreeVars.size();
+			std::cout << "margedFreeVars: " << margedFreeVars.size();
 			std::vector<FreeVariableAddress> mergedFreeVariableAddresses = (hasRange
 				? makeFreeVariableAddressesRange(pEnv, margedFreeVars, adderPackedRanges)
 				: makeFreeVariableAddresses(pEnv, margedFreeVars));
-			/*{
+			{
 				std::cout << "current variables: ";
 				for (const auto& val : mergedFreeVariableAddresses)
 				{
 					std::cout << "Address(" << val.first.toString() << "), ";
 				}
 				std::cout << "\n";
-			}*/
-			//std::cout << "  2. Constraints separation" << std::endl;
+			}
+
+			std::cout << "  2. Constraints separation" << std::endl;
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
 			
+			CGL_DBG;
+
 			//分解された単位制約
 			const std::vector<Expr> adderUnitConstraints = record.constraint ? separateUnitConstraints(record.constraint.get()) : std::vector<Expr>();
+
+			CGL_DBG;
 
 			//単位制約ごとの依存するfree変数の集合
 			std::vector<ConstraintAppearance> adderVariableAppearances;
 			for (const auto& constraint : adderUnitConstraints)
 			{
+				CGL_DBG;
 				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
-
+				CGL_DBG;
 				/*std::cout << "constraint:\n";
 				printExpr(constraint, pEnv, std::cout);
 				std::stringstream ss;
@@ -2093,10 +2099,10 @@ namespace cgl
 				std::cout << ss.str() << "\n\n";*/
 			}
 			
-			//std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
+			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << std::endl;
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
-				//std::cout << "  3. Dependency analysis" << std::endl;
+				std::cout << "  3. Dependency analysis" << std::endl;
 
 				//std::vector<Address> addressesOriginal;
 				//std::vector<Address> addressesAdder;
@@ -2197,8 +2203,8 @@ namespace cgl
 
 						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
 
-						//std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
-						//std::cout << "2 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
+						std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
+						std::cout << "2 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
 						readResult(pEnv, resultxs, currentProblem);

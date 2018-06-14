@@ -10,18 +10,14 @@ pita = Shape{
 
 main = Shape{
     s: {
-        a: tri{scale: X2(0.6), angle: -90}
+        a: tri{angle: -90}
         b: pita{}
         sat( b.scale.x == b.scale.y )
         sat( BoundingBox(a).height() == BoundingBox(b).height() )
         var(b.scale)
     }
-    sat(Contact(Right(BoundingBox(s.a)), Moved(Left(BoundingBox(s.b)), -25, 0) ))
+    sat(Contact(Right(BoundingBox(s.a)), Moved(Left(BoundingBox(s.b)), -50, 0) ))
     var(s.b.pos)
-    fill: Rgb(0,0,0)
-}
-
-canvas = Shape{
-    b: Shape{s: Buffer(BoundingBox(main), 30), fill: 0}
-    s: main
+    fill: Rgb(0, 0, 0)
+    //fill: Rgb(255, 255, 255)
 }

@@ -39,6 +39,8 @@ namespace cgl
 
 	PackedRecord GetShapeOuterPaths(const PackedRecord& shape);
 
+	PackedRecord GetShapeInnerPaths(const PackedRecord& shape);
+
 	PackedRecord GetShapePaths(const PackedRecord& shape);
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape);

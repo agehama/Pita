@@ -1339,14 +1339,13 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"BuildText",
+			"Text",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
 			if (arguments.size() != 1 && arguments.size() != 2 && arguments.size() != 3)
 			{
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
-			//buildText(str, basePath)
 
 			const Val& strVal = pEnv->expand(arguments[0], info);
 			auto baseLineOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
@@ -1476,6 +1475,27 @@ namespace cgl
 			}
 			
 			return GetShapeOuterPaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"ShapeInnerPath",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& arg1 = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(arg1))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetShapeInnerPaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
 		},
 			true
 			);

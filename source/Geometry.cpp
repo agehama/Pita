@@ -1442,6 +1442,64 @@ namespace cgl
 		return ShapeResult(pathList);
 	}
 
+	PackedRecord GetShapeInnerPaths(const PackedRecord& shape)
+	{
+		auto geometries = GeosFromRecordPacked(shape);
+
+		const auto coord = [&](double x, double y)
+		{
+			PackedRecord record;
+			record.add("x", x);
+			record.add("y", y);
+			return record;
+		};
+		const auto appendCoord = [&](PackedList& list, double x, double y)
+		{
+			const auto record = coord(x, y);
+			list.add(record);
+		};
+
+		PackedList pathList;
+		for (size_t g = 0; g < geometries.size(); ++g)
+		{
+			const gg::Geometry* geometry = geometries[g];
+			if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
+			{
+				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+
+				for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
+				{
+					const gg::LineString* exterior = polygon->getInteriorRingN(i);
+
+					PackedRecord pathRecord;
+					PackedList polygonList;
+
+					if (IsClockWise(exterior))
+					{
+						for (size_t p = 0; p < exterior->getNumPoints(); ++p)
+						{
+							const gg::Point* point = exterior->getPointN(p);
+							appendCoord(polygonList, point->getX(), point->getY());
+						}
+					}
+					else
+					{
+						for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
+						{
+							const gg::Point* point = exterior->getPointN(p);
+							appendCoord(polygonList, point->getX(), point->getY());
+						}
+					}
+
+					pathRecord.add("line", polygonList);
+					pathList.add(pathRecord);
+				}
+			}
+		}
+
+		return ShapeResult(pathList);
+	}
+
 	PackedRecord GetShapePaths(const PackedRecord& shape)
 	{
 		auto geometries = GeosFromRecordPacked(shape);

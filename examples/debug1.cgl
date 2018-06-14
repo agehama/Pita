@@ -1,0 +1,9 @@
+func = (-> 
+    a = 10
+    Print(a)
+    1
+)
+
+main = Shape{
+    sat(func())
+}

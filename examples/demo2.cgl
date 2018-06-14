@@ -1,0 +1,28 @@
+Combination = (list, binaryFunc ->
+    sum = 0.0
+    for i in 0:Size(list)-2 do(
+        for j in i+1:Size(list)-1 do(
+            sum = sum + binaryFunc(list[i], list[j])
+        )
+    )
+    sum
+)
+
+main = Shape{
+    s: [
+        Text("北海道")
+        Text("山形県")
+        Text("滋賀県")
+        Text("石川県")
+    ]
+
+    for i in 0:Size(s)-1 do(
+        s[i].pos = Vec2(Random(-100,100),Random(-100,100))
+    )
+
+    f = (a, b -> Area(Intersect(a, b))^2 )
+    sat( Cmaes(s[1]), Combination(s, f) )
+    sat( Area(BoundingBox(Shape{a:s}))^0.5 )
+    var(s[[1,2,3]].pos)
+    fill: Rgb(0, 0, 0)
+}

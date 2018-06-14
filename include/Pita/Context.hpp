@@ -283,7 +283,7 @@ namespace cgl
 
 		bool hasTimeLimit()const
 		{
-			return m_solveTimeLimit;
+			return static_cast<bool>(m_solveTimeLimit);
 		}
 
 		double timeLimit()const

@@ -1,0 +1,46 @@
+
+shapes = [
+    Shape{
+        a: Square{scale: Vec2(10,100)}
+        b: Square{scale: Vec2(100,10)}
+
+        contacts: [
+            [(->globalPos(TopLeft(a))), (->globalPos(TopRight(a)))]
+            [(->globalPos(BottomRight(a))), (->globalPos(BottomLeft(a)))]
+            [(->globalPos(BottomLeft(b))), (->globalPos(TopLeft(b)))]
+            [(->globalPos(TopRight(b))), (->globalPos(BottomRight(b)))]
+        ]
+    }
+    Free(Shape{
+        a: Square{scale: Vec2(50,10)}
+        b: Square{scale: Vec2(50,10), angle: -30}
+        sat(Contact(BottomRight(a), BottomLeft(b)))
+        var(b.pos)
+
+        contacts: [
+            [(->globalPos(BottomLeft(a))), (->globalPos(TopLeft(a)))]
+            [(->globalPos(Top(b))), (->globalPos(Right(b)))]
+        ]
+    })
+]
+
+contactEdge = (edgeA, edgeB ->
+    Contact(edgeA[0](), edgeB[1]()) & Contact(edgeA[1](), edgeB[0]())
+)
+
+main = Shape{
+    ss: [
+        (_ = shapes[0], _{})
+        (_ = shapes[1], _{})
+        (_ = shapes[1], _{})
+        (_ = shapes[0], _{})
+        (_ = shapes[1], _{})
+    ]
+
+    sat( contactEdge(ss[0].contacts[2], ss[1].contacts[0]) )
+    sat( contactEdge(ss[1].contacts[1], ss[2].contacts[1]) )
+    sat( contactEdge(ss[2].contacts[0], ss[3].contacts[0]) )
+    sat( contactEdge(ss[3].contacts[3], ss[4].contacts[0]) )
+
+    var(ss[[1,2,3,4]].pos, ss[[1,2,3,4]].angle)
+}

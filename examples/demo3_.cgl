@@ -1,0 +1,41 @@
+
+shapes = [
+    Shape{
+        a: Square{scale: Vec2(10,100)}
+        b: Square{scale: Vec2(100,10)}
+
+        contacts: [
+            [(->globalPos(TopLeft(a))), (->globalPos(TopRight(a)))]
+            [(->globalPos(BottomRight(a))), (->globalPos(BottomLeft(a)))]
+            [(->globalPos(BottomLeft(b))), (->globalPos(TopLeft(b)))]
+            [(->globalPos(TopRight(b))), (->globalPos(BottomRight(b)))]
+        ]
+    }
+    Free(Shape{
+        a: Square{scale: Vec2(50,10)}
+        b: Square{scale: Vec2(50,10), angle: -30}
+        sat(Contact(BottomRight(a), BottomLeft(b)))
+        var(b.pos)
+
+        contacts: [
+            [(->globalPos(BottomLeft(a))), (->globalPos(TopLeft(a)))]
+            [(->globalPos(Top(b))), (->globalPos(Right(b)))]
+        ]
+    })
+]
+
+contactEdge = (edgeA, edgeB ->
+    Contact(edgeA[0](), edgeB[1]()) & Contact(edgeA[1](), edgeB[0]())
+)
+
+main = Shape{
+    ss: for i in 0:3 list(
+        _ = shapes[Random(0,1)]
+        _{}
+    )
+
+    for i in 1:Size(ss)-1 do(
+        var(ss[i].pos, ss[i].angle)
+        sat( contactEdge(ss[i-1].contacts[Random(0, Size(ss[i-1].contacts)-1)], ss[i].contacts[Random(0, Size(ss[i].contacts)-1)]) )
+    )
+}

@@ -1280,6 +1280,11 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
+			const Val& v0 = expand(arguments[0], info);
+			const Val& v1 = expand(arguments[1], info);
+
+			v0;
+
 			const double x0 = AsDouble(expand(arguments[0], info));
 			const double x1 = AsDouble(expand(arguments[1], info));
 			const double x01 = m_dist(m_random);

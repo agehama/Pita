@@ -339,6 +339,7 @@ namespace cgl
 	//	return expr;
 	//}
 
+#ifdef commentout
 	class ConstraintProblem : public cppoptlib::Problem<double>
 	{
 	public:
@@ -376,6 +377,42 @@ namespace cgl
 
 		ProgressStore::TryWrite(pEnv, tempRecord);
 		*/
+		return true;
+	}
+#endif
+
+	class ConstraintProblem : public cppoptlib::Problem<double>
+	{
+	public:
+		using typename cppoptlib::Problem<double>::TVector;
+
+		std::function<double(const TVector&)> evaluator;
+		Record originalRecord;
+		std::vector<Identifier> keyList;
+		std::shared_ptr<Context> pEnv;
+
+		double beginTime;
+
+		bool callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar>& state, const TVector& x) override;
+
+		double value(const TVector &x) override
+		{
+			return evaluator(x);
+		}
+	};
+
+	bool ConstraintProblem::callback(const cppoptlib::Criteria<cppoptlib::Problem<double>::Scalar> &state, const TVector &x)
+	{
+		if (!pEnv->hasTimeLimit())
+		{
+			return true;
+		}
+
+		if (pEnv->timeLimit() < GetSec() - beginTime)
+		{
+			return false;
+		}
+
 		return true;
 	}
 
@@ -628,6 +665,8 @@ namespace cgl
 					CGL_DebugLog(ToS(i) + " : " + ToS(x0s[i]));
 				}
 
+				constraintProblem.beginTime = GetSec();
+
 				cppoptlib::BfgsSolver<ConstraintProblem> solver;
 				solver.minimize(constraintProblem, x0s);
 
@@ -636,8 +675,6 @@ namespace cgl
 				{
 					resultxs[i] = x0s[i];
 				}
-
-				//std::cout << "solved\n";
 			}
 		}
 

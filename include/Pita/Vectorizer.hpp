@@ -195,6 +195,12 @@ namespace cgl
 			return m_max;
 		}
 
+		bool isEmpty()const
+		{
+			return m_min.x() == DBL_MAX && m_min.y() == DBL_MAX
+				&& m_max.x() == -DBL_MAX && m_max.y() == -DBL_MAX;
+		}
+
 	private:
 		Eigen::Vector2d m_min = Eigen::Vector2d(DBL_MAX, DBL_MAX);
 		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);

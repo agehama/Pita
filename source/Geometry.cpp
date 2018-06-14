@@ -1603,6 +1603,11 @@ namespace cgl
 	{
 		BoundingRect boundingRect = BoundingRectRecordPacked(shape);
 
+		if (boundingRect.isEmpty())
+		{
+			boundingRect.add(Eigen::Vector2d(0, 0));
+		}
+
 		const double minX = boundingRect.minPos().x();
 		const double minY = boundingRect.minPos().y();
 		const double maxX = boundingRect.maxPos().x();

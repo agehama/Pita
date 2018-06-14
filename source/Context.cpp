@@ -1021,6 +1021,42 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"EnableTimeLimit",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& value = pEnv->expand(arguments[0], info);
+			if (!IsNum(value))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			pEnv->setTimeLimit(AsDouble(value));
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"DisableTimeLimit",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 0)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			pEnv->setTimeLimit(boost::none);
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"PrintContext",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

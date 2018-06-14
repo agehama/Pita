@@ -262,6 +262,21 @@ namespace cgl
 			return m_automaticExtendMode;
 		}
 
+		bool hasTimeLimit()const
+		{
+			return static_cast<bool>(m_solveTimeLimit);
+		}
+
+		double timeLimit()const
+		{
+			return m_solveTimeLimit.get();
+		}
+
+		void setTimeLimit(const boost::optional<double>& limitSec)
+		{
+			m_solveTimeLimit = limitSec;
+		}
+
 	private:
 		void initialize();
 
@@ -280,16 +295,6 @@ namespace cgl
 
 		//参照変数への変更を外部に伝播
 		void replaceGlobalContextAddress(Address addressFrom, Address addressTo);
-
-		bool hasTimeLimit()const
-		{
-			return static_cast<bool>(m_solveTimeLimit);
-		}
-
-		double timeLimit()const
-		{
-			return m_solveTimeLimit.get();
-		}
 
 	public:
 		Values<BuiltInFunction> m_functions;

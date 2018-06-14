@@ -1,3 +1,5 @@
+EnableTimeLimit(15)
+
 Combination = (list, binaryFunc ->
     sum = 0.0
     for i in 0:Size(list)-2 do(
@@ -20,9 +22,9 @@ main = Shape{
         s[i].pos = Vec2(Random(-100,100),Random(-100,100))
     )
 
-    f = (a, b -> Area(Intersect(a, b))^2 )
+    f = (a, b -> width=35, Area(BoundingBox(Intersect(Buffer(a,width), Buffer(b,width))))^2 )
     sat( Cmaes(s[1]), Combination(s, f) )
-    sat( Area(BoundingBox(Shape{a:s}))^0.5 )
+    sat( Area(BoundingBox(Shape{a:s})) )
     var(s[[1,2,3]].pos)
     fill: Rgb(0, 0, 0)
 }

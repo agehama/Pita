@@ -616,6 +616,8 @@ namespace cgl
 				const int lambda = 100;
 
 				libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
+				cmaparams.set_mt_feval(true);
+
 				CGL_DebugLog("");
 				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
 				CGL_DebugLog("");

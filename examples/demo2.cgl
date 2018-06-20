@@ -1,4 +1,4 @@
-EnableTimeLimit(15)
+EnableTimeLimit(110)
 
 Combination = (list, binaryFunc ->
     sum = 0.0

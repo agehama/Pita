@@ -414,12 +414,12 @@ namespace cgl
 
 			succeeded = false;
 		}
-		catch (const std::exception& other)
+		/*catch (const std::exception& other)
 		{
 			std::cerr << "Error: " << other.what() << std::endl;
 
 			succeeded = false;
-		}
+		}*/
 
 		calculating = false;
 	}

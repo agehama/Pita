@@ -600,7 +600,7 @@ namespace cgl
 					return result;
 				};
 
-				CGL_DebugLog("");
+				CGL_DBG;
 
 				std::vector<double> x0(freeVariableRefs.size());
 				for (int i = 0; i < x0.size(); ++i)
@@ -609,20 +609,25 @@ namespace cgl
 					CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
 				}
 
-				CGL_DebugLog("");
+				CGL_DBG;
 
 				const double sigma = 0.1;
 
 				const int lambda = 100;
 
 				libcmaes::CMAParameters<> cmaparams(x0, sigma, lambda, 1);
-				cmaparams.set_mt_feval(true);
 
-				CGL_DebugLog("");
+				if (pEnv->hasTimeLimit())
+				{
+					cmaparams.set_max_calc_time(pEnv->timeLimit());
+					cmaparams.set_current_time(GetSec());
+				}
+
+				CGL_DBG;
 				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
-				CGL_DebugLog("");
+				CGL_DBG;
 				resultxs = cmasols.best_candidate().get_x();
-				CGL_DebugLog("");
+				CGL_DBG;
 
 				std::cout << "solved\n";
 			}

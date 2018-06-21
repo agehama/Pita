@@ -47,6 +47,8 @@ namespace cgl
 
 	PackedRecord GetGlobalShape(const PackedRecord& shape);
 
+	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& pos, const PackedRecord& scale, double angle);
+
 	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);
 
 	PackedRecord GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath);

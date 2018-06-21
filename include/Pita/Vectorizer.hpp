@@ -206,7 +206,8 @@ namespace cgl
 		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
 	};
 
-	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform = TransformPacked());
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform);
 
 	//bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Context> pEnv, const Transform& transform);
 	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);

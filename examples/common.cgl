@@ -11,6 +11,7 @@ Shape = {
     scale: {x:1, y:1}
     angle: 0
     globalPos: (p -> Transform(@pos, @scale, @angle, p))
+    globalShape: (s -> TransformShape(@pos, @scale, @angle, s))
 }
 
 Mid = (a, b -> {x: (a.x + b.x)*0.5, y: (a.y + b.y)*0.5})
@@ -57,6 +58,10 @@ Square = Shape{
     left:        (->globalPos( Mid(@polygon[0], @polygon[3]) ))
     right:       (->globalPos( Mid(@polygon[1], @polygon[2]) ))
     center:      (->Mid(top(), bottom()))
+    topEdge:     (->globalShape( Shape{line:[@polygon[0], @polygon[1]]} ))
+    bottomEdge:  (->globalShape( Shape{line:[@polygon[2], @polygon[3]]} ))
+    leftEdge:    (->globalShape( Shape{line:[@polygon[0], @polygon[3]]} ))
+    rightEdge:   (->globalShape( Shape{line:[@polygon[1], @polygon[2]]} ))
 }
 
 Triangle = Shape{
@@ -101,6 +106,7 @@ Arrow = Shape{
     head: Triangle{scale = Vec2(50, 50), sat(Contact(bottom(), body.top())), var(pos)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))
+    beginLine: (->globalShape(body.bottomEdge()))
 }
 
 GC()

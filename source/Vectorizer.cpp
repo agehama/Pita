@@ -140,6 +140,18 @@ namespace cgl
 
 	std::vector<PitaGeometry> GeosFromRecordDrawablePacked(const cgl::PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record)
+	{
+		const auto& values = record.values;
+
+		auto itX = values.find("x");
+		auto itY = values.find("y");
+
+		Eigen::Vector2d xy(AsDouble(itX->second.value), AsDouble(itY->second.value));
+
+		return std::tuple<double, double>(xy.x(), xy.y());
+	}
+
 	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform)
 	{
 		const auto& values = record.values;
@@ -1042,7 +1054,8 @@ namespace cgl
 		{
 			PackedList polygonList;
 
-			for (int i = 1; i < static_cast<int>(line->getNumPoints()); ++i)//始点と終点は同じ座標なので最後だけ飛ばす
+			//LineStringはPolygonと異なりループしない（頂点が重ならない）ので飛ばさずに読む
+			for (int i = 0; i < static_cast<int>(line->getNumPoints()); ++i)
 			{
 				const gg::Coordinate& p = line->getCoordinateN(i);
 				appendCoord(polygonList, p.x, p.y);

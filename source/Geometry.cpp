@@ -1684,6 +1684,17 @@ namespace cgl
 		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
 	}
 
+	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& posRecord, const PackedRecord& scaleRecord, double angle)
+	{
+		const auto pos = ReadVec2Packed(posRecord);
+		const auto scale = ReadVec2Packed(scaleRecord);
+
+		TransformPacked transform(std::get<0>(pos), std::get<1>(pos), std::get<0>(scale), std::get<1>(scale), angle);
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, transform);
+		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
+	}
+
 	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
 	{
 		const bool debugDraw = false;

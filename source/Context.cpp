@@ -2000,6 +2000,35 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"TransformShape",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 4)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& pos = pEnv->expand(arguments[0], info);
+			const Val& scale = pEnv->expand(arguments[1], info);
+			const Val& angle = pEnv->expand(arguments[2], info);
+			const Val& shape = pEnv->expand(arguments[3], info);
+
+			if (!IsType<Record>(shape) || !IsType<Record>(pos) || !IsType<Record>(scale) || !IsNum(angle))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetTransformedShape(
+				As<PackedRecord>(As<Record>(shape).packed(*this)),
+				As<PackedRecord>(As<Record>(pos).packed(*this)),
+				As<PackedRecord>(As<Record>(scale).packed(*this)),
+				AsDouble(angle)
+			).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"GC",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

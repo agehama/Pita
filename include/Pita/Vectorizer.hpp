@@ -211,7 +211,10 @@ namespace cgl
 	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);
 
 	//Interpret ShapeRecord
-	BoundingRect BoundingRectRecordPacked(const PackedVal& value);
+	/*BoundingRect BoundingRectRecordPacked(const PackedVal& value);
 	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
-	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name);
+	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name);*/
+	BoundingRect BoundingRectRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext);
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform = cgl::TransformPacked());
+	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name, std::shared_ptr<Context> pContext);
 }

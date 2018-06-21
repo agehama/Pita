@@ -1356,9 +1356,9 @@ namespace cgl
 
 			if (obstaclesValOpt)
 			{
-				return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal), As<PackedList>(As<List>(obstaclesValOpt.get()).packed(*this))).unpacked(*this);
+				return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), pEnv, As<int>(numVal), As<PackedList>(As<List>(obstaclesValOpt.get()).packed(*this))).unpacked(*this);
 			}
-			return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), As<int>(numVal)).unpacked(*this);
+			return BuildPath(As<PackedList>(As<List>(passesVal).packed(*this)), pEnv, As<int>(numVal)).unpacked(*this);
 		},
 			true
 			);
@@ -1524,7 +1524,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 			
-			return GetShapeOuterPaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+			return GetShapeOuterPaths(As<PackedRecord>(As<Record>(arg1).packed(*this)), pEnv).unpacked(*this);
 		},
 			true
 			);
@@ -1545,7 +1545,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return GetShapeInnerPaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+			return GetShapeInnerPaths(As<PackedRecord>(As<Record>(arg1).packed(*this)), pEnv).unpacked(*this);
 		},
 			true
 			);
@@ -1566,7 +1566,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return GetShapePaths(As<PackedRecord>(As<Record>(arg1).packed(*this))).unpacked(*this);
+			return GetShapePaths(As<PackedRecord>(As<Record>(arg1).packed(*this)), pEnv).unpacked(*this);
 		},
 			true
 			);
@@ -1580,7 +1580,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+			return Unpacked(ShapeDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1594,7 +1594,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeUnion(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+			return Unpacked(ShapeUnion(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1608,7 +1608,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeIntersect(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+			return Unpacked(ShapeIntersect(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1622,7 +1622,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeSymDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+			return Unpacked(ShapeSymDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1636,7 +1636,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeBuffer(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)), *this);
+			return Unpacked(ShapeBuffer(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1658,7 +1658,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return GetBaseLineDeformedShape(As<PackedRecord>(As<Record>(shape).packed(*this)), As<PackedRecord>(As<Record>(path).packed(*this))).unpacked(*this);
+			return GetBaseLineDeformedShape(As<PackedRecord>(As<Record>(shape).packed(*this)), As<PackedRecord>(As<Record>(path).packed(*this)), pEnv).unpacked(*this);
 		},
 			true
 			);
@@ -1683,10 +1683,10 @@ namespace cgl
 			}
 
 			return GetDeformedPathShape(
-				As<PackedRecord>(As<Record>(shape).packed(*this)), 
+				As<PackedRecord>(As<Record>(shape).packed(*this)),
 				As<PackedRecord>(As<Record>(p0).packed(*this)),
 				As<PackedRecord>(As<Record>(p1).packed(*this)),
-				As<PackedRecord>(As<Record>(path).packed(*this))).unpacked(*this);
+				As<PackedRecord>(As<Record>(path).packed(*this)), pEnv).unpacked(*this);
 		},
 			true
 			);
@@ -1741,7 +1741,7 @@ namespace cgl
 
 			return ShapeSubDiv(
 				As<PackedRecord>(As<Record>(shape).packed(*this)),
-				As<int>(num)
+				As<int>(num), pEnv
 			).unpacked(*this);
 		},
 			true
@@ -1756,7 +1756,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeArea(Packed(pEnv->expand(arguments[0], info), *this));
+			return ShapeArea(Packed(pEnv->expand(arguments[0], info), *this), pEnv);
 		},
 			true
 			);
@@ -1770,7 +1770,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeDistance(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this));
+			return ShapeDistance(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
 		},
 			false
 			);
@@ -1784,7 +1784,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeClosestPoints(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this)).unpacked(*this);
+			return ShapeClosestPoints(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1805,7 +1805,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeLeft(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeLeft(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1826,7 +1826,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeRight(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeRight(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1847,7 +1847,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeTop(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeTop(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1868,7 +1868,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeBottom(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeBottom(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1889,7 +1889,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeTopLeft(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeTopLeft(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1910,7 +1910,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeTopRight(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeTopRight(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1931,7 +1931,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeBottomLeft(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeBottomLeft(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1952,7 +1952,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return ShapeBottomRight(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return ShapeBottomRight(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1973,7 +1973,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return GetBoundingBox(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return GetBoundingBox(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1994,7 +1994,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			return GetGlobalShape(As<PackedRecord>(As<Record>(shape).packed(*this))).unpacked(*this);
+			return GetGlobalShape(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -2022,7 +2022,7 @@ namespace cgl
 				As<PackedRecord>(As<Record>(shape).packed(*this)),
 				As<PackedRecord>(As<Record>(pos).packed(*this)),
 				As<PackedRecord>(As<Record>(scale).packed(*this)),
-				AsDouble(angle)
+				AsDouble(angle), pEnv
 			).unpacked(*this);
 		},
 			false

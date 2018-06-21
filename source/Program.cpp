@@ -154,12 +154,12 @@ namespace cgl
 					const double outputBegin = GetSec();
 					if (output_filename.empty())
 					{
-						OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape");
+						OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape", pEnv);
 					}
 					else
 					{
 						std::ofstream file(output_filename);
-						OutputSVG2(file, Packed(evaluated.get(), *pEnv), "shape");
+						OutputSVG2(file, Packed(evaluated.get(), *pEnv), "shape", pEnv);
 						file.close();
 					}
 					outputSec = GetSec() - outputBegin;
@@ -451,7 +451,7 @@ namespace cgl
 				if (logOutput)
 					std::cerr << "output SVG ..." << std::endl;
 
-				OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape");
+				OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape", pEnv);
 
 				if (logOutput)
 					std::cerr << "completed" << std::endl;

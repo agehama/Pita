@@ -465,15 +465,15 @@ namespace cgl
 		);
 	}
 
-	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs)
+	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 
 		auto factory = gg::GeometryFactory::create();
 
@@ -524,15 +524,15 @@ namespace cgl
 		}
 	}
 
-	PackedRecord ShapeUnion(const PackedVal& lhs, const PackedVal& rhs)
+	PackedRecord ShapeUnion(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 
 		lhsPolygon.insert(lhsPolygon.end(), rhsPolygon.begin(), rhsPolygon.end());
 
@@ -542,15 +542,15 @@ namespace cgl
 		return ShapeResult(GetShapesFromGeosPacked({ result }));
 	}
 
-	PackedRecord ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs)
+	PackedRecord ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 
 		auto factory = gg::GeometryFactory::create();
 
@@ -597,15 +597,15 @@ namespace cgl
 		}
 	}
 
-	PackedRecord ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs)
+	PackedRecord ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 
 		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
 		gg::Geometry* lhsUnion = unionCalcLhs.Union();
@@ -618,7 +618,7 @@ namespace cgl
 		return ShapeResult(GetShapesFromGeosPacked({ resultGeometry }));
 	}
 
-	PackedRecord ShapeBuffer(const PackedVal& shape, const PackedVal& amount)
+	PackedRecord ShapeBuffer(const PackedVal& shape, const PackedVal& amount, std::shared_ptr<Context> pContext)
 	{
 		if (!IsType<PackedRecord>(shape) && !IsType<PackedList>(shape))
 		{
@@ -631,7 +631,7 @@ namespace cgl
 		}
 
 		const double distance = AsDouble(amount);
-		std::vector<gg::Geometry*> polygons = GeosFromRecordPacked(shape);
+		std::vector<gg::Geometry*> polygons = GeosFromRecordPacked(shape, pContext);
 
 		std::vector<gg::Geometry*> resultGeometries;
 		for (int s = 0; s < polygons.size(); ++s)
@@ -643,14 +643,14 @@ namespace cgl
 		return ShapeResult(GetShapesFromGeosPacked(resultGeometries));
 	}
 
-	PackedRecord ShapeSubDiv(const PackedVal& shape, int numSubDiv)
+	PackedRecord ShapeSubDiv(const PackedVal& shape, int numSubDiv, std::shared_ptr<Context> pContext)
 	{
 		if (!IsType<PackedRecord>(shape))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext);
 		std::vector<gg::Geometry*> resultGeometries;
 
 		auto factory = gg::GeometryFactory::create();
@@ -734,14 +734,14 @@ namespace cgl
 		return ShapeResult(GetShapesFromGeosPacked(resultGeometries));
 	}
 
-	double ShapeArea(const PackedVal& lhs)
+	double ShapeArea(const PackedVal& lhs, std::shared_ptr<Context> pContext)
 	{
 		if (!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> geometries = GeosFromRecordPacked(lhs);
+		std::vector<gg::Geometry*> geometries = GeosFromRecordPacked(lhs, pContext);
 
 		double area = 0.0;
 		for (gg::Geometry* geometry : geometries)
@@ -752,15 +752,15 @@ namespace cgl
 		return area;
 	}
 
-	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs)
+	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 
 		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
 		gg::Geometry* lhsUnion = unionCalcLhs.Union();
@@ -774,15 +774,15 @@ namespace cgl
 		return result;
 	}
 
-	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs)
+	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
 		{
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 
 		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
 		gg::Geometry* lhsUnion = unionCalcLhs.Union();
@@ -814,7 +814,7 @@ namespace cgl
 		return ShapeResult(GetShapesFromGeosPacked(result));
 	}
 
-	PackedRecord BuildPath(const PackedList& passes, int numOfPoints, const PackedList& obstacleList)
+	PackedRecord BuildPath(const PackedList& passes, std::shared_ptr<Context> pContext, int numOfPoints, const PackedList& obstacleList)
 	{
 		auto factory = gg::GeometryFactory::create();
 
@@ -850,7 +850,7 @@ namespace cgl
 		std::vector<double> angles1(numOfPoints / 2);
 		std::vector<double> angles2(numOfPoints / 2);
 
-		std::vector<gg::Geometry*> obstacles = GeosFromRecordPacked(obstacleList);
+		std::vector<gg::Geometry*> obstacles = GeosFromRecordPacked(obstacleList, pContext);
 
 		const gg::Coordinate beginPos(points.front().x(), points.front().y());
 		const gg::Coordinate endPos(points.back().x(), points.back().y());
@@ -1349,9 +1349,9 @@ namespace cgl
 		return ShapeResult(result);
 	}
 
-	PackedRecord GetShapeOuterPaths(const PackedRecord& shape)
+	PackedRecord GetShapeOuterPaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		auto geometries = GeosFromRecordPacked(shape);
+		auto geometries = GeosFromRecordPacked(shape, pContext);
 		
 		PackedList pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
@@ -1390,9 +1390,9 @@ namespace cgl
 		return ShapeResult(pathList);
 	}
 
-	PackedRecord GetShapeInnerPaths(const PackedRecord& shape)
+	PackedRecord GetShapeInnerPaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		auto geometries = GeosFromRecordPacked(shape);
+		auto geometries = GeosFromRecordPacked(shape, pContext);
 
 		PackedList pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
@@ -1435,9 +1435,9 @@ namespace cgl
 		return ShapeResult(pathList);
 	}
 
-	PackedRecord GetShapePaths(const PackedRecord& shape)
+	PackedRecord GetShapePaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		auto geometries = GeosFromRecordPacked(shape);
+		auto geometries = GeosFromRecordPacked(shape, pContext);
 
 		PackedList pathList;
 
@@ -1521,9 +1521,9 @@ namespace cgl
 		return ShapeResult(pathList);
 	}
 
-	PackedRecord GetBoundingBox(const PackedRecord& shape)
+	PackedRecord GetBoundingBox(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		BoundingRect boundingRect = BoundingRectRecordPacked(shape);
+		BoundingRect boundingRect = BoundingRectRecordPacked(shape, pContext);
 
 		if (boundingRect.isEmpty())
 		{
@@ -1600,27 +1600,27 @@ namespace cgl
 		return resultRecord;
 	}
 
-	PackedRecord GetGlobalShape(const PackedRecord& shape)
+	PackedRecord GetGlobalShape(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext);
 		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
 	}
 
-	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& posRecord, const PackedRecord& scaleRecord, double angle)
+	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& posRecord, const PackedRecord& scaleRecord, double angle, std::shared_ptr<Context> pContext)
 	{
 		const auto pos = ReadVec2Packed(posRecord);
 		const auto scale = ReadVec2Packed(scaleRecord);
 
 		TransformPacked transform(std::get<0>(pos), std::get<1>(pos), std::get<0>(scale), std::get<1>(scale), angle);
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, transform);
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext, transform);
 		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
 	}
 
-	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
+	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord, std::shared_ptr<Context> pContext)
 	{
 		const bool debugDraw = false;
-		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape);
+		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape, pContext);
 
 		const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.02;
 		//const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.05;
@@ -1771,7 +1771,7 @@ namespace cgl
 		}
 
 		deformer.initialize(boundingRect, xs, ys);
-		auto geometries = GeosFromRecordPacked(shape);
+		auto geometries = GeosFromRecordPacked(shape, pContext);
 		const auto result = deformer.FFD(geometries);
 		//return GetPackedShapesFromGeos(result);
 		packedList.add(GetShapesFromGeosPacked(result));
@@ -1779,10 +1779,10 @@ namespace cgl
 		return ShapeResult(packedList);
 	}
 
-	PackedRecord GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord)
+	PackedRecord GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord, std::shared_ptr<Context> pContext)
 	{
 		const bool debugDraw = false;
-		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape);
+		const BoundingRect originalBoundingRect = BoundingRectRecordPacked(shape, pContext);
 
 		const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.02;
 		//const double eps = std::max(originalBoundingRect.width().x(), originalBoundingRect.width().y())*0.05;
@@ -1936,14 +1936,14 @@ namespace cgl
 		}
 
 		deformer.initialize(boundingRect, xs, ys);
-		auto geometries = GeosFromRecordPacked(shape);
+		auto geometries = GeosFromRecordPacked(shape, pContext);
 		const auto result = deformer.FFD(geometries);
 		packedList.add(GetShapesFromGeosPacked(result));
 
 		return ShapeResult(packedList);
 	}
 
-	PackedRecord GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0Record, const PackedRecord& p1Record, const PackedRecord& targetPath)
+	PackedRecord GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0Record, const PackedRecord& p1Record, const PackedRecord& targetPath, std::shared_ptr<Context> pContext)
 	{
 		const auto p0 = ReadVec2Packed(p0Record);
 		const auto p1 = ReadVec2Packed(p1Record);
@@ -1963,18 +1963,18 @@ namespace cgl
 			"angle", -deg
 		);
 
-		return ShapeResult(GetCenterLineDeformedShape(transformedShape, targetPath));
+		return ShapeResult(GetCenterLineDeformedShape(transformedShape, targetPath, pContext));
 	}
 
-	PackedRecord ShapeDirectedPoint(const PackedRecord& shape, const Eigen::Vector2d& v)
+	PackedRecord ShapeDirectedPoint(const PackedRecord& shape, const Eigen::Vector2d& v, std::shared_ptr<Context> pContext)
 	{
 		double maxDot = -1.0;
 		Eigen::Vector2d maxDotPoint;
 
-		const BoundingRect boundingRect = BoundingRectRecordPacked(shape);
+		const BoundingRect boundingRect = BoundingRectRecordPacked(shape, pContext);
 		const auto center = boundingRect.center();
 
-		std::vector<gg::Geometry*> shapePolygon = GeosFromRecordPacked(shape);
+		std::vector<gg::Geometry*> shapePolygon = GeosFromRecordPacked(shape, pContext);
 
 		/*for (const gg::Geometry* polygon : shapePolygon)
 		{
@@ -2055,43 +2055,43 @@ namespace cgl
 		return MakeRecord("x", maxDotPoint.x(), "y", maxDotPoint.y());
 	}
 
-	PackedRecord ShapeLeft(const PackedRecord& shape)
+	PackedRecord ShapeLeft(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, 0));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, 0), pContext);
 	}
 
-	PackedRecord ShapeRight(const PackedRecord& shape)
+	PackedRecord ShapeRight(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, 0));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, 0), pContext);
 	}
 
-	PackedRecord ShapeTop(const PackedRecord& shape)
+	PackedRecord ShapeTop(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, -1));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, -1), pContext);
 	}
 
-	PackedRecord ShapeBottom(const PackedRecord& shape)
+	PackedRecord ShapeBottom(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, +1));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, +1), pContext);
 	}
 
-	PackedRecord ShapeTopLeft(const PackedRecord& shape)
+	PackedRecord ShapeTopLeft(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, -1));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, -1), pContext);
 	}
 
-	PackedRecord ShapeTopRight(const PackedRecord& shape)
+	PackedRecord ShapeTopRight(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, -1));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, -1), pContext);
 	}
 
-	PackedRecord ShapeBottomLeft(const PackedRecord& shape)
+	PackedRecord ShapeBottomLeft(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, +1));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, +1), pContext);
 	}
 
-	PackedRecord ShapeBottomRight(const PackedRecord& shape)
+	PackedRecord ShapeBottomRight(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, +1));
+		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, +1), pContext);
 	}
 }

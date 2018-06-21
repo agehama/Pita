@@ -22,9 +22,9 @@ namespace cgl
 		}
 	};
 
-	BoundingRect BoundingRectRecordPacked(const PackedVal& value)
+	BoundingRect BoundingRectRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext)
 	{
-		auto geometries = GeosFromRecordPacked(value);
+		auto geometries = GeosFromRecordPacked(value, pContext);
 
 		BoundingRectMaker maker;
 		for (auto geometry : geometries)
@@ -46,9 +46,9 @@ namespace cgl
 		return indent;
 	}
 
-	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, const cgl::TransformPacked& transform);
+	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
 
-	std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, const cgl::TransformPacked& parent)
+	std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
 	{
 		const cgl::TransformPacked current(record);
 
@@ -117,11 +117,11 @@ namespace cgl
 			}
 			else if (cgl::IsType<cgl::PackedRecord>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, transform));
 			}
 			else if (cgl::IsType<cgl::PackedList>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, transform));
 			}
 		}
 
@@ -176,7 +176,7 @@ namespace cgl
 		}
 	}
 
-	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, const cgl::TransformPacked& transform)
+	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform)
 	{
 		std::vector<gg::Geometry*> currentPolygons;
 		for (const auto& val : list.data)
@@ -184,17 +184,17 @@ namespace cgl
 			const PackedVal& value = val.value;
 			if (cgl::IsType<cgl::PackedRecord>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, transform));
 			}
 			else if (cgl::IsType<cgl::PackedList>(value))
 			{
-				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), transform));
+				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, transform));
 			}
 		}
 		return currentPolygons;
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& parent)
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
 	{
 		if (cgl::IsType<cgl::PackedRecord>(value))
 		{
@@ -222,21 +222,21 @@ namespace cgl
 				}
 			}
 
-			return GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), parent);
+			return GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, parent);
 		}
 		if (cgl::IsType<cgl::PackedList>(value))
 		{
-			return GeosFromListPacked(cgl::As<cgl::PackedList>(value), parent);
+			return GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, parent);
 		}
 
 		return{};
 	}
 
-	bool GeosFromList2Packed(std::ostream& os, const PackedList& list, const std::string& name, int depth, const cgl::TransformPacked& transform);
+	bool GeosFromList2Packed(std::ostream& os, const PackedList& list, const std::string& name, int depth, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
 
-	bool GeosFromRecord2Packed(std::ostream& os, const PackedVal& value, const std::string& name, int depth, const cgl::TransformPacked& transform = cgl::TransformPacked());
+	bool GeosFromRecord2Packed(std::ostream& os, const PackedVal& value, const std::string& name, int depth, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
-	bool GeosFromRecordImpl2Packed(std::ostream& os, const PackedRecord& record, const std::string& name, int depth, const cgl::TransformPacked& parent)
+	bool GeosFromRecordImpl2Packed(std::ostream& os, const PackedRecord& record, const std::string& name, int depth, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
 	{
 		const TransformPacked current(record);
 		const TransformPacked transform = parent * current;
@@ -351,11 +351,11 @@ namespace cgl
 			}
 			else if (IsType<PackedRecord>(value))
 			{
-				hasShape = GeosFromRecordImpl2Packed(currentChildStream, As<PackedRecord>(value), member.first, depth + 1, transform) || hasShape;
+				hasShape = GeosFromRecordImpl2Packed(currentChildStream, As<PackedRecord>(value), member.first, depth + 1, pContext, transform) || hasShape;
 			}
 			else if (IsType<PackedList>(value))
 			{
-				hasShape = GeosFromList2Packed(currentChildStream, As<PackedList>(value), member.first, depth + 1, transform) || hasShape;
+				hasShape = GeosFromList2Packed(currentChildStream, As<PackedList>(value), member.first, depth + 1, pContext, transform) || hasShape;
 			}
 		}
 
@@ -566,7 +566,7 @@ namespace cgl
 		}
 	}
 
-	bool GeosFromList2Packed(std::ostream& os, const PackedList& list, const std::string& name, int depth, const TransformPacked& transform)
+	bool GeosFromList2Packed(std::ostream& os, const PackedList& list, const std::string& name, int depth, std::shared_ptr<Context> pContext, const TransformPacked& transform)
 	{
 		std::vector<PitaGeometry> currentPolygons;
 
@@ -581,11 +581,11 @@ namespace cgl
 
 			if (IsType<PackedRecord>(value))
 			{
-				hasShape = GeosFromRecordImpl2Packed(os, As<PackedRecord>(value), currentName.str(), depth + 1, transform) || hasShape;
+				hasShape = GeosFromRecordImpl2Packed(os, As<PackedRecord>(value), currentName.str(), depth + 1, pContext, transform) || hasShape;
 			}
 			else if (IsType<PackedList>(value))
 			{
-				hasShape = GeosFromList2Packed(os, As<PackedList>(value), currentName.str(), depth + 1, transform) || hasShape;
+				hasShape = GeosFromList2Packed(os, As<PackedList>(value), currentName.str(), depth + 1, pContext, transform) || hasShape;
 			}
 
 			++i;
@@ -594,25 +594,25 @@ namespace cgl
 		return hasShape;
 	}
 
-	bool GeosFromRecord2Packed(std::ostream& os, const PackedVal& value, const std::string& name, int depth, const TransformPacked& transform)
+	bool GeosFromRecord2Packed(std::ostream& os, const PackedVal& value, const std::string& name, int depth, std::shared_ptr<Context> pContext, const TransformPacked& transform)
 	{
 		if (IsType<PackedRecord>(value))
 		{
 			const PackedRecord& record = As<PackedRecord>(value);
-			return GeosFromRecordImpl2Packed(os, record, name, depth, transform);
+			return GeosFromRecordImpl2Packed(os, record, name, depth, pContext, transform);
 		}
 		if (IsType<PackedList>(value))
 		{
 			const PackedList& list = As<PackedList>(value);
-			return GeosFromList2Packed(os, list, name, depth, transform);
+			return GeosFromList2Packed(os, list, name, depth, pContext, transform);
 		}
 
 		return{};
 	}
 
-	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name)
+	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name, std::shared_ptr<Context> pContext)
 	{
-		auto boundingBoxOpt = IsType<PackedRecord>(value) ? boost::optional<BoundingRect>(BoundingRectRecordPacked(value)) : boost::none;
+		auto boundingBoxOpt = IsType<PackedRecord>(value) ? boost::optional<BoundingRect>(BoundingRectRecordPacked(value, pContext)) : boost::none;
 		if (IsType<PackedRecord>(value) && boundingBoxOpt)
 		{
 			const BoundingRect& rect = boundingBoxOpt.get();
@@ -631,7 +631,7 @@ namespace cgl
 			/*os << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height
 				<< R"(" viewport-fill="black" viewport-fill-opacity="0.1)"  << R"(">)" << "\n";*/
 			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height << R"(">)" << "\n";
-			GeosFromRecord2Packed(os, value, name, 0);
+			GeosFromRecord2Packed(os, value, name, 0, pContext);
 			os << "</svg>" << "\n";
 
 			return true;

@@ -305,12 +305,6 @@ namespace cgl
 
 	protected:
 		std::shared_ptr<Context> pEnv;
-		
-		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
-		//std::stack<std::reference_wrapper<Record>> currentRecords;
-
-		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
-		//boost::optional<Record&> temporaryRecord;
 	};
 
 	class HasFreeVariables : public boost::static_visitor<bool>

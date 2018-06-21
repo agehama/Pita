@@ -428,26 +428,13 @@ namespace cgl
 		//builder.getLineCurve(&points, 15.0, result);
 		builder.getSingleSidedLineCurve(originalPath.cs.get(), std::abs(offset), resultLines, isLeftSide, !isLeftSide);
 
-		const auto coord = [&](double x, double y)
-		{
-			PackedRecord record;
-			record.add("x", x);
-			record.add("y", y);
-			return record;
-		};
-		const auto appendCoord = [&](PackedList& list, double x, double y)
-		{
-			const auto record = coord(x, y);
-			list.add(record);
-		};
-
 		PackedList polygonList;
 		for (size_t i = 0; i < resultLines.size(); ++i)
 		{
 			const auto line = resultLines[i];
 			for (size_t p = 0; p < line->getSize(); ++p)
 			{
-				appendCoord(polygonList, line->getX(p), line->getY(p));
+				polygonList.add(MakeVec2(line->getX(p), line->getY(p)));
 			}
 		}
 
@@ -865,19 +852,6 @@ namespace cgl
 
 		std::vector<gg::Geometry*> obstacles = GeosFromRecordPacked(obstacleList);
 
-		const auto coord = [&](double x, double y)
-		{
-			PackedRecord record;
-			record.add("x", x);
-			record.add("y", y);
-			return record;
-		};
-		const auto appendCoord = [&](PackedList& list, double x, double y)
-		{
-			const auto record = coord(x, y);
-			list.add(record);
-		};
-
 		const gg::Coordinate beginPos(points.front().x(), points.front().y());
 		const gg::Coordinate endPos(points.back().x(), points.back().y());
 
@@ -950,7 +924,7 @@ namespace cgl
 
 		for (int i = 0; i * 2 < x0s.size(); ++i)
 		{
-		appendCoord(polygonList, x0s[i * 2 + 0], x0s[i * 2 + 1]);
+			polygonList.add(MakeVec2(x0s[i * 2 + 0], x0s[i * 2 + 1]));
 		}
 		//*/
 
@@ -1113,7 +1087,7 @@ namespace cgl
 				double lastX = beginPos.x;
 				double lastY = beginPos.y;
 
-				appendCoord(polygonList, beginPos.x, beginPos.y);
+				polygonList.add(MakeVec2(beginPos.x, beginPos.y));
 				for (int i = 0; i < halfindex; ++i)
 				{
 					const double angle = resultxs[i];
@@ -1121,7 +1095,7 @@ namespace cgl
 					const double dy = rodLength * sin(angle);
 					lastX += dx;
 					lastY += dy;
-					appendCoord(polygonList, lastX, lastY);
+					polygonList.add(MakeVec2(lastX, lastY));
 				}
 			}
 
@@ -1142,7 +1116,7 @@ namespace cgl
 
 			for (auto it = cs3.rbegin(); it != cs3.rend(); ++it)
 			{
-				appendCoord(polygonList, it->x(), it->y());
+				polygonList.add(MakeVec2(it->x(), it->y()));
 			}
 		}
 
@@ -1254,19 +1228,6 @@ namespace cgl
 	{
 		Eval evaluator(pContext);
 
-		const auto coord = [&](double x, double y)
-		{
-			PackedRecord record;
-			record.add("x", x);
-			record.add("y", y);
-			return record;
-		};
-		const auto appendCoord = [&](PackedList& list, double x, double y)
-		{
-			const auto record = coord(x, y);
-			list.add(record);
-		};
-
 		PackedRecord pathRecord;
 		PackedList polygonList;
 
@@ -1279,7 +1240,7 @@ namespace cgl
 			{
 				CGL_Error("Error");
 			}
-			appendCoord(polygonList, x, As<double>(value));
+			polygonList.add(MakeVec2(x, As<double>(value)));
 		}
 
 		pathRecord.add("line", polygonList);
@@ -1391,20 +1352,7 @@ namespace cgl
 	PackedRecord GetShapeOuterPaths(const PackedRecord& shape)
 	{
 		auto geometries = GeosFromRecordPacked(shape);
-
-		const auto coord = [&](double x, double y)
-		{
-			PackedRecord record;
-			record.add("x", x);
-			record.add("y", y);
-			return record;
-		};
-		const auto appendCoord = [&](PackedList& list, double x, double y)
-		{
-			const auto record = coord(x, y);
-			list.add(record);
-		};
-
+		
 		PackedList pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
 		{
@@ -1422,7 +1370,7 @@ namespace cgl
 					for (size_t p = 0; p < exterior->getNumPoints(); ++p)
 					{
 						const gg::Point* point = exterior->getPointN(p);
-						appendCoord(polygonList, point->getX(), point->getY());
+						polygonList.add(MakeVec2(point->getX(), point->getY()));
 					}
 				}
 				else
@@ -1430,7 +1378,7 @@ namespace cgl
 					for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
 					{
 						const gg::Point* point = exterior->getPointN(p);
-						appendCoord(polygonList, point->getX(), point->getY());
+						polygonList.add(MakeVec2(point->getX(), point->getY()));
 					}
 				}
 
@@ -1445,19 +1393,6 @@ namespace cgl
 	PackedRecord GetShapeInnerPaths(const PackedRecord& shape)
 	{
 		auto geometries = GeosFromRecordPacked(shape);
-
-		const auto coord = [&](double x, double y)
-		{
-			PackedRecord record;
-			record.add("x", x);
-			record.add("y", y);
-			return record;
-		};
-		const auto appendCoord = [&](PackedList& list, double x, double y)
-		{
-			const auto record = coord(x, y);
-			list.add(record);
-		};
 
 		PackedList pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
@@ -1479,7 +1414,7 @@ namespace cgl
 						for (size_t p = 0; p < exterior->getNumPoints(); ++p)
 						{
 							const gg::Point* point = exterior->getPointN(p);
-							appendCoord(polygonList, point->getX(), point->getY());
+							polygonList.add(MakeVec2(point->getX(), point->getY()));
 						}
 					}
 					else
@@ -1487,7 +1422,7 @@ namespace cgl
 						for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
 						{
 							const gg::Point* point = exterior->getPointN(p);
-							appendCoord(polygonList, point->getX(), point->getY());
+							polygonList.add(MakeVec2(point->getX(), point->getY()));
 						}
 					}
 
@@ -1506,19 +1441,6 @@ namespace cgl
 
 		PackedList pathList;
 
-		const auto coord = [&](double x, double y)
-		{
-			PackedRecord record;
-			record.add("x", x);
-			record.add("y", y);
-			return record;
-		};
-		const auto appendCoord = [&](PackedList& list, double x, double y)
-		{
-			const auto record = coord(x, y);
-			list.add(record);
-		};
-
 		const auto appendPolygon = [&](const gg::Polygon* polygon)
 		{
 			{
@@ -1532,7 +1454,7 @@ namespace cgl
 					for (size_t p = 0; p < exterior->getNumPoints(); ++p)
 					{
 						const gg::Point* point = exterior->getPointN(p);
-						appendCoord(polygonList, point->getX(), point->getY());
+						polygonList.add(MakeVec2(point->getX(), point->getY()));
 					}
 				}
 				else
@@ -1540,7 +1462,7 @@ namespace cgl
 					for (int p = static_cast<int>(exterior->getNumPoints()) - 1; 0 <= p; --p)
 					{
 						const gg::Point* point = exterior->getPointN(p);
-						appendCoord(polygonList, point->getX(), point->getY());
+						polygonList.add(MakeVec2(point->getX(), point->getY()));
 					}
 				}
 
@@ -1560,7 +1482,7 @@ namespace cgl
 					for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p; --p)
 					{
 						const gg::Point* point = hole->getPointN(p);
-						appendCoord(polygonList, point->getX(), point->getY());
+						polygonList.add(MakeVec2(point->getX(), point->getY()));
 					}
 				}
 				else
@@ -1568,7 +1490,7 @@ namespace cgl
 					for (size_t p = 0; p < hole->getNumPoints(); ++p)
 					{
 						const gg::Point* point = hole->getPointN(p);
-						appendCoord(polygonList, point->getX(), point->getY());
+						polygonList.add(MakeVec2(point->getX(), point->getY()));
 					}
 				}
 

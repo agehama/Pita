@@ -2159,6 +2159,11 @@ namespace cgl
 		return instance;
 	}
 
+	static PackedRecord MakeVec2(double x, double y)
+	{
+		return MakeRecord("x", x, "y", y);
+	}
+
 	struct Record
 	{
 		std::unordered_map<std::string, Address> values;

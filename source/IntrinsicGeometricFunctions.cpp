@@ -1148,7 +1148,31 @@ namespace cgl
 		const Eigen::Vector2d v_n1(std::get<0>(n1), std::get<1>(n1));
 
 		Vector<Eigen::Vector2d> result;
-		GetCubicBezier(result, v_p0, v_p0 + v_n0, v_p1 + v_n1, v_p1, numOfPoints, true);
+		GetCubicBezier(result, v_p0, v_p0 + v_n0, v_p1 - v_n1, v_p1, numOfPoints, true);
+
+		PackedList polygonList;
+		for (size_t i = 0; i < result.size(); ++i)
+		{
+			polygonList.add(MakeRecord("x", result[i].x(), "y", result[i].y()));
+		}
+
+		return ShapeResult(MakeRecord("line", polygonList));
+	}
+
+	PackedRecord GetCubicBezier(const PackedRecord& p0Record, const PackedRecord& p1Record, const PackedRecord& p2Record, const PackedRecord& p3Record, int numOfPoints)
+	{
+		const auto p0 = ReadVec2Packed(p0Record);
+		const auto p1 = ReadVec2Packed(p1Record);
+		const auto p2 = ReadVec2Packed(p2Record);
+		const auto p3 = ReadVec2Packed(p3Record);
+
+		const Eigen::Vector2d v_p0(std::get<0>(p0), std::get<1>(p0));
+		const Eigen::Vector2d v_p1(std::get<0>(p1), std::get<1>(p1));
+		const Eigen::Vector2d v_p2(std::get<0>(p2), std::get<1>(p2));
+		const Eigen::Vector2d v_p3(std::get<0>(p3), std::get<1>(p3));
+
+		Vector<Eigen::Vector2d> result;
+		GetCubicBezier(result, v_p0, v_p1, v_p2, v_p3, numOfPoints, true);
 
 		PackedList polygonList;
 		for (size_t i = 0; i < result.size(); ++i)
@@ -1615,6 +1639,27 @@ namespace cgl
 
 		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext, transform);
 		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
+	}
+
+	PackedList GetPolygon(const PackedRecord& shape, std::shared_ptr<Context> pContext)
+	{
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext);
+
+		PackedList result;
+		if (lhsPolygon.empty())
+		{
+			return result;
+		}
+		else if (lhsPolygon.size() == 1 && lhsPolygon.front()->getGeometryTypeId() == GEOS_POLYGON)
+		{
+			const auto polygonRecord = GetPolygonPacked(dynamic_cast<const gg::Polygon*>(lhsPolygon.front()));
+			auto it = polygonRecord.values.find("polygon");
+			return As<PackedList>(it->second.value);
+		}
+		else //TODO: 複数ある場合はpolygonsとして返す
+		{
+			return result;
+		}
 	}
 
 	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord, std::shared_ptr<Context> pContext)

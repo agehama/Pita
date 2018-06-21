@@ -28,6 +28,7 @@ namespace cgl
 	PackedRecord BuildPath(const PackedList& passes, std::shared_ptr<Context> pContext, int numOfPoints = 10, const PackedList& obstacleList = PackedList());
 
 	PackedRecord GetBezierPath(const PackedRecord& p0, const PackedRecord& n0, const PackedRecord& p1, const PackedRecord& n1, int numOfPoints);
+	PackedRecord GetCubicBezier(const PackedRecord& p0, const PackedRecord& p1, const PackedRecord& p2, const PackedRecord& p3, int numOfPoints);
 
 	PackedRecord GetOffsetPath(const PackedRecord& pathRule, double offset);
 
@@ -48,6 +49,8 @@ namespace cgl
 	PackedRecord GetGlobalShape(const PackedRecord& shape, std::shared_ptr<Context> pContext);
 
 	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& pos, const PackedRecord& scale, double angle, std::shared_ptr<Context> pContext);
+
+	PackedList GetPolygon(const PackedRecord& shape, std::shared_ptr<Context> pContext);
 
 	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPath, std::shared_ptr<Context> pContext);
 

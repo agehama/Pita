@@ -1,10 +1,23 @@
 main = Shape{
     width: 100.0
     height: 100.0
-    polygon: (->
-        a = GlobalShape(Square{scale: Vec2(width, height)})
-        a.result[0].polygon
-    )
-    sat(width * 7 == height)
+    polygon: (->GetPolygon(Square{scale: Vec2(width, height)}))
+    sat(width * 5 == height)
     var(width)
+}
+
+curvedArrow = Shape{
+    p0: Vec2(0, 100*Sin(0))
+    p1: Vec2(100, 100*Sin(110))
+    p2: Vec2(200, 100*Sin(220))
+    p3: Vec2(300, 100*Sin(330))
+    thickness: 10
+    
+    polygon: (->
+        divSize = 50
+        centerLine = CubicBezier(p0, p1, p2, p3, divSize)
+        OffsetPath(centerLine.result, thickness*0.5).result.line @ Reverse(OffsetPath(centerLine.result, -thickness*0.5).result.line)
+    )
+    sat(Parallel([p0, p1], [p2, p3]))
+    var(p2)
 }

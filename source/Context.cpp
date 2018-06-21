@@ -1098,6 +1098,28 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Reverse",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& value = pEnv->expand(arguments[0], info);
+			if (!IsType<List>(value))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			List original = As<List>(value);
+			std::reverse(original.data.begin(), original.data.end());
+			return original;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Cmaes",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -1723,6 +1745,37 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"CubicBezier",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 5)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& p0 = pEnv->expand(arguments[0], info);
+			const Val& p1 = pEnv->expand(arguments[1], info);
+			const Val& p2 = pEnv->expand(arguments[2], info);
+			const Val& p3 = pEnv->expand(arguments[3], info);
+			const Val& num = pEnv->expand(arguments[4], info);
+
+			if (!IsType<Record>(p0) || !IsType<Record>(p1) || !IsType<Record>(p2) || !IsType<Record>(p3) || !IsType<int>(num))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetCubicBezier(
+				As<PackedRecord>(As<Record>(p0).packed(*this)),
+				As<PackedRecord>(As<Record>(p1).packed(*this)),
+				As<PackedRecord>(As<Record>(p2).packed(*this)),
+				As<PackedRecord>(As<Record>(p3).packed(*this)),
+				As<int>(num)
+			).unpacked(*this);
+		},
+			true
+			);
+
+		registerBuiltInFunction(
 			"SubDiv",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -2024,6 +2077,27 @@ namespace cgl
 				As<PackedRecord>(As<Record>(scale).packed(*this)),
 				AsDouble(angle), pEnv
 			).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"GetPolygon",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetPolygon(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);

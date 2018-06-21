@@ -597,8 +597,17 @@ namespace cgl
 					}
 					const auto serializedStr = ss.str();
 
+					std::string reducedStr;
+					for (char c : serializedStr)
+					{
+						if (c != '\n' && c != '\r' && c != '\t' && c != ' ')
+						{
+							reducedStr.push_back(c);
+						}
+					}
+
 					std::ofstream ofs(output_filename);
-					const auto splittedStr = SplitStringVSCompatible(std::string(serializedStr.begin(), serializedStr.end()));
+					const auto splittedStr = SplitStringVSCompatible(std::string(reducedStr.begin(), reducedStr.end()));
 					for (size_t i = 0; i < splittedStr.size(); ++i)
 					{
 						ofs << "std::string(R\"(" << splittedStr[i] << ")\")";

@@ -595,10 +595,9 @@ namespace cgl
 						Context& context = *pEnv;
 						ar(context);
 					}
-					const auto serializedStr = ss.str();
 
 					std::string reducedStr;
-					for (char c : serializedStr)
+					for (char c : ss.str())
 					{
 						if (c != '\n' && c != '\r' && c != '\t' && c != ' ')
 						{

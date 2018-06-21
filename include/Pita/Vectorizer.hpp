@@ -31,7 +31,6 @@ namespace cgl
 	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint);
 	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint);
 
-	//bool ReadDouble(double& output, const std::string& name, const Record& record, std::shared_ptr<Context> environment);
 	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record);
 
 	struct BaseLineOffset
@@ -65,39 +64,6 @@ namespace cgl
 	Path ReadPathPacked(const PackedRecord& record);
 
 	PackedRecord WritePathPacked(const Path& path);
-
-	/*struct Transform
-	{
-		using Mat3x3 = Eigen::Matrix<double, 3, 3, 0, 3, 3>;
-
-		Transform()
-		{
-			init();
-		}
-
-		Transform(double px, double py, double sx = 1, double sy = 1, double angle = 0)
-		{
-			init(px, py, sx, sy, angle);
-		}
-
-		Transform(const Mat3x3& mat) :mat(mat) {}
-
-		Transform(const Record& record, std::shared_ptr<Context> pEnv);
-
-		void init(double px = 0, double py = 0, double sx = 1, double sy = 1, double angle = 0);
-
-		Transform operator*(const Transform& other)const
-		{
-			return static_cast<Mat3x3>(mat * other.mat);
-		}
-
-		Eigen::Vector2d product(const Eigen::Vector2d& v)const;
-
-		void printMat()const;
-
-	private:
-		Mat3x3 mat;
-	};*/
 
 	struct TransformPacked
 	{
@@ -209,12 +175,7 @@ namespace cgl
 	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
 	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform);
 
-	//bool ReadPolygon(Vector<Eigen::Vector2d>& output, const List& vertices, std::shared_ptr<Context> pEnv, const Transform& transform);
 	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);
-
-	//void GetBoundingBoxImpl(BoundingRect& output, const List& list, std::shared_ptr<Context> pEnv, const Transform& transform);
-	//void GetBoundingBoxImpl(BoundingRect& output, const Record& record, std::shared_ptr<Context> pEnv, const Transform& parent = Transform());
-	//boost::optional<BoundingRect> GetBoundingBox(const Val& value, std::shared_ptr<Context> pEnv);
 
 	void GetBoundingBoxImplPacked(BoundingRect& output, const PackedList& list, const TransformPacked& transform);
 	void GetBoundingBoxImplPacked(BoundingRect& output, const PackedRecord& record, const TransformPacked& parent = TransformPacked());
@@ -228,20 +189,13 @@ namespace cgl
 
 	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
 
-	//std::vector<gg::Geometry*> GeosFromRecord(const Val& value, std::shared_ptr<cgl::Context> pEnv, const cgl::Transform& transform = cgl::Transform());
-
 	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
 	BoundingRect BoundingRectRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 
-	//Record GetPolygon(const gg::Polygon* poly, std::shared_ptr<cgl::Context> pEnv);
 	PackedRecord GetPolygonPacked(const gg::Polygon* poly);
 
-	//List GetShapesFromGeos(const std::vector<gg::Geometry*>& polygons, std::shared_ptr<cgl::Context> pEnv);
-
 	PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
-
-	bool OutputSVG(std::ostream& os, const PackedVal& value);
 
 	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name);
 }

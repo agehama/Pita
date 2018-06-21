@@ -64,6 +64,8 @@ if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
+set(EIGEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/external/Eigen" CACHE STRING "Eigen include directory" FORCE)
+
 include_directories(external/Eigen)
 include_directories(external/CppNumericalSolvers/include)
 include_directories(external/geos/include)
@@ -79,7 +81,7 @@ include_directories(external/cereal/include)
 link_directories(${PROJECT_BINARY_DIR}/${CGL_GEOS_TARGET_DIR}/lib)
 link_directories(${PROJECT_BINARY_DIR}/${CGL_LIBCMAES_TARGET_DIR}/src)
 
-add_subdirectory(external/Eigen ${CGL_EIGEN_TARGET_DIR})
+#add_subdirectory(external/Eigen ${CGL_EIGEN_TARGET_DIR})
 add_subdirectory(external/geos ${CGL_GEOS_TARGET_DIR})
 
 #message("SOURCE: ${PROJECT_SOURCE_DIR}/external/Eigen/cmake/UseEigen3.cmake")

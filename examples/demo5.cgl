@@ -1,0 +1,10 @@
+main = Shape{
+    width: 100.0
+    height: 100.0
+    polygon: (->
+        a = GlobalShape(Square{scale: Vec2(width, height)})
+        a.result[0].polygon
+    )
+    sat(width * 7 == height)
+    var(width)
+}

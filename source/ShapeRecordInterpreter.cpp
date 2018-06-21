@@ -8,6 +8,7 @@
 #include <Pita/Context.hpp>
 #include <Pita/Vectorizer.hpp>
 #include <Pita/Printer.hpp>
+#include <Pita/Evaluator.hpp>
 
 namespace cgl
 {
@@ -63,12 +64,31 @@ namespace cgl
 		{
 			const cgl::PackedVal& value = member.second.value;
 
-			if (member.first == "polygon" && cgl::IsType<cgl::PackedList>(value))
+			if (member.first == "polygon")
 			{
-				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
+				if (cgl::IsType<cgl::PackedList>(value))
 				{
-					currentPolygons.push_back(ToPolygon(polygon));
+					cgl::Vector<Eigen::Vector2d> polygon;
+					if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
+					{
+						currentPolygons.push_back(ToPolygon(polygon));
+					}
+				}
+				else if (cgl::IsType<cgl::FuncVal>(value))
+				{
+					Eval evaluator(pContext);
+					const cgl::PackedVal evaluated = Packed(pContext->expand(evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {}), LocationInfo()), *pContext);
+
+					if (!cgl::IsType<cgl::PackedList>(evaluated))
+					{
+						CGL_Error("polygon()の評価結果の型が不正です。");
+					}
+
+					cgl::Vector<Eigen::Vector2d> polygon;
+					if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(evaluated), transform) && !polygon.empty())
+					{
+						currentPolygons.push_back(ToPolygon(polygon));
+					}
 				}
 			}
 			else if (member.first == "hole" && cgl::IsType<cgl::PackedList>(value))
@@ -263,12 +283,31 @@ namespace cgl
 			//const cgl::Val value = pEnv->expand(member.second);
 			const auto& value = member.second.value;
 
-			if (member.first == "polygon" && IsType<PackedList>(value))
+			if (member.first == "polygon")
 			{
-				Vector<Eigen::Vector2d> polygon;
-				if (ReadPolygonPacked(polygon, As<PackedList>(value), transform) && !polygon.empty())
+				if (IsType<PackedList>(value))
 				{
-					currentPolygons.push_back(ToPolygon(polygon));
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygonPacked(polygon, As<PackedList>(value), transform) && !polygon.empty())
+					{
+						currentPolygons.push_back(ToPolygon(polygon));
+					}
+				}
+				else if (IsType<FuncVal>(value))
+				{
+					Eval evaluator(pContext);
+					const cgl::PackedVal evaluated = Packed(pContext->expand(evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {}), LocationInfo()), *pContext);
+
+					if (!cgl::IsType<cgl::PackedList>(evaluated))
+					{
+						CGL_Error("polygon()の評価結果の型が不正です。");
+					}
+
+					Vector<Eigen::Vector2d> polygon;
+					if (ReadPolygonPacked(polygon, As<PackedList>(evaluated), transform) && !polygon.empty())
+					{
+						currentPolygons.push_back(ToPolygon(polygon));
+					}
 				}
 			}
 			else if (member.first == "hole" && IsType<PackedList>(value))

@@ -5,7 +5,7 @@
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/Printer.hpp>
-#include <Pita/Geometry.hpp>
+#include <Pita/IntrinsicGeometricFunctions.hpp>
 #include <Pita/Program.hpp>
 
 extern int constraintViolationCount;

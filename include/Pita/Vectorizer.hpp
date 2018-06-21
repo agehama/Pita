@@ -13,6 +13,7 @@ namespace geos
 	{
 		class Geometry;
 		class Polygon;
+		class LineString;
 		class CoordinateArraySequence;
 	}
 	namespace operation
@@ -31,7 +32,36 @@ namespace cgl
 	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint);
 	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint);
 
-	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record);
+	std::string GetGeometryType(gg::Geometry* geometry);
+	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior);
+	gg::LineString* ToLineString(const Vector<Eigen::Vector2d>& exterior);
+	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
+
+	struct Color
+	{
+		int r = 0, g = 0, b = 0;
+
+		std::string toString()const
+		{
+			std::stringstream ss;
+			ss << "rgb(" << r << ", " << g << ", " << b << ")";
+			return ss.str();
+		}
+	};
+
+	class PitaGeometry
+	{
+	public:
+		PitaGeometry() = default;
+
+		PitaGeometry(gg::Geometry* shape, const Color& color) :
+			shape(shape),
+			color(color)
+		{}
+
+		gg::Geometry* shape;
+		Color color;
+	};
 
 	struct BaseLineOffset
 	{
@@ -61,47 +91,9 @@ namespace cgl
 		BaseLineOffset getOffset(double offset)const;
 	};
 
-	Path ReadPathPacked(const PackedRecord& record);
-
-	PackedRecord WritePathPacked(const Path& path);
-
-	struct TransformPacked
-	{
-		using Mat3x3 = Eigen::Matrix<double, 3, 3, 0, 3, 3>;
-
-		TransformPacked()
-		{
-			init();
-		}
-
-		TransformPacked(double px, double py, double sx = 1, double sy = 1, double angle = 0)
-		{
-			init(px, py, sx, sy, angle);
-		}
-
-		TransformPacked(const Mat3x3& mat) :mat(mat) {}
-
-		TransformPacked(const PackedRecord& record);
-
-		void init(double px = 0, double py = 0, double sx = 1, double sy = 1, double angle = 0);
-
-		TransformPacked operator*(const TransformPacked& other)const
-		{
-			return static_cast<Mat3x3>(mat * other.mat);
-		}
-
-		Eigen::Vector2d product(const Eigen::Vector2d& v)const;
-
-		void printMat()const;
-
-	private:
-		Mat3x3 mat;
-	};
-
 	class BoundingRect
 	{
 	public:
-
 		BoundingRect() = default;
 
 		BoundingRect(double min_x, double min_y, double max_x, double max_y) :
@@ -172,30 +164,54 @@ namespace cgl
 		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
 	};
 
-	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
-	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform);
+	struct TransformPacked
+	{
+		using Mat3x3 = Eigen::Matrix<double, 3, 3, 0, 3, 3>;
 
-	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);
+		TransformPacked()
+		{
+			init();
+		}
 
-	void GetBoundingBoxImplPacked(BoundingRect& output, const PackedList& list, const TransformPacked& transform);
-	void GetBoundingBoxImplPacked(BoundingRect& output, const PackedRecord& record, const TransformPacked& parent = TransformPacked());
-	boost::optional<BoundingRect> GetBoundingBoxPacked(const PackedVal& value);
+		TransformPacked(double px, double py, double sx = 1, double sy = 1, double angle = 0)
+		{
+			init(px, py, sx, sy, angle);
+		}
 
-	using PolygonsStream = std::multimap<double, std::string>;
-	
-	std::string GetGeometryType(gg::Geometry* geometry);
+		TransformPacked(const Mat3x3& mat) :mat(mat) {}
 
-	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior);
+		TransformPacked(const PackedRecord& record);
 
-	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
+		void init(double px = 0, double py = 0, double sx = 1, double sy = 1, double angle = 0);
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
+		TransformPacked operator*(const TransformPacked& other)const
+		{
+			return static_cast<Mat3x3>(mat * other.mat);
+		}
 
-	BoundingRect BoundingRectRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
+		Eigen::Vector2d product(const Eigen::Vector2d& v)const;
 
+		void printMat()const;
+
+	private:
+		Mat3x3 mat;
+	};
+
+	//Compress to ShapeRecord
+	PackedRecord WritePathPacked(const Path& path);
 	PackedRecord GetPolygonPacked(const gg::Polygon* poly);
-
 	PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
 
+	//Convert ShapeRecord
+	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record);
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record);
+	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform);
+	Path ReadPathPacked(const PackedRecord& record);
+	bool ReadColorPacked(Color& output, const PackedRecord& record, const TransformPacked& transform);
+	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);
+
+	//Interpret ShapeRecord
+	BoundingRect BoundingRectRecordPacked(const PackedVal& value);
+	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name);
 }

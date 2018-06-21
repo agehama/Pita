@@ -1,0 +1,10 @@
+main = Shape{
+    circle: (_ = Circle(100), _{scale: X2(200)})
+    arrows: for i in 1:10 list(Arrow{angle: i/10.0*360.0, pos: Vec2(500*Cos(i/10.0*360.0+90), 500*Sin(i/10.0*360.0+90))})
+    lines: for i in 0:Size(arrows)-1 list(
+        /*sat(Distance(ShapeOuterPath(circle), arrows[i].end())*100 == 0)
+        sat(Parallel([arrows[i].begin(), arrows[i].end()], [arrows[i].end(), circle.pos]))
+        var(arrows[i].pos)*/
+        (_ = Circle(30), _{scale: X2(10), pos = BoundingBox(arrows[i].beginLine()).center})
+    )
+}

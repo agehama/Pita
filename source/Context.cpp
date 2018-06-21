@@ -5,7 +5,7 @@
 
 #include <Pita/Context.hpp>
 #include <Pita/Evaluator.hpp>
-#include <Pita/Geometry.hpp>
+#include <Pita/IntrinsicGeometricFunctions.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 

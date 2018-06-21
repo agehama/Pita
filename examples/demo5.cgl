@@ -16,7 +16,7 @@ curvedArrow = Shape{
     polygon: (->
         divSize = 50
         centerLine = CubicBezier(p0, p1, p2, p3, divSize)
-        OffsetPath(centerLine.result, thickness*0.5).result.line @ Reverse(OffsetPath(centerLine.result, -thickness*0.5).result.line)
+        OffsetPath(centerLine, thickness*0.5).line @ Reverse(OffsetPath(centerLine, -thickness*0.5).line)
     )
     sat(Parallel([p0, p1], [p2, p3]))
     var(p2)

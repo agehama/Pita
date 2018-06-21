@@ -26,6 +26,7 @@ namespace cgl
 		return result;
 	}
 
+#ifdef commentout
 	PackedRecord GetPolygonPacked(const gg::Polygon* poly)
 	{
 		const auto appendCoord = [&](PackedList& list, double x, double y)
@@ -71,6 +72,43 @@ namespace cgl
 
 		return result;
 	}
+#endif
+	
+	std::vector<PackedList> GetPolygonVertices(const gg::Polygon* poly)
+	{
+		std::vector<PackedList> result;
+
+		{
+			PackedList polygonList;
+			const gg::LineString* outer = poly->getExteriorRing();
+
+			//始点と終点は同じ座標なので始点は飛ばす
+			for (int i = 1; i < static_cast<int>(outer->getNumPoints()); ++i)
+			{
+				const gg::Coordinate& p = outer->getCoordinateN(i);
+				polygonList.add(MakeVec2(p.x, p.y));
+			}
+
+			result.push_back(polygonList);
+		}
+
+		for (size_t i = 0; i < poly->getNumInteriorRing(); ++i)
+		{
+			PackedList holeVertexList;
+			const gg::LineString* hole = poly->getInteriorRingN(i);
+
+			//TODO: Geosの頂点が時計回りであることは保証されている？
+			for (int n = static_cast<int>(hole->getNumPoints()) - 1; 0 < n; --n)
+			{
+				gg::Point* pp = hole->getPointN(n);
+				holeVertexList.add(MakeVec2(pp->getX(), pp->getY()));
+			}
+
+			result.push_back(holeVertexList);
+		}
+
+		return result;
+	}
 
 	PackedRecord GetLineStringPacked(const gg::LineString* line)
 	{
@@ -96,6 +134,7 @@ namespace cgl
 		return result;
 	}
 
+#ifdef commentout
 	PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons)
 	{
 		PackedList resultShapes;
@@ -152,4 +191,5 @@ namespace cgl
 
 		return resultShapes;
 	}
+#endif
 }

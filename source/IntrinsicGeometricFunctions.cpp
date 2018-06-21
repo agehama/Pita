@@ -399,6 +399,77 @@ namespace cgl
 		}
 	};
 
+	PackedList GetPolygon(const std::vector<gg::Geometry*>& originalPolygons)
+	{
+		if (originalPolygons.empty())
+		{
+			//polygon: []
+			return PackedList();
+		}
+		else if (originalPolygons.size() == 1 && originalPolygons.front()->getGeometryTypeId() == GEOS_POLYGON)
+		{
+			const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(originalPolygons.front()));
+
+			//1つのポリゴンのみからなるケース
+			if (polygonList.size() == 1)
+			{
+				//polygon: [p0, p1, ... , pn]
+				return polygonList.front();
+			}
+
+			//1つのポリゴンと複数の穴からなるケース
+			//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
+			return AsPackedListPolygons(polygonList);
+		}
+
+		std::vector<PackedList> polygons;
+		for (gg::Geometry* pGeometry : originalPolygons)
+		{
+			if (pGeometry->getGeometryTypeId() == GEOS_POLYGON)
+			{
+				const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pGeometry));
+				polygons.insert(polygons.end(), polygonList.begin(), polygonList.end());
+			}
+			else if (pGeometry->getGeometryTypeId() == GEOS_MULTIPOLYGON)
+			{
+				const gg::MultiPolygon* pMultiPolygon = dynamic_cast<const gg::MultiPolygon*>(pGeometry);
+				for (size_t i = 0; i < pMultiPolygon->getNumGeometries(); ++i)
+				{
+					const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pMultiPolygon->getGeometryN(i)));
+					polygons.insert(polygons.end(), polygonList.begin(), polygonList.end());
+				}
+			}
+		}
+
+		//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
+		return AsPackedListPolygons(polygons);
+	}
+
+	PackedList GetPolygon(const PackedRecord& shape, std::shared_ptr<Context> pContext)
+	{
+		return GetPolygon(GeosFromRecordPacked(shape, pContext));
+	}
+
+	PackedRecord MakePolygonResult(const PackedVal& polygon)
+	{
+		return MakeRecord(
+			"polygon", polygon,
+			"pos", MakeRecord("x", 0, "y", 0),
+			"scale", MakeRecord("x", 1.0, "y", 1.0),
+			"angle", 0
+		);
+	}
+
+	PackedRecord MakePathResult(const PackedVal& path)
+	{
+		return MakeRecord(
+			"line", path,
+			"pos", MakeRecord("x", 0, "y", 0),
+			"scale", MakeRecord("x", 1.0, "y", 1.0),
+			"angle", 0
+		);
+	}
+
 	PackedRecord GetOffsetPathImpl(const Path& originalPath, double offset)
 	{
 		auto factory = gg::GeometryFactory::create();
@@ -450,20 +521,10 @@ namespace cgl
 			std::reverse(polygonList.data.begin(), polygonList.data.end());
 		}
 
-		PackedRecord result;
-		result.add("line", polygonList);
-		return result;
+		return MakePathResult(polygonList);
 	}
 
-	PackedRecord ShapeResult(const PackedVal& lhs = PackedList())
-	{
-		return MakeRecord(
-			"result", lhs,
-			"pos", MakeRecord("x", 0, "y", 0),
-			"scale", MakeRecord("x", 1.0, "y", 1.0),
-			"angle", 0
-		);
-	}
+	
 
 	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
@@ -479,11 +540,11 @@ namespace cgl
 
 		if (lhsPolygon.empty())
 		{
-			return ShapeResult();
+			return PackedRecord();
 		}
 		else if (rhsPolygon.empty())
 		{
-			return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
+			return MakePolygonResult(GetPolygon(lhsPolygon));
 		}
 		else
 		{
@@ -520,7 +581,7 @@ namespace cgl
 				resultGeometries.push_back(erodeGeometry);
 			}
 
-			return ShapeResult(GetShapesFromGeosPacked(resultGeometries));
+			return MakePolygonResult(GetPolygon(resultGeometries));
 		}
 	}
 
@@ -539,7 +600,7 @@ namespace cgl
 		geos::operation::geounion::CascadedUnion unionCalc(&lhsPolygon);
 		gg::Geometry* result = unionCalc.Union();
 
-		return ShapeResult(GetShapesFromGeosPacked({ result }));
+		return MakePolygonResult(GetPolygon({ result }));
 	}
 
 	PackedRecord ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
@@ -556,7 +617,7 @@ namespace cgl
 
 		if (lhsPolygon.empty() || rhsPolygon.empty())
 		{
-			return ShapeResult();
+			return PackedRecord();
 		}
 		else
 		{
@@ -593,7 +654,7 @@ namespace cgl
 				resultGeometries.push_back(erodeGeometry);
 			}
 
-			return ShapeResult(GetShapesFromGeosPacked(resultGeometries));
+			return MakePolygonResult(GetPolygon(resultGeometries));
 		}
 	}
 
@@ -615,7 +676,7 @@ namespace cgl
 
 		gg::Geometry* resultGeometry = lhsUnion->symDifference(rhsUnion);
 
-		return ShapeResult(GetShapesFromGeosPacked({ resultGeometry }));
+		return MakePolygonResult(GetPolygon({ resultGeometry }));
 	}
 
 	PackedRecord ShapeBuffer(const PackedVal& shape, const PackedVal& amount, std::shared_ptr<Context> pContext)
@@ -640,7 +701,7 @@ namespace cgl
 			resultGeometries.push_back(currentGeometry->buffer(distance));
 		}
 
-		return ShapeResult(GetShapesFromGeosPacked(resultGeometries));
+		return MakePolygonResult(GetPolygon(resultGeometries));
 	}
 
 	PackedRecord ShapeSubDiv(const PackedVal& shape, int numSubDiv, std::shared_ptr<Context> pContext)
@@ -685,7 +746,6 @@ namespace cgl
 				const gg::LineString* hole = polygon->getInteriorRingN(i);
 
 				gg::CoordinateArraySequence newInterior;
-				//for (size_t p = 0; p < hole->getNumPoints(); ++p)
 				for (int p = static_cast<int>(hole->getNumPoints()) - 1; 0 <= p - 1; --p)
 				{
 					const gg::Point* p0 = hole->getPointN(p);
@@ -731,7 +791,7 @@ namespace cgl
 			}
 		}
 
-		return ShapeResult(GetShapesFromGeosPacked(resultGeometries));
+		return MakePolygonResult(GetPolygon(resultGeometries));
 	}
 
 	double ShapeArea(const PackedVal& lhs, std::shared_ptr<Context> pContext)
@@ -799,19 +859,19 @@ namespace cgl
 			points.add(MakeRecord("x", result->getX(i), "y", result->getY(i)));
 		}
 
-		return ShapeResult(MakeRecord("line", points));
+		return MakePathResult(points);
 	}
 
 	PackedRecord GetDefaultFontString(const std::string& str)
 	{
 		if (str.empty() || str.front() == ' ')
 		{
-			return ShapeResult();
+			return PackedRecord();
 		}
 
 		cgl::FontBuilder builder;
 		const auto result = builder.textToPolygon(str, 5);
-		return ShapeResult(GetShapesFromGeosPacked(result));
+		return MakePolygonResult(GetPolygon(result));
 	}
 
 	PackedRecord BuildPath(const PackedList& passes, std::shared_ptr<Context> pContext, int numOfPoints, const PackedList& obstacleList)
@@ -1122,7 +1182,7 @@ namespace cgl
 
 		//*/
 
-		result.add("line", polygonList);
+		/*result.add("line", polygonList);
 		{
 			PackedRecord record;
 			record.add("r", 0);
@@ -1130,9 +1190,9 @@ namespace cgl
 			record.add("b", 255);
 			result.add("stroke", record);
 		}
-		result.type = RecordType::RecordTypePath;
+		result.type = RecordType::RecordTypePath;*/
 
-		return ShapeResult(result);
+		return MakePathResult(polygonList);
 	}
 
 	PackedRecord GetBezierPath(const PackedRecord& p0Record, const PackedRecord& n0Record, const PackedRecord& p1Record, const PackedRecord& n1Record, int numOfPoints)
@@ -1156,7 +1216,7 @@ namespace cgl
 			polygonList.add(MakeRecord("x", result[i].x(), "y", result[i].y()));
 		}
 
-		return ShapeResult(MakeRecord("line", polygonList));
+		return MakePathResult(polygonList);
 	}
 
 	PackedRecord GetCubicBezier(const PackedRecord& p0Record, const PackedRecord& p1Record, const PackedRecord& p2Record, const PackedRecord& p3Record, int numOfPoints)
@@ -1180,14 +1240,14 @@ namespace cgl
 			polygonList.add(MakeRecord("x", result[i].x(), "y", result[i].y()));
 		}
 
-		return ShapeResult(MakeRecord("line", polygonList));
+		return MakePathResult(polygonList);
 	}
 
 	PackedRecord GetOffsetPath(const PackedRecord& packedPathRecord, double offset)
 	{
 		Path originalPath = std::move(ReadPathPacked(packedPathRecord));
 
-		return ShapeResult(GetOffsetPathImpl(originalPath, offset));
+		return GetOffsetPathImpl(originalPath, offset);
 	}
 
 	PackedRecord GetSubPath(const PackedRecord& packedPathRecord, double offsetBegin, double offsetEnd)
@@ -1245,7 +1305,7 @@ namespace cgl
 			points.add(coord(lerp(cs->getAt(lineIndexEnd), cs->getAt((lineIndexEnd + 1) % cs->size()), innerTEnd)));
 		}
 
-		return ShapeResult(MakeRecord("line", points));
+		return MakePathResult(points);
 	}
 
 	PackedRecord GetFunctionPath(std::shared_ptr<Context> pContext, const LocationInfo& info, const FuncVal& function, double beginValue, double endValue, int numOfPoints)
@@ -1269,7 +1329,7 @@ namespace cgl
 
 		pathRecord.add("line", polygonList);
 
-		return ShapeResult(pathRecord);
+		return MakePathResult(polygonList);
 	}
 
 	PackedRecord BuildText(const CharString& str, const PackedRecord& packedPathRecord, const CharString& fontPath)
@@ -1324,14 +1384,10 @@ namespace cgl
 
 				offsetHorizontal += currentGlyphWidth;
 
-				/*resultCharList.add(MakeRecord(
-					"char", GetPackedShapesFromGeos(result),
-					"pos", MakeRecord("x", offsetX, "y", offsetY),
-					"angle", angle
-				));*/
 				resultCharList.add(MakeRecord(
-					"char", GetShapesFromGeosPacked(result),
+					"polygon", GetPolygon(result),
 					"pos", MakeRecord("x", offsetLeft.x, "y", offsetLeft.y),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
 					"angle", offsetCenter.angle
 				));
 			}
@@ -1361,23 +1417,27 @@ namespace cgl
 
 				offsetHorizontal += pFont->glyphWidth(codePoint);
 
-				resultCharList.add(GetShapesFromGeosPacked(result));
+				resultCharList.add(MakeRecord(
+					"polygon", GetPolygon(result),
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
 			}
 		}
 
 		PackedRecord result;
-		result.add("shapes", resultCharList);
+		result.add("text", resultCharList);
 		result.add("str", str);
-		//result.add("base", WritePathPacked(path));
 
-		return ShapeResult(result);
+		return result;
 	}
 
 	PackedRecord GetShapeOuterPaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
 		auto geometries = GeosFromRecordPacked(shape, pContext);
-		
-		PackedList pathList;
+
+		std::vector<PackedList> pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
 		{
 			const gg::Geometry* geometry = geometries[g];
@@ -1386,7 +1446,6 @@ namespace cgl
 				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
 				const gg::LineString* exterior = polygon->getExteriorRing();
 
-				PackedRecord pathRecord;
 				PackedList polygonList;
 
 				if (IsClockWise(exterior))
@@ -1406,19 +1465,18 @@ namespace cgl
 					}
 				}
 
-				pathRecord.add("line", polygonList);
-				pathList.add(pathRecord);
+				pathList.push_back(polygonList);
 			}
 		}
 
-		return ShapeResult(pathList);
+		return MakePathResult(AsPackedListPolygons(pathList));
 	}
 
 	PackedRecord GetShapeInnerPaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
 		auto geometries = GeosFromRecordPacked(shape, pContext);
 
-		PackedList pathList;
+		std::vector<PackedList> pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
 		{
 			const gg::Geometry* geometry = geometries[g];
@@ -1430,7 +1488,6 @@ namespace cgl
 				{
 					const gg::LineString* exterior = polygon->getInteriorRingN(i);
 
-					PackedRecord pathRecord;
 					PackedList polygonList;
 
 					if (IsClockWise(exterior))
@@ -1450,27 +1507,25 @@ namespace cgl
 						}
 					}
 
-					pathRecord.add("line", polygonList);
-					pathList.add(pathRecord);
+					pathList.push_back(polygonList);
 				}
 			}
 		}
 
-		return ShapeResult(pathList);
+		return MakePathResult(AsPackedListPolygons(pathList));
 	}
 
 	PackedRecord GetShapePaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
 		auto geometries = GeosFromRecordPacked(shape, pContext);
 
-		PackedList pathList;
+		std::vector<PackedList> pathList;
 
 		const auto appendPolygon = [&](const gg::Polygon* polygon)
 		{
 			{
 				const gg::LineString* exterior = polygon->getExteriorRing();
 
-				PackedRecord pathRecord;
 				PackedList polygonList;
 
 				if (IsClockWise(exterior))
@@ -1490,15 +1545,13 @@ namespace cgl
 					}
 				}
 
-				pathRecord.add("line", polygonList);
-				pathList.add(pathRecord);
+				pathList.push_back(polygonList);
 			}
 
 			for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
 			{
 				const gg::LineString* hole = polygon->getInteriorRingN(i);
 
-				PackedRecord pathRecord;
 				PackedList polygonList;
 				
 				if (IsClockWise(hole))
@@ -1518,8 +1571,7 @@ namespace cgl
 					}
 				}
 
-				pathRecord.add("line", polygonList);
-				pathList.add(pathRecord);
+				pathList.push_back(polygonList);
 			}
 		};
 
@@ -1542,7 +1594,7 @@ namespace cgl
 			}
 		}
 
-		return ShapeResult(pathList);
+		return MakePathResult(AsPackedListPolygons(pathList));
 	}
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape, std::shared_ptr<Context> pContext)
@@ -1620,14 +1672,13 @@ namespace cgl
 			"angle", 0
 		);
 
-		//return ShapeResult(resultRecord);
 		return resultRecord;
 	}
 
 	PackedRecord GetGlobalShape(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
 		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext);
-		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
+		return MakePolygonResult(GetPolygon(lhsPolygon));
 	}
 
 	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& posRecord, const PackedRecord& scaleRecord, double angle, std::shared_ptr<Context> pContext)
@@ -1638,28 +1689,7 @@ namespace cgl
 		TransformPacked transform(std::get<0>(pos), std::get<1>(pos), std::get<0>(scale), std::get<1>(scale), angle);
 
 		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext, transform);
-		return ShapeResult(GetShapesFromGeosPacked(lhsPolygon));
-	}
-
-	PackedList GetPolygon(const PackedRecord& shape, std::shared_ptr<Context> pContext)
-	{
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext);
-
-		PackedList result;
-		if (lhsPolygon.empty())
-		{
-			return result;
-		}
-		else if (lhsPolygon.size() == 1 && lhsPolygon.front()->getGeometryTypeId() == GEOS_POLYGON)
-		{
-			const auto polygonRecord = GetPolygonPacked(dynamic_cast<const gg::Polygon*>(lhsPolygon.front()));
-			auto it = polygonRecord.values.find("polygon");
-			return As<PackedList>(it->second.value);
-		}
-		else //TODO: 複数ある場合はpolygonsとして返す
-		{
-			return result;
-		}
+		return MakePolygonResult(GetPolygon(lhsPolygon));
 	}
 
 	PackedRecord GetBaseLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord, std::shared_ptr<Context> pContext)
@@ -1818,10 +1848,8 @@ namespace cgl
 		deformer.initialize(boundingRect, xs, ys);
 		auto geometries = GeosFromRecordPacked(shape, pContext);
 		const auto result = deformer.FFD(geometries);
-		//return GetPackedShapesFromGeos(result);
-		packedList.add(GetShapesFromGeosPacked(result));
 
-		return ShapeResult(packedList);
+		return MakePolygonResult(GetPolygon(result));
 	}
 
 	PackedRecord GetCenterLineDeformedShape(const PackedRecord& shape, const PackedRecord& targetPathRecord, std::shared_ptr<Context> pContext)
@@ -1983,9 +2011,8 @@ namespace cgl
 		deformer.initialize(boundingRect, xs, ys);
 		auto geometries = GeosFromRecordPacked(shape, pContext);
 		const auto result = deformer.FFD(geometries);
-		packedList.add(GetShapesFromGeosPacked(result));
 
-		return ShapeResult(packedList);
+		return MakePolygonResult(GetPolygon(result));
 	}
 
 	PackedRecord GetDeformedPathShape(const PackedRecord& shape, const PackedRecord& p0Record, const PackedRecord& p1Record, const PackedRecord& targetPath, std::shared_ptr<Context> pContext)
@@ -2008,7 +2035,7 @@ namespace cgl
 			"angle", -deg
 		);
 
-		return ShapeResult(GetCenterLineDeformedShape(transformedShape, targetPath, pContext));
+		return GetCenterLineDeformedShape(transformedShape, targetPath, pContext);
 	}
 
 	PackedRecord ShapeDirectedPoint(const PackedRecord& shape, const Eigen::Vector2d& v, std::shared_ptr<Context> pContext)

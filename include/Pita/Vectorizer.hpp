@@ -199,8 +199,23 @@ namespace cgl
 
 	//Compress to ShapeRecord
 	PackedRecord WritePathPacked(const Path& path);
-	PackedRecord GetPolygonPacked(const gg::Polygon* poly);
-	PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
+	//PackedRecord GetPolygonPacked(const gg::Polygon* poly);
+
+	//最終的にShapeに変換する個所以外では、再利用性を考えPackedListは内部に頂点のみを表すものとし、
+	//複数のポリゴンはstd::vector<PackedList>で表現する
+	std::vector<PackedList> GetPolygonVertices(const gg::Polygon* poly);
+	//PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
+
+	inline PackedList AsPackedListPolygons(const std::vector<PackedList>& polygons)
+	{
+		PackedList result;
+		for (const auto& polygon : polygons)
+		{
+			result.add(polygon);
+		}
+
+		return result;
+	}
 
 	//Convert ShapeRecord
 	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record);

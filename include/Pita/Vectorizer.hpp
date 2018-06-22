@@ -32,10 +32,22 @@ namespace cgl
 	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint);
 	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint);
 
+	bool IsClockWise(const Vector<Eigen::Vector2d>& closedPath);
+	bool IsClockWise(const gg::LineString* closedPath);
+
 	std::string GetGeometryType(gg::Geometry* geometry);
 	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior);
 	gg::LineString* ToLineString(const Vector<Eigen::Vector2d>& exterior);
 	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
+
+	void DebugPrint(const gg::Geometry* geometry);
+
+	inline Eigen::Vector2d EigenVec2(double x, double y)
+	{
+		Eigen::Vector2d v;
+		v << x, y;
+		return v;
+	}
 
 	struct Color
 	{
@@ -160,8 +172,8 @@ namespace cgl
 		}
 
 	private:
-		Eigen::Vector2d m_min = Eigen::Vector2d(DBL_MAX, DBL_MAX);
-		Eigen::Vector2d m_max = Eigen::Vector2d(-DBL_MAX, -DBL_MAX);
+		Eigen::Vector2d m_min = EigenVec2(DBL_MAX, DBL_MAX);
+		Eigen::Vector2d m_max = EigenVec2(-DBL_MAX, -DBL_MAX);
 	};
 
 	struct TransformPacked
@@ -201,21 +213,18 @@ namespace cgl
 	PackedRecord WritePathPacked(const Path& path);
 	//PackedRecord GetPolygonPacked(const gg::Polygon* poly);
 
+	using PackedPolyData = std::vector<PackedList>;
 	//最終的にShapeに変換する個所以外では、再利用性を考えPackedListは内部に頂点のみを表すものとし、
 	//複数のポリゴンはstd::vector<PackedList>で表現する
-	std::vector<PackedList> GetPolygonVertices(const gg::Polygon* poly);
+	PackedPolyData GetPolygonVertices(const gg::Polygon* poly);
 	//PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
 
-	inline PackedList AsPackedListPolygons(const std::vector<PackedList>& polygons)
-	{
-		PackedList result;
-		for (const auto& polygon : polygons)
-		{
-			result.add(polygon);
-		}
+	enum class PackedPolyDataType {
+		POLYGON, MULTIPOLYGON
+	};
 
-		return result;
-	}
+	PackedList AsPackedListPolygons(const PackedPolyData& polygons);
+	PackedPolyDataType GetPackedListType(const PackedList& packedList);
 
 	//Convert ShapeRecord
 	bool ReadDoublePacked(double& output, const std::string& name, const PackedRecord& record);

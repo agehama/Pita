@@ -91,27 +91,6 @@ namespace
 
 namespace cgl
 {
-	bool IsClockWise(const gg::LineString* closedPath)
-	{
-		double sum = 0;
-
-		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
-		{
-			const gg::Point* p1 = closedPath->getPointN(p);
-			const gg::Point* p2 = closedPath->getPointN(p+1);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
-		}
-		{
-			const gg::Point*  p1 = closedPath->getPointN(closedPath->getNumPoints() - 1);
-			const gg::Point*  p2 = closedPath->getPointN(0);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
-		}
-
-		return sum < 0.0;
-	}
-
 	class Deformer
 	{
 	public:
@@ -524,7 +503,6 @@ namespace cgl
 		return MakePathResult(polygonList);
 	}
 
-	
 
 	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
@@ -675,7 +653,6 @@ namespace cgl
 		gg::Geometry* rhsUnion = unionCalcRhs.Union();
 
 		gg::Geometry* resultGeometry = lhsUnion->symDifference(rhsUnion);
-
 		return MakePolygonResult(GetPolygon({ resultGeometry }));
 	}
 
@@ -1011,7 +988,7 @@ namespace cgl
 
 			//std::cout << "B";
 			Vector<Eigen::Vector2d> cs3;
-			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
+			cs3.push_back(EigenVec2(endPos.x, endPos.y));
 			for (int i = 0; i < halfindex; ++i)
 			{
 				const int currentIndex = i + halfindex;
@@ -1022,7 +999,7 @@ namespace cgl
 
 				const double lastX = lastPos.x();
 				const double lastY = lastPos.y();
-				cs3.push_back(Eigen::Vector2d(lastX + dx, lastY + dy));
+				cs3.push_back(EigenVec2(lastX + dx, lastY + dy));
 			}
 			const auto ik2Last = cs3.back();
 
@@ -1160,7 +1137,7 @@ namespace cgl
 			}
 
 			Vector<Eigen::Vector2d> cs3;
-			cs3.push_back(Eigen::Vector2d(endPos.x, endPos.y));
+			cs3.push_back(EigenVec2(endPos.x, endPos.y));
 			for (int i = 0; i < halfindex; ++i)
 			{
 				const int currentIndex = i + halfindex;
@@ -1171,7 +1148,7 @@ namespace cgl
 
 				const double lastX = lastPos.x();
 				const double lastY = lastPos.y();
-				cs3.push_back(Eigen::Vector2d(lastX + dx, lastY + dy));
+				cs3.push_back(EigenVec2(lastX + dx, lastY + dy));
 			}
 
 			for (auto it = cs3.rbegin(); it != cs3.rend(); ++it)
@@ -1603,7 +1580,7 @@ namespace cgl
 
 		if (boundingRect.isEmpty())
 		{
-			boundingRect.add(Eigen::Vector2d(0, 0));
+			boundingRect.add(EigenVec2(0, 0));
 		}
 
 		const double minX = boundingRect.minPos().x();
@@ -2129,41 +2106,41 @@ namespace cgl
 
 	PackedRecord ShapeLeft(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, 0), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(-1, 0), pContext);
 	}
 
 	PackedRecord ShapeRight(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, 0), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(+1, 0), pContext);
 	}
 
 	PackedRecord ShapeTop(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, -1), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(0, -1), pContext);
 	}
 
 	PackedRecord ShapeBottom(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(0, +1), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(0, +1), pContext);
 	}
 
 	PackedRecord ShapeTopLeft(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, -1), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(-1, -1), pContext);
 	}
 
 	PackedRecord ShapeTopRight(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, -1), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(+1, -1), pContext);
 	}
 
 	PackedRecord ShapeBottomLeft(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(-1, +1), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(-1, +1), pContext);
 	}
 
 	PackedRecord ShapeBottomRight(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		return ShapeDirectedPoint(shape, Eigen::Vector2d(+1, +1), pContext);
+		return ShapeDirectedPoint(shape, EigenVec2(+1, +1), pContext);
 	}
 }

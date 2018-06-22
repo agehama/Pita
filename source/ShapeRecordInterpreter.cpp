@@ -19,7 +19,7 @@ namespace cgl
 
 		void filter_ro(const Coordinate* coord) override
 		{
-			rect.add(Eigen::Vector2d(coord->x, coord->y));
+			rect.add(EigenVec2(coord->x, coord->y));
 		}
 	};
 
@@ -47,6 +47,76 @@ namespace cgl
 		return indent;
 	}
 
+	bool ReadPackedPolyData(const PackedList& polygons, std::vector<gg::Geometry*>& outputPolygons, std::vector<gg::Geometry*>& outputHoles, const TransformPacked& transform)
+	{
+		const auto type = GetPackedListType(polygons);
+
+		const auto readPolygon = [&](const std::vector<PackedList::Data>& vertices)->bool
+		{
+			gg::CoordinateArraySequence pts;
+
+			for (const auto& vertexData : vertices)
+			{
+				if (!IsType<PackedRecord>(vertexData.value))
+				{
+					return false;
+				}
+
+				const auto& cooedinateData = As<PackedRecord>(vertexData.value).values;
+				auto itX = cooedinateData.find("x");
+				auto itY = cooedinateData.find("y");
+				if (itX == cooedinateData.end() || itY == cooedinateData.end() || !IsNum(itX->second.value) || !IsNum(itY->second.value))
+				{
+					return false;
+				}
+
+				auto pos = transform.product(EigenVec2(AsDouble(itX->second.value), AsDouble(itY->second.value)));
+				pts.add(gg::Coordinate(pos.x(), pos.y()));
+			}
+
+			if (!pts.empty())
+			{
+				pts.add(pts.front());
+
+				auto factory = gg::GeometryFactory::create();
+				gg::LinearRing* linearRing = factory->createLinearRing(pts);
+
+				if (IsClockWise(linearRing))
+				{
+					outputPolygons.push_back(factory->createPolygon(linearRing, {}));
+				}
+				else
+				{
+					outputHoles.push_back(factory->createPolygon(linearRing, {}));
+				}
+			}
+
+			return true;
+		};
+
+		if (type == PackedPolyDataType::POLYGON)
+		{
+			return readPolygon(polygons.data);
+		}
+		else if (type == PackedPolyDataType::MULTIPOLYGON)
+		{
+			for (const auto& polygonData : polygons.data)
+			{
+				const auto& currentPolygonData = polygonData.value;
+
+				if (!IsType<PackedList>(currentPolygonData) || !readPolygon(As<PackedList>(currentPolygonData).data))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		//PackedPolyDataType::?
+		return false;
+	}
+
 	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
 
 	std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
@@ -68,10 +138,9 @@ namespace cgl
 			{
 				if (cgl::IsType<cgl::PackedList>(value))
 				{
-					cgl::Vector<Eigen::Vector2d> polygon;
-					if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
+					if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(value), currentPolygons, currentHoles, transform))
 					{
-						currentPolygons.push_back(ToPolygon(polygon));
+						CGL_Error("polygonに指定されたデータの形式が不正です。");
 					}
 				}
 				else if (cgl::IsType<cgl::FuncVal>(value))
@@ -84,10 +153,9 @@ namespace cgl
 						CGL_Error("polygon()の評価結果の型が不正です。");
 					}
 
-					cgl::Vector<Eigen::Vector2d> polygon;
-					if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(evaluated), transform) && !polygon.empty())
+					if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(evaluated), currentPolygons, currentHoles, transform))
 					{
-						currentPolygons.push_back(ToPolygon(polygon));
+						CGL_Error("polygonに指定されたデータの形式が不正です。");
 					}
 				}
 			}
@@ -97,34 +165,6 @@ namespace cgl
 				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
 				{
 					currentHoles.push_back(ToPolygon(polygon));
-				}
-			}
-			else if (member.first == "polygons" && IsType<PackedList>(value))
-			{
-				const PackedList& polygons = As<PackedList>(value);
-				for (const auto& polygonAddress : polygons.data)
-				{
-					const PackedVal& polygonVertices = polygonAddress.value;
-
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(polygonVertices), transform) && !polygon.empty())
-					{
-						currentPolygons.push_back(ToPolygon(polygon));
-					}
-				}
-			}
-			else if (member.first == "holes" && IsType<PackedList>(value))
-			{
-				const PackedList& holes = As<PackedList>(value);
-				for (const auto& holeAddress : holes.data)
-				{
-					const PackedVal& hole = holeAddress.value;
-
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(hole), transform) && !polygon.empty())
-					{
-						currentHoles.push_back(ToPolygon(polygon));
-					}
 				}
 			}
 			else if (member.first == "line" && IsType<PackedList>(value))
@@ -165,12 +205,8 @@ namespace cgl
 				for (int d = 0; d < currentHoles.size(); ++d)
 				{
 					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
-					
-					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
-					{
-						//ok
-					}
-					else if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+
+					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 					{
 						currentPolygons.erase(currentPolygons.begin() + s);
 
@@ -182,9 +218,10 @@ namespace cgl
 
 						erodeGeometry = currentPolygons[s];
 					}
-					else
+					else if (erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON
+						&& erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
-						std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+						CGL_Error("Differenceの評価結果の型が不正です。");
 					}
 				}
 
@@ -211,6 +248,7 @@ namespace cgl
 				GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, transform));
 			}
 		}
+
 		return currentPolygons;
 	}
 
@@ -218,28 +256,23 @@ namespace cgl
 	{
 		if (cgl::IsType<cgl::PackedRecord>(value))
 		{
+			const auto& record = cgl::As<cgl::PackedRecord>(value);
+
+			//valueが直下にxとyを持つ構造{x: _, y: _, ...}だった場合は単一のベクトル値として解釈する
+			if (record.values.find("x") != record.values.end() &&
+				record.values.find("y") != record.values.end())
 			{
-				const auto& record = cgl::As<cgl::PackedRecord>(value);
+				const cgl::TransformPacked current(record);
+				const cgl::TransformPacked transform = parent * current;
 
-				if (record.values.find("x") != record.values.end() &&
-					record.values.find("y") != record.values.end())
-				{
-					const cgl::TransformPacked current(record);
+				std::vector<gg::Geometry*> currentPolygons;
 
-					const cgl::TransformPacked transform = parent * current;
+				const auto v = ReadVec2Packed(record, transform);
 
-					std::vector<gg::Geometry*> currentPolygons;
-					std::vector<gg::Geometry*> currentHoles;
+				auto factory = gg::GeometryFactory::create();
+				currentPolygons.push_back(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v))));
 
-					std::vector<gg::Geometry*> currentLines;
-
-					const auto v = ReadVec2Packed(record, transform);
-
-					auto factory = gg::GeometryFactory::create();
-					currentPolygons.push_back(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v))));
-
-					return currentPolygons;
-				}
+				return currentPolygons;
 			}
 
 			return GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, parent);
@@ -287,10 +320,9 @@ namespace cgl
 			{
 				if (IsType<PackedList>(value))
 				{
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(value), transform) && !polygon.empty())
+					if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(value), currentPolygons, currentHoles, transform))
 					{
-						currentPolygons.push_back(ToPolygon(polygon));
+						CGL_Error("polygonに指定されたデータの形式が不正です。");
 					}
 				}
 				else if (IsType<FuncVal>(value))
@@ -303,10 +335,9 @@ namespace cgl
 						CGL_Error("polygon()の評価結果の型が不正です。");
 					}
 
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(evaluated), transform) && !polygon.empty())
+					if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(evaluated), currentPolygons, currentHoles, transform))
 					{
-						currentPolygons.push_back(ToPolygon(polygon));
+						CGL_Error("polygonに指定されたデータの形式が不正です。");
 					}
 				}
 			}
@@ -316,34 +347,6 @@ namespace cgl
 				if (ReadPolygonPacked(polygon, As<PackedList>(value), transform) && !polygon.empty())
 				{
 					currentHoles.push_back(ToPolygon(polygon));
-				}
-			}
-			else if (member.first == "polygons" && IsType<PackedList>(value))
-			{
-				const PackedList& polygons = As<PackedList>(value);
-				for (const auto& polygonAddress : polygons.data)
-				{
-					const auto& polygonVertices = polygonAddress.value;
-
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(polygonVertices), transform) && !polygon.empty())
-					{
-						currentPolygons.push_back(ToPolygon(polygon));
-					}
-				}
-			}
-			else if (member.first == "holes" && IsType<PackedList>(value))
-			{
-				const PackedList& holes = As<PackedList>(value);
-				for (const auto& holeAddress : holes.data)
-				{
-					const PackedVal& hole = holeAddress.value;
-
-					Vector<Eigen::Vector2d> polygon;
-					if (ReadPolygonPacked(polygon, As<PackedList>(hole), transform) && !polygon.empty())
-					{
-						currentHoles.push_back(ToPolygon(polygon));
-					}
 				}
 			}
 			else if (member.first == "line" && IsType<PackedList>(value))
@@ -582,7 +585,7 @@ namespace cgl
 					else if (erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON
 						&& erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
-						std::cout << __FUNCTION__ << " Differenceの結果が予期せぬデータ形式" << __LINE__ << std::endl;
+						CGL_Error("Differenceの評価結果の型が不正です。");
 					}
 				}
 
@@ -665,7 +668,7 @@ namespace cgl
 			const double width = widthXY.x() + margin;
 			const double height = widthXY.y() + margin;
 
-			const Eigen::Vector2d pos = center - Eigen::Vector2d(width*0.5, height*0.5);
+			const Eigen::Vector2d pos = center - EigenVec2(width*0.5, height*0.5);
 
 			/*os << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height
 				<< R"(" viewport-fill="black" viewport-fill-opacity="0.1)"  << R"(">)" << "\n";*/

@@ -14,29 +14,6 @@
 
 namespace cgl
 {
-	bool IsClockWise(const Vector<Eigen::Vector2d>& closedPath)
-	{
-		double sum = 0;
-
-		for (int i = 0; i + 1< closedPath.size(); ++i)
-		{
-			const auto& p1 = closedPath[i];
-			//const auto& p2 = closedPath[(i + 1) % closedPath.size()];
-			const auto& p2 = closedPath[i + 1];
-
-			sum += (p2.x() - p1.x())*(p2.y() + p1.y());
-		}
-
-		{
-			const auto& p1 = closedPath[closedPath.size() - 1];
-			const auto& p2 = closedPath[0];
-
-			sum += (p2.x() - p1.x())*(p2.y() + p1.y());
-		}
-
-		return sum < 0.0;
-	}
-
 	double FontSizeToReal(int fontSize)
 	{
 		const double size = 0.05;
@@ -103,12 +80,12 @@ namespace cgl
 	{
 		const auto vec2 = [&](short x, short y)
 		{
-			//return Eigen::Vector2d(0.1*(offsetX + x), 0.1*(offsetY - y));
+			//return EigenVec2(0.1*(offsetX + x), 0.1*(offsetY - y));
 			
 			//const double size = 0.025;
-			//return Eigen::Vector2d(size * (offsetX + x), size * (offsetY - y));
-			//return Eigen::Vector2d(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
-			return Eigen::Vector2d(offsetX + FontSizeToReal(x), FontSizeToReal(offsetY - y));
+			//return EigenVec2(size * (offsetX + x), size * (offsetY - y));
+			//return EigenVec2(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
+			return EigenVec2(offsetX + FontSizeToReal(x), FontSizeToReal(offsetY - y));
 		};
 
 		bool isFont1 = true;
@@ -284,7 +261,7 @@ namespace cgl
 	{
 		const auto vec2 = [&](short x, short y)
 		{
-			return Eigen::Vector2d(FontSizeToReal(x), FontSizeToReal(-y));
+			return EigenVec2(FontSizeToReal(x), FontSizeToReal(-y));
 		};
 
 		const int codePoint = static_cast<int>('.');

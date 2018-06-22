@@ -3,8 +3,11 @@ getRight = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.right())
 
 tri = Shape{
     a = Triangle{scale=X2(50), angle: 90}
+    Print(a)
     b = SymDiff(a, Shape{s:a,scale:X2(1.5), angle: 15})
+    Print(b)
     c: SymDiff(b, Shape{s:b,scale:X2(2.0), angle: 15})
+    Print(b)
 }
 
 pita = Shape{

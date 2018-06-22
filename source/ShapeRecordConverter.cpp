@@ -117,8 +117,7 @@ namespace cgl
 				{
 					return false;
 				}
-				Eigen::Vector2d v;
-				v << x, y;
+				Eigen::Vector2d v(x, y);
 				output.push_back(transform.product(v));
 			}
 			else

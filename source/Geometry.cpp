@@ -39,6 +39,50 @@ namespace cgl
 		}
 	}
 
+	bool IsClockWise(const Vector<Eigen::Vector2d>& closedPath)
+	{
+		double sum = 0;
+
+		for (int i = 0; i + 1 < closedPath.size(); ++i)
+		{
+			const auto& p1 = closedPath[i];
+			//const auto& p2 = closedPath[(i + 1) % closedPath.size()];
+			const auto& p2 = closedPath[i + 1];
+
+			sum += (p2.x() - p1.x())*(p2.y() + p1.y());
+		}
+
+		{
+			const auto& p1 = closedPath[closedPath.size() - 1];
+			const auto& p2 = closedPath[0];
+
+			sum += (p2.x() - p1.x())*(p2.y() + p1.y());
+		}
+
+		return sum < 0.0;
+	}
+
+	bool IsClockWise(const gg::LineString* closedPath)
+	{
+		double sum = 0;
+
+		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
+		{
+			const gg::Point* p1 = closedPath->getPointN(p);
+			const gg::Point* p2 = closedPath->getPointN(p + 1);
+
+			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+		}
+		{
+			const gg::Point*  p1 = closedPath->getPointN(closedPath->getNumPoints() - 1);
+			const gg::Point*  p2 = closedPath->getPointN(0);
+
+			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+		}
+
+		return sum < 0.0;
+	}
+
 	std::string GetGeometryType(gg::Geometry* geometry)
 	{
 		switch (geometry->getGeometryTypeId())
@@ -91,6 +135,59 @@ namespace cgl
 	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail)
 	{
 		head.insert(head.end(), tail.begin(), tail.end());
+	}
+
+	void DebugPrint(const gg::Geometry* geometry)
+	{
+		CGL_DBG;
+		switch (geometry->getGeometryTypeId())
+		{
+		case geos::geom::GEOS_POINT:
+		{
+			std::cout << "Point" << std::endl;
+			break;
+		}
+		case geos::geom::GEOS_LINESTRING:
+		{
+			std::cout << "LineString" << std::endl;
+			break;
+		}
+		case geos::geom::GEOS_LINEARRING:
+		{
+			std::cout << "LinearRing" << std::endl;
+			break;
+		}
+		case geos::geom::GEOS_POLYGON:
+		{
+			std::cout << "Polygon" << std::endl;
+			break;
+		}
+		case geos::geom::GEOS_MULTIPOINT:
+		{
+			std::cout << "MultiPoint" << std::endl;
+			break;
+		}
+		case geos::geom::GEOS_MULTILINESTRING:
+		{
+			std::cout << "MultiLineString" << std::endl;
+			break;
+		}
+		case geos::geom::GEOS_MULTIPOLYGON:
+		{
+			std::cout << "MultiPolygon" << std::endl;
+			break;
+		}
+		case geos::geom::GEOS_GEOMETRYCOLLECTION:
+		{
+			std::cout << "GeometryCollection" << std::endl;
+			break;
+		}
+		default:
+		{
+			std::cout << "Unknown" << std::endl;
+		}
+		}
+		CGL_DBG;
 	}
 
 	Path Path::clone()const

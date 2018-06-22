@@ -3,25 +3,24 @@ getRight = (shape -> Square{polygon=BoundingBox(shape).result.polygon}.right())
 
 tri = Shape{
     a = Triangle{scale=X2(50), angle: 90}
-    Print(a)
     b = SymDiff(a, Shape{s:a,scale:X2(1.5), angle: 15})
-    Print(b)
     c: SymDiff(b, Shape{s:b,scale:X2(2.0), angle: 15})
-    Print(b)
+    Print(c)
 }
 
 pita = Shape{
-    //text: (BuildText("Pita")){scale: X2(2.0)}
-    text: (a = BuildText("Pita"), a{scale: X2(2.0)})
-    rect = BoundingBox(text).result
+    //text: (Text("Pita")){scale: X2(2.0)}
+    text: (a = Text("Pita"), a{scale: X2(2.0)})
+    rect = BoundingBox(text)
     rect2 = Square{polygon=rect.polygon}
 }
 
 main = Shape{
     a: tri{scale: X2(0.6), angle: -90}
     b: pita{}
-    //sat(Contact(Moved(getRight(a), 10,0), getLeft(b)))
-    sat(Contact(getRight(a), Moved(getLeft(b), -20, 0) ))
+    //sat(Contact(Moved(Right(a), 10,0), Left(b)))
+    sat(Contact(Right(a), Moved(Left(b), -20, 0) ))
     var(b.pos)
-    fill: Rgb(255,255,255)
+    //fill: Rgb(255,255,255)
+    fill: Rgb(0,0,0)
 }

@@ -467,11 +467,23 @@ namespace cgl
 				const gg::LineString* outer = polygon->getExteriorRing();
 
 				os << getIndent(depth + 1) << "<polygon " << "points=\"";
-				for (int i = 0; i < outer->getNumPoints(); ++i)
+				if (IsClockWise(outer))
 				{
-					const gg::Coordinate& p = outer->getCoordinateN(i);
-					os << p.x << "," << p.y << " ";
+					for (int i = 0; i < outer->getNumPoints(); ++i)
+					{
+						auto p = outer->getPointN(i);
+						os << p->getX() << "," << p->getY() << " ";
+					}
 				}
+				else
+				{
+					for (int i = outer->getNumPoints() - 1; 0 <= i; --i)
+					{
+						auto p = outer->getPointN(i);
+						os << p->getX() << "," << p->getY() << " ";
+					}
+				}
+
 				os << "\"/>\n";
 			}
 			//穴がある場合ー＞Pathで描画
@@ -484,16 +496,31 @@ namespace cgl
 
 					if (outer->getNumPoints() != 0)
 					{
-						const gg::Coordinate& p = outer->getCoordinateN(0);
-						os << "M" << p.x << "," << p.y << " ";
-					}
+						if (IsClockWise(outer))
+						{
+							auto p = outer->getPointN(0);
+							os << "M" << p->getX() << "," << p->getY() << " ";
 
-					for (int i = 1; i < outer->getNumPoints(); ++i)
-					{
-						const gg::Coordinate& p = outer->getCoordinateN(i);
-						os << "L" << p.x << "," << p.y << " ";
+							for (int i = 1; i < outer->getNumPoints(); ++i)
+							{
+								auto p = outer->getPointN(i);
+								os << "L" << p->getX() << "," << p->getY() << " ";
+							}
+						}
+						else
+						{
+							auto p = outer->getPointN(outer->getNumPoints() - 1);
+							os << "M" << p->getX() << "," << p->getY() << " ";
+
+							for (int i = outer->getNumPoints() - 2; 0 < i; --i)
+							{
+								auto p = outer->getPointN(i);
+								os << "L" << p->getX() << "," << p->getY() << " ";
+							}
+						}
+
+						os << "z ";
 					}
-					os << "z ";
 				}
 
 				for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
@@ -502,16 +529,31 @@ namespace cgl
 
 					if (hole->getNumPoints() != 0)
 					{
-						const gg::Coordinate& p = hole->getCoordinateN(0);
-						os << "M" << p.x << "," << p.y << " ";
-					}
+						if (IsClockWise(hole))
+						{
+							auto p = hole->getPointN(hole->getNumPoints() - 1);
+							os << "M" << p->getX() << "," << p->getY() << " ";
 
-					for (int n = 1; n < hole->getNumPoints(); ++n)
-					{
-						gg::Point* p = hole->getPointN(n);
-						os << "L" << p->getX() << "," << p->getY() << " ";
+							for (int n = hole->getNumPoints() - 2; 0 < n; --n)
+							{
+								auto p = hole->getPointN(n);
+								os << "L" << p->getX() << "," << p->getY() << " ";
+							}
+						}
+						else
+						{
+							auto p = hole->getPointN(0);
+							os << "M" << p->getX() << "," << p->getY() << " ";
+
+							for (int n = 1; n < hole->getNumPoints(); ++n)
+							{
+								auto p = hole->getPointN(n);
+								os << "L" << p->getX() << "," << p->getY() << " ";
+							}
+						}
+
+						os << "z ";
 					}
-					os << "z ";
 				}
 
 				os << "\"/>\n";

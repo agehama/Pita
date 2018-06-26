@@ -1180,6 +1180,8 @@ namespace cgl
 
 			case BinaryOp::Pow:    return PowFunc(lhs, rhs, *pEnv);
 			case BinaryOp::Concat: return ConcatFunc(lhs, rhs, *pEnv);
+
+			case BinaryOp::SetDiff: return SetDiffFunc(lhs, rhs, *pEnv);
 			default:;
 			}
 		}

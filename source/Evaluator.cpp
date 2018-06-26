@@ -1108,6 +1108,9 @@ namespace cgl
 
 		case BinaryOp::Pow:    return RValue(PowFunc(lhs, rhs, *pEnv));
 		case BinaryOp::Concat: return RValue(ConcatFunc(lhs, rhs, *pEnv));
+
+		case BinaryOp::SetDiff: return RValue(SetDiffFunc(lhs, rhs, *pEnv));
+
 		case BinaryOp::Assign:
 		{
 			//return Assign(lhs, rhs, *pEnv);

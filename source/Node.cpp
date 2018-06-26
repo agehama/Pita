@@ -22,6 +22,38 @@
 
 namespace cgl
 {
+	bool IsVec2(const Val& value)
+	{
+		if (!IsType<Record>(value))
+		{
+			return false;
+		}
+
+		const auto& values = As<Record>(value).values;
+		return values.find("x") != values.end() && values.find("y") != values.end();
+	}
+
+	bool IsShape(const Val& value)
+	{
+		if (!IsType<Record>(value))
+		{
+			return false;
+		}
+
+		const auto& values = As<Record>(value).values;
+		return values.find("x") == values.end() || values.find("y") == values.end();
+	}
+
+	Eigen::Vector2d AsVec2(const Val& value, const Context& context)
+	{
+		const auto& values = As<Record>(value).values;
+
+		const Val xval = context.expand(values.find("x")->second, LocationInfo());
+		const Val yval = context.expand(values.find("y")->second, LocationInfo());
+
+		return Eigen::Vector2d(AsDouble(xval), AsDouble(yval));
+	}
+
 	//manip::LocationInfoPrinter LocationInfo::printLoc() const { return { *this }; }
 	std::string LocationInfo::getInfo() const
 	{

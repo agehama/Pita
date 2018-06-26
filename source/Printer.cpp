@@ -349,6 +349,8 @@ namespace cgl
 		case BinaryOp::Pow: os << " ^ "; break;
 
 		case BinaryOp::Concat: os << " @ "; break;
+
+		case BinaryOp::SetDiff: os << " \\ "; break;
 		}
 
 		boost::apply_visitor(*this, node.rhs);
@@ -799,6 +801,7 @@ namespace cgl
 		case cgl::BinaryOp::Pow: ss << " ^ "; break;
 		case cgl::BinaryOp::Assign: ss << " = "; break;
 		case cgl::BinaryOp::Concat: ss << " @ "; break;
+		case cgl::BinaryOp::SetDiff: ss << " \\ "; break;
 		default: ss << ""; break;
 		}
 

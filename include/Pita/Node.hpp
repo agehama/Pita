@@ -205,7 +205,9 @@ namespace cgl
 		Pow,
 		Assign,
 
-		Concat
+		Concat,
+
+		SetDiff
 	};
 
 	inline std::string BinaryOpToStr(BinaryOp op)
@@ -231,6 +233,8 @@ namespace cgl
 		case BinaryOp::Assign: return "Assign";
 
 		case BinaryOp::Concat: return "Concat";
+
+		case BinaryOp::SetDiff: return "SetDiff";
 		}
 
 		return "UnknownBinaryOp";
@@ -526,15 +530,19 @@ namespace cgl
 	PackedVal Packed(const Val& value, const Context& context);
 	Val Unpacked(const PackedVal& packedValue, Context& context);
 
-	inline double IsNum(const Val& value)
+	inline bool IsNum(const Val& value)
 	{
 		return IsType<double>(value) || IsType<int>(value);
 	}
 
-	inline double IsNum(const PackedVal& value)
+	inline bool IsNum(const PackedVal& value)
 	{
 		return IsType<double>(value) || IsType<int>(value);
 	}
+
+	bool IsVec2(const Val& value);
+
+	bool IsShape(const Val& value);
 
 	inline double AsDouble(const Val& value)
 	{
@@ -559,6 +567,8 @@ namespace cgl
 			return 0;
 		}
 	}
+
+	Eigen::Vector2d AsVec2(const Val& value, const Context& context);
 
 	struct RValue;
 	struct LRValue;

@@ -52,6 +52,8 @@ namespace cgl
 
 	Val ConcatFunc(const Val& lhs, const Val& rhs, Context& env);
 
+	Val SetDiffFunc(const Val& lhs, const Val& rhs, Context& env);
+
 
 #ifdef commentout
 	Val Assign(const Val& lhs, const Val& rhs, Context& env)

@@ -295,6 +295,7 @@ namespace cgl
 				*(
 				(s >> '+' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
 				(s >> '-' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]) |
+				(s >> '\\' >> s >> term[_val = MakeBinaryExpr(BinaryOp::SetDiff)]) |
 				(s >> '@' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Concat)])
 					)
 				;

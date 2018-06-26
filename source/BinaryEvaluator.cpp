@@ -1,6 +1,7 @@
 #include <cmath>
 #include <Pita/Node.hpp>
 #include <Pita/BinaryEvaluator.hpp>
+#include <Pita/IntrinsicGeometricFunctions.hpp>
 
 namespace cgl
 {
@@ -123,7 +124,7 @@ namespace cgl
 		return 0;
 	}
 
-	Val AndFunc(const Val& lhs, const Val& rhs, Context& env)
+	Val AndFunc(const Val& lhs, const Val& rhs, Context& context)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -137,12 +138,18 @@ namespace cgl
 			const double eps = 1.e-4;
 			return AsDouble(lhs) < eps && AsDouble(rhs) < eps;
 		}
+		else if (IsShape(lhs) && IsShape(rhs))
+		{
+			return Unpacked(ShapeIntersect(
+				Packed(lhs, context),
+				Packed(rhs, context), context.m_weakThis.lock()), context);
+		}
 
 		CGL_Error("不正な式です");
 		return 0;
 	}
 
-	Val OrFunc(const Val& lhs, const Val& rhs, Context& env)
+	Val OrFunc(const Val& lhs, const Val& rhs, Context& context)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
@@ -150,6 +157,12 @@ namespace cgl
 		if (IsType<bool>(lhs) && IsType<bool>(rhs))
 		{
 			return As<bool>(lhs) || As<bool>(rhs);
+		}
+		else if (IsShape(lhs) && IsShape(rhs))
+		{
+			return Unpacked(ShapeUnion(
+				Packed(lhs, context),
+				Packed(rhs, context), context.m_weakThis.lock()), context);
 		}
 
 		CGL_Error("不正な式です");
@@ -491,27 +504,21 @@ namespace cgl
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
 
-		if (IsType<int>(lhs))
+		if (IsNum(lhs) && IsNum(rhs))
 		{
-			if (IsType<int>(rhs))
+			if (IsType<int>(lhs) && IsType<int>(rhs))
 			{
 				return As<int>(lhs) + As<int>(rhs);
 			}
-			else if (IsType<double>(rhs))
+			else
 			{
-				return As<int>(lhs) + As<double>(rhs);
+				return AsDouble(lhs) + AsDouble(rhs);
 			}
 		}
-		else if (IsType<double>(lhs))
+		else if(IsVec2(lhs) && IsVec2(rhs))
 		{
-			if (IsType<int>(rhs))
-			{
-				return As<double>(lhs) + As<int>(rhs);
-			}
-			else if (IsType<double>(rhs))
-			{
-				return As<double>(lhs) + As<double>(rhs);
-			}
+			Eigen::Vector2d v = AsVec2(lhs, env) + AsVec2(rhs, env);
+			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
 		}
 
 		CGL_Error("不正な式です");
@@ -523,27 +530,21 @@ namespace cgl
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
 
-		if (IsType<int>(lhs))
+		if (IsNum(lhs) && IsNum(rhs))
 		{
-			if (IsType<int>(rhs))
+			if (IsType<int>(lhs) && IsType<int>(rhs))
 			{
 				return As<int>(lhs) - As<int>(rhs);
 			}
-			else if (IsType<double>(rhs))
+			else
 			{
-				return As<int>(lhs) - As<double>(rhs);
+				return AsDouble(lhs) - AsDouble(rhs);
 			}
 		}
-		else if (IsType<double>(lhs))
+		else if (IsVec2(lhs) && IsVec2(rhs))
 		{
-			if (IsType<int>(rhs))
-			{
-				return As<double>(lhs) - As<int>(rhs);
-			}
-			else if (IsType<double>(rhs))
-			{
-				return As<double>(lhs) - As<double>(rhs);
-			}
+			Eigen::Vector2d v = AsVec2(lhs, env) - AsVec2(rhs, env);
+			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
 		}
 
 		CGL_Error("不正な式です");
@@ -555,27 +556,26 @@ namespace cgl
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
 
-		if (IsType<int>(lhs))
+		if (IsNum(lhs) && IsNum(rhs))
 		{
-			if (IsType<int>(rhs))
+			if (IsType<int>(lhs) && IsType<int>(rhs))
 			{
 				return As<int>(lhs) * As<int>(rhs);
 			}
-			else if (IsType<double>(rhs))
+			else
 			{
-				return As<int>(lhs) * As<double>(rhs);
+				return AsDouble(lhs) * AsDouble(rhs);
 			}
 		}
-		else if (IsType<double>(lhs))
+		else if (IsVec2(lhs) && IsNum(rhs))
 		{
-			if (IsType<int>(rhs))
-			{
-				return As<double>(lhs) * As<int>(rhs);
-			}
-			else if (IsType<double>(rhs))
-			{
-				return As<double>(lhs) * As<double>(rhs);
-			}
+			Eigen::Vector2d v = AsVec2(lhs, env) * AsDouble(rhs);
+			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
+		}
+		else if (IsNum(lhs) && IsVec2(rhs))
+		{
+			Eigen::Vector2d v = AsVec2(rhs, env) * AsDouble(lhs);
+			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
 		}
 
 		CGL_Error("不正な式です");
@@ -587,59 +587,47 @@ namespace cgl
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
 
-		if (IsType<int>(lhs))
+		if (IsNum(lhs) && IsNum(rhs))
 		{
-			if (IsType<int>(rhs))
+			if (IsType<int>(lhs) && IsType<int>(rhs))
 			{
-				return As<int>(lhs) / As<int>(rhs);
+				int a = As<int>(lhs);
+				int b = As<int>(rhs);
+				if (a % b == 0)
+				{
+					return a / b;
+				}
+				return 1.0*a / b;
 			}
-			else if (IsType<double>(rhs))
+			else
 			{
-				return As<int>(lhs) / As<double>(rhs);
+				return AsDouble(lhs) / AsDouble(rhs);
 			}
 		}
-		else if (IsType<double>(lhs))
+		else if (IsVec2(lhs) && IsNum(rhs))
 		{
-			if (IsType<int>(rhs))
-			{
-				return As<double>(lhs) / As<int>(rhs);
-			}
-			else if (IsType<double>(rhs))
-			{
-				return As<double>(lhs) / As<double>(rhs);
-			}
+			Eigen::Vector2d v = AsVec2(lhs, env) / AsDouble(rhs);
+			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
 		}
 
 		CGL_Error("不正な式です");
 		return 0;
 	}
 
-	Val PowFunc(const Val& lhs, const Val& rhs, Context& env)
+	Val PowFunc(const Val& lhs, const Val& rhs, Context& context)
 	{
 		//const Val lhs = env.expandRef(lhs_);
 		//const Val rhs = env.expandRef(rhs_);
 
-		if (IsType<int>(lhs))
+		if (IsNum(lhs) && IsNum(rhs))
 		{
-			if (IsType<int>(rhs))
-			{
-				return pow(As<int>(lhs), As<int>(rhs));
-			}
-			else if (IsType<double>(rhs))
-			{
-				return pow(As<int>(lhs), As<double>(rhs));
-			}
+			return AsDouble(lhs) / AsDouble(rhs);
 		}
-		else if (IsType<double>(lhs))
+		else if (IsShape(lhs) && IsShape(rhs))
 		{
-			if (IsType<int>(rhs))
-			{
-				return pow(As<double>(lhs), As<int>(rhs));
-			}
-			else if (IsType<double>(rhs))
-			{
-				return pow(As<double>(lhs), As<double>(rhs));
-			}
+			return Unpacked(ShapeSymDiff(
+				Packed(lhs, context),
+				Packed(rhs, context), context.m_weakThis.lock()), context);
 		}
 
 		CGL_Error("不正な式です");
@@ -651,7 +639,6 @@ namespace cgl
 		if (!IsType<List>(lhs) || !IsType<List>(rhs))
 		{
 			CGL_Error("リスト結合演算子がリスト以外の式に使われています");
-			return 0;
 		}
 
 		/*auto unpackedLHSOpt = As<List>(lhs).asUnpackedOpt();
@@ -671,5 +658,17 @@ namespace cgl
 		return List(UnpackedList::Concat(unpackedLHS, unpackedRHS));*/
 
 		return List::Concat(As<List>(lhs), As<List>(rhs));
+	}
+
+	Val SetDiffFunc(const Val& lhs, const Val& rhs, Context& context)
+	{
+		if (!IsShape(lhs) || !IsShape(rhs))
+		{
+			CGL_Error("差集合演算子がシェイプ以外の式に使われています");
+		}
+
+		return Unpacked(ShapeDiff(
+			Packed(lhs, context),
+			Packed(rhs, context), context.m_weakThis.lock()), context);
 	}
 }

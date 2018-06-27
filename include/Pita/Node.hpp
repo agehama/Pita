@@ -438,27 +438,6 @@ namespace cgl
 
 	struct Import;
 
-	/*struct SatReference
-	{
-	int refID;
-
-	SatReference() = default;
-
-	explicit SatReference(int refID)
-	:refID(refID)
-	{}
-
-	bool operator==(const SatReference& other)const
-	{
-	return refID == other.refID;
-	}
-
-	bool operator!=(const SatReference& other)const
-	{
-	return refID != other.refID;
-	}
-	};*/
-
 	struct CharString
 	{
 	public:

@@ -33,3 +33,4 @@
 
 # Output files
 *.svg
+Makefile

@@ -18,6 +18,31 @@ Print("--- Parse tests ---")
 	a = 1
 	+2
 	Assert(a == 3, "Comma separation[0]")
+)",
+u8R"(
+Print("--- ClosureMaker tests ---")
+(
+	record = {
+		a: 1
+	}
+	a = 2
+	f = (->record{a = 3})
+
+	r = f()
+	Assert(a == 2, "ClosureMaker[0]")
+	Assert(r.a == 3, "ClosureMaker[1]")
+)
+(
+	makeFunc = (-> {a: 1})
+	a = 2
+	f = (->makeFunc(){get: (->@a)})
+
+	record = f()
+	record.a = 3
+	a = 4
+
+	Assert(record.get() == 3, "ClosureMaker[2]")
+)
 )"
 	});
 

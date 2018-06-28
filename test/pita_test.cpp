@@ -9,17 +9,18 @@ BOOST_AUTO_TEST_SUITE(cgl)
 
 BOOST_AUTO_TEST_CASE(test_case1)
 {
-	Program program;
-	std::string test1 = u8R"(
+	std::vector<std::string> testCases({
+u8R"(
 a = 1
 +2
-)";
-	program.executeInline(test1, false);
-	BOOST_CHECK(program.isSucceeded());
-	auto opt = program.asIntOpt();
-	if (opt)
+)"
+	});
+
+	for (const auto& source: testCases)
 	{
-		BOOST_CHECK_EQUAL(opt.get(), 3);
+		Program program;
+		program.executeInline(source, false);
+		BOOST_CHECK(program.isSucceeded());
 	}
 }
 

@@ -418,7 +418,6 @@ namespace cgl
 
 	struct KeyExpr;
 	struct RecordConstractor;
-	struct RecordInheritor;
 
 	struct Character;
 
@@ -574,7 +573,6 @@ namespace cgl
 
 		boost::recursive_wrapper<KeyExpr>,
 		boost::recursive_wrapper<RecordConstractor>,
-		boost::recursive_wrapper<RecordInheritor>,
 		boost::recursive_wrapper<DeclSat>,
 		boost::recursive_wrapper<DeclFree>,
 
@@ -2329,7 +2327,27 @@ namespace cgl
 		friend std::ostream& operator<<(std::ostream& os, const FunctionAccess& node) { return os; }
 	};
 
-	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
+	struct InheritAccess
+	{
+		RecordConstractor adder;
+
+		InheritAccess() = default;
+		InheritAccess(const RecordConstractor& record)
+			:adder(record)
+		{}
+
+		static InheritAccess Make(const RecordConstractor& record)
+		{
+			return InheritAccess(record);
+		}
+
+		bool operator==(const InheritAccess& other)const
+		{
+			return IsEqual(adder, other.adder);
+		}
+	};
+
+	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess, InheritAccess>;
 
 	struct Accessor : public LocationInfo
 	{
@@ -2374,6 +2392,11 @@ namespace cgl
 		}
 
 		static void AppendFunction(Accessor& obj, const FunctionAccess& access)
+		{
+			obj.accesses.push_back(access);
+		}
+
+		static void AppendInherit(Accessor& obj, const InheritAccess& access)
 		{
 			obj.accesses.push_back(access);
 		}
@@ -2511,90 +2534,6 @@ namespace cgl
 				return !other.lhs;
 			}
 		}
-	};
-
-	struct RecordInheritor : public LocationInfo
-	{
-		//using OriginalRecord = boost::variant<Identifier, boost::recursive_wrapper<Record>>;
-		//OriginalRecord original;
-		//OriginalRecordがRecordになるのはあり得なくない？
-		//それよりも関数の返り値がレコードの場合もあるのでoriginalには一般の式を取るべきだと思う
-
-		Expr original;
-		//std::vector<Expr> exprs;
-		RecordConstractor adder;
-
-		RecordInheritor() = default;
-
-		RecordInheritor(const Expr& original) :
-			original(original)
-		{}
-
-		RecordInheritor& setLocation(const LocationInfo& info)
-		{
-			locInfo_lineBegin = info.locInfo_lineBegin;
-			locInfo_lineEnd = info.locInfo_lineEnd;
-			locInfo_posBegin = info.locInfo_posBegin;
-			locInfo_posEnd = info.locInfo_posEnd;
-			return *this;
-		}
-
-		static RecordInheritor MakeIdentifier(const Identifier& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static RecordInheritor MakeAccessor(const Accessor& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static RecordInheritor MakeLines(const Lines& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
-		{
-			rec.adder.exprs.push_back(KeyExpr);
-		}
-
-		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
-		{
-			rec.adder.exprs.push_back(expr);
-		}
-
-		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
-		{
-			auto& exprs = rec.adder.exprs;
-			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
-		}
-
-		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
-		{
-			RecordInheritor obj(original);
-			AppendRecord(obj, rec2);
-			return obj;
-		}
-
-		bool operator==(const RecordInheritor& other)const
-		{
-			/*if (IsType<Identifier>(original) && IsType<Identifier>(other.original))
-			{
-			return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
-			}
-			if (IsType<Record>(original) && IsType<Record>(other.original))
-			{
-			return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
-			}*/
-
-			return IsEqual(original, other.original) && adder == other.adder;
-
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return false;
-		}
-
-		friend std::ostream& operator<<(std::ostream& os, const RecordInheritor& node) { return os; }
 	};
 
 	Expr BuildString(const std::u32string& str);
@@ -2776,13 +2715,6 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::RecordInheritor& node)
-	{
-		ar(node.original);
-		ar(node.adder);
-	}
-
-	template<class Archive>
 	inline void serialize(Archive& ar, cgl::ListAccess& node)
 	{
 		ar(node.index);
@@ -2799,6 +2731,12 @@ namespace cereal
 	inline void serialize(Archive& ar, cgl::FunctionAccess& node)
 	{
 		ar(node.actualArguments);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::InheritAccess& node)
+	{
+		ar(node.adder);
 	}
 
 	template<class Archive>

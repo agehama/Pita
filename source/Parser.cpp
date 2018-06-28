@@ -28,7 +28,6 @@ namespace cgl
 		LocationInfo& operator()(ListConstractor& node) { return node; }
 		LocationInfo& operator()(KeyExpr& node) { return node; }
 		LocationInfo& operator()(RecordConstractor& node) { return node; }
-		LocationInfo& operator()(RecordInheritor& node) { return node; }
 		LocationInfo& operator()(Accessor& node) { return node; }
 		LocationInfo& operator()(DeclSat& node) { return node; }
 		LocationInfo& operator()(DeclFree& node) { return node; }
@@ -52,7 +51,6 @@ namespace cgl
 		else if(IsType<ListConstractor>(expr)){return static_cast<LocationInfo&>(As<ListConstractor>(expr));}
 		else if(IsType<KeyExpr>(expr)){return static_cast<LocationInfo&>(As<KeyExpr>(expr));}
 		else if(IsType<RecordConstractor>(expr)){return static_cast<LocationInfo&>(As<RecordConstractor>(expr));}
-		else if(IsType<RecordInheritor>(expr)){return static_cast<LocationInfo&>(As<RecordInheritor>(expr));}
 		else if(IsType<Accessor>(expr)){return static_cast<LocationInfo&>(As<Accessor>(expr));}
 		else if(IsType<DeclSat>(expr)){return static_cast<LocationInfo&>(As<DeclSat>(expr));}
 		else{return static_cast<LocationInfo&>(As<DeclFree>(expr));}
@@ -165,7 +163,6 @@ namespace cgl
 		void operator()(const ListConstractor& node)const {}
 		void operator()(const KeyExpr& node)const {}
 		void operator()(const RecordConstractor& node)const {}
-		void operator()(const RecordInheritor& node)const {}
 		void operator()(const Accessor& node)const {}
 		void operator()(const DeclSat& node)const {}
 		void operator()(const DeclFree& node)const {}

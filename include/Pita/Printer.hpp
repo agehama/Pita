@@ -183,8 +183,6 @@ namespace cgl
 
 		void operator()(const RecordConstractor& recordConstractor)const;
 
-		void operator()(const RecordInheritor& record)const;
-
 		void operator()(const DeclSat& node)const;
 
 		void operator()(const DeclFree& node)const;
@@ -238,8 +236,6 @@ namespace cgl
 		void operator()(const KeyExpr& keyExpr)const;
 
 		void operator()(const RecordConstractor& recordConstractor)const;
-
-		void operator()(const RecordInheritor& record)const;
 
 		void operator()(const DeclSat& node)const;
 

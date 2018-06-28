@@ -151,7 +151,6 @@ namespace cgl
 		Expr operator()(const ListConstractor& node)const { return node; }
 		Expr operator()(const KeyExpr& node)const { return node; }
 		Expr operator()(const RecordConstractor& node)const { return node; }
-		Expr operator()(const RecordInheritor& node)const { return node; }
 		Expr operator()(const Accessor& node)const { return node; }
 		Expr operator()(const DeclSat& node)const { return node; }
 		Expr operator()(const DeclFree& node)const { return node; }

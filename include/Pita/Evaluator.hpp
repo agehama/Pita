@@ -78,8 +78,6 @@ namespace cgl
 		Expr operator()(const KeyExpr& node)const;
 
 		Expr operator()(const RecordConstractor& node)const;
-		
-		Expr operator()(const RecordInheritor& node)const;
 
 		Expr operator()(const Accessor& node)const;
 
@@ -245,12 +243,8 @@ namespace cgl
 		Expr operator()(const ListConstractor& node);
 
 		Expr operator()(const KeyExpr& node);
-		
-		Expr operator()(const RecordConstractor& node);
 
-		//レコード継承構文については特殊で、adderを評価する時のスコープはheadと同じである必要がある。
-		//つまり、headを評価する時にはその中身を、一段階だけ（波括弧一つ分だけ）展開するようにして評価しなければならない。
-		Expr operator()(const RecordInheritor& node);
+		Expr operator()(const RecordConstractor& node);
 
 		Expr operator()(const Accessor& node);
 		
@@ -278,6 +272,7 @@ namespace cgl
 		virtual LRValue operator()(const DefFunc& defFunc);
 
 		virtual LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		virtual LRValue inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder);
 
 		virtual LRValue operator()(const Range& range) { return RValue(0); }
 
@@ -295,8 +290,6 @@ namespace cgl
 
 		virtual LRValue operator()(const RecordConstractor& recordConsractor);
 
-		virtual LRValue operator()(const RecordInheritor& record);
-
 		virtual LRValue operator()(const DeclSat& node);
 
 		virtual LRValue operator()(const DeclFree& node);
@@ -310,7 +303,6 @@ namespace cgl
 	class HasFreeVariables : public boost::static_visitor<bool>
 	{
 	public:
-
 		HasFreeVariables(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
 			pEnv(pEnv),
 			freeVariables(freeVariables)
@@ -342,7 +334,6 @@ namespace cgl
 		bool operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const KeyExpr& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const RecordConstractor& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const RecordInheritor& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
 

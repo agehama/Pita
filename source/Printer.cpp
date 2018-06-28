@@ -614,18 +614,6 @@ namespace cgl
 		os << indent() << ")" << std::endl;
 	}
 
-	void Printer::operator()(const RecordInheritor& record)const
-	{
-		os << indent() << "RecordInheritor" << record.getInfo() << "(" << std::endl;
-
-		const auto child = Printer(pEnv, os, m_indent + 1);
-		Expr expr = record.adder;
-		boost::apply_visitor(child, record.original);
-		boost::apply_visitor(child, expr);
-
-		os << indent() << ")" << std::endl;
-	}
-
 	void Printer::operator()(const DeclSat& node)const
 	{
 		os << indent() << "DeclSat" << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
@@ -670,6 +658,15 @@ namespace cgl
 					boost::apply_visitor(child, arg);
 				}
 				os << child.indent() << ")" << std::endl;
+			}
+			else if (auto opt = AsOpt<InheritAccess>(access))
+			{
+				os << child.indent() << "{" << std::endl;
+				for (const auto& arg : opt.get().adder.exprs)
+				{
+					boost::apply_visitor(child, arg);
+				}
+				os << child.indent() << "}" << std::endl;
 			}
 		}
 		os << indent() << ")" << std::endl;
@@ -1015,22 +1012,6 @@ namespace cgl
 		os << indent() << "}" << footer();
 	}
 
-	void Printer2::operator()(const RecordInheritor& record)const
-	{
-		/*os << indent() << "RecordInheritor(" << footer();
-
-		const auto child = Printer2(pEnv, os, m_indent + 1);
-		Expr expr = record.adder;
-		boost::apply_visitor(child, record.original);
-		boost::apply_visitor(child, expr);
-
-		os << indent() << ")" << footer();*/
-		std::stringstream ss;
-		boost::apply_visitor(Printer2(pEnv, ss, 0), record.original);
-		Expr expr = record.adder;
-		boost::apply_visitor(Printer2(pEnv, os, m_indent, ss.str()), expr);
-	}
-
 	void Printer2::operator()(const DeclSat& node)const
 	{
 		os << indent() << "DeclSat(" << footer();
@@ -1109,6 +1090,22 @@ namespace cgl
 					++argIndex;
 				}
 				ss << ")";
+			}
+			else if (auto opt = AsOpt<InheritAccess>(access))
+			{
+				ss << "{";
+				int argIndex = 0;
+				const auto& exprs = opt.get().adder.exprs;
+				for (const auto& arg : exprs)
+				{
+					boost::apply_visitor(child, arg);
+					if (argIndex + 1 != exprs.size())
+					{
+						ss << ", ";
+					}
+					++argIndex;
+				}
+				ss << "}";
 			}
 		}
 

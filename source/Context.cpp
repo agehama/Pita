@@ -2387,13 +2387,6 @@ namespace cgl
 			}
 		}
 
-		void operator()(const RecordInheritor& node)
-		{
-			boost::apply_visitor(*this, node.original);
-			const Expr adderExpr = node.adder;
-			boost::apply_visitor(*this, adderExpr);
-		}
-
 		void operator()(const Accessor& node)
 		{
 			boost::apply_visitor(*this, node.head);
@@ -2409,6 +2402,13 @@ namespace cgl
 					for (const auto& argument : functionAccess.get().actualArguments)
 					{
 						boost::apply_visitor(*this, argument);
+					}
+				}
+				else if (auto inheritAccess = AsOpt<InheritAccess>(access))
+				{
+					for (const auto& expr : inheritAccess.get().adder.exprs)
+					{
+						boost::apply_visitor(*this, expr);
 					}
 				}
 			}

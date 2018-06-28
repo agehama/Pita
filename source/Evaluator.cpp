@@ -54,7 +54,6 @@ namespace cgl
 		std::string operator()(const ListConstractor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const KeyExpr& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const RecordConstractor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
-		std::string operator()(const RecordInheritor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const Accessor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const DeclSat& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const DeclFree& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
@@ -241,23 +240,6 @@ namespace cgl
 		}
 		return result.setLocation(node);
 	}
-		
-	Expr AddressReplacer::operator()(const RecordInheritor& node)const
-	{
-		RecordInheritor result;
-		result.original = boost::apply_visitor(*this, node.original);
-
-		Expr originalAdder = node.adder;
-		Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
-		if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
-		{
-			result.adder = opt.get();
-			return result.setLocation(node);
-		}
-
-		CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
-		return LRValue(0);
-	}
 
 	Expr AddressReplacer::operator()(const Accessor& node)const
 	{
@@ -285,6 +267,20 @@ namespace cgl
 					access.add(boost::apply_visitor(*this, argument));
 				}
 				result.add(access);
+			}
+			else if (auto inheritAccess = AsOpt<InheritAccess>(access))
+			{
+				Expr originalAdder = inheritAccess.get().adder;
+				Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
+				if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
+				{
+					InheritAccess newInheritAccess(opt.get());
+					result.add(newInheritAccess);
+				}
+				else
+				{
+					CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
+				}
 			}
 			else
 			{
@@ -940,31 +936,6 @@ namespace cgl
 		return result.setLocation(node);
 	}
 
-	//レコード継承構文については特殊で、adderを評価する時のスコープはheadと同じである必要がある。
-	//つまり、headを評価する時にはその中身を、一段階だけ（波括弧一つ分だけ）展開するようにして評価しなければならない。
-	Expr ClosureMaker::operator()(const RecordInheritor& node)
-	{
-		RecordInheritor result;
-
-		//新たに追加
-		ClosureMaker child(pEnv, localVariables, true, isInnerClosure);
-
-		//result.original = boost::apply_visitor(*this, node.original);
-		result.original = boost::apply_visitor(child, node.original);
-			
-		Expr originalAdder = node.adder;
-		//Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
-		Expr replacedAdder = boost::apply_visitor(child, originalAdder);
-		if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
-		{
-			result.adder = opt.get();
-			return result.setLocation(node);
-		}
-
-		CGL_ErrorNodeInternal(node, "node.adderの評価結果がRecordConstractorでありませんでした。");
-		return LRValue(0);
-	}
-
 	Expr ClosureMaker::operator()(const Accessor& node)
 	{
 		Accessor result;
@@ -1002,6 +973,21 @@ namespace cgl
 				}
 				result.add(access);
 			}
+			else if (auto inheritAccess = AsOpt<InheritAccess>(access))
+			{
+				//新たに追加
+				ClosureMaker child(pEnv, localVariables, true, isInnerClosure);
+
+				Expr originalAdder = inheritAccess.get().adder;
+				Expr replacedAdder = boost::apply_visitor(child, originalAdder);
+				if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
+				{
+					InheritAccess access(opt.get());
+					result.add(access);
+				}
+
+				CGL_ErrorNodeInternal(node, "node.adderの評価結果がRecordConstractorでありませんでした。");
+			}
 			else
 			{
 				CGL_ErrorNodeInternal(node, "アクセッサの評価結果が不正です。");
@@ -1010,7 +996,7 @@ namespace cgl
 
 		return result.setLocation(node);
 	}
-		
+
 	Expr ClosureMaker::operator()(const DeclSat& node)
 	{
 		DeclSat result;
@@ -1435,7 +1421,6 @@ namespace cgl
 		{
 			const Val result = pEnv->expand(boost::apply_visitor(*this, if_statement.then_expr), if_statement);
 			return RValue(result);
-
 		}
 		else if (if_statement.else_expr)
 		{
@@ -2396,95 +2381,17 @@ namespace cgl
 		return LRValue(address);
 	}
 
-	LRValue Eval::operator()(const RecordInheritor& record)
+	LRValue Eval::inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder)
 	{
-		UpdateCurrentLocation(record);
-
-		boost::optional<Record> recordOpt;
-
-		/*
-		if (auto opt = AsOpt<Identifier>(record.original))
-		{
-			//auto originalOpt = pEnv->find(opt.get().name);
-			boost::optional<const Val&> originalOpt = pEnv->dereference(pEnv->findAddress(opt.get()));
-			if (!originalOpt)
-			{
-				//エラー：未定義のレコードを参照しようとした
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
-			}
-
-			recordOpt = AsOpt<Record>(originalOpt.get());
-			if (!recordOpt)
-			{
-				//エラー：識別子の指すオブジェクトがレコード型ではない
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
-			}
-		}
-		else if (auto opt = AsOpt<Record>(record.original))
-		{
-			recordOpt = opt.get();
-		}
-		*/
-
-		//Val originalRecordRef = boost::apply_visitor(*this, record.original);
-		//Val originalRecordVal = pEnv->expandRef(originalRecordRef);
-
-		/*
-		a{}を評価する手順
-		(1) オリジナルのレコードaのクローン(a')を作る
-		(2) a'の各キーと値に対する参照をローカルスコープに追加する
-		(3) 追加するレコードの中身を評価する
-		(4) ローカルスコープの参照値を読みレコードに上書きする //リストアクセスなどの変更処理
-		(5) レコードをマージする //ローカル変数などの変更処理
-		*/
-
-		if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("path"))
-		{
-			Record pathRecord;
-			pathRecord.type = RecordType::RecordTypePath;
-			recordOpt = pathRecord;
-		}
-		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("text"))
-		{
-			Record pathRecord;
-			pathRecord.type = RecordType::RecordTypeText;
-			recordOpt = pathRecord;
-		}
-		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("shapepath"))
-		{
-			Record pathRecord;
-			pathRecord.type = RecordType::RecordTypeShapePath;
-			recordOpt = pathRecord;
-		}
-		else
-		{
-			Val originalRecordVal = pEnv->expand(boost::apply_visitor(*this, record.original), record);
-			if (auto opt = AsOpt<Record>(originalRecordVal))
-			{
-				recordOpt = opt.get();
-			}
-			else
-			{
-				CGL_ErrorNode(record, "レコード値ではない値に対してレコード継承式を適用しようとしました。");
-			}
-
-			pEnv->printContext(true);
-			CGL_DebugLog("Original:");
-			printVal(originalRecordVal, pEnv);
-		}
-
-		
 		//(1)オリジナルのレコードaのクローン(a')を作る
-		Record clone = As<Record>(Clone(pEnv, recordOpt.get(), record));
+		Record clone = As<Record>(Clone(pEnv, original, info));
 
 		CGL_DebugLog("Clone:");
 		printVal(clone, pEnv);
 
 		if (pEnv->temporaryRecord)
 		{
-			CGL_ErrorNodeInternal(record, "二重にレコード継承式を適用しようとしました。temporaryRecordは既に存在しています。");
+			CGL_ErrorNodeInternal(info, "二重にレコード継承式を適用しようとしました。temporaryRecordは既に存在しています。");
 		}
 		pEnv->temporaryRecord = clone;
 
@@ -2493,13 +2400,13 @@ namespace cgl
 		for (auto& keyval : clone.values)
 		{
 			pEnv->makeVariable(keyval.first, keyval.second);
-			
+
 			CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 		}
 
 		//(3) 追加するレコードの中身を評価する
-		Expr expr = record.adder;
-		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr), record);
+		Expr expr = adder;
+		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr), info);
 
 		//(4) ローカルスコープの参照値を読みレコードに上書きする
 		//レコード中のコロン式はレコードの最後でkeylistを見て値が紐づけられるので問題ないが
@@ -2519,59 +2426,8 @@ namespace cgl
 		}
 
 		pEnv->exitScope();
-		
+
 		return pEnv->makeTemporaryValue(recordValue);
-
-		/*
-		//(2)
-		pEnv->enterScope();
-		for (auto& keyval : clone.values)
-		{
-			//pEnv->bindObjectRef(keyval.first, keyval.second);
-			pEnv->makeVariable(keyval.first, keyval.second);
-
-			CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
-		}
-
-		CGL_DebugLog("");
-
-		//(3)
-		Expr expr = record.adder;
-		//Val recordValue = boost::apply_visitor(*this, expr);
-		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
-		if (auto opt = AsOpt<Record>(recordValue))
-		{
-			CGL_DebugLog("");
-
-			//(4)
-			for (auto& keyval : recordOpt.get().values)
-			{
-				clone.values[keyval.first] = pEnv->findAddress(keyval.first);
-			}
-
-			CGL_DebugLog("");
-
-			//(5)
-			MargeRecordInplace(clone, opt.get());
-
-			CGL_DebugLog("");
-
-			//TODO:ここで制約処理を行う
-
-			//pEnv->pop();
-			pEnv->exitScope();
-
-			//return RValue(clone);
-			return pEnv->makeTemporaryValue(clone);
-
-			//MargeRecord(recordOpt.get(), opt.get());
-		}
-
-		CGL_DebugLog("");
-
-		//pEnv->pop();
-		pEnv->exitScope();
-		*/
 	}
 
 	LRValue Eval::operator()(const DeclSat& node)
@@ -2814,7 +2670,7 @@ namespace cgl
 
 				address = it->second;
 			}
-			else
+			else if (auto recordAccessOpt = AsOpt<FunctionAccess>(access))
 			{
 				auto funcAccess = As<FunctionAccess>(access);
 
@@ -2853,6 +2709,19 @@ namespace cgl
 				}
 
 				const Val returnedValue = pEnv->expand(callFunction(accessor, function, args), accessor);
+				address = pEnv->makeTemporaryValue(returnedValue);
+			}
+			else
+			{
+				auto inheritAccess = As<InheritAccess>(access);
+
+				if (!IsType<Record>(objRef))
+				{
+					CGL_ErrorNode(accessor, "レコードでない値に対して継承式を適用しようとしました。");
+				}
+
+				const Record& record = As<Record>(objRef);
+				const Val returnedValue = pEnv->expand(inheritRecord(accessor, record, inheritAccess.adder), accessor);
 				address = pEnv->makeTemporaryValue(returnedValue);
 			}
 		}
@@ -3147,10 +3016,6 @@ namespace cgl
 		else if (IsType<RecordConstractor>(value1))
 		{
 			return As<RecordConstractor>(value1) == As<RecordConstractor>(value2);
-		}
-		else if (IsType<RecordInheritor>(value1))
-		{
-			return As<RecordInheritor>(value1) == As<RecordInheritor>(value2);
 		}
 		else if (IsType<DeclSat>(value1))
 		{

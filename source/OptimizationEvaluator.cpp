@@ -47,8 +47,6 @@ namespace cgl
 
 		bool operator()(const RecordConstractor& node) { return std::any_of(node.exprs.begin(), node.exprs.end(), [&](const Expr& expr) {return boost::apply_visitor(*this, expr); }); }
 
-		bool operator()(const RecordInheritor& node) { const Expr adder = node.adder; return boost::apply_visitor(*this, node.original) || boost::apply_visitor(*this, adder); }
-
 		bool operator()(const DeclSat& node) { return boost::apply_visitor(*this, node.expr); }
 		bool operator()(const DeclFree& node) { return std::any_of(node.accessors.begin(), node.accessors.end(), [&](const Accessor& accessor) { Expr expr = accessor; return boost::apply_visitor(*this, expr); }); }
 
@@ -76,6 +74,14 @@ namespace cgl
 						{
 							return true;
 						}
+					}
+				}
+				else if (auto opt = AsOpt<InheritAccess>(access))
+				{
+					const auto& exprs = opt.get().adder.exprs;
+					if (std::any_of(exprs.begin(), exprs.end(), [&](const Expr& expr) {return boost::apply_visitor(*this, expr); }))
+					{
+						return true;
 					}
 				}
 				//else if (auto opt = AsOpt<RecordAccess>(access)){}
@@ -428,23 +434,6 @@ namespace cgl
 		return result;
 	}
 
-	bool SatVariableBinder::operator()(const RecordInheritor& node)
-	{
-		//std::cout << getIndent() << typeid(node).name() << std::endl;
-
-		bool result = false;
-		for (size_t i = 0; i < node.adder.exprs.size(); ++i)
-		{
-			const auto& expr = node.adder.exprs[i];
-			//CGL_DebugLog(std::string("BindRecordExpr(") + ToS(i) + ")");
-			//printExpr(expr);
-			//++depth;
-			result = boost::apply_visitor(*this, expr) || result;
-			//--depth;
-		}
-		return result;
-	}
-
 	bool SatVariableBinder::operator()(const Accessor& node)
 	{
 		//std::cout << getIndent() << typeid(node).name() << std::endl;
@@ -568,7 +557,7 @@ namespace cgl
 					headAddress = it->second;
 				}
 			}
-			else
+			else if (IsType<FunctionAccess>(access))
 			{
 				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
 
@@ -639,6 +628,23 @@ namespace cgl
 						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
 					}
+				}
+			}
+			else
+			{
+				const InheritAccess& inheritAccess = As<InheritAccess>(access);
+				{
+					bool searchResult = false;
+					for (size_t i = 0; i < inheritAccess.adder.exprs.size(); ++i)
+					{
+						const auto& expr = inheritAccess.adder.exprs[i];
+						//CGL_DebugLog(std::string("BindRecordExpr(") + ToS(i) + ")");
+						//printExpr(expr);
+						//++depth;
+						searchResult = boost::apply_visitor(*this, expr) || searchResult;
+						//--depth;
+					}
+					return searchResult;
 				}
 			}
 		}

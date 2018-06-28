@@ -2136,6 +2136,67 @@ namespace cgl
 		},
 			false
 			);
+
+		registerBuiltInFunction(
+			"Error",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() == 0)
+			{
+				CGL_ErrorNode(info, "Error() called");
+			}
+			else
+			{
+				std::stringstream ss;
+				ss << "Error() called: ";
+				printVal(pEnv->expand(arguments[0], info), m_weakThis.lock(), ss);
+				CGL_ErrorNode(info, ss.str());
+			}
+
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Assert",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() == 0 || 3 <= arguments.size())
+			{
+				CGL_ErrorNode(info, "Assert() called");
+			}
+
+			if (arguments.size() == 1)
+			{
+				if (EqualFunc(pEnv->expand(arguments[0], info), true, *this))
+				{
+					return 0;
+				}
+				else
+				{
+					CGL_ErrorNode(info, "Assertion failed");
+				}
+			}
+			else
+			{
+				if (EqualFunc(pEnv->expand(arguments[0], info), true, *this))
+				{
+					return 0;
+				}
+				else
+				{
+					std::stringstream ss;
+					ss << "Assertion failed: ";
+					printVal(pEnv->expand(arguments[1], info), m_weakThis.lock(), ss);
+					CGL_ErrorNode(info, ss.str());
+				}
+			}
+
+			return 0;
+		},
+			false
+			);
 	}
 
 	void Context::changeAddress(Address addressFrom, Address addressTo)

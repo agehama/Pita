@@ -985,8 +985,10 @@ namespace cgl
 					InheritAccess access(opt.get());
 					result.add(access);
 				}
-
-				CGL_ErrorNodeInternal(node, "node.adderの評価結果がRecordConstractorでありませんでした。");
+				else
+				{
+					CGL_ErrorNodeInternal(node, "node.adderの評価結果がRecordConstractorでありませんでした。");
+				}
 			}
 			else
 			{

@@ -394,6 +394,9 @@ namespace std
 
 namespace cgl
 {
+	struct RValue;
+	struct LRValue;
+
 	class Context;
 
 	struct FuncVal;
@@ -548,9 +551,6 @@ namespace cgl
 
 	Eigen::Vector2d AsVec2(const Val& value, const Context& context);
 
-	struct RValue;
-	struct LRValue;
-
 	using Expr = boost::variant<
 		boost::recursive_wrapper<LRValue>,
 		Identifier,
@@ -584,6 +584,28 @@ namespace cgl
 
 	void printExpr(const Expr& expr);
 
+	struct EitherReference
+	{
+		std::shared_ptr<Expr> original;
+		boost::optional<Address> replaced;
+
+		EitherReference() = default;
+
+		EitherReference(const Expr& original)
+			: original(std::make_shared<Expr>(original))
+		{}
+
+		EitherReference(const Expr& original, Address address)
+			: original(std::make_shared<Expr>(original))
+			, replaced(address)
+		{}
+
+		std::string toString()const
+		{
+			return "EitherReference(...)";
+		}
+	};
+
 	struct RValue
 	{
 		RValue() = default;
@@ -610,14 +632,12 @@ namespace cgl
 		LRValue(const RValue& value) :value(value) {}
 		LRValue(Address value) :value(value) {}
 		LRValue(Reference value) :value(value) {}
+		LRValue(const EitherReference& value) :value(value) {}
 
 		static LRValue Bool(bool a) { return LRValue(Val(a)); }
 		static LRValue Int(int a) { return LRValue(Val(a)); }
 		static LRValue Double(double a) { return LRValue(Val(a)); }
-		//static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
 		static LRValue Float(const std::u32string& str);
-		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
-		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
 		LRValue& setLocation(const LocationInfo& info)
 		{
@@ -648,6 +668,11 @@ namespace cgl
 			return IsType<Reference>(value);
 		}
 
+		bool isEitherReference()const
+		{
+			return IsType<EitherReference>(value);
+		}
+
 		bool isValid()const;
 
 		std::string toString()const;
@@ -657,6 +682,11 @@ namespace cgl
 		Reference reference()const
 		{
 			return As<Reference>(value);
+		}
+
+		const EitherReference& eitherReference()const
+		{
+			return As<EitherReference>(value);
 		}
 
 		const Val& evaluated()const
@@ -693,7 +723,7 @@ namespace cgl
 			return os;
 		}
 
-		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference> value;
+		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference, EitherReference> value;
 	};
 
 	struct OptimizationProblemSat;

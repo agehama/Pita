@@ -76,7 +76,7 @@ namespace cgl
 	{
 		return IsType<Address>(value)
 			? As<Address>(value).isValid()
-			: true; //Reference と Val は常に有効であるものとする
+			: true; //EitherReference/Reference/Val は常に有効であるものとする
 	}
 
 	std::string LRValue::toString() const
@@ -88,6 +88,10 @@ namespace cgl
 		else if (isReference())
 		{
 			return std::string("Reference(") + As<Reference>(value).toString() + std::string(")");
+		}
+		else if (isEitherReference())
+		{
+			return std::string("EitherReference(") + As<EitherReference>(value).toString() + std::string(")");
 		}
 		else
 		{

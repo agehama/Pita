@@ -62,7 +62,15 @@ namespace cgl
 
 	const Val& Context::expand(const LRValue& lrvalue, const LocationInfo& info)const
 	{
-		if (lrvalue.isLValue())
+		/*if (lrvalue.isEitherReference())
+		{
+			if (lrvalue.eitherReference().original)
+			{
+				lrvalue.eitherReference().original;
+			}
+			lrvalue.eitherReference().replaced;
+		}
+		else */if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())

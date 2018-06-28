@@ -697,13 +697,14 @@ namespace cgl
 		{
 			return node;
 		}
-		//ローカル変数に無ければアドレスに置き換える
+		//Closure作成時点では全てのローカル変数は捕捉できないので、ここでアドレスに置き換えるのは安全でない
+		//したがって、Contextに存在したら名前とアドレスのどちらからも参照できるようにしておき、評価時に実際の参照先を決める
 		const Address address = pEnv->findAddress(node);
 		if (address.isValid())
 		{
 			//Identifier RecordConstructor の形をしたレコード継承の head 部分
 			//とりあえず参照先のレコードのメンバはローカル変数とおく
-			if (isInnerRecord)
+			/*if (isInnerRecord)
 			{
 				const Val& evaluated = pEnv->expand(address, node);
 				if (auto opt = AsOpt<Record>(evaluated))
@@ -715,12 +716,12 @@ namespace cgl
 						addLocalVariable(keyval.first);
 					}
 				}
-			}
+			}*/
 
-			return LRValue(address).setLocation(node);
+			return LRValue(EitherReference(node, address)).setLocation(node);
 		}
 
-		//それ以外の場合は実行してみないと分からないため、とりあえずローカル変数と仮定する
+		//それ以外の場合は実行してみないと分からないため、ローカル変数と仮定する（参照エラーはEvalで出す）
 		//例：f = (s -> s{g()}) のgがsのメンバかどうかはfのクロージャ生成時点では分からない
 		return node;
 	}
@@ -975,7 +976,6 @@ namespace cgl
 			}
 			else if (auto inheritAccess = AsOpt<InheritAccess>(access))
 			{
-				//新たに追加
 				ClosureMaker child(pEnv, localVariables, true, isInnerClosure);
 
 				Expr originalAdder = inheritAccess.get().adder;

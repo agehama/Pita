@@ -373,7 +373,7 @@ namespace cgl
 					while(true)
 					{
 						auto status = future.wait_for(0ms);
-						if (status == std::future_status::ready && 'q' == getchar())
+						if (status == std::future_status::ready && (!isBlockingMode || 'q' == getchar()))
 						{
 							break;
 						}
@@ -471,7 +471,7 @@ namespace cgl
 				std::cerr << e.what() << std::endl;
 				if (e.hasInfo)
 				{
-					PrintErrorPos("empty source", e.info);
+					PrintErrorPosSource(source, e.info);
 				}
 				else
 				{

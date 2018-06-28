@@ -5,16 +5,24 @@
 
 #include <Pita/Program.hpp>
 
+extern bool isDebugMode;
+extern bool isBlockingMode;
+
 BOOST_AUTO_TEST_SUITE(cgl)
 
 BOOST_AUTO_TEST_CASE(test_case1)
 {
 	std::vector<std::string> testCases({
 u8R"(
-a = 1
-+2
+Print("--- Parse tests ---")
+	a = 1
+	+2
+	Assert(a == 3, "Comma separation[0]")
 )"
 	});
+
+	isDebugMode = true;
+	isBlockingMode = false;
 
 	for (const auto& source: testCases)
 	{

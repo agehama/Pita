@@ -480,4 +480,5 @@ namespace cgl
 	boost::optional<Expr> Parse1(const std::string& filepath);
 	boost::optional<Expr> ParseFromSourceCode(const std::string& sourceCode);
 	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo);
+	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo);
 }

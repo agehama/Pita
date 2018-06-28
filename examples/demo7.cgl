@@ -1,0 +1,15 @@
+//bind1st = (f, x -> (y -> f(x, y)))
+//bind2nd = (f, y -> (x -> f(x, y)))
+
+main = Shape
+{
+    width: 100
+    height: 50
+    angleX: 15
+    angleY: 0
+    polygon: (->
+        GlobalShape(
+            Skew(Square{scale: Vec2(width, height)}.ellipse(), angleX, angleY)
+        ).polygon
+    )
+}

@@ -1013,8 +1013,9 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			std::cout << "Address(" << arguments[0].toString() << "): ";
-			printVal(pEnv->expand(arguments[0], info), pEnv, std::cout, 0);
+			//std::cout << "Address(" << arguments[0].toString() << "): ";
+			printVal2(pEnv->expand(arguments[0], info), pEnv, std::cout, 0);
+			std::cout << std::endl;
 			return 0;
 		},
 			false
@@ -2149,7 +2150,7 @@ namespace cgl
 			{
 				std::stringstream ss;
 				ss << "Error() called: ";
-				printVal(pEnv->expand(arguments[0], info), m_weakThis.lock(), ss);
+				printVal2(pEnv->expand(arguments[0], info), m_weakThis.lock(), ss);
 				CGL_ErrorNode(info, ss.str());
 			}
 
@@ -2188,7 +2189,7 @@ namespace cgl
 				{
 					std::stringstream ss;
 					ss << "Assertion failed: ";
-					printVal(pEnv->expand(arguments[1], info), m_weakThis.lock(), ss);
+					printVal2(pEnv->expand(arguments[1], info), m_weakThis.lock(), ss);
 					CGL_ErrorNode(info, ss.str());
 				}
 			}

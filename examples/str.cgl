@@ -1,8 +1,0 @@
-main = text{
-    rect: Square{scale= {x: 400, y: 300}}
-    str: "abcde"
-    base: path{
-        points: 7
-        passes: [rect.top(), rect.right(), rect.bottom(), rect.left()]
-    }
-}

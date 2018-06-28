@@ -189,7 +189,7 @@ namespace cgl
 
 	void ValuePrinter2::operator()(const CharString& node)const
 	{
-		os << indent() << "String(" << Unicode::UTF32ToUTF8(node.toString()) << ")" << footer();
+		os << indent() << "\"" << Unicode::UTF32ToUTF8(node.toString()) << "\"" << footer();
 		//os << indent() << "String(" << UTF8ToString(Unicode::UTF32ToUTF8(node.toString())) << ")" << footer();
 	}
 

@@ -365,18 +365,12 @@ namespace cgl
 		return result;
 	}
 
-	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo)
+	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo)
 	{
 		std::cerr << "--------------------------------------------------------------------------------" << std::endl;
-		std::ifstream ifs(input_filepath);
-		if (!ifs.is_open())
-		{
-			return;
-		}
 
 		std::stringstream tabRemovedStr;
-		char c;
-		while (ifs.get(c))
+		for (char c : sourceCode)
 		{
 			if (c == '\t')
 				tabRemovedStr << "    ";
@@ -431,7 +425,18 @@ namespace cgl
 		{
 			std::cout << "..." << std::endl;
 		}
+	}
 
-		std::cerr << "--------------------------------------------------------------------------------" << std::endl;
+	void PrintErrorPos(const std::string& inputFilepath, const LocationInfo& locationInfo)
+	{
+		std::ifstream ifs(inputFilepath);
+		if (!ifs.is_open())
+		{
+			return;
+		}
+
+		const std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+		PrintErrorPosSource(sourceCode, locationInfo);
 	}
 }

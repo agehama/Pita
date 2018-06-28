@@ -21,11 +21,7 @@ std::vector<std::string> exampleFiles()
 	const std::vector<std::string> filenames({
 		"3rects",
 		"cross",
-		"path1",
-		"path2",
 		"skeleton",
-		"str",
-		"str2",
 		"triforce",
 		"fib1",
 		"fib2",

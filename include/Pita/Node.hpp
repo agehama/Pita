@@ -2641,6 +2641,13 @@ namespace cereal
 	}
 
 	template<class Archive>
+	inline void serialize(Archive& ar, cgl::EitherReference& eitherReference)
+	{
+		ar(eitherReference.original);
+		ar(eitherReference.replaced);
+	}
+
+	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Lines& node)
 	{
 		ar(node.exprs);

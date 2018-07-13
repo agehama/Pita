@@ -99,13 +99,22 @@ namespace cgl
 	{
 		if (lrvalue.isEitherReference())
 		{
-			if (lrvalue.eitherReference().localReferenciable(*this))
+			/*if (lrvalue.eitherReference().localReferenciable(*this))
 			{
 				Eval evaluator(m_weakThis.lock());
 				Expr expr = lrvalue.eitherReference().local.get();
-				return mutableExpand(boost::apply_visitor(evaluator, expr), info);
+				LRValue result = boost::apply_visitor(evaluator, expr);
+				return mutableExpand(result, info);
 			}
 			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}*/
+			if (lrvalue.eitherReference().replaced.isValid())
 			{
 				auto it = m_values.at(lrvalue.eitherReference().replaced);
 				if (it != m_values.end())
@@ -169,13 +178,13 @@ namespace cgl
 	{
 		if (lrvalue.isEitherReference())
 		{
-			if (lrvalue.eitherReference().localReferenciable(*this))
+			/*if (lrvalue.eitherReference().localReferenciable(*this))
 			{
 				Eval evaluator(m_weakThis.lock());
 				Expr expr = lrvalue.eitherReference().local.get();
 				return mutableExpandOpt(boost::apply_visitor(evaluator, expr));
 			}
-			else if (lrvalue.eitherReference().replaced.isValid())
+			else*/ if (lrvalue.eitherReference().replaced.isValid())
 			{
 				auto it = m_values.at(lrvalue.eitherReference().replaced);
 				if (it != m_values.end())

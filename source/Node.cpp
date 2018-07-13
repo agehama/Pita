@@ -133,6 +133,16 @@ namespace cgl
 				: context.getReference(As<Reference>(value)));
 	}
 
+	Address LRValue::getReference(const Context& context)const
+	{
+		return context.getReference(As<Reference>(value));
+	}
+
+	Address LRValue::makeTemporaryValue(Context& context)const
+	{
+		return context.makeTemporaryValue(evaluated());
+	}
+
 	class ExprImportForm : public boost::static_visitor<Expr>
 	{
 	public:

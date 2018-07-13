@@ -727,7 +727,7 @@ namespace cgl
 			}
 			else if (isReference())
 			{
-				data.push_back(context.getReference(As<Reference>(value)));
+				data.push_back(getReference(context));
 			}
 			else if (isAddress())
 			{
@@ -735,7 +735,7 @@ namespace cgl
 			}
 			else
 			{
-				data.push_back(context.makeTemporaryValue(evaluated()));
+				data.push_back(makeTemporaryValue(context));
 			}
 		}
 
@@ -780,7 +780,11 @@ namespace cgl
 			friend class ExprAddressCheker;
 			friend class AddressReplacer;
 
-			Address address(const Context& env)const;
+			Address address(const Context& context)const;
+
+			Address getReference(const Context& context)const;
+
+			Address makeTemporaryValue(Context& context)const;
 	};
 
 	struct OptimizationProblemSat;

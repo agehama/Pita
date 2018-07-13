@@ -190,7 +190,6 @@ namespace cgl
 
 		void bindNewValue(const std::string& name, const Val& value)
 		{
-			CGL_DebugLog("");
 			makeVariable(name, makeTemporaryValue(value));
 		}
 

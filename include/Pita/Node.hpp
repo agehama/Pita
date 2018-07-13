@@ -704,9 +704,7 @@ namespace cgl
 
 		const EitherReference& eitherReference()const
 		{
-			CGL_DBG1("A");
 			const auto& result = As<EitherReference>(value);
-			CGL_DBG1("B");
 			return result;
 		}
 
@@ -723,25 +721,20 @@ namespace cgl
 		template<class T>
 		void push_back(T& data, Context& context)const
 		{
-			CGL_DBG;
 			if (isEitherReference())
 			{
-				CGL_DBG;
 				data.push_back(eitherReference().replaced);
 			}
 			else if (isReference())
 			{
-				CGL_DBG;
 				data.push_back(context.getReference(As<Reference>(value)));
 			}
 			else if (isAddress())
 			{
-				CGL_DBG;
 				data.push_back(address(context));
 			}
 			else
 			{
-				CGL_DBG;
 				data.push_back(context.makeTemporaryValue(evaluated()));
 			}
 		}

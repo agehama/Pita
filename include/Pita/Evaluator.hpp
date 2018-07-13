@@ -195,7 +195,6 @@ namespace cgl
 	class ClosureMaker : public boost::static_visitor<Expr>
 	{
 	public:
-
 		//関数内部で閉じているローカル変数
 		std::set<std::string> localVariables;
 
@@ -256,7 +255,6 @@ namespace cgl
 	class Eval : public boost::static_visitor<LRValue>
 	{
 	public:
-
 		Eval(std::shared_ptr<Context> pEnv) :pEnv(pEnv) {}
 
 		virtual LRValue operator()(const LRValue& node) { return node; }

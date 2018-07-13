@@ -1000,6 +1000,7 @@ Library.
 
 	program.execute1(input_file, output_file, !isDebugMode);
 	/*
+	isDebugMode = true;
 	const bool flag = program.preEvaluate(input_file, output_file);
 	std::cout << std::boolalpha << "Result: " << flag << std::endl;
 	//*/

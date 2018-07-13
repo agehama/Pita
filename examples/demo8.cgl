@@ -1,0 +1,33 @@
+main = Shape
+{
+    a: Circle(100){pos: Vec2(100,100), scale:50}
+    b: Circle(100){pos: Vec2(300,100), scale:50}
+
+    /*
+    obstacles: for i in 1:5 list(
+        Circle(100){pos: RandomIn(Square{scale:X2(500)}), scale:25}
+    )
+    */
+    obstacles: 5 of (->
+        Circle(100){pos: RandomIn(Square{scale:X2(500)}), scale:25}
+    )
+
+    center = (a.pos + b.pos)/2
+    path = Path([a.pos, b.pos])
+
+    maxLength = Length(center - a.pos)
+    sqrtHeight: 0
+
+    line: (->
+        PathMap(path, (pos, norm ->
+            distance = Length(center - pos)
+            pos + norm * (distance / maxLength) * sqrtHeight
+        )).line
+    )
+
+    stroke: Rgb(0,0,0)
+    stroke_width: 5
+
+    sat( NotIntersect(line, obstacles) )
+    var(sqrtHeight)
+}

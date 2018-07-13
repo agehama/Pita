@@ -1,0 +1,9 @@
+grid = FrameGrid(Square{scale:Vec2(20, 40)}, Vec2(5, 5))
+
+main = Shape{
+    cs: 10 of (->Circle(10){scale: 5})
+    for i in 0:Size(cs)-1 do(
+        sat( Contact(Center(grid(i, 0)), cs[i].pos) )
+    )
+    var(cs[*].pos)
+}

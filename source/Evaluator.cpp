@@ -708,7 +708,7 @@ namespace cgl
 		{
 			//Identifier RecordConstructor の形をしたレコード継承の head 部分
 			//とりあえず参照先のレコードのメンバはローカル変数とおく
-			/*if (isInnerRecord)
+			if (isInnerRecord)
 			{
 				const Val& evaluated = pEnv->expand(address, node);
 				if (auto opt = AsOpt<Record>(evaluated))
@@ -720,7 +720,7 @@ namespace cgl
 						addLocalVariable(keyval.first);
 					}
 				}
-			}*/
+			}
 
 			return LRValue(EitherReference(node, address)).setLocation(node);
 		}

@@ -62,15 +62,26 @@ namespace cgl
 
 	const Val& Context::expand(const LRValue& lrvalue, const LocationInfo& info)const
 	{
-		/*if (lrvalue.isEitherReference())
+		if (lrvalue.isEitherReference())
 		{
-			if (lrvalue.eitherReference().original)
+			if (lrvalue.eitherReference().localReferenciable(*this))
 			{
-				lrvalue.eitherReference().original;
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				return expand(boost::apply_visitor(evaluator, expr), info);
 			}
-			lrvalue.eitherReference().replaced;
+			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			CGL_ErrorNode(info, std::string("値") + lrvalue.toString() + "の参照に失敗しました。");
 		}
-		else */if (lrvalue.isLValue())
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -86,7 +97,26 @@ namespace cgl
 
 	Val& Context::mutableExpand(LRValue& lrvalue, const LocationInfo& info)
 	{
-		if (lrvalue.isLValue())
+		if (lrvalue.isEitherReference())
+		{
+			if (lrvalue.eitherReference().localReferenciable(*this))
+			{
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				return mutableExpand(boost::apply_visitor(evaluator, expr), info);
+			}
+			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			CGL_ErrorNode(info, std::string("値") + lrvalue.toString() + "の参照に失敗しました。");
+		}
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -102,7 +132,26 @@ namespace cgl
 
 	boost::optional<const Val&> Context::expandOpt(const LRValue& lrvalue)const
 	{
-		if (lrvalue.isLValue())
+		if (lrvalue.isEitherReference())
+		{
+			if (lrvalue.eitherReference().localReferenciable(*this))
+			{
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				return expandOpt(boost::apply_visitor(evaluator, expr));
+			}
+			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			return boost::none;
+		}
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -118,7 +167,26 @@ namespace cgl
 
 	boost::optional<Val&> Context::mutableExpandOpt(LRValue& lrvalue)
 	{
-		if (lrvalue.isLValue())
+		if (lrvalue.isEitherReference())
+		{
+			if (lrvalue.eitherReference().localReferenciable(*this))
+			{
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				return mutableExpandOpt(boost::apply_visitor(evaluator, expr));
+			}
+			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			return boost::none;
+		}
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -812,6 +880,11 @@ namespace cgl
 	bool Context::existsInCurrentScope(const std::string& name)const
 	{
 		return localEnv().back().variables.find(name) != localEnv().back().variables.end();
+	}
+
+	bool Context::existsInLocalScope(const std::string& name)const
+	{
+		return std::any_of(localEnv().begin(), localEnv().end(), [&](const Scope& scope) {return scope.variables.find(name) != scope.variables.end(); });
 	}
 
 	void Context::printContext(bool flag)const {}

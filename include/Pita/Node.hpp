@@ -586,23 +586,42 @@ namespace cgl
 
 	struct EitherReference
 	{
-		std::shared_ptr<Expr> original;
-		boost::optional<Address> replaced;
+		//std::shared_ptr<Expr> local;
+		boost::optional<Identifier> local;
+		Address replaced;
 
 		EitherReference() = default;
 
-		EitherReference(const Expr& original)
-			: original(std::make_shared<Expr>(original))
+		/*EitherReference(const Expr& original)
+			: local(std::make_shared<Expr>(original))
 		{}
 
 		EitherReference(const Expr& original, Address address)
-			: original(std::make_shared<Expr>(original))
+			: local(std::make_shared<Expr>(original))
 			, replaced(address)
 		{}
 
+		EitherReference(std::shared_ptr<Expr> original, Address address)
+			: local(original)
+			, replaced(address)
+		{}*/
+		EitherReference(const boost::optional<Identifier>& original)
+			: local(original)
+		{}
+
+		EitherReference(const boost::optional<Identifier>& original, Address address)
+			: local(original)
+			, replaced(address)
+		{}
+
+		bool localReferenciable(const Context& context)const;
+
 		std::string toString()const
 		{
-			return "EitherReference(...)";
+			std::stringstream ss;
+			ss << (local ? local.get().toString() : std::string("None"));
+			ss << " | " << "Address(" << replaced.toString() << ")";
+			return ss.str();
 		}
 	};
 
@@ -676,8 +695,7 @@ namespace cgl
 		bool isValid()const;
 
 		std::string toString()const;
-
-		Address address(const Context& env)const;
+		std::string toString(Context& context)const;
 
 		Reference reference()const
 		{
@@ -686,7 +704,10 @@ namespace cgl
 
 		const EitherReference& eitherReference()const
 		{
-			return As<EitherReference>(value);
+			CGL_DBG1("A");
+			const auto& result = As<EitherReference>(value);
+			CGL_DBG1("B");
+			return result;
 		}
 
 		const Val& evaluated()const
@@ -697,6 +718,42 @@ namespace cgl
 		Val& mutableVal()
 		{
 			return As<RValue>(value).value;
+		}
+
+		template<class T>
+		void push_back(T& data, Context& context)const
+		{
+			CGL_DBG;
+			if (isEitherReference())
+			{
+				CGL_DBG;
+				data.push_back(eitherReference().replaced);
+			}
+			else if (isReference())
+			{
+				CGL_DBG;
+				data.push_back(context.getReference(As<Reference>(value)));
+			}
+			else if (isAddress())
+			{
+				CGL_DBG;
+				data.push_back(address(context));
+			}
+			else
+			{
+				CGL_DBG;
+				data.push_back(context.makeTemporaryValue(evaluated()));
+			}
+		}
+
+		boost::optional<Address> deref(const Context& env)const
+		{
+			if (isRValue())
+			{
+				return boost::none;
+			}
+
+			return address(env);
 		}
 
 		bool operator==(const LRValue& other)const
@@ -724,6 +781,13 @@ namespace cgl
 		}
 
 		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference, EitherReference> value;
+
+		private:
+			friend class Context;
+			friend class ExprAddressCheker;
+			friend class AddressReplacer;
+
+			Address address(const Context& env)const;
 	};
 
 	struct OptimizationProblemSat;
@@ -1589,7 +1653,7 @@ namespace cgl
 			data.push_back(address);
 		}
 
-		List& append(const Address& address)
+		List& push_back(const Address& address)
 		{
 			data.push_back(address);
 			return *this;
@@ -2638,6 +2702,13 @@ namespace cereal
 	inline void serialize(Archive& ar, cgl::Reference& reference)
 	{
 		ar(reference.referenceID);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::EitherReference& reference)
+	{
+		ar(reference.local);
+		ar(reference.replaced);
 	}
 
 	template<class Archive>

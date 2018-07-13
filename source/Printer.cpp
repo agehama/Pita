@@ -378,14 +378,15 @@ namespace cgl
 		{
 			if (node.isAddress())
 			{
-				if (pEnv)
+				os << indent() << node.toString() << std::endl;
+				/*if (pEnv)
 				{
-					os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.address(*pEnv).toString() << ")" << std::endl;
+					os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.deref(*pEnv).get().toString() << ")" << std::endl;
 				}
 				else
 				{
 					os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
-				}
+				}*/
 			}
 			else
 			{
@@ -400,15 +401,6 @@ namespace cgl
 					os << indent() << "Reference" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
 				}
 			}
-			//os << indent() << node.toString() << std::endl;
-			/*if (pEnv)
-			{
-				os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.address(*pEnv).toString() << ")" << std::endl;
-			}
-			else
-			{
-				os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
-			}*/
 		}
 		else
 		{
@@ -699,16 +691,7 @@ namespace cgl
 	{
 		if (node.isLValue())
 		{
-			if (pEnv)
-			{
-				//os << indent() << "Address(" << node.address(*pEnv).toString() << ")" << footer();
-				os << "Address(" << node.address(*pEnv).toString() << ")" << footer();
-			}
-			else
-			{
-				//os << indent() << "Address(" << node.toString() << ")" << footer();
-				os << "Address(" << node.toString() << ")" << footer();
-			}
+			os << node.toString() << footer();
 		}
 		else
 		{

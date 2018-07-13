@@ -174,7 +174,7 @@ namespace cgl
 
 		if (node.isLValue())
 		{
-			const Address address = node.address(*pEnv);
+			const Address address = node.deref(*pEnv).get();
 
 			if (!address.isValid())
 			{
@@ -474,12 +474,12 @@ namespace cgl
 		else if (IsType<LRValue>(head))
 		{
 			const LRValue& headAddressValue = As<LRValue>(head);
-			if (!headAddressValue.isLValue())
+			if (headAddressValue.isRValue())
 			{
 				CGL_Error("sat式中のアクセッサの先頭部が不正な値です");
 			}
 
-			headAddress = headAddressValue.address(*pEnv);
+			headAddress = headAddressValue.deref(*pEnv).get();
 		}
 		//それ以外であれば、headはその場で作られるローカル変数とみなす
 		else
@@ -609,14 +609,7 @@ namespace cgl
 						}
 
 						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
-						if (lrvalue.isLValue())
-						{
-							arguments.push_back(lrvalue.address(*pEnv));
-						}
-						else
-						{
-							arguments.push_back(pEnv->makeTemporaryValue(lrvalue.evaluated()));
-						}
+						lrvalue.push_back(arguments, *pEnv);
 					}
 					isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
 

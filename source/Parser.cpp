@@ -185,16 +185,17 @@ namespace cgl
 			const auto utf32str = AsUtf32(sourceCode);
 
 			bool inLineComment = false;
-			bool inScopeComment = false;
+			int scopeCommentDepth = 0;
 			for (auto it = utf32str.begin(); it != utf32str.end(); ++it)
 			{
-				if (inScopeComment)
+				std::stringstream currentChar;
+				bool skipNext = false;
+				if (1 <= scopeCommentDepth)
 				{
 					//エラー位置を正しく捕捉するため、コメント内でも改行はちゃんと拾う必要がある
 					if (*it == '\n')
 					{
-						escapedStr << '\n';
-						continue;
+						currentChar << '\n';
 					}
 					else if (*it == '*')
 					{
@@ -202,35 +203,25 @@ namespace cgl
 						{
 							if (opt.get() == '/')
 							{
-								inScopeComment = false;
-								++it;
-								escapedStr << "  ";
-								continue;
+								--scopeCommentDepth;
+								currentChar << "  ";
+								skipNext = true;
 							}
 						}
 					}
-
-					escapedStr << ' ';
-					continue;
 				}
-
-				if (inLineComment)
+				else if (inLineComment)
 				{
 					if (*it == '\n')
 					{
-						escapedStr << '\n';
+						currentChar << '\n';
 						inLineComment = false;
 					}
-					else
-					{
-						escapedStr << ' ';
-					}
-					continue;
 				}
 
 				if (*it == '\t')
 				{
-					escapedStr << "    ";
+					currentChar << "    ";
 				}
 				else if (*it == '/')
 				{
@@ -238,17 +229,51 @@ namespace cgl
 					{
 						if (opt.get() == '/' || opt.get() == '*')
 						{
-							(opt.get() == '/' ? inLineComment : inScopeComment) = true;
-							++it;
-							escapedStr << "  ";
-							continue;
+							if (opt.get() == '/')
+							{
+								inLineComment = true;
+							}
+							else
+							{
+								++scopeCommentDepth;
+							}
+
+							currentChar << "  ";
+							skipNext = true;
 						}
 					}
 				}
 
-				escapedStr << AsUtf8(std::u32string(it, it + 1));
+				if (skipNext)
+				{
+					++it;
+				}
+
+				if (skipNext || inLineComment || 1 <= scopeCommentDepth)
+				{
+					if (currentChar.str().empty())
+					{
+						escapedStr << ' ';
+					}
+					else
+					{
+						escapedStr << currentChar.str();
+					}
+				}
+				else
+				{
+					escapedStr << AsUtf8(std::u32string(it, it + 1));
+				}
 			}
 		}
+
+		//for debug
+		/*
+		std::cout << "Escaped str" << std::endl;
+		std::cout << "----------------------------------------------" << std::endl;
+		std::cout << escapedStr.str() << std::endl;
+		std::cout << "----------------------------------------------" << std::endl;
+		*/
 
 		return escapedStr.str();
 	}

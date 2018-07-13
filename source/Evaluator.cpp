@@ -138,7 +138,11 @@ namespace cgl
 
 		if (auto opt = getOpt(node.address(*pEnv)))
 		{
-			if (node.isReference())
+			if (node.isEitherReference())
+			{
+				return LRValue(EitherReference(node.eitherReference().local, opt.get())).setLocation(node);
+			}
+			else if (node.isReference())
 			{
 				return LRValue(pEnv->cloneReference(node.reference(), replaceMap)).setLocation(node);
 			}
@@ -330,14 +334,14 @@ namespace cgl
 		{
 			if (auto opt = getOpt(data[i]))
 			{
-				result.append(opt.get());
+				result.push_back(opt.get());
 			}
 			else
 			{
 				const Val& substance = pEnv->expand(data[i], info);
 				const Val clone = boost::apply_visitor(*this, substance);
 				const Address newAddress = pEnv->makeTemporaryValue(clone);
-				result.append(newAddress);
+				result.push_back(newAddress);
 				replaceMap[data[i]] = newAddress;
 			}
 		}
@@ -784,7 +788,8 @@ namespace cgl
 				if (address.isValid())
 				{
 					//TODO: 制約式の場合は、ここではじく必要がある
-					return BinaryExpr(LRValue(address), rhs, node.op).setLocation(node);
+					//return BinaryExpr(LRValue(address), rhs, node.op).setLocation(node);
+					return LRValue(EitherReference(identifier, address)).setLocation(node);
 				}
 				//スコープにも無い場合は新たなローカル変数の宣言なので、ローカル変数に追加しておく
 				else
@@ -1101,8 +1106,6 @@ namespace cgl
 
 		case BinaryOp::Assign:
 		{
-			//return Assign(lhs, rhs, *pEnv);
-
 			//Assignの場合、lhs は Address or Identifier or Accessor に限られる
 			//つまり現時点では、(if cond then x else y) = true のような式を許可していない
 			//ここで左辺に直接アドレスが入っていることは有り得る？
@@ -1115,8 +1118,23 @@ namespace cgl
 					pEnv->assignToReference(valOpt.get().reference(), rhs_, node);
 					return RValue(rhs);
 				}
+				else if (valOpt.get().isEitherReference())
+				{
+					const auto& ref = valOpt.get().eitherReference();
+					if (ref.local)
+					{
+						Expr assignExpr = BinaryExpr(*ref.local, rhs_, BinaryOp::Assign);
+						return pEnv->expand(boost::apply_visitor(*this, assignExpr), node);
+					}
+					else
+					{
+						//ref.replaced;
+						CGL_ErrorNodeInternal(node, "一時オブジェクトへの代入はできません。");
+					}
+				}
 				else
 				{
+					printExpr(node.lhs, pEnv, std::cout);
 					CGL_ErrorNodeInternal(node, "一時オブジェクトへの代入はできません。");
 				}
 			}
@@ -1175,7 +1193,7 @@ namespace cgl
 		return pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr);
 	}
 
-	LRValue Eval::callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
+	LRValue Eval::callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& arguments)
 	{
 		CGL_DebugLog("Function Context:");
 		pEnv->printContext();
@@ -1239,13 +1257,13 @@ namespace cgl
 		}*/
 		if (funcVal.builtinFuncAddress)
 		{
-			return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.get(), expandedArguments, info));
+			return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.get(), arguments, info));
 		}
 
 		CGL_DebugLog("");
 
 		//if (funcVal.arguments.size() != callFunc.actualArguments.size())
-		if (funcVal.arguments.size() != expandedArguments.size())
+		if (funcVal.arguments.size() != arguments.size())
 		{
 			CGL_ErrorNode(info, "仮引数の数と実引数の数が合っていません。");
 		}
@@ -1272,27 +1290,19 @@ namespace cgl
 			12/14
 			引数はスコープをまたぐ時に参照先が変わらないように全てIDで渡すことにする。
 			*/
-			pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
+			pEnv->bindValueID(funcVal.arguments[i], arguments[i]);
 		}
 
 		CGL_DebugLog("Function Definition:");
 		printExpr(funcVal.expr);
 
 		//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
-		//Val result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
 		Val result;
 		{
-			//const Val resultValue = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
-			//result = pEnv->expandRef(pEnv->makeTemporaryValue(resultValue));
-			/*
-			EliminateScopeDependency elim(pEnv);
-			result = pEnv->makeTemporaryValue(boost::apply_visitor(elim, resultValue));
-			*/
 			result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr), info);
 			CGL_DebugLog("Function Val:");
 			printVal(result, nullptr);
 		}
-		//Val result = pEnv->expandObject();
 
 		CGL_DebugLog("");
 
@@ -1305,7 +1315,7 @@ namespace cgl
 		pEnv->switchBackScope();
 
 		CGL_DebugLog("");
-			
+
 		//評価結果がreturn式だった場合はreturnを外して中身を返す
 		//return以外のジャンプ命令は関数では効果を持たないのでそのまま上に返す
 		if (IsType<Jump>(result))
@@ -1558,14 +1568,7 @@ namespace cgl
 		for (const auto& expr : listConstractor.data)
 		{
 			LRValue lrvalue = boost::apply_visitor(*this, expr);
-			if (lrvalue.isLValue())
-			{
-				list.append(lrvalue.address(*pEnv));
-			}
-			else
-			{
-				list.append(pEnv->makeTemporaryValue(lrvalue.evaluated()));
-			}
+			lrvalue.push_back(list, *pEnv);
 		}
 
 		return RValue(list);
@@ -2569,7 +2572,6 @@ namespace cgl
 		}
 		*/
 
-
 		if (IsType<Identifier>(accessor.head))
 		{
 			const auto head = As<Identifier>(accessor.head);
@@ -2580,9 +2582,9 @@ namespace cgl
 		}
 
 		LRValue headValue = boost::apply_visitor(*this, accessor.head);
-		if (headValue.isLValue())
+		if (headValue.isLValue() && headValue.deref(*pEnv))
 		{
-			address = headValue.address(*pEnv);
+			address = headValue.deref(*pEnv).get();
 		}
 		else
 		{
@@ -2700,14 +2702,7 @@ namespace cgl
 				for (const auto& expr : funcAccess.actualArguments)
 				{
 					const LRValue currentArgument = pEnv->expand(boost::apply_visitor(*this, expr), accessor);
-					if (currentArgument.isLValue())
-					{
-						args.push_back(currentArgument.address(*pEnv));
-					}
-					else
-					{
-						args.push_back(pEnv->makeTemporaryValue(currentArgument.evaluated()));
-					}
+					currentArgument.push_back(args, *pEnv);
 				}
 
 				const Val returnedValue = pEnv->expand(callFunction(accessor, function, args), accessor);
@@ -2729,88 +2724,6 @@ namespace cgl
 		}
 
 		return LRValue(address);
-	}
-
-
-	bool HasFreeVariables::operator()(const LRValue& node)
-	{
-		if (node.isRValue())
-		{
-			const Val& val = node.evaluated();
-			if (IsType<double>(val) || IsType<int>(val) || IsType<bool>(val))
-			{
-				return false;
-			}
-
-			CGL_ErrorNodeInternal(node, "制約式の評価結果が不正な値でした。");
-		}
-
-		Address address = node.address(*pEnv);
-		for (const auto& freeVal : freeVariables)
-		{
-			if (address == freeVal)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	bool HasFreeVariables::operator()(const Identifier& node)
-	{
-		Address address = pEnv->findAddress(node);
-		for (const auto& freeVal : freeVariables)
-		{
-			if (address == freeVal)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	bool HasFreeVariables::operator()(const UnaryExpr& node)
-	{
-		return boost::apply_visitor(*this, node.lhs);
-	}
-
-	bool HasFreeVariables::operator()(const BinaryExpr& node)
-	{
-		const bool lhs = boost::apply_visitor(*this, node.lhs);
-		if (lhs)
-		{
-			return true;
-		}
-
-		const bool rhs = boost::apply_visitor(*this, node.rhs);
-		return rhs;
-	}
-
-	bool HasFreeVariables::operator()(const Accessor& node)
-	{
-		Expr expr = node;
-		Eval evaluator(pEnv);
-		const LRValue value = boost::apply_visitor(evaluator, expr);
-
-		if (value.isLValue())
-		{
-			const Address address = value.address(*pEnv);
-
-			for (const auto& freeVal : freeVariables)
-			{
-				if (address == freeVal)
-				{
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		CGL_ErrorNodeInternal(node, "制約式の評価結果が不正な値でした。");
-		return false;
 	}
 
 	boost::optional<const Val&> evalExpr(const Expr& expr)

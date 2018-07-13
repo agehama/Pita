@@ -271,7 +271,7 @@ namespace cgl
 
 		virtual LRValue operator()(const DefFunc& defFunc);
 
-		virtual LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments);
+		virtual LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& arguments);
 		virtual LRValue inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder);
 
 		virtual LRValue operator()(const Range& range) { return RValue(0); }
@@ -298,46 +298,6 @@ namespace cgl
 
 	protected:
 		std::shared_ptr<Context> pEnv;
-	};
-
-	class HasFreeVariables : public boost::static_visitor<bool>
-	{
-	public:
-		HasFreeVariables(std::shared_ptr<Context> pEnv, const std::vector<Address>& freeVariables) :
-			pEnv(pEnv),
-			freeVariables(freeVariables)
-		{}
-
-		//AccessorからObjectReferenceに変換するのに必要
-		std::shared_ptr<Context> pEnv;
-
-		//freeに指定された変数全て
-		std::vector<Address> freeVariables;
-
-		bool operator()(const LRValue& node);
-
-		bool operator()(const Identifier& node);
-
-		bool operator()(const Import& node) { return false; }
-
-		bool operator()(const UnaryExpr& node);
-
-		bool operator()(const BinaryExpr& node);
-
-		bool operator()(const DefFunc& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const Range& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const Lines& node) { CGL_Error("invalid expression"); return false; }
-
-		bool operator()(const If& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const For& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const Return& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const ListConstractor& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const KeyExpr& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const RecordConstractor& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
-		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
-
-		bool operator()(const Accessor& node);
 	};
 
 	boost::optional<const Val&> evalExpr(const Expr& expr);

@@ -13,25 +13,73 @@ BOOST_AUTO_TEST_SUITE(cgl)
 BOOST_AUTO_TEST_CASE(test_case1)
 {
 	std::vector<std::string> testCases({
-u8R"(
-Print("--- Parse tests ---")
+#ifdef comment
+u8R"*(
+(
+	Print("--- Parse tests ---")
+
 	a = 1
-	+2
-	Assert(a == 3, "Comma separation[0]")
-)",
+	+ 2
+	Assert(a == 3, "comma separation(0)")
+)
+(
+	Print("--- Comment tests ---")
+
+	//Assert(false, "line comment")
+
+	/*
+	Assert(false, "scope comment(0)")
+	*/
+
+	a = 1
+	/*
+	a = 2
+	//*/
+	Assert(a == 1, "scope comment(1)")
+
+	a = 1
+	//*
+	a = 2
+	//*/
+	Assert(a == 2, "scope comment(2)")
+
+	/*
+	Assert(false, "scope nest comment")
+	/*
+	Assert(false, "scope nest comment")
+	*/
+	Assert(false, "scope nest comment")
+	*/
+)
+)*",
+#endif
 u8R"(
 Print("--- ClosureMaker tests ---")
+/*
 (
-	record = {
-		a: 1
-	}
-	a = 2
-	f = (->record{a = 3})
-
-	r = f()
-	Assert(a == 2, "ClosureMaker[0]")
-	Assert(r.a == 3, "ClosureMaker[1]")
+	a = 1
+	f = (->Print(a))
+	Print(f)
+	f()
 )
+//*/
+(
+	/*record = {
+		//a: 1
+	}*/
+	a = 2
+	//f = (->Print(a))
+
+	f = (->@a = 3,Print(a))
+	//f = (->record{@a = 3/*,Print(a),Print(@a)*/})
+
+	Print(f)
+	r = f()
+	Print(a)
+	//Assert(@a == 3, "ClosureMaker[0]")
+	//Assert(r.a == 3, "ClosureMaker[1]")
+)
+/*
 (
 	makeFunc = (-> {a: 1})
 	a = 2
@@ -43,6 +91,7 @@ Print("--- ClosureMaker tests ---")
 
 	Assert(record.get() == 3, "ClosureMaker[2]")
 )
+*/
 )"
 	});
 

@@ -67,6 +67,11 @@ namespace cgl
 		return Identifier(Unicode::UTF32ToUTF8(name_));
 	}
 
+	bool EitherReference::localReferenciable(const Context& context)const
+	{
+		return local && context.existsInLocalScope(local.get());
+	}
+
 	LRValue LRValue::Float(const std::u32string& str)
 	{
 		return LRValue(std::stod(Unicode::UTF32ToUTF8(str)));
@@ -99,11 +104,33 @@ namespace cgl
 		}
 	}
 
-	Address LRValue::address(const Context & env) const
+	std::string LRValue::toString(Context& context) const
+	{
+		if (isAddress())
+		{
+			return std::string("Address(") + As<Address>(value).toString() + std::string(")");
+		}
+		else if (isReference())
+		{
+			return std::string("Reference(") + As<Reference>(value).toString() + std::string(")");
+		}
+		else if (isEitherReference())
+		{
+			return std::string("EitherReference(") + As<EitherReference>(value).toString() + std::string(")");
+		}
+		else
+		{
+			return std::string("Val(...)");
+		}
+	}
+
+	Address LRValue::address(const Context & context) const
 	{
 		return IsType<Address>(value)
 			? As<Address>(value)
-			: env.getReference(As<Reference>(value));
+			: (IsType<EitherReference>(value)
+				? As<EitherReference>(value).replaced
+				: context.getReference(As<Reference>(value)));
 	}
 
 	class ExprImportForm : public boost::static_visitor<Expr>

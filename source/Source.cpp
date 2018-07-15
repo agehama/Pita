@@ -4,6 +4,7 @@
 #pragma comment(lib, "pdcurses.lib")
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 
 #include <signal.h>
@@ -998,7 +999,22 @@ Library.
 	calculating = true;
 	cgl::Program program;
 
-	program.execute1(input_file, output_file, !isDebugMode);
+	//cgl::Parse1(input_file);
+	try
+	{
+		std::cout << std::setprecision(17);
+		isDebugMode = true;
+		cgl::Parse1("../Pita/examples/common.cgl");
+		cgl::Parse1("../Pita/examples/pita_p3_.cgl");
+		cgl::Parse1("../Pita/examples/pita_characteristics.cgl");
+		cgl::Parse1("../Pita/examples/pita_logo.cgl");
+	}
+	catch (cgl::Exception& e)
+	{
+		std::cout << e.what() << std::endl;
+	}
+
+	//program.execute1(input_file, output_file, !isDebugMode);
 	/*
 	isDebugMode = true;
 	const bool flag = program.preEvaluate(input_file, output_file);

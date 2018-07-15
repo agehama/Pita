@@ -5,7 +5,6 @@
 namespace cgl
 {
 	std::stack<filesystem::path> workingDirectories;
-	//std::set<filesystem::path> alreadyImportedFiles;
 
 	std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 
@@ -303,7 +302,7 @@ namespace cgl
 		auto it = beginIt;
 		SpaceSkipper<IteratorT> skipper;
 		Parser<SpaceSkipperT> grammer(beginSource, endSource, filename);
-		
+
 		const double parseBegin = GetSec();
 		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))
 		{
@@ -318,7 +317,7 @@ namespace cgl
 			return boost::none;
 		}
 		const double parseSec = GetSec() - parseBegin;
-		std::cerr << "parse(Qi) : " << parseSec << "[sec]" << std::endl;
+		std::cerr << "parse: " << parseSec << "[sec]" << std::endl;
 
 		if (it != endIt)
 		{

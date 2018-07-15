@@ -72,7 +72,6 @@ namespace cgl
 
 	using namespace boost::spirit;
 
-	//using IteratorT = std::string::const_iterator;
 	using SourceT = boost::spirit::line_pos_iterator<std::string::const_iterator>;
 	using IteratorT = boost::u8_to_u32_iterator<SourceT>;
 
@@ -334,17 +333,9 @@ namespace cgl
 				)
 				>> s > encode::char_(']');
 
-			/*
-			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
-				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
-				| (record_maker[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
-				| (record_inheritor[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]));
-			*/
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
 				| (list_maker[_val = Call(Accessor::Make, _1)] >> listAccess[Call(Accessor::AppendList, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]))
 				| (record_maker[_val = Call(Accessor::Make, _1)] >> recordAccess[Call(Accessor::AppendRecord, _val, _1)] >> *(access[Call(Accessor::Append, _val, _1)]));
-
-			//accessor = (factor[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]));
 
 			access = functionAccess[_val = Cast<FunctionAccess, Access>()]
 				| listAccess[_val = Cast<ListAccess, Access>()]
@@ -353,7 +344,6 @@ namespace cgl
 
 			recordAccess = encode::char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
 
-			//listAccess = encode::char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> encode::char_(']');
 			listAccess = encode::char_('[') >> s >> (encode::char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> s >> encode::char_(']');
 
 			functionAccess = encode::char_('(')
@@ -367,11 +357,8 @@ namespace cgl
 				| ('(' >> s > expr_seq[_val = _1] > s > ')')
 				| ('\"' > char_string[_val = Call(BuildString, _1)] > '\"')
 				| constraints[_val = _1]
-				//| record_inheritor[_val = _1]
 				| freeVals[_val = _1]
-				//| ("shapeOf(" > accessor[_val = _1] >')')
 				| accessor[_val = _1]
-				//| record_inheritor[_val = _1]
 				| def_func[_val = _1]
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
@@ -412,11 +399,7 @@ namespace cgl
 				qi::on_error<qi::fail>(pow_term1, errorInfo);
 				qi::on_error<qi::fail>(constraints, errorInfo);
 				qi::on_error<qi::fail>(freeVals, errorInfo);
-				//qi::on_error<qi::fail>(functionAccess, errorInfo);
-				//qi::on_error<qi::fail>(recordAccess, errorInfo);
-				//qi::on_error<qi::fail>(listAccess, errorInfo);
 				qi::on_error<qi::fail>(accessor, errorInfo);
-				//qi::on_error<qi::fail>(access, errorInfo);
 				qi::on_error<qi::fail>(record_keyexpr, errorInfo);
 				qi::on_error<qi::fail>(record_maker, errorInfo);
 				qi::on_error<qi::fail>(list_maker, errorInfo);
@@ -425,32 +408,21 @@ namespace cgl
 				qi::on_error<qi::fail>(if_expr, errorInfo);
 				qi::on_error<qi::fail>(return_expr, errorInfo);
 				qi::on_error<qi::fail>(def_func, errorInfo);
-				//qi::on_error<qi::fail>(arguments, errorInfo);
 				qi::on_error<qi::fail>(id, errorInfo);
 				qi::on_error<qi::fail>(key_expr, errorInfo);
-				//qi::on_error<qi::fail>(char_string, errorInfo);
 				qi::on_error<qi::fail>(expr_seq, errorInfo);
 				qi::on_error<qi::fail>(statement, errorInfo);
 
 				auto setLocationInfo = annotate(_val, _1, _3);
-				//qi::on_success(general_expr, setLocationInfo);
 				qi::on_success(logic_expr, setLocationInfo);
 				qi::on_success(logic_term, setLocationInfo);
 				qi::on_success(logic_factor, setLocationInfo);
 				qi::on_success(compare_expr, setLocationInfo);
 				qi::on_success(arith_expr, setLocationInfo);
 				qi::on_success(basic_arith_expr, setLocationInfo);
-				//qi::on_success(term, setLocationInfo);
-				//qi::on_success(factor, setLocationInfo);
-				//qi::on_success(pow_term, setLocationInfo);
-				//qi::on_success(pow_term1, setLocationInfo);
 				qi::on_success(constraints, setLocationInfo);
 				qi::on_success(freeVals, setLocationInfo);
-				//qi::on_success(functionAccess, setLocationInfo);
-				//qi::on_success(recordAccess, setLocationInfo);
-				//qi::on_success(listAccess, setLocationInfo);
 				qi::on_success(accessor, setLocationInfo);
-				//qi::on_success(access, setLocationInfo);
 				qi::on_success(record_keyexpr, setLocationInfo);
 				qi::on_success(record_maker, setLocationInfo);
 				qi::on_success(list_maker, setLocationInfo);
@@ -458,14 +430,8 @@ namespace cgl
 				qi::on_success(for_expr, setLocationInfo);
 				qi::on_success(if_expr, setLocationInfo);
 				qi::on_success(return_expr, setLocationInfo);
-				//qi::on_success(def_func, setLocationInfo);
-				//qi::on_success(arguments, setLocationInfo);
 				qi::on_success(id, setLocationInfo);
 				qi::on_success(key_expr, setLocationInfo);
-				//qi::on_success(char_string, setLocationInfo);
-				//qi::on_success(expr_seq, setLocationInfo);
-				//qi::on_success(statement, setLocationInfo);
-				//qi::on_success(program, setLocationInfo);
 
 				/*BOOST_SPIRIT_DEBUG_NODES(
 				(float_value)(unchecked_identifier)(distinct_keyword)(s)(s1)(program)

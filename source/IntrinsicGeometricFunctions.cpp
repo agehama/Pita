@@ -503,6 +503,130 @@ namespace cgl
 		return MakePathResult(polygonList);
 	}
 
+	double ShapeTouch(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+
+		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1 ||
+			lhsPolygon[0]->getGeometryTypeId() != gg::GEOS_LINESTRING ||
+			rhsPolygon[0]->getGeometryTypeId() != gg::GEOS_LINESTRING)
+		{
+			CGL_Error("未対応の形状です");
+		}
+
+		gg::LineString* line1 = dynamic_cast<gg::LineString*>(lhsPolygon[0]);
+		gg::LineString* line2 = dynamic_cast<gg::LineString*>(rhsPolygon[0]);
+
+		const auto toEigen = [](gg::Point* p)
+		{
+			return EigenVec2(p->getX(), p->getY());
+		};
+
+		const auto dist = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return sqrt((v1 - v0).dot(v1 - v0));
+		};
+
+		const auto distSq = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return (v1 - v0).dot(v1 - v0);
+		};
+
+		const auto calcHeightSq = [&](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1, const Eigen::Vector2d& crossPoint)
+		{
+			const auto rel0 = v1 - v0;
+			const auto rel0_n = rel0.normalized();
+			const auto rel1 = crossPoint - v0;
+			const auto foot = rel0_n * rel0_n.dot(rel1);
+			return distSq(foot, rel1);
+		};
+
+		//交点を持たなければ距離を返す
+		if (!line1->intersects(line2))
+		{
+			return line1->distance(line2);
+		}
+		//交点を持っていれば、交点からそれぞれ4方向の距離の中で最小の距離を返す
+		else
+		{
+			gg::Geometry* crossPoint = line1->intersection(line2);
+			if (crossPoint->getGeometryTypeId() != gg::GEOS_POINT)
+			{
+				CGL_Error("不正な式です");
+			}
+
+			gg::Point* point1 = dynamic_cast<gg::Point*>(crossPoint);
+
+			const auto crossV = EigenVec2(point1->getX(), point1->getY());
+
+			double prevDistance1 = 0;
+			double postDistance1 = 0;
+			double prevDistance2 = 0;
+			double postDistance2 = 0;
+
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < line1->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(line1->getPointN(i));
+					const auto v1 = toEigen(line1->getPointN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance1 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance1 += dist(v0, crossV);
+							postDistance1 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance1 += dist(v0, v1);
+						}
+					}
+				}
+			}
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < line2->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(line2->getPointN(i));
+					const auto v1 = toEigen(line2->getPointN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance2 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance2 += dist(v0, crossV);
+							postDistance2 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance2 += dist(v0, v1);
+						}
+					}
+				}
+			}
+
+			std::vector<double> ds({ prevDistance1,postDistance1,prevDistance2,postDistance2 });
+			return *std::min_element(ds.begin(), ds.end());
+		}
+	}
 
 	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{

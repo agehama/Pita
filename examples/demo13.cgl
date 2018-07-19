@@ -1,8 +1,14 @@
 main = Shape{
+    /*
     a = Vec2(0, 0)
     b = Vec2(30, -5)
     c = Vec2(10, 50)
     d = Vec2(20, 30)
+    */
+    a = Vec2(0, 0)
+    b = Vec2(100, 50)
+    c = Vec2(100, 0)
+    d = Vec2(0, 100)
     
     /*
     s1: Shape{
@@ -18,7 +24,7 @@ main = Shape{
         [c, d]
     ])
 
-    sat(Touch(Line(a,b),Line(c,d)))
+    sat( Touch(Line(a,b),Line(c,d)) == 0 & Dot(b - a, d - c) == 0 )
     var(b)
     stroke: Rgb(0,0,0)
 }

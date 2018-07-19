@@ -4,17 +4,21 @@ main = Shape{
     c = Vec2(10, 50)
     d = Vec2(20, 30)
     
+    /*
     s1: Shape{
         line: (->[a, b])
     }
     s2: Shape{
         line: (->[c, d])
     }
-    /*
-    line: [
+    */
+    
+    line: (->[
         [a, b]
         [c, d]
-    ]
-*/
+    ])
+
+    sat(Touch(Line(a,b),Line(c,d)))
+    var(b)
     stroke: Rgb(0,0,0)
 }

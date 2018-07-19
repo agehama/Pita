@@ -1,0 +1,101 @@
+arc = (quality, beginAngle, endAngle -> Shape{
+    r = 0.5
+    delta = 1.0*(endAngle - beginAngle) / quality
+    polygon: [Vec2(0, 0)] @ (for i in 0:quality list(
+        currentAngle = beginAngle + delta*i
+        Vec2(r*Cos(currentAngle), r*Sin(currentAngle))
+    ))
+})
+
+width = 30
+
+text_p = Shape{
+    base_circle: (->Circle{scale: X2(500)})
+    arc_scope: (->arc(100, 30.0, -30.0){scale: X2(500)})
+    fs: {func: []}
+    add_value: (x -> fs.func = fs.func @ [(->x)])
+
+    s = Shape{
+        p_bar: Shape{
+            ring = Diff(base_circle(), Buffer(base_circle(), -width))
+            result: Intersect(ring, arc_scope())
+        }
+        p_ring: Shape{
+            height = 130
+            a = Square{scale: Vec2(150, height)}
+            b = Circle{scale: X2(height), pos: Right(a)}
+            c = a{scale.y = scale.y - width*2}
+            d = b{scale = Sub(scale, X2(width*2))}
+            frames: [b, d]
+            res: Diff(Union(a, b), Union(c, d))
+        }
+        sat(Contact(TopLeft(p_ring), Top(p_bar)))
+        var(p_ring.pos)
+    }
+
+    bar: s.p_bar
+    currentring = s.p_ring
+    currentring.frames = {}
+    ring: Diff(currentring, arc_scope(){scale = Mul(scale, 0.99) })
+    fill: Rgb(200,200,200)
+
+    currentring2 = s.p_ring
+    currentring2.res = {}
+    add_value(GlobalShape(currentring2))
+
+    /*
+    bar: s.p_bar
+    ring: Diff(shapeOf(s.p_ring.res), arc_scope(){scale = Mul(scale, 0.99) })
+    fill: Rgb(200,200,200)
+
+    add_value(shapeOf(s.p_ring.frames))
+    */
+}
+
+text_i = Shape{
+    base_circle_i: (->Circle{scale: X2(1000)})
+    i_bar: Shape{
+        canvas_w = 10000
+        p_box = BoundingBox(text_p)
+        ring = Diff(base_circle_i(), Buffer(base_circle_i(), -width))
+        result: Intersect(ring, Shape{
+                l = Left(p_box)
+                bl = BottomLeft(p_box)
+                polygon:[l, Vec2(l.x+canvas_w,l.y),Vec2(bl.x+canvas_w,bl.y),bl]
+            })
+    }
+    fill: Rgb(200,200,200)
+}
+
+text_t = Shape{
+    base_circle_t: (->Circle{scale: X2(300), pos: Vec2(1000, 0)})
+    fill: Rgb(200,200,200)
+}
+
+main = Shape{
+    ss: [
+        [
+            Circle{scale: X2(300), pos: Vec2(600, 0), fill:Rgb(150,150,150)}
+            text_p
+            text_i
+            text_t
+        ]
+        [
+            Shape{
+                s: [
+                    Intersect(text_p.base_circle(), Shape{
+                        rect = BoundingBox(text_p.base_circle())
+                        polygon:[Top(rect), TopRight(rect), BottomRight(rect), Bottom(rect)]})
+                    Intersect(text_i.base_circle_i(), Shape{
+                        rect = BoundingBox(text_i.base_circle_i())
+                        polygon:[Top(rect), TopRight(rect), BottomRight(rect), Bottom(rect)]})
+                    text_p.arc_scope()
+                    text_p.fs.func[0]()
+                    //text_p.fs.func[1]()
+                ]
+                fill: 0
+                stroke: Rgb(0,0,0)
+            }
+        ]
+    ]
+}

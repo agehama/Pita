@@ -1,3 +1,4 @@
+/*
 main = Shape{
     /*
     a = Vec2(0, 0)
@@ -26,5 +27,23 @@ main = Shape{
 
     sat( Touch(Line(a,b),Line(c,d)) == 0 & Dot(b - a, d - c) == 0 )
     var(b)
+    stroke: Rgb(0,0,0)
+}
+*/
+
+main = Shape{
+    a = Vec2(0, 0)
+    b = Vec2(100, 50)
+
+    circlePos = Vec2(0, 0)
+    
+    circle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(100), pos: circlePos}).polygon
+    )}
+    
+    line: (->[a, b])
+
+    sat( Touch(Line(a,b),circle) == 0 )
+    var(circlePos)
     stroke: Rgb(0,0,0)
 }

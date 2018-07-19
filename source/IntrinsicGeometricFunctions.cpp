@@ -513,15 +513,10 @@ namespace cgl
 		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
 		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 
-		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1 ||
-			lhsPolygon[0]->getGeometryTypeId() != gg::GEOS_LINESTRING ||
-			rhsPolygon[0]->getGeometryTypeId() != gg::GEOS_LINESTRING)
+		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1)
 		{
 			CGL_Error("未対応の形状です");
 		}
-
-		gg::LineString* line1 = dynamic_cast<gg::LineString*>(lhsPolygon[0]);
-		gg::LineString* line2 = dynamic_cast<gg::LineString*>(rhsPolygon[0]);
 
 		const auto toEigen = [](gg::Point* p)
 		{
@@ -547,15 +542,9 @@ namespace cgl
 			return distSq(foot, rel1);
 		};
 
-		//交点を持たなければ距離を返す
-		if (!line1->intersects(line2))
+		const auto minimumSubLineLength = [&](const gg::LineString* l1, const gg::LineString* l2)
 		{
-			return line1->distance(line2);
-		}
-		//交点を持っていれば、交点からそれぞれ4方向の距離の中で最小の距離を返す
-		else
-		{
-			gg::Geometry* crossPoint = line1->intersection(line2);
+			gg::Geometry* crossPoint = l1->intersection(l2);
 			if (crossPoint->getGeometryTypeId() != gg::GEOS_POINT)
 			{
 				CGL_Error("不正な式です");
@@ -572,10 +561,10 @@ namespace cgl
 
 			{
 				bool isPrevCrossPoint = true;
-				for (int i = 0; i + 1 < line1->getNumPoints(); ++i)
+				for (int i = 0; i + 1 < l1->getNumPoints(); ++i)
 				{
-					const auto v0 = toEigen(line1->getPointN(i));
-					const auto v1 = toEigen(line1->getPointN(i + 1));
+					const auto v0 = toEigen(l1->getPointN(i));
+					const auto v1 = toEigen(l1->getPointN(i + 1));
 
 					if (!isPrevCrossPoint)
 					{
@@ -598,10 +587,10 @@ namespace cgl
 			}
 			{
 				bool isPrevCrossPoint = true;
-				for (int i = 0; i + 1 < line2->getNumPoints(); ++i)
+				for (int i = 0; i + 1 < l2->getNumPoints(); ++i)
 				{
-					const auto v0 = toEigen(line2->getPointN(i));
-					const auto v1 = toEigen(line2->getPointN(i + 1));
+					const auto v0 = toEigen(l2->getPointN(i));
+					const auto v1 = toEigen(l2->getPointN(i + 1));
 
 					if (!isPrevCrossPoint)
 					{
@@ -625,6 +614,118 @@ namespace cgl
 
 			std::vector<double> ds({ prevDistance1,postDistance1,prevDistance2,postDistance2 });
 			return *std::min_element(ds.begin(), ds.end());
+		};
+
+		const auto touchPointAndPoint = [](const gg::Geometry* point1, const gg::Geometry* point2)->double
+		{
+			return point1->distance(point2);
+		};
+
+		const auto touchPointAndLine = [](const gg::Geometry* point, const gg::Geometry* line)->double
+		{
+			return point->distance(line);
+		};
+
+		const auto touchPointAndPolygon = [](const gg::Geometry* point, const gg::Geometry* polygon)->double
+		{
+			CGL_Error("未対応の形状です");
+		};
+
+		const auto touchLineAndLine = [&](const gg::Geometry* line1, const gg::Geometry* line2)->double
+		{
+			const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line1);
+			const gg::LineString* l2 = dynamic_cast<const gg::LineString*>(line2);
+			//交点を持たなければ距離を返す
+			if (!l1->intersects(l2))
+			{
+				return l1->distance(l2);
+			}
+			//交点を持っていれば、それぞれの線分を交点で切断したときの4本の部分線のうち、最も短い部分線の長さを返す
+			return minimumSubLineLength(l1, l2);
+		};
+
+		const auto touchLineAndPolygon = [](const gg::Geometry* line, const gg::Geometry* polygon)->double
+		{
+			const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line);
+			const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon);
+			//交点を持たなければ距離を返す
+			if (!l1->intersects(p2))
+			{
+				return l1->distance(p2);
+			}
+			gg::Geometry* result = l1->intersection(p2);
+			if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
+			{
+				const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
+				return resultLine->getLength();
+			}
+			else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+			{
+				const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
+				return resultLineString->getLength();
+			}
+			CGL_Error("不正な式です");
+		};
+
+		const auto touchPolygonAndPolygon = [](const gg::Geometry* polygon1, const gg::Geometry* polygon2)->double
+		{
+			CGL_Error("未対応の形状です");
+		};
+
+		enum TouchType { Point = 0, Line = 1, Polygon = 2 };
+		const auto getTouchType = [](const gg::Geometry* geometry)
+		{
+			switch (geometry->getGeometryTypeId())
+			{
+			case gg::GEOS_POINT: return Point;
+			case gg::GEOS_LINESTRING: return Line;
+			case gg::GEOS_POLYGON: return Polygon;
+			default:
+				CGL_Error("未対応の形状です");
+			}
+		};
+
+		struct TypeGeometry
+		{
+			TouchType type;
+			const gg::Geometry* geometry;
+			TypeGeometry(TouchType type, const gg::Geometry* geometry)
+				:type(type), geometry(geometry)
+			{}
+		};
+
+		const TouchType type1 = getTouchType(lhsPolygon[0]);
+		const TouchType type2 = getTouchType(rhsPolygon[0]);
+
+		const TypeGeometry smallerTypePoly = (type1 <= type2 ? TypeGeometry(type1, lhsPolygon[0]) : TypeGeometry(type2, rhsPolygon[0]));
+		const TypeGeometry largerTypePoly = (type1 <= type2 ? TypeGeometry(type2, rhsPolygon[0]) : TypeGeometry(type1, lhsPolygon[0]));
+
+		if (smallerTypePoly.type == TouchType::Point)
+		{
+			switch (largerTypePoly.type)
+			{
+			case TouchType::Point:
+				return touchPointAndPoint(smallerTypePoly.geometry, largerTypePoly.geometry);
+			case TouchType::Line:
+				return touchPointAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+			default:
+				return touchPointAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+		}
+		else if(smallerTypePoly.type == TouchType::Line)
+		{
+			if (largerTypePoly.type == TouchType::Line)
+			{
+				return touchLineAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+			else
+			{
+				return touchLineAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+		}
+		else
+		{
+			return touchPolygonAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
 		}
 	}
 

@@ -1861,8 +1861,24 @@ namespace cgl
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
 
+			/*
+			CGL_DBG1("Expr: ");
+			printExpr2(constraint, pContext, std::cout);
+
+			CGL_DBG1("freeVariables: " + ToS(freeVariableAddresses.size()));
+			for (const auto& val : freeVariableAddresses)
+			{
+				CGL_DBG1(std::string("  Address(") + val.first.toString() + ")");
+			}*/
+
 			SatVariableBinder binder(pContext, freeVariableAddresses, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
+
+			/*CGL_DBG1("appearingList: " + ToS(appearingList.size()));
+			for (const auto& a : appearingList)
+			{
+				CGL_DBG1(std::string("  Address(") + a.toString() + ")");
+			}*/
 
 			return appearingList;
 		};
@@ -1882,6 +1898,7 @@ namespace cgl
 					return true;
 				}
 			}
+
 			return false;
 		};
 
@@ -2085,8 +2102,9 @@ namespace cgl
 				}
 				std::cout << ss.str() << "\n\n";*/
 			}
-			
+
 			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << std::endl;
+
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
 				std::cout << "  3. Dependency analysis" << std::endl;
@@ -2214,6 +2232,7 @@ namespace cgl
 					//満たされなくなっていた制約は解きなおす
 					for (auto& oldConstraint : original.groupConstraints)
 					{
+						std::cout << "Old Constraint" << std::endl;
 						const Val result = pEnv->expand(boost::apply_visitor(*this, oldConstraint.expr.get()), recordConsractor);
 						/*if (!IsType<bool>(result))
 						{
@@ -2260,6 +2279,8 @@ namespace cgl
 							}
 						}
 					}
+
+					std::cout << "New Constraints" << std::endl;
 
 					//次に、新たに追加される制約について解く
 
@@ -2321,7 +2342,6 @@ namespace cgl
 						}
 
 						original.groupConstraints.push_back(currentProblem);
-
 					}
 				}
 			}

@@ -507,34 +507,38 @@ namespace cgl
 		invRefs.clear();
 		hasPlateausFunction = false;
 
-		if (!expr || freeVariableRefs.empty())
+		//if (!expr || freeVariableRefs.empty())
+		if (!expr)
 		{
+			CGL_DBG1("Warning: constraint expression is empty.");
+			return;
+		}
+		//CGL_DBG1("Expr: ");
+		//printExpr2(expr.get(), pEnv, std::cout);
+		if (freeVariableRefs.empty())
+		{
+			CGL_DBG1("Warning: free variable set in constraint is empty.");
 			return;
 		}
 
-		/*Expr2SatExpr evaluator(0, pEnv, freeVariables);
-		expr = boost::apply_visitor(evaluator, candidateExpr.get());
-		refs.insert(refs.end(), evaluator.refs.begin(), evaluator.refs.end());
-
-		{
-			CGL_DebugLog("Print:");
-			Printer printer;
-			boost::apply_visitor(printer, expr.get());
-			CGL_DebugLog("");
-		}*/
-
 		std::unordered_set<Address> appearingList;
 
-		CGL_DebugLog("freeVariables:");
+		/*CGL_DBG1("freeVariables:");
 		for (const auto& val : freeVariableRefs)
 		{
-			CGL_DebugLog(std::string("  Address(") + val.toString() + ")");
-		}
+			CGL_DBG1(std::string("  Address(") + val.first.toString() + ")");
+		}*/
 
-		//printExpr(expr.get(), pEnv, std::cout);
 		std::vector<char> usedInSat(freeVariableRefs.size(), 0);
-		//SatVariableBinder binder(pEnv, freeVariables);
+
 		SatVariableBinder binder(pEnv, freeVariableRefs, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
+
+		/*CGL_DBG1("appearingList:");
+		for (const auto& a : appearingList)
+		{
+			CGL_DBG1(std::string("  Address(") + a.toString() + ")");
+		}*/
+
 		if (boost::apply_visitor(binder, expr.get()))
 		{
 			//refs = binder.refs;
@@ -557,14 +561,6 @@ namespace cgl
 			freeVariableRefs.clear();
 			hasPlateausFunction = false;
 		}
-		
-		/*{
-			CGL_DebugLog("env:");
-			pEnv->printContext(true);
-
-			CGL_DebugLog("expr:");
-			printExpr(candidateExpr.get());
-		}*/
 	}
 
 	bool OptimizationProblemSat::initializeData(std::shared_ptr<Context> pEnv)

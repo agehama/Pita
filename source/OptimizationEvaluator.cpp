@@ -8,100 +8,6 @@
 
 namespace cgl
 {
-	class LocalVariableSearcher: public boost::static_visitor<bool>
-	{
-	public:
-		const std::set<std::string>& localVariables;
-
-		LocalVariableSearcher(const std::set<std::string>& localVariables) :
-			localVariables(localVariables)
-		{}
-
-		bool isLocalVariable(const std::string& name)const;
-
-		bool operator()(const LRValue& node) { return false; }
-
-		bool operator()(const Identifier& node) { return isLocalVariable(node.name); }
-
-		bool operator()(const Import& node) { return false; }
-
-		bool operator()(const UnaryExpr& node) {return boost::apply_visitor(*this, node.lhs);}
-
-		bool operator()(const BinaryExpr& node) { return boost::apply_visitor(*this, node.lhs) || boost::apply_visitor(*this, node.rhs); }
-
-		bool operator()(const DefFunc& node) { return false; }
-
-		bool operator()(const Range& node) { return boost::apply_visitor(*this, node.lhs) || boost::apply_visitor(*this, node.rhs); }
-
-		bool operator()(const Lines& node) { return std::any_of(node.exprs.begin(), node.exprs.end(), [&](const Expr& expr) {return boost::apply_visitor(*this, expr); }); }
-
-		bool operator()(const If& node) { return boost::apply_visitor(*this, node.cond_expr) || boost::apply_visitor(*this, node.then_expr) || (node.else_expr ? boost::apply_visitor(*this, node.else_expr.get()) : false); }
-
-		bool operator()(const For& node) { return boost::apply_visitor(*this, node.rangeStart) || boost::apply_visitor(*this, node.rangeEnd) || boost::apply_visitor(*this, node.doExpr); }
-
-		bool operator()(const Return& node) { return false; }
-
-		bool operator()(const ListConstractor& node) { return std::any_of(node.data.begin(), node.data.end(), [&](const Expr& expr) {return boost::apply_visitor(*this, expr); }); }
-
-		bool operator()(const KeyExpr& node) { return isLocalVariable(node.name) || boost::apply_visitor(*this, node.expr); }
-
-		bool operator()(const RecordConstractor& node) { return std::any_of(node.exprs.begin(), node.exprs.end(), [&](const Expr& expr) {return boost::apply_visitor(*this, expr); }); }
-
-		bool operator()(const DeclSat& node) { return boost::apply_visitor(*this, node.expr); }
-		bool operator()(const DeclFree& node) { return std::any_of(node.accessors.begin(), node.accessors.end(), [&](const Accessor& accessor) { Expr expr = accessor; return boost::apply_visitor(*this, expr); }); }
-
-		bool operator()(const Accessor& node)
-		{
-			if (boost::apply_visitor(*this, node.head))
-			{
-				return true;
-			}
-
-			for (const auto& access : node.accesses)
-			{
-				if (auto opt = AsOpt<ListAccess>(access))
-				{
-					if (boost::apply_visitor(*this, opt->index))
-					{
-						return true;
-					}
-				}
-				else if (auto opt = AsOpt<FunctionAccess>(access))
-				{
-					for (const auto& arg : opt->actualArguments)
-					{
-						if (boost::apply_visitor(*this, arg))
-						{
-							return true;
-						}
-					}
-				}
-				else if (auto opt = AsOpt<InheritAccess>(access))
-				{
-					const auto& exprs = opt.get().adder.exprs;
-					if (std::any_of(exprs.begin(), exprs.end(), [&](const Expr& expr) {return boost::apply_visitor(*this, expr); }))
-					{
-						return true;
-					}
-				}
-				//else if (auto opt = AsOpt<RecordAccess>(access)){}
-			}
-
-			return false;
-		}
-	};
-
-	bool HasLocalVariable(const Expr& expr, const std::set<std::string>& localVariables)
-	{
-		LocalVariableSearcher searcher(localVariables);
-		return boost::apply_visitor(searcher, expr);
-	}
-
-	bool LocalVariableSearcher::isLocalVariable(const std::string& name) const
-	{
-		return localVariables.find(name) != localVariables.end();
-	}
-
 	SatVariableBinder& SatVariableBinder::addLocalVariable(const std::string& name)
 	{
 		localVariables.insert(name);
@@ -331,7 +237,7 @@ namespace cgl
 		bool result;
 		{
 			SatVariableBinder child(*this);
-			printExpr2(funcVal.expr, pEnv, std::cout);
+			//printExpr2(funcVal.expr, pEnv, std::cout);
 			//++depth;
 			result = boost::apply_visitor(child, funcVal.expr);
 			//--depth;
@@ -566,10 +472,6 @@ namespace cgl
 					//Case2(関数引数がfree)への対応
 					for (const auto& argument : funcAccess.actualArguments)
 					{
-						if (HasLocalVariable(argument, localVariables))
-						{
-							return false;
-						}
 						//++depth;
 						isDeterministic = !boost::apply_visitor(*this, argument) && isDeterministic;
 						//--depth;
@@ -601,13 +503,6 @@ namespace cgl
 					std::vector<Address> arguments;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
-						//ここでexprが部分式にローカル変数を持っていたら実行時でないと評価できない
-						//したがってとりあえずこれ以降のvar変数は無視するものとする
-						if (HasLocalVariable(expr, localVariables))
-						{
-							return false;
-						}
-
 						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
 						lrvalue.push_back(arguments, *pEnv);
 					}

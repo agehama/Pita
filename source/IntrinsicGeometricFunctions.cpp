@@ -664,6 +664,11 @@ namespace cgl
 				const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
 				return resultLineString->getLength();
 			}
+			else if (result->getGeometryTypeId() == gg::GEOS_POINT)
+			{
+				return 0;
+			}
+			CGL_DBG1(result->getGeometryType());
 			CGL_Error("不正な式です");
 		};
 

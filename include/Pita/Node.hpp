@@ -802,15 +802,49 @@ namespace cgl
 		boost::recursive_wrapper<SatFunctionReference>
 	>;
 
-	struct VariableRange
+	struct Interval
 	{
-		double minimum = -100.0;
-		double maximum = +100.0;
-		VariableRange() = default;
-		VariableRange(double minimum, double maximum) :
+		double minimum = -DBL_MAX;
+		double maximum = +DBL_MAX;
+		Interval() = default;
+		Interval(double minimum, double maximum) :
 			minimum(minimum),
 			maximum(maximum)
 		{}
+	};
+
+	struct RegionVariable
+	{
+		Address address;
+
+		enum Attribute {
+			Position = 1 << 0,
+			Scale = 1 << 1,
+			Angle = 1 << 2,
+			Other = 1 << 3
+			//Position
+			//Scale
+			//Angle
+			//Other
+			//X
+			//Y
+			//Shape
+		};
+		std::set<Attribute> attributes;
+
+		RegionVariable() = default;
+		RegionVariable(Address address, Attribute attribute) :
+			address(address),
+			attributes({ attribute })
+		{}
+	};
+
+	struct OptimizeRegion
+	{
+		boost::variant<Interval, PackedVal> region;
+		boost::optional<double> eps;
+		int startIndex;
+		int numOfIndices;
 	};
 
 	struct Import : public LocationInfo
@@ -884,7 +918,8 @@ namespace cgl
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
 		//freeVariablesから辿れる全てのアドレス
-		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//変数ID->Address
+		std::vector<RegionVariable> freeVariableRefs;//変数ID->Address
+		std::vector<OptimizeRegion> optimizeRegions;
 
 		bool hasPlateausFunction = false;
 
@@ -2132,7 +2167,7 @@ namespace cgl
 
 	//using FreeVariable = std::pair<Address, VariableRange>;
 
-	using FreeVariableAddress = std::pair<Address, VariableRange>;
+	//using FreeVariableAddress = std::pair<Address, VariableRange>;
 
 	using FreeVarType = boost::variant<boost::recursive_wrapper<Accessor>, Reference>;
 
@@ -2858,10 +2893,26 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::VariableRange& node)
+	inline void serialize(Archive& ar, cgl::Interval& node)
 	{
 		ar(node.minimum);
 		ar(node.maximum);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RegionVariable& node)
+	{
+		ar(node.address);
+		ar(node.attributes);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::OptimizeRegion& node)
+	{
+		ar(node.region);
+		ar(node.eps);
+		ar(node.startIndex);
+		ar(node.numOfIndices);
 	}
 
 	template<class Archive>

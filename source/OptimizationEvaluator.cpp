@@ -23,7 +23,7 @@ namespace cgl
 	{
 		for (size_t i = 0; i < freeVariables.size(); ++i)
 		{
-			if (freeVariables[i].first == reference)
+			if (freeVariables[i].address == reference)
 			{
 				return i;
 			}
@@ -67,9 +67,9 @@ namespace cgl
 	{
 		bool result = false;
 		const auto addresses = pEnv->expandReferences(reference, LocationInfo());
-		for (Address address : addresses)
+		for (const auto& regionVar : addresses)
 		{
-			result = static_cast<bool>(addSatRefImpl(address)) || result;
+			result = static_cast<bool>(addSatRefImpl(regionVar.address)) || result;
 		}
 		return result;
 	}
@@ -202,9 +202,9 @@ namespace cgl
 			for (Address argument : expandedArguments)
 			{
 				const auto addresses = pEnv->expandReferences(argument, info);
-				for (Address address : addresses)
+				for (const auto& regionVar : addresses)
 				{
-					result = addSatRef(address) || result;
+					result = addSatRef(regionVar.address) || result;
 				}
 			}
 

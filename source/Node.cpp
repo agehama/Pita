@@ -623,7 +623,7 @@ namespace cgl
 
 					const auto& ref2 = refs[dataIndex];
 
-					if (ref1.first == ref2)
+					if (ref1.address == ref2)
 					{
 						//std::cout << "    " << freeIndex << " -> " << dataIndex << std::endl;
 

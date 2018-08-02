@@ -169,11 +169,9 @@ namespace cgl
 
 		Address evalReference(const Accessor& access);
 
-		std::vector<Address> expandReferences(Address address, const LocationInfo& info);
-		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info);
+		std::vector<RegionVariable> expandReferences(Address address, const LocationInfo& info);
 
-		//std::vector<Address> expandReferences2(const Accessor& access);
-		std::vector<std::pair<Address, VariableRange>> expandReferences2(const Accessor& access, boost::optional<const PackedVal&> rangeOpt, const LocationInfo& info);
+		std::vector<RegionVariable> expandReferences2(const Accessor& access, const LocationInfo& info);
 
 		Reference bindReference(Address address);
 		Reference bindReference(const Identifier& identifier);

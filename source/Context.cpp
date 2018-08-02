@@ -219,14 +219,15 @@ namespace cgl
 
 		void operator()(const DeclFree& node)
 		{
-			for (const auto& accessor : node.accessors)
+			for (const auto& varRange : node.accessors)
 			{
-				Expr expr = accessor;
+				Expr expr = varRange.accessor;
 				boost::apply_visitor(*this, expr);
-			}
-			for (const auto& range : node.ranges)
-			{
-				boost::apply_visitor(*this, range);
+
+				if (varRange.range)
+				{
+					boost::apply_visitor(*this, varRange.range.get());
+				}
 			}
 		}
 	};
@@ -360,36 +361,41 @@ namespace cgl
 				}
 			}
 
-			for (const auto& freeVar : node.freeVariables)
+			for (const auto& varRange : node.boundedFreeVariables)
 			{
-				if (IsType<Accessor>(freeVar))
+				if (IsType<Accessor>(varRange.freeVariable))
 				{
-					const Expr expr = As<Accessor>(freeVar);
+					const Expr expr = As<Accessor>(varRange.freeVariable);
 					checkExpr(expr);
 				}
 				else
 				{
-					const Expr expr = LRValue(As<Reference>(freeVar));
+					const Expr expr = LRValue(As<Reference>(varRange.freeVariable));
 					checkExpr(expr);
+				}
+
+				if (varRange.freeRange)
+				{
+					checkExpr(varRange.freeRange.get());
 				}
 			}
 
-			for (const auto& expr : node.freeRanges)
+			for (const auto& varRange : node.original.freeVars)
 			{
-				checkExpr(expr);
-			}
-
-			for (const auto& freeVar : node.original.freeVars)
-			{
-				if (IsType<Accessor>(freeVar))
+				if (IsType<Accessor>(varRange.freeVariable))
 				{
-					const Expr expr = As<Accessor>(freeVar);
+					const Expr expr = As<Accessor>(varRange.freeVariable);
 					checkExpr(expr);
 				}
 				else
 				{
-					const Expr expr = LRValue(As<Reference>(freeVar));
+					const Expr expr = LRValue(As<Reference>(varRange.freeVariable));
 					checkExpr(expr);
+				}
+
+				if (varRange.freeRange)
+				{
+					checkExpr(varRange.freeRange.get());
 				}
 			}
 

@@ -116,4 +116,8 @@ Line = (p1, p2 -> Shape{line: [p1, p2]})
 Dot = (a, b -> a.x*b.x + a.y*b.y)
 Cross = (a, b -> a.x*b.y - a.y*b.x)
 
+Screen = Square{
+    scale: Vec2(2000, 2000)
+}
+
 GC()

@@ -937,9 +937,8 @@ namespace cgl
 		}
 
 		result.problems = problems;
-		result.freeVariables = freeVariables;
+		result.boundedFreeVariables = freeVariables;
 		//result.freeVariableRefs = freeVariableRefs;
-		result.freeRanges = freeRanges;
 		result.type = type;
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;
@@ -973,8 +972,7 @@ namespace cgl
 		}
 
 		result.problems = problems;
-		result.freeVariables = freeVariables;
-		result.freeRanges = freeRanges;
+		result.freeVariables = boundedFreeVariables;
 		result.type = type;
 		result.isSatisfied = isSatisfied;
 		result.pathPoints = pathPoints;

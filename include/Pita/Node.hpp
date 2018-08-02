@@ -883,7 +883,7 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
-												 //freeVariablesから辿れる全てのアドレス
+		//freeVariablesから辿れる全てのアドレス
 		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//変数ID->Address
 
 		bool hasPlateausFunction = false;

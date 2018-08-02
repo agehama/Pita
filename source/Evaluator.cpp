@@ -1703,15 +1703,12 @@ namespace cgl
 		}
 		
 		pEnv->printContext();
-		CGL_DebugLog("");
 
 		/*for (const auto& satExpr : innerSatClosures)
 		{
 			record.problem.addConstraint(satExpr);
 		}
 		innerSatClosures.clear();*/
-
-		CGL_DebugLog("");
 
 		//各free変数の範囲をまとめたレコードを作成する
 		const auto makePackedRanges = [&](std::shared_ptr<Context> pContext, const std::vector<Expr>& ranges)->std::vector<PackedVal>

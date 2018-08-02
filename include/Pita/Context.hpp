@@ -169,7 +169,7 @@ namespace cgl
 
 		Address evalReference(const Accessor& access);
 
-		std::vector<RegionVariable> expandReferences(Address address, const LocationInfo& info);
+		std::vector<RegionVariable> expandReferences(Address address, const LocationInfo& info, RegionVariable::Attribute attribute = RegionVariable::Attribute::Other);
 
 		std::vector<RegionVariable> expandReferences2(const Accessor& access, const LocationInfo& info);
 

@@ -2089,12 +2089,11 @@ namespace cgl
 				}
 			}*/
 
-			std::cout << "margedFreeVars: " << margedFreeVars.size();
+			std::cout << "margedFreeVars: " << margedFreeVars.size() << std::endl;
 			std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>> mergedFreeVariableAddresses = (hasRange
 				? makeFreeVariableAddressesRange(pEnv, margedFreeVars, adderPackedRanges)
 				: makeFreeVariableAddresses(pEnv, margedFreeVars));
 			{
-				std::cout << "current variables: ";
 				for (const auto& val : mergedFreeVariableAddresses.first)
 				{
 					std::cout << "Address(" << val.address.toString() << "): ";

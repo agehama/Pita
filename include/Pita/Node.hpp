@@ -1,6 +1,7 @@
 #pragma once
 #pragma warning(disable:4996)
 #include <cmath>
+#include <cfloat>
 #include <vector>
 #include <memory>
 #include <functional>

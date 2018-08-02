@@ -40,7 +40,7 @@ namespace cgl
 			context(context),
 			reachableAddressSet(reachableAddressSet),
 			newAddressSet(newAddressSet),
-			currentAttribute(RegionVariable::Attribute::Other)
+			currentAttribute(currentAttribute)
 		{}
 
 		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
@@ -49,7 +49,7 @@ namespace cgl
 			reachableAddressSet(reachableAddressSet),
 			newAddressSet(newAddressSet),
 			outputAddresses(outputAddresses),
-			currentAttribute(RegionVariable::Attribute::Other)
+			currentAttribute(currentAttribute)
 		{}
 
 		const Context& context;
@@ -473,7 +473,7 @@ namespace cgl
 		return referenceableAddresses;
 	}
 
-	std::vector<RegionVariable> GetConstraintAddressesFrom(Address address, const Context& context)
+	std::vector<RegionVariable> GetConstraintAddressesFrom(Address address, const Context& context, RegionVariable::Attribute attribute)
 	{
 		std::unordered_set<Address> initialAddresses;
 		initialAddresses.emplace(address);
@@ -491,7 +491,7 @@ namespace cgl
 			for (const Address address : addresses)
 			{
 				std::unordered_set<Address> addressesDelta;
-				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other, outputAddresses);
+				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, attribute, outputAddresses);
 				traverse(addressesDelta, traverse);
 			}
 		};
@@ -720,9 +720,9 @@ namespace cgl
 	}
 
 	//オブジェクトの中にある全ての値への参照をリストで取得する
-	std::vector<RegionVariable> Context::expandReferences(Address address, const LocationInfo& info)
+	std::vector<RegionVariable> Context::expandReferences(Address address, const LocationInfo& info, RegionVariable::Attribute attribute)
 	{
-		return GetConstraintAddressesFrom(address, *m_weakThis.lock());
+		return GetConstraintAddressesFrom(address, *m_weakThis.lock(), attribute);
 	}
 
 	std::vector<RegionVariable> Context::expandReferences2(const Accessor& accessor, const LocationInfo& info)
@@ -731,33 +731,36 @@ namespace cgl
 
 		Eval evaluator(sharedThis);
 
-		std::array<std::vector<Address>, 2> addressBuffer;
+		using Addresses = std::vector<std::pair<Address, RegionVariable::Attribute>>;
+		std::array<Addresses, 2> addressBuffer;
 		unsigned int currentWriteIndex = 0;
 		const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
 		const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
 
-		const auto writeBuffer = [&]()->std::vector<Address>& {return addressBuffer[currentWriteIndex]; };
-		const auto readBuffer = [&]()->std::vector<Address>& {return addressBuffer[nextIndex()]; };
+		const auto writeBuffer = [&]()->Addresses& {return addressBuffer[currentWriteIndex]; };
+		const auto readBuffer = [&]()->Addresses& {return addressBuffer[nextIndex()]; };
+
+		RegionVariable::Attribute currentAttribute = RegionVariable::Attribute::Other;
 
 		LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
 		if (headValue.isLValue())
 		{
-			writeBuffer().push_back(headValue.address(*this));
+			writeBuffer().emplace_back(headValue.address(*this), currentAttribute);
 		}
 		else
 		{
 			Val evaluated = headValue.evaluated();
 			if (auto opt = AsOpt<Record>(evaluated))
 			{
-				writeBuffer().push_back(makeTemporaryValue(opt.get()));
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
 			}
 			else if (auto opt = AsOpt<List>(evaluated))
 			{
-				writeBuffer().push_back(makeTemporaryValue(opt.get()));
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
 			}
 			else if (auto opt = AsOpt<FuncVal>(evaluated))
 			{
-				writeBuffer().push_back(makeTemporaryValue(opt.get()));
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
 			}
 			else
 			{
@@ -773,7 +776,7 @@ namespace cgl
 
 			for (int i = 0; i < readBuffer().size(); ++i)
 			{
-				const Address address = readBuffer()[i];
+				const Address address = readBuffer()[i].first;
 
 				boost::optional<const Val&> objOpt = expandOpt(address);
 				if (!objOpt)
@@ -796,7 +799,10 @@ namespace cgl
 					{
 						const auto& allIndices = list.data;
 
-						writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
+						for (Address address : allIndices)
+						{
+							writeBuffer().emplace_back(address, currentAttribute);
+						}
 					}
 					else
 					{
@@ -804,7 +810,7 @@ namespace cgl
 
 						if (auto indexOpt = AsOpt<int>(value))
 						{
-							writeBuffer().push_back(list.get(indexOpt.get()));
+							writeBuffer().emplace_back(list.get(indexOpt.get()), currentAttribute);
 						}
 						else if (auto indicesOpt = AsOpt<List>(value))
 						{
@@ -814,7 +820,7 @@ namespace cgl
 								Val indexValue = expand(indexAddress, info);
 								if (auto indexOpt = AsOpt<int>(indexValue))
 								{
-									writeBuffer().push_back(list.get(indexOpt.get()));
+									writeBuffer().emplace_back(list.get(indexOpt.get()), currentAttribute);
 								}
 								else
 								{
@@ -836,14 +842,28 @@ namespace cgl
 					}
 
 					const Record& record = As<Record>(objRef);
-					auto it = record.values.find(recordAccessOpt.get().name);
+					const std::string name = recordAccessOpt.get().name;
+					auto it = record.values.find(name);
 					if (it == record.values.end())
 					{
 						//CGL_Error("指定された識別子がレコード中に存在しない");
 						CGL_Error(std::string() + "指定された識別子\"" + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しない");
 					}
 
-					writeBuffer().push_back(it->second);
+					if (name == "pos")
+					{
+						currentAttribute = RegionVariable::Attribute::Position;
+					}
+					else if (name == "scale")
+					{
+						currentAttribute = RegionVariable::Attribute::Scale;
+					}
+					else if (name == "angle")
+					{
+						currentAttribute = RegionVariable::Attribute::Angle;
+					}
+
+					writeBuffer().emplace_back(it->second, currentAttribute);
 				}
 				else
 				{
@@ -871,7 +891,7 @@ namespace cgl
 					}
 
 					const Val returnedValue = expand(evaluator.callFunction(accessor, function, args), info);
-					writeBuffer().push_back(makeTemporaryValue(returnedValue));
+					writeBuffer().emplace_back(makeTemporaryValue(returnedValue), currentAttribute);
 				}
 			}
 		}
@@ -879,12 +899,12 @@ namespace cgl
 		flipIndex();
 
 		std::vector<RegionVariable> result;
-		for (const Address address : readBuffer())
+		for (const auto& var : readBuffer())
 		{
 			//var での省略記法 list[*] を使った場合、readBuffer() には複数のアドレスが格納される
 			//ここで、var( list[*].pos in range ) と書いた場合はこの range と各アドレスをどう結び付けるかが自明でない
 			//とりあえず今の実装では全てのアドレスに対して同じ range を割り当てるようにしている
-			const auto expanded = expandReferences(address, info);
+			const auto expanded = expandReferences(var.first, info, var.second);
 			result.insert(result.end(), expanded.begin(), expanded.end());
 		}
 

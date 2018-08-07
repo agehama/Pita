@@ -1,43 +1,95 @@
-innerCenterCircle = (p1,p2,p3 -> Shape{
-    radius: 10
-    center: Vec2(0, 0)
-    polygon: (->
-        GlobalShape(Circle(10){scale: radius, pos: center}).polygon
-    )
-    sat(Contact(polygon, [p1, p2]) & Contact(polygon, [p2, p3]) & Contact(polygon, [p3, p1]))
-    var(radius, center)
-})
-
-perpendicular = (dir->Shape{
-    begin: Vec2(0, 0)
-    length: 1
-    line: (->[begin, begin + dir*length])
-    end: (->begin + dir*length)
-    var(length)
-})
-
-getPerpendicular = (p0, p1, center ->
-    perpendicular(Normal([p0, p1])){
-        begin = circle.center
-        sat(Contact(line, [p0, p1]))
+/*
+main = Shape{
+    /*
+    a = Vec2(0, 0)
+    b = Vec2(30, -5)
+    c = Vec2(10, 50)
+    d = Vec2(20, 30)
+    */
+    a = Vec2(0, 0)
+    b = Vec2(100, 50)
+    c = Vec2(100, 0)
+    d = Vec2(0, 100)
+    
+    /*
+    s1: Shape{
+        line: (->[a, b])
     }
-)
+    s2: Shape{
+        line: (->[c, d])
+    }
+    */
+    
+    line: (->[
+        [a, b]
+        [c, d]
+    ])
+
+    sat( Touch(Line(a,b),Line(c,d)) == 0 & Dot(b - a, d - c) == 0 )
+    var(b)
+    stroke: Rgb(0,0,0)
+}
+*/
+
+/*
+main = Shape{
+    a = Vec2(0, 0)
+    b = Vec2(300, 150)
+    c = Vec2(50, 150)
+
+    circlePos = Vec2(0, 0)
+    
+    circle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(70), pos: circlePos}).polygon
+    )}
+    
+    line: (->[[a, b],[c, b]])
+
+    sat( Touch(Line(a, b), circle) + Touch(Line(c, b), circle) == 0 )
+    var(circlePos)
+    stroke: Rgb(0,0,0)
+    fill: Rgb(255,255,255)
+}
+*/
+
+/*
+main = Shape{
+    a = Vec2(0, 0)
+    b = Vec2(300, 150)
+    c = Vec2(50, 150)
+
+    circlePos = (a+b+c)/3.0
+    radius = 5.0
+    
+    circle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(radius), pos: circlePos}).polygon
+    )}
+    
+    line: (->[[a, b],[c, b],[a, c]])
+
+    sat( Touch(Line(a, b), circle) + Touch(Line(c, b), circle) + Touch(Line(a, c), circle) == 0 )
+    var(circlePos, radius)
+    stroke: Rgb(0,0,0)
+    fill: Rgb(255,255,255)
+}
+*/
 
 main = Shape{
-    a = Vec2(0,0)
-    b = Vec2(30,-5)
-    c = Vec2(10,50)
-    circle: innerCenterCircle(a, b, c)
+    a = Vec2(200, 0)
+    b = Vec2(300, 150)
+    c = Vec2(0, 150)
 
-    i = circle.center
+    circlePos = (a+b+c)/3.0
+    radius = 5.0
     
-    lines: [
-        getPerpendicular(a, b, i)
-        getPerpendicular(b, c, i)
-        getPerpendicular(c, a, i)
-    ]
+    circle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(radius), pos: circlePos}).polygon
+    )}
+    
+    line: (->[[a, b],[c, b],[a, c]])
 
-    d = lines[0].end()
-    e = lines[1].end()
-    f = lines[2].end()
+    sat( Touch(Line(a, b), circle)^2 + Touch(Line(c, b), circle)^2 + Touch(Line(a, c), circle)^2 == 0 )
+    var(circlePos, radius)
+    stroke: Rgb(0,0,0)
+    fill: Rgb(255,255,255)
 }

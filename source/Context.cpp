@@ -11,6 +11,502 @@
 
 namespace cgl
 {
+	struct OutputAddresses
+	{
+		std::function<bool(Address)> pred;
+		std::vector<RegionVariable>& outputs;
+
+		OutputAddresses(const std::function<bool(Address)>& pred, std::vector<RegionVariable>& outputs) :
+			pred(pred),
+			outputs(outputs)
+		{}
+	};
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute);
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute);
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses);
+	void CheckValue(const Val& val, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses);
+
+	class ExprAddressCheker : public boost::static_visitor<void>
+	{
+	public:
+		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			currentAttribute(currentAttribute)
+		{}
+
+		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			outputAddresses(outputAddresses),
+			currentAttribute(currentAttribute)
+		{}
+
+		const Context& context;
+		std::unordered_set<Address>& reachableAddressSet;
+		std::unordered_set<Address>& newAddressSet;
+		boost::optional<OutputAddresses> outputAddresses;
+		RegionVariable::Attribute currentAttribute;
+
+		bool isMarked(Address address)const
+		{
+			return reachableAddressSet.find(address) != reachableAddressSet.end();
+		}
+
+		void checkValue(const Val& val)
+		{
+			if (outputAddresses)
+			{
+				CheckValue(val, context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses.get());
+			}
+			else
+			{
+				CheckValue(val, context, reachableAddressSet, newAddressSet, currentAttribute);
+			}
+		}
+
+		void update(Address address)
+		{
+			if (!isMarked(address))
+			{
+				reachableAddressSet.emplace(address);
+				newAddressSet.emplace(address);
+
+				if (outputAddresses && outputAddresses.get().pred(address))
+				{
+					outputAddresses.get().outputs.emplace_back(address, currentAttribute);
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					checkValue(opt.get());
+				}
+				else
+				{
+					CGL_ErrorInternal("不正なアドレスを参照しました。");
+				}
+			}
+		}
+
+		void operator()(const LRValue& node)
+		{
+			if (node.isRValue())
+			{
+				return;
+			}
+
+			update(node.address(context));
+		}
+
+		void operator()(const Identifier& node) {}
+
+		void operator()(const Import& node) {}
+
+		void operator()(const UnaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+		}
+
+		void operator()(const BinaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Range& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Lines& node)
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const DefFunc& node)
+		{
+			//boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const If& node)
+		{
+			boost::apply_visitor(*this, node.cond_expr);
+			boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				boost::apply_visitor(*this, node.else_expr.get());
+			}
+		}
+
+		void operator()(const For& node)
+		{
+			boost::apply_visitor(*this, node.rangeStart);
+			boost::apply_visitor(*this, node.rangeEnd);
+			boost::apply_visitor(*this, node.doExpr);
+		}
+
+		void operator()(const Return& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const ListConstractor& node)
+		{
+			for (const auto& expr : node.data)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const KeyExpr& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const RecordConstractor& node)
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const Accessor& node)
+		{
+			boost::apply_visitor(*this, node.head);
+
+			for (const auto& access : node.accesses)
+			{
+				if (auto listAccess = AsOpt<ListAccess>(access))
+				{
+					boost::apply_visitor(*this, listAccess.get().index);
+				}
+				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
+				{
+					for (const auto& argument : functionAccess.get().actualArguments)
+					{
+						boost::apply_visitor(*this, argument);
+					}
+				}
+				else if (auto inheritAccess = AsOpt<InheritAccess>(access))
+				{
+					for (const auto& expr : inheritAccess.get().adder.exprs)
+					{
+						boost::apply_visitor(*this, expr);
+					}
+				}
+			}
+		}
+
+		void operator()(const DeclSat& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const DeclFree& node)
+		{
+			for (const auto& varRange : node.accessors)
+			{
+				Expr expr = varRange.accessor;
+				boost::apply_visitor(*this, expr);
+
+				if (varRange.range)
+				{
+					boost::apply_visitor(*this, varRange.range.get());
+				}
+			}
+		}
+	};
+
+	class ValueAddressChecker : public boost::static_visitor<void>
+	{
+	public:
+		ValueAddressChecker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			currentAttribute(currentAttribute)
+		{}
+
+		ValueAddressChecker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			outputAddresses(outputAddresses),
+			currentAttribute(currentAttribute)
+		{}
+
+		const Context& context;
+		std::unordered_set<Address>& reachableAddressSet;
+		std::unordered_set<Address>& newAddressSet;
+		boost::optional<OutputAddresses> outputAddresses;
+		RegionVariable::Attribute currentAttribute;
+
+		bool isMarked(Address address)const
+		{
+			return reachableAddressSet.find(address) != reachableAddressSet.end();
+		}
+
+		void update(Address address)
+		{
+			if (!isMarked(address))
+			{
+				reachableAddressSet.emplace(address);
+				newAddressSet.emplace(address);
+
+				if (outputAddresses && outputAddresses.get().pred(address))
+				{
+					outputAddresses.get().outputs.emplace_back(address, currentAttribute);
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					boost::apply_visitor(*this, opt.get());
+				}
+				else
+				{
+					//CGL_ErrorInternal("不正なアドレスを参照しました。");
+					CGL_ErrorInternal(std::string("不正なアドレスを参照しました。: Address(") + address.toString() + ")");
+				}
+			}
+		}
+
+		void checkExpr(const Expr& expr)
+		{
+			if (outputAddresses)
+			{
+				CheckExpr(expr, context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses.get());
+			}
+			else
+			{
+				CheckExpr(expr, context, reachableAddressSet, newAddressSet, currentAttribute);
+			}
+		}
+
+		void operator()(bool node) {}
+
+		void operator()(int node) {}
+
+		void operator()(double node) {}
+
+		void operator()(const CharString& node) {}
+
+		void operator()(const List& node)
+		{
+			for (Address address : node.data)
+			{
+				update(address);
+			}
+		}
+
+		void operator()(const KeyValue& node)
+		{
+			//CheckValue(node.value, context, reachableAddressSet, newAddressSet);
+		}
+
+		void operator()(const Record& node)
+		{
+			{
+				const auto& values = node.values;
+				auto posIt = values.find("pos");
+				auto scaleIt = values.find("scale");
+				auto angleIt = values.find("angle");
+				const bool isShapeRecord = posIt != values.end() && scaleIt != values.end() && angleIt != values.end();
+				if (isShapeRecord)
+				{
+					const RegionVariable::Attribute defaultAttribute = currentAttribute;
+					currentAttribute = RegionVariable::Attribute::Position;
+					update(posIt->second);
+					currentAttribute = RegionVariable::Attribute::Scale;
+					update(scaleIt->second);
+					currentAttribute = RegionVariable::Attribute::Angle;
+					update(angleIt->second);
+					currentAttribute = defaultAttribute;
+				}
+				else
+				{
+					for (const auto& keyval : node.values)
+					{
+						update(keyval.second);
+					}
+				}
+			}
+
+			if (node.constraint)
+			{
+				checkExpr(node.constraint.get());
+			}
+
+			for (const auto& problem : node.problems)
+			{
+				if (problem.expr)
+				{
+					checkExpr(problem.expr.get());
+				}
+			}
+
+			for (const auto& varRange : node.boundedFreeVariables)
+			{
+				if (IsType<Accessor>(varRange.freeVariable))
+				{
+					const Expr expr = As<Accessor>(varRange.freeVariable);
+					checkExpr(expr);
+				}
+				else
+				{
+					const Expr expr = LRValue(As<Reference>(varRange.freeVariable));
+					checkExpr(expr);
+				}
+
+				if (varRange.freeRange)
+				{
+					checkExpr(varRange.freeRange.get());
+				}
+			}
+
+			for (const auto& varRange : node.original.freeVars)
+			{
+				if (IsType<Accessor>(varRange.freeVariable))
+				{
+					const Expr expr = As<Accessor>(varRange.freeVariable);
+					checkExpr(expr);
+				}
+				else
+				{
+					const Expr expr = LRValue(As<Reference>(varRange.freeVariable));
+					checkExpr(expr);
+				}
+
+				if (varRange.freeRange)
+				{
+					checkExpr(varRange.freeRange.get());
+				}
+			}
+
+			for (const auto& oldExprs : node.original.unitConstraints)
+			{
+				checkExpr(oldExprs);
+			}
+
+			for (const auto& appears : node.original.variableAppearances)
+			{
+				for (const Address address : appears)
+				{
+					update(address);
+				}
+			}
+
+			for (const auto& problem : node.original.groupConstraints)
+			{
+				if (problem.expr)
+				{
+					checkExpr(problem.expr.get());
+				}
+			}
+		}
+
+		void operator()(const FuncVal& node)
+		{
+			if (!node.builtinFuncAddress)
+			{
+				checkExpr(node.expr);
+			}
+		}
+
+		void operator()(const Jump& node) {}
+	};
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute)
+	{
+		ExprAddressCheker cheker(context, reachableAddressSet, newAddressSet, currentAttribute);
+		boost::apply_visitor(cheker, expr);
+	}
+
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute)
+	{
+		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet, currentAttribute);
+		boost::apply_visitor(cheker, evaluated);
+	}
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses)
+	{
+		ExprAddressCheker cheker(context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses);
+		boost::apply_visitor(cheker, expr);
+	}
+
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses)
+	{
+		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses);
+		boost::apply_visitor(cheker, evaluated);
+	}
+
+	std::unordered_set<Address> GetReachableAddressesFrom(const std::unordered_set<Address>& addresses, const Context& context)
+	{
+		std::unordered_set<Address> referenceableAddresses;
+
+		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
+		{
+			for (const Address address : addresses)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
+				traverse(addressesDelta, traverse);
+			}
+		};
+
+		traverse(addresses, traverse);
+
+		return referenceableAddresses;
+	}
+
+	std::vector<RegionVariable> GetConstraintAddressesFrom(Address address, const Context& context, RegionVariable::Attribute attribute)
+	{
+		std::unordered_set<Address> initialAddresses;
+		initialAddresses.emplace(address);
+
+		std::vector<RegionVariable> result;
+
+		std::unordered_set<Address> referenceableAddresses;
+		OutputAddresses outputAddresses([&](Address address) {
+			const Val value = context.expand(address, LocationInfo());
+			return IsType<int>(value) || IsType<double>(value);
+		}, result);
+
+		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
+		{
+			for (const Address address : addresses)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, attribute, outputAddresses);
+				traverse(addressesDelta, traverse);
+			}
+		};
+
+		traverse(initialAddresses, traverse);
+
+		return result;
+	}
+
 	Address Context::makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr)
 	{
 		std::set<std::string> functionArguments;
@@ -230,466 +726,195 @@ namespace cgl
 	}
 
 	//オブジェクトの中にある全ての値への参照をリストで取得する
-	std::vector<Address> Context::expandReferences(Address address, const LocationInfo& info)
+	std::vector<RegionVariable> Context::expandReferences(Address address, const LocationInfo& info, RegionVariable::Attribute attribute)
 	{
-		std::vector<Address> result;
-		if (auto sharedThis = m_weakThis.lock())
-		{
-			const auto addElementRec = [&](auto rec, Address address)->void
-			{
-				const Val value = sharedThis->expand(address, info);
-
-				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
-				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
-				{
-					result.push_back(address);
-				}
-				else if (IsType<List>(value))
-				{
-					for (Address elemAddress : As<List>(value).data)
-					{
-						rec(rec, elemAddress);
-					}
-				}
-				else if (IsType<Record>(value))
-				{
-					for (const auto& elem : As<Record>(value).values)
-					{
-						rec(rec, elem.second);
-					}
-				}
-				//それ以外のデータは特に捕捉しない
-				//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
-			};
-
-			const auto addElement = [&](const Address address)
-			{
-				addElementRec(addElementRec, address);
-			};
-
-			addElement(address);
-		}
-
-		return result;
+		return GetConstraintAddressesFrom(address, *m_weakThis.lock(), attribute);
 	}
 
-	std::vector<std::pair<Address, VariableRange>> Context::expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info)
+	std::vector<RegionVariable> Context::expandReferences2(const Accessor& accessor, const LocationInfo& info)
 	{
-		std::vector<std::pair<Address, VariableRange>> result;
-		if (auto sharedThis = m_weakThis.lock())
+		auto sharedThis = m_weakThis.lock();
+
+		Eval evaluator(sharedThis);
+
+		using Addresses = std::vector<std::pair<Address, RegionVariable::Attribute>>;
+		std::array<Addresses, 2> addressBuffer;
+		unsigned int currentWriteIndex = 0;
+		const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
+		const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
+
+		const auto writeBuffer = [&]()->Addresses& {return addressBuffer[currentWriteIndex]; };
+		const auto readBuffer = [&]()->Addresses& {return addressBuffer[nextIndex()]; };
+
+		RegionVariable::Attribute currentAttribute = RegionVariable::Attribute::Other;
+
+		LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
+		if (headValue.isLValue())
 		{
-			const auto addElementRec = [&](auto rec, Address address, boost::optional<const PackedVal&> currentVariableRange)->void
-			{
-				const Val value = sharedThis->expand(address, info);
-
-				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
-				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
-				{
-					VariableRange range;
-					if (currentVariableRange)
-					{
-						if (auto opt = AsOpt<PackedList>(currentVariableRange.get()))
-						{
-							const auto& rangeData = opt.get().data;
-							if (rangeData.size() == 2)
-							{
-								range.minimum = AsDouble(rangeData[0].value);
-								range.maximum = AsDouble(rangeData[1].value);
-							}
-							else CGL_Error("rangeは要素数が二つでなければなりません");
-						}
-						else CGL_Error("rangeの形が不正です");
-					}
-					result.emplace_back(address, range);
-				}
-				else if (IsType<List>(value))
-				{
-					if (currentVariableRange)
-					{
-						if (auto opt = AsOpt<PackedList>(currentVariableRange.get()))
-						{
-							const auto& rangeData = opt.get().data;
-							const auto& list = As<List>(value).data;
-
-							if (rangeData.size() != list.size())
-								CGL_Error("rangeと変数の形が対応していません");
-
-							for (size_t i = 0; i < list.size(); ++i)
-							{
-								rec(rec, list[i], rangeData[i].value);
-							}
-						}
-						else CGL_Error("rangeの形が不正です");
-					}
-					else
-					{
-						for (Address elemAddress : As<List>(value).data)
-						{
-							rec(rec, elemAddress, boost::none);
-						}
-					}
-				}
-				else if (IsType<Record>(value))
-				{
-					if (currentVariableRange)
-					{
-						if (auto opt = AsOpt<PackedRecord>(currentVariableRange.get()))
-						{
-							const auto& rangeData = opt.get().values;
-							const auto& record = As<Record>(value).values;
-
-							for (const auto& elem : record)
-							{
-								const auto rangeIt = rangeData.find(elem.first);
-								if (rangeIt == rangeData.end())
-									CGL_Error("rangeと変数の形が対応していません");
-								
-								rec(rec, elem.second, rangeIt->second.value);
-							}
-						}
-						else CGL_Error("rangeの形が不正です");
-					}
-					else
-					{
-						for (const auto& elem : As<Record>(value).values)
-						{
-							rec(rec, elem.second, boost::none);
-						}
-					}
-				}
-				//それ以外のデータは特に捕捉しない
-				//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
-			};
-
-			const auto addElement = [&](const Address address, boost::optional<const PackedVal&> currentVariableRange)
-			{
-				addElementRec(addElementRec, address, currentVariableRange);
-			};
-
-			addElement(address, variableRange);
+			writeBuffer().emplace_back(headValue.address(*this), currentAttribute);
 		}
-
-		return result;
-	}
-
-	/*std::vector<Address> Context::expandReferences2(const Accessor & accessor)
-	{
-		if (auto sharedThis = m_weakThis.lock())
+		else
 		{
-			Eval evaluator(sharedThis);
-
-			std::array<std::vector<Address>, 2> addressBuffer;
-			unsigned int currentWriteIndex = 0;
-			const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
-			const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
-
-			const auto writeBuffer = [&]()->std::vector<Address>& {return addressBuffer[currentWriteIndex]; };
-			const auto readBuffer = [&]()->std::vector<Address>& {return addressBuffer[nextIndex()]; };
-
-			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
-			if (headValue.isLValue())
+			Val evaluated = headValue.evaluated();
+			if (auto opt = AsOpt<Record>(evaluated))
 			{
-				writeBuffer().push_back(headValue.address(*this));
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
+			}
+			else if (auto opt = AsOpt<List>(evaluated))
+			{
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
+			}
+			else if (auto opt = AsOpt<FuncVal>(evaluated))
+			{
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
 			}
 			else
 			{
-				Val evaluated = headValue.evaluated();
-				if (auto opt = AsOpt<Record>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else if (auto opt = AsOpt<List>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else if (auto opt = AsOpt<FuncVal>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else
-				{
-					CGL_Error("アクセッサのヘッドの評価結果が不正");
-				}
+				CGL_Error("アクセッサのヘッドの評価結果が不正");
 			}
+		}
 
-			for (const auto& access : accessor.accesses)
-			{
-				flipIndex();
-
-				writeBuffer().clear();
-
-				for (int i = 0; i < readBuffer().size(); ++i)
-				{
-					const Address address = readBuffer()[i];
-
-					boost::optional<const Val&> objOpt = expandOpt(address);
-					if (!objOpt)
-					{
-						CGL_Error("参照エラー");
-					}
-
-					const Val& objRef = objOpt.get();
-
-					if (auto listAccessOpt = AsOpt<ListAccess>(access))
-					{
-						if (!IsType<List>(objRef))
-						{
-							CGL_Error("オブジェクトがリストでない");
-						}
-
-						const List& list = As<const List&>(objRef);
-
-						if (listAccessOpt.get().isArbitrary)
-						{
-							const auto& allIndices = list.data;
-
-							writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
-						}
-						else
-						{
-							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index));
-
-							if (auto indexOpt = AsOpt<int>(value))
-							{
-								writeBuffer().push_back(list.get(indexOpt.get()));
-							}
-							else
-							{
-								CGL_Error("list[index] の index が int 型でない");
-							}
-						}
-					}
-					else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
-					{
-						if (!IsType<Record>(objRef))
-						{
-							CGL_Error("オブジェクトがレコードでない");
-						}
-
-						const Record& record = As<const Record&>(objRef);
-						auto it = record.values.find(recordAccessOpt.get().name);
-						if (it == record.values.end())
-						{
-							CGL_Error("指定された識別子がレコード中に存在しない");
-						}
-
-						writeBuffer().push_back(it->second);
-					}
-					else
-					{
-						auto funcAccess = As<FunctionAccess>(access);
-
-						if (!IsType<FuncVal>(objRef))
-						{
-							CGL_Error("オブジェクトが関数でない");
-						}
-
-						const FuncVal& function = As<const FuncVal&>(objRef);
-
-						std::vector<Address> args;
-						for (const auto& expr : funcAccess.actualArguments)
-						{
-							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr));
-							if (currentArgument.isLValue())
-							{
-								args.push_back(currentArgument.address(*this));
-							}
-							else
-							{
-								args.push_back(makeTemporaryValue(currentArgument.evaluated()));
-							}
-						}
-
-						const Val returnedValue = expand(evaluator.callFunction(function, args));
-						writeBuffer().push_back(makeTemporaryValue(returnedValue));
-					}
-				}
-			}
-
+		for (const auto& access : accessor.accesses)
+		{
 			flipIndex();
 
-			std::vector<Address> result;
-			for (const Address address : readBuffer())
+			writeBuffer().clear();
+
+			for (int i = 0; i < readBuffer().size(); ++i)
 			{
-				const auto expanded = expandReferences(address);
-				result.insert(result.end(), expanded.begin(), expanded.end());
-			}
+				const Address address = readBuffer()[i].first;
 
-			return result;
-		}
-
-		CGL_Error("shared this does not exist.");
-		return {};
-	}*/
-
-	std::vector<std::pair<Address, VariableRange>> Context::expandReferences2(const Accessor & accessor, boost::optional<const PackedVal&> rangeOpt, const LocationInfo& info)
-	{
-		if (auto sharedThis = m_weakThis.lock())
-		{
-			Eval evaluator(sharedThis);
-
-			std::array<std::vector<Address>, 2> addressBuffer;
-			unsigned int currentWriteIndex = 0;
-			const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
-			const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
-
-			const auto writeBuffer = [&]()->std::vector<Address>& {return addressBuffer[currentWriteIndex]; };
-			const auto readBuffer = [&]()->std::vector<Address>& {return addressBuffer[nextIndex()]; };
-
-			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
-			if (headValue.isLValue())
-			{
-				writeBuffer().push_back(headValue.address(*this));
-			}
-			else
-			{
-				Val evaluated = headValue.evaluated();
-				if (auto opt = AsOpt<Record>(evaluated))
+				boost::optional<const Val&> objOpt = expandOpt(address);
+				if (!objOpt)
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
+					CGL_Error("参照エラー");
 				}
-				else if (auto opt = AsOpt<List>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else if (auto opt = AsOpt<FuncVal>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else
-				{
-					CGL_Error("アクセッサのヘッドの評価結果が不正");
-				}
-			}
 
-			for (const auto& access : accessor.accesses)
-			{
-				flipIndex();
+				const Val& objRef = objOpt.get();
 
-				writeBuffer().clear();
-
-				for (int i = 0; i < readBuffer().size(); ++i)
+				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
-					const Address address = readBuffer()[i];
-
-					boost::optional<const Val&> objOpt = expandOpt(address);
-					if (!objOpt)
+					if (!IsType<List>(objRef))
 					{
-						CGL_Error("参照エラー");
+						CGL_Error("オブジェクトがリストでない");
 					}
 
-					const Val& objRef = objOpt.get();
+					const List& list = As<List>(objRef);
 
-					if (auto listAccessOpt = AsOpt<ListAccess>(access))
+					if (listAccessOpt.get().isArbitrary)
 					{
-						if (!IsType<List>(objRef))
+						const auto& allIndices = list.data;
+
+						for (Address address : allIndices)
 						{
-							CGL_Error("オブジェクトがリストでない");
+							writeBuffer().emplace_back(address, currentAttribute);
 						}
+					}
+					else
+					{
+						Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), info);
 
-						const List& list = As<List>(objRef);
-
-						if (listAccessOpt.get().isArbitrary)
+						if (auto indexOpt = AsOpt<int>(value))
 						{
-							const auto& allIndices = list.data;
-
-							writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
+							writeBuffer().emplace_back(list.get(indexOpt.get()), currentAttribute);
 						}
-						else
+						else if (auto indicesOpt = AsOpt<List>(value))
 						{
-							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), info);
-
-							if (auto indexOpt = AsOpt<int>(value))
+							const List& indices = indicesOpt.get();
+							for (const Address indexAddress : indices.data)
 							{
-								writeBuffer().push_back(list.get(indexOpt.get()));
-							}
-							else if (auto indicesOpt = AsOpt<List>(value))
-							{
-								const List& indices = indicesOpt.get();
-								for (const Address indexAddress : indices.data)
+								Val indexValue = expand(indexAddress, info);
+								if (auto indexOpt = AsOpt<int>(indexValue))
 								{
-									Val indexValue = expand(indexAddress, info);
-									if (auto indexOpt = AsOpt<int>(indexValue))
-									{
-										writeBuffer().push_back(list.get(indexOpt.get()));
-									}
-									else
-									{
-										CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
-									}
+									writeBuffer().emplace_back(list.get(indexOpt.get()), currentAttribute);
+								}
+								else
+								{
+									CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
 								}
 							}
-							else
-							{
-								CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
-							}
 						}
-					}
-					else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
-					{
-						if (!IsType<Record>(objRef))
+						else
 						{
-							CGL_Error("オブジェクトがレコードでない");
+							CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
 						}
-
-						const Record& record = As<Record>(objRef);
-						auto it = record.values.find(recordAccessOpt.get().name);
-						if (it == record.values.end())
-						{
-							//CGL_Error("指定された識別子がレコード中に存在しない");
-							CGL_Error(std::string() + "指定された識別子\"" + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しない");
-						}
-
-						writeBuffer().push_back(it->second);
-					}
-					else
-					{
-						auto funcAccess = As<FunctionAccess>(access);
-
-						if (!IsType<FuncVal>(objRef))
-						{
-							CGL_Error("オブジェクトが関数でない");
-						}
-
-						const FuncVal& function = As<FuncVal>(objRef);
-
-						std::vector<Address> args;
-						for (const auto& expr : funcAccess.actualArguments)
-						{
-							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr), info);
-							if (currentArgument.isLValue())
-							{
-								args.push_back(currentArgument.address(*this));
-							}
-							else
-							{
-								args.push_back(makeTemporaryValue(currentArgument.evaluated()));
-							}
-						}
-
-						const Val returnedValue = expand(evaluator.callFunction(accessor, function, args), info);
-						writeBuffer().push_back(makeTemporaryValue(returnedValue));
 					}
 				}
+				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+				{
+					if (!IsType<Record>(objRef))
+					{
+						CGL_Error("オブジェクトがレコードでない");
+					}
+
+					const Record& record = As<Record>(objRef);
+					const std::string name = recordAccessOpt.get().name;
+					auto it = record.values.find(name);
+					if (it == record.values.end())
+					{
+						//CGL_Error("指定された識別子がレコード中に存在しない");
+						CGL_Error(std::string() + "指定された識別子\"" + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しない");
+					}
+
+					if (name == "pos")
+					{
+						currentAttribute = RegionVariable::Attribute::Position;
+					}
+					else if (name == "scale")
+					{
+						currentAttribute = RegionVariable::Attribute::Scale;
+					}
+					else if (name == "angle")
+					{
+						currentAttribute = RegionVariable::Attribute::Angle;
+					}
+
+					writeBuffer().emplace_back(it->second, currentAttribute);
+				}
+				else
+				{
+					auto funcAccess = As<FunctionAccess>(access);
+
+					if (!IsType<FuncVal>(objRef))
+					{
+						CGL_Error("オブジェクトが関数でない");
+					}
+
+					const FuncVal& function = As<FuncVal>(objRef);
+
+					std::vector<Address> args;
+					for (const auto& expr : funcAccess.actualArguments)
+					{
+						const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr), info);
+						if (currentArgument.isLValue())
+						{
+							args.push_back(currentArgument.address(*this));
+						}
+						else
+						{
+							args.push_back(makeTemporaryValue(currentArgument.evaluated()));
+						}
+					}
+
+					const Val returnedValue = expand(evaluator.callFunction(accessor, function, args), info);
+					writeBuffer().emplace_back(makeTemporaryValue(returnedValue), currentAttribute);
+				}
 			}
-
-			flipIndex();
-
-			std::vector<std::pair<Address, VariableRange>> result;
-			for (const Address address : readBuffer())
-			{
-				//var での省略記法 list[*] を使った場合、readBuffer() には複数のアドレスが格納される
-				//ここで、var( list[*].pos in range ) と書いた場合はこの range と各アドレスをどう結び付けるかが自明でない
-				//とりあえず今の実装では全てのアドレスに対して同じ range を割り当てるようにしている
-				const auto expanded = expandReferences(address, rangeOpt, info);
-				result.insert(result.end(), expanded.begin(), expanded.end());
-			}
-
-			return result;
 		}
 
-		CGL_Error("shared this does not exist.");
-		return {};
+		flipIndex();
+
+		std::vector<RegionVariable> result;
+		for (const auto& var : readBuffer())
+		{
+			//var での省略記法 list[*] を使った場合、readBuffer() には複数のアドレスが格納される
+			//ここで、var( list[*].pos in range ) と書いた場合はこの range と各アドレスをどう結び付けるかが自明でない
+			//とりあえず今の実装では全てのアドレスに対して同じ range を割り当てるようにしている
+			const auto expanded = expandReferences(var.first, info, var.second);
+			result.insert(result.end(), expanded.begin(), expanded.end());
+		}
+
+		return result;
 	}
 
 	Reference Context::bindReference(Address address)
@@ -1685,6 +1910,20 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Touch",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Diff",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -2408,339 +2647,7 @@ namespace cgl
 			}
 		}*/
 
-
 		//TODO: GCと同じ要領で環境から参照可能な全てのアドレスを参照し、該当アドレスを書き換える
-	}
-
-	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
-	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
-
-	class ExprAddressCheker : public boost::static_visitor<void>
-	{
-	public:
-		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet) :
-			context(context),
-			reachableAddressSet(reachableAddressSet),
-			newAddressSet(newAddressSet)
-		{}
-
-		const Context& context;
-		std::unordered_set<Address>& reachableAddressSet;
-		std::unordered_set<Address>& newAddressSet;
-
-		bool isMarked(Address address)const
-		{
-			return reachableAddressSet.find(address) != reachableAddressSet.end();
-		}
-
-		void update(Address address)
-		{
-			if (!isMarked(address))
-			{
-				reachableAddressSet.emplace(address);
-				newAddressSet.emplace(address);
-				//CheckValue(context.expand(LRValue(address)), context, reachableAddressSet, newAddressSet);
-
-				if (auto opt = context.expandOpt(LRValue(address)))
-				{
-					CheckValue(opt.get(), context, reachableAddressSet, newAddressSet);
-				}
-				else
-				{
-					CGL_ErrorInternal("不正なアドレスを参照しました。");
-				}
-			}
-		}
-
-		void operator()(const LRValue& node)
-		{
-			if (node.isRValue())
-			{
-				return;
-			}
-
-			update(node.address(context));
-		}
-
-		void operator()(const Identifier& node) {}
-
-		void operator()(const Import& node) {}
-
-		void operator()(const UnaryExpr& node)
-		{
-			boost::apply_visitor(*this, node.lhs);
-		}
-
-		void operator()(const BinaryExpr& node)
-		{
-			boost::apply_visitor(*this, node.lhs);
-			boost::apply_visitor(*this, node.rhs);
-		}
-
-		void operator()(const Range& node)
-		{
-			boost::apply_visitor(*this, node.lhs);
-			boost::apply_visitor(*this, node.rhs);
-		}
-
-		void operator()(const Lines& node)
-		{
-			for (const auto& expr : node.exprs)
-			{
-				boost::apply_visitor(*this, expr);
-			}
-		}
-
-		void operator()(const DefFunc& node)
-		{
-			//boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const If& node)
-		{
-			boost::apply_visitor(*this, node.cond_expr);
-			boost::apply_visitor(*this, node.then_expr);
-			if (node.else_expr)
-			{
-				boost::apply_visitor(*this, node.else_expr.get());
-			}
-		}
-
-		void operator()(const For& node)
-		{
-			boost::apply_visitor(*this, node.rangeStart);
-			boost::apply_visitor(*this, node.rangeEnd);
-			boost::apply_visitor(*this, node.doExpr);
-		}
-
-		void operator()(const Return& node)
-		{
-			boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const ListConstractor& node)
-		{
-			for (const auto& expr : node.data)
-			{
-				boost::apply_visitor(*this, expr);
-			}
-		}
-
-		void operator()(const KeyExpr& node)
-		{
-			boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const RecordConstractor& node)
-		{
-			for (const auto& expr : node.exprs)
-			{
-				boost::apply_visitor(*this, expr);
-			}
-		}
-
-		void operator()(const Accessor& node)
-		{
-			boost::apply_visitor(*this, node.head);
-
-			for (const auto& access : node.accesses)
-			{
-				if (auto listAccess = AsOpt<ListAccess>(access))
-				{
-					boost::apply_visitor(*this, listAccess.get().index);
-				}
-				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
-				{
-					for (const auto& argument : functionAccess.get().actualArguments)
-					{
-						boost::apply_visitor(*this, argument);
-					}
-				}
-				else if (auto inheritAccess = AsOpt<InheritAccess>(access))
-				{
-					for (const auto& expr : inheritAccess.get().adder.exprs)
-					{
-						boost::apply_visitor(*this, expr);
-					}
-				}
-			}
-		}
-
-		void operator()(const DeclSat& node)
-		{
-			boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const DeclFree& node)
-		{
-			for (const auto& accessor : node.accessors)
-			{
-				Expr expr = accessor;
-				boost::apply_visitor(*this, expr);
-			}
-			for (const auto& range : node.ranges)
-			{
-				boost::apply_visitor(*this, range);
-			}
-		}
-	};
-
-	class ValueAddressChecker : public boost::static_visitor<void>
-	{
-	public:
-		ValueAddressChecker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet) :
-			context(context),
-			reachableAddressSet(reachableAddressSet),
-			newAddressSet(newAddressSet)
-		{}
-
-		const Context& context;
-		std::unordered_set<Address>& reachableAddressSet;
-		std::unordered_set<Address>& newAddressSet;
-
-		bool isMarked(Address address)const
-		{
-			return reachableAddressSet.find(address) != reachableAddressSet.end();
-		}
-
-		void update(Address address)
-		{
-			if (!isMarked(address))
-			{
-				reachableAddressSet.emplace(address);
-				newAddressSet.emplace(address);
-
-				//boost::apply_visitor(*this, context.expand(LRValue(address)));
-
-				if (auto opt = context.expandOpt(LRValue(address)))
-				{
-					boost::apply_visitor(*this, opt.get());
-				}
-				else
-				{
-					//CGL_ErrorInternal("不正なアドレスを参照しました。");
-					CGL_ErrorInternal(std::string("不正なアドレスを参照しました。: Address(") + address.toString() + ")");
-				}
-			}
-		}
-		
-		void operator()(bool node) {}
-
-		void operator()(int node) {}
-
-		void operator()(double node) {}
-
-		void operator()(const CharString& node) {}
-
-		void operator()(const List& node)
-		{
-			for (Address address : node.data)
-			{
-				update(address);
-			}
-		}
-
-		void operator()(const KeyValue& node)
-		{
-			//CheckValue(node.value, context, reachableAddressSet, newAddressSet);
-		}
-
-		void operator()(const Record& node)
-		{
-			for (const auto& keyval : node.values)
-			{
-				update(keyval.second);
-			}
-
-			if (node.constraint)
-			{
-				CheckExpr(node.constraint.get(), context, reachableAddressSet, newAddressSet);
-			}
-
-			for (const auto& problem : node.problems)
-			{
-				if (problem.expr)
-				{
-					CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
-				}
-			}
-
-			for (const auto& freeVar : node.freeVariables)
-			{
-				if (IsType<Accessor>(freeVar))
-				{
-					const Expr expr = As<Accessor>(freeVar);
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-				else
-				{
-					const Expr expr = LRValue(As<Reference>(freeVar));
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-			}
-
-			for (const auto& expr : node.freeRanges)
-			{
-				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-			}
-
-			for (const auto& freeVar : node.original.freeVars)
-			{
-				if (IsType<Accessor>(freeVar))
-				{
-					const Expr expr = As<Accessor>(freeVar);
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-				else
-				{
-					const Expr expr = LRValue(As<Reference>(freeVar));
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-			}
-
-			for (const auto& oldExprs : node.original.unitConstraints)
-			{
-				CheckExpr(oldExprs, context, reachableAddressSet, newAddressSet);
-			}
-
-			for (const auto& appears : node.original.variableAppearances)
-			{
-				for (const Address address : appears)
-				{
-					update(address);
-				}
-			}
-
-			for (const auto& problem : node.original.groupConstraints)
-			{
-				if (problem.expr)
-				{
-					CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
-				}
-			}
-		}
-
-		void operator()(const FuncVal& node)
-		{
-			if (!node.builtinFuncAddress)
-			{
-				CheckExpr(node.expr, context, reachableAddressSet, newAddressSet);
-			}
-		}
-
-		void operator()(const Jump& node) {}
-	};
-
-	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
-	{
-		ExprAddressCheker cheker(context, reachableAddressSet, newAddressSet);
-		boost::apply_visitor(cheker, expr);
-	}
-
-	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
-	{
-		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet);
-		boost::apply_visitor(cheker, evaluated);
 	}
 
 	void Context::garbageCollect()
@@ -2760,17 +2667,6 @@ namespace cgl
 		const auto isReachable = [&](const Address address)
 		{
 			return referenceableAddresses.find(address) != referenceableAddresses.end();
-		};
-
-		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
-		{
-			for (const Address address : addresses)
-			{
-				std::unordered_set<Address> addressesDelta;
-				CheckExpr(LRValue(address), *this, referenceableAddresses, addressesDelta);
-				
-				traverse(addressesDelta, traverse);
-			}
 		};
 
 		{
@@ -2797,8 +2693,8 @@ namespace cgl
 					}
 				}
 			}
-			
-			traverse(addressesDelta, traverse);
+
+			GetReachableAddressesFrom(addressesDelta, *this);
 		}
 
 		{
@@ -2807,17 +2703,17 @@ namespace cgl
 				Record& record = currentRecords[i];
 				Val evaluated = record;
 				std::unordered_set<Address> addressesDelta;
-				CheckValue(evaluated, *this, referenceableAddresses, addressesDelta);
+				CheckValue(evaluated, *this, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
 
-				traverse(addressesDelta, traverse);
+				GetReachableAddressesFrom(addressesDelta, *this);
 			}
 
 			if (temporaryRecord)
 			{
 				std::unordered_set<Address> addressesDelta;
-				CheckValue(temporaryRecord.get(), *this, referenceableAddresses, addressesDelta);
+				CheckValue(temporaryRecord.get(), *this, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
 
-				traverse(addressesDelta, traverse);
+				GetReachableAddressesFrom(addressesDelta, *this);
 			}
 		}
 

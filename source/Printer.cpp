@@ -616,9 +616,9 @@ namespace cgl
 	void Printer::operator()(const DeclFree& node)const
 	{
 		os << indent() << "DeclFree" << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
-		for (const auto& accessor : node.accessors)
+		for (const auto& varRange : node.accessors)
 		{
-			Expr expr = accessor;
+			Expr expr = varRange.accessor;
 			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 		}
 		os << indent() << ")" << std::endl;
@@ -1005,9 +1005,9 @@ namespace cgl
 	void Printer2::operator()(const DeclFree& node)const
 	{
 		os << indent() << "DeclFree(" << footer();
-		for (const auto& accessor : node.accessors)
+		for (const auto& varRange : node.accessors)
 		{
-			Expr expr = accessor;
+			Expr expr = varRange.accessor;
 			boost::apply_visitor(Printer2(pEnv, os, m_indent + 1), expr);
 		}
 		os << indent() << ")" << footer();

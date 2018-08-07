@@ -127,6 +127,66 @@ namespace cgl
 		return false;
 	}
 
+	bool ReadPackedLineData(const PackedList& lines, std::vector<gg::Geometry*>& outputLineDatas, const TransformPacked& transform)
+	{
+		const auto type = GetPackedListType(lines);
+
+		const auto readLine = [&](const std::vector<PackedList::Data>& vertices)->bool
+		{
+			gg::CoordinateArraySequence pts;
+
+			for (const auto& vertexData : vertices)
+			{
+				if (!IsType<PackedRecord>(vertexData.value))
+				{
+					return false;
+				}
+
+				const auto& cooedinateData = As<PackedRecord>(vertexData.value).values;
+				auto itX = cooedinateData.find("x");
+				auto itY = cooedinateData.find("y");
+				if (itX == cooedinateData.end() || itY == cooedinateData.end() || !IsNum(itX->second.value) || !IsNum(itY->second.value))
+				{
+					return false;
+				}
+
+				auto pos = transform.product(EigenVec2(AsDouble(itX->second.value), AsDouble(itY->second.value)));
+				pts.add(gg::Coordinate(pos.x(), pos.y()));
+				
+			}
+
+			if (!pts.empty())
+			{
+				auto factory = gg::GeometryFactory::create();
+				outputLineDatas.push_back(factory->createLineString(pts));
+			}
+
+			return true;
+		};
+
+		if (type == PackedPolyDataType::POLYGON)
+		{
+			return readLine(lines.data);
+		}
+		else if (type == PackedPolyDataType::MULTIPOLYGON)
+		{
+			for (const auto& lineData : lines.data)
+			{
+				const auto& currentLineData = lineData.value;
+
+				if (!IsType<PackedList>(currentLineData) || !readLine(As<PackedList>(currentLineData).data))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		//PackedPolyDataType::?
+		return false;
+	}
+
 	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
 
 	std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
@@ -213,12 +273,29 @@ namespace cgl
 					}
 				}
 			}
-			else if (member.first == "line" && IsType<PackedList>(value))
+			else if (member.first == "line")
 			{
-				cgl::Vector<Eigen::Vector2d> polygon;
-				if (cgl::ReadPolygonPacked(polygon, cgl::As<cgl::PackedList>(value), transform) && !polygon.empty())
+				if (cgl::IsType<cgl::PackedList>(value))
 				{
-					currentLines.push_back(ToLineString(polygon));
+					if (!ReadPackedLineData(cgl::As<cgl::PackedList>(value), currentLines, transform))
+					{
+						CGL_Error("lineに指定されたデータの形式が不正です。");
+					}
+				}
+				else if (cgl::IsType<cgl::FuncVal>(value))
+				{
+					Eval evaluator(pContext);
+					const cgl::PackedVal evaluated = Packed(pContext->expand(evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {}), LocationInfo()), *pContext);
+
+					if (!cgl::IsType<cgl::PackedList>(evaluated))
+					{
+						CGL_Error("line()の評価結果の型が不正です。");
+					}
+
+					if (!ReadPackedLineData(cgl::As<cgl::PackedList>(evaluated), currentLines, transform))
+					{
+						CGL_Error("lineに指定されたデータの形式が不正です。");
+					}
 				}
 			}
 			else if (cgl::IsType<cgl::PackedRecord>(value))
@@ -308,7 +385,8 @@ namespace cgl
 		std::vector<PitaGeometry> wholePolygons;
 
 		std::vector<gg::Geometry*> resultPolygons;
-		gg::Geometry* currentLine = nullptr;
+		//gg::Geometry* currentLine = nullptr;
+		std::vector<gg::Geometry*> currentLines;
 
 		//現時点では実際に描画されるデータを持っているかどうかわからないため、一旦別のストリームに保存しておく
 		std::stringstream currentStream;
@@ -405,12 +483,29 @@ namespace cgl
 					}
 				}
 			}
-			else if (member.first == "line" && IsType<PackedList>(value))
+			else if (member.first == "line")
 			{
-				Vector<Eigen::Vector2d> polygon;
-				if (ReadPolygonPacked(polygon, As<PackedList>(value), transform) && !polygon.empty())
+				if (IsType<PackedList>(value))
 				{
-					currentLine = ToLineString(polygon);
+					if (!ReadPackedLineData(As<PackedList>(value), currentLines, transform))
+					{
+						CGL_Error("lineに指定されたデータの形式が不正です。");
+					}
+				}
+				else if (IsType<FuncVal>(value))
+				{
+					Eval evaluator(pContext);
+					const cgl::PackedVal evaluated = Packed(pContext->expand(evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {}), LocationInfo()), *pContext);
+
+					if (!cgl::IsType<cgl::PackedList>(evaluated))
+					{
+						CGL_Error("line()の評価結果の型が不正です。");
+					}
+
+					if (!ReadPackedLineData(As<PackedList>(evaluated), currentLines, transform))
+					{
+						CGL_Error("lineに指定されたデータの形式が不正です。");
+					}
 				}
 			}
 			else if (member.first == "fill")
@@ -617,7 +712,7 @@ namespace cgl
 
 		auto factory = gg::GeometryFactory::create();
 
-		if (resultPolygons.empty() && currentLine == nullptr)
+		if (resultPolygons.empty() && currentLines.empty())
 		{
 			writeWholeData();
 
@@ -627,7 +722,10 @@ namespace cgl
 		{
 			//パスの色はどうするか　別で指定する必要がある？
 			//図形の境界線も考慮すると、塗りつぶしの色と線の色は別の名前で指定できるようにすべき
-			wholePolygons.emplace_back(currentLine, Color());
+			for (gg::Geometry* line : currentLines)
+			{
+				wholePolygons.emplace_back(line, Color());
+			}
 			writeWholeData();
 
 			return true;
@@ -639,9 +737,9 @@ namespace cgl
 				wholePolygons.emplace_back(geometry, Color());
 			}
 
-			if (currentLine)
+			for (gg::Geometry* line : currentLines)
 			{
-				wholePolygons.emplace_back(currentLine, Color());
+				wholePolygons.emplace_back(line, Color());
 			}
 
 			writeWholeData();

@@ -14,7 +14,7 @@ namespace cgl
 		std::shared_ptr<Context> pEnv;
 
 		//free変数集合->freeに指定された変数全て
-		const std::vector<std::pair<Address, VariableRange>>& freeVariables;
+		const std::vector<RegionVariable>& freeVariables;
 
 		//free変数集合->freeに指定された変数が実際にsatに現れたかどうか
 		std::vector<char>& usedInSat;
@@ -32,8 +32,8 @@ namespace cgl
 		std::set<std::string> localVariables;
 
 		SatVariableBinder(
-			std::shared_ptr<Context> pEnv, 
-			const std::vector<std::pair<Address, VariableRange>>& freeVariables,
+			std::shared_ptr<Context> pEnv,
+			const std::vector<RegionVariable>& freeVariables,
 			std::vector<char>& usedInSat,
 			std::vector<Address>& refs,
 			std::unordered_set<Address>& refsSet,
@@ -80,38 +80,22 @@ namespace cgl
 		bool addSatRef(Address reference);
 
 		bool operator()(const LRValue& node);
-
 		bool operator()(const Identifier& node);
-
 		bool operator()(const Import& node) { return false; }
-
 		bool operator()(const UnaryExpr& node);
-
 		bool operator()(const BinaryExpr& node);
-
 		bool operator()(const DefFunc& node) { CGL_Error("invalid expression"); return false; }
-		
 		bool callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info);
-
 		bool operator()(const Range& node) { CGL_Error("invalid expression"); return false; }
-
 		bool operator()(const Lines& node);
-
 		bool operator()(const If& node);
-
 		bool operator()(const For& node);
-
 		bool operator()(const Return& node) { CGL_Error("invalid expression"); return false; }
-
 		bool operator()(const ListConstractor& node);
-
 		bool operator()(const KeyExpr& node);
-
 		bool operator()(const RecordConstractor& node);
-
 		bool operator()(const DeclSat& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const DeclFree& node) { CGL_Error("invalid expression"); return false; }
-
 		bool operator()(const Accessor& node);
 	};
 
@@ -124,13 +108,9 @@ namespace cgl
 		std::vector<Expr> conjunctions;
 
 		void operator()(const LRValue& node) { conjunctions.push_back(node); }
-
 		void operator()(const Identifier& node) { conjunctions.push_back(node); }
-
 		void operator()(const Import& node) { conjunctions.push_back(node); }
-
 		void operator()(const UnaryExpr& node) { conjunctions.push_back(node); }
-
 		void operator()(const BinaryExpr& node)
 		{
 			if (node.op == BinaryOp::And)
@@ -143,29 +123,17 @@ namespace cgl
 				conjunctions.push_back(node);
 			}
 		}
-
 		void operator()(const DefFunc& node) { conjunctions.push_back(node); }
-
 		void operator()(const Range& node) { conjunctions.push_back(node); }
-
 		void operator()(const Lines& node) { conjunctions.push_back(node); }
-
 		void operator()(const If& node) { conjunctions.push_back(node); }
-
 		void operator()(const For& node) { conjunctions.push_back(node); }
-
 		void operator()(const Return& node) { conjunctions.push_back(node); }
-
 		void operator()(const ListConstractor& node) { conjunctions.push_back(node); }
-
 		void operator()(const KeyExpr& node) { conjunctions.push_back(node); }
-
 		void operator()(const RecordConstractor& node) { conjunctions.push_back(node); }
-
 		void operator()(const DeclSat& node) { conjunctions.push_back(node); }
-
 		void operator()(const DeclFree& node) { conjunctions.push_back(node); }
-
 		void operator()(const Accessor& node) { conjunctions.push_back(node); }
 
 	private:
@@ -198,40 +166,23 @@ namespace cgl
 		boost::optional<double> expandFreeOpt(Address address)const;
 
 		LRValue operator()(const LRValue& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const Identifier& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const Import& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const UnaryExpr& node)override;
-
 		LRValue operator()(const BinaryExpr& node)override;
-
 		LRValue operator()(const DefFunc& node)override { return Eval::operator()(node); }
-
 		LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)override { return Eval::callFunction(info, funcVal, expandedArguments); }
 		LRValue inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder)override { return Eval::inheritRecord(info, original, adder); }
-
 		LRValue operator()(const Range& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const Lines& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const If& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const For& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const Return& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const ListConstractor& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const KeyExpr& node)override;
-
 		LRValue operator()(const RecordConstractor& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const DeclSat& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const DeclFree& node)override { return Eval::operator()(node); }
-
 		LRValue operator()(const Accessor& node)override { return Eval::operator()(node); }
 	};
 }

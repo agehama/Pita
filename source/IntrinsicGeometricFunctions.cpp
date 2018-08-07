@@ -503,6 +503,236 @@ namespace cgl
 		return MakePathResult(polygonList);
 	}
 
+	double ShapeTouch(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+		}
+
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+
+		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1)
+		{
+			CGL_Error("未対応の形状です");
+		}
+
+		const auto toEigen = [](gg::Point* p)
+		{
+			return EigenVec2(p->getX(), p->getY());
+		};
+
+		const auto dist = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return sqrt((v1 - v0).dot(v1 - v0));
+		};
+
+		const auto distSq = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return (v1 - v0).dot(v1 - v0);
+		};
+
+		const auto calcHeightSq = [&](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1, const Eigen::Vector2d& crossPoint)
+		{
+			const auto rel0 = v1 - v0;
+			const auto rel0_n = rel0.normalized();
+			const auto rel1 = crossPoint - v0;
+			const auto foot = rel0_n * rel0_n.dot(rel1);
+			return distSq(foot, rel1);
+		};
+
+		const auto minimumSubLineLength = [&](const gg::LineString* l1, const gg::LineString* l2)
+		{
+			gg::Geometry* crossPoint = l1->intersection(l2);
+			if (crossPoint->getGeometryTypeId() != gg::GEOS_POINT)
+			{
+				CGL_Error("不正な式です");
+			}
+
+			gg::Point* point1 = dynamic_cast<gg::Point*>(crossPoint);
+
+			const auto crossV = EigenVec2(point1->getX(), point1->getY());
+
+			double prevDistance1 = 0;
+			double postDistance1 = 0;
+			double prevDistance2 = 0;
+			double postDistance2 = 0;
+
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < l1->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(l1->getPointN(i));
+					const auto v1 = toEigen(l1->getPointN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance1 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance1 += dist(v0, crossV);
+							postDistance1 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance1 += dist(v0, v1);
+						}
+					}
+				}
+			}
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < l2->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(l2->getPointN(i));
+					const auto v1 = toEigen(l2->getPointN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance2 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance2 += dist(v0, crossV);
+							postDistance2 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance2 += dist(v0, v1);
+						}
+					}
+				}
+			}
+
+			std::vector<double> ds({ prevDistance1,postDistance1,prevDistance2,postDistance2 });
+			return *std::min_element(ds.begin(), ds.end());
+		};
+
+		const auto touchPointAndPoint = [](const gg::Geometry* point1, const gg::Geometry* point2)->double
+		{
+			return point1->distance(point2);
+		};
+
+		const auto touchPointAndLine = [](const gg::Geometry* point, const gg::Geometry* line)->double
+		{
+			return point->distance(line);
+		};
+
+		const auto touchPointAndPolygon = [](const gg::Geometry* point, const gg::Geometry* polygon)->double
+		{
+			CGL_Error("未対応の形状です");
+		};
+
+		const auto touchLineAndLine = [&](const gg::Geometry* line1, const gg::Geometry* line2)->double
+		{
+			const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line1);
+			const gg::LineString* l2 = dynamic_cast<const gg::LineString*>(line2);
+			//交点を持たなければ距離を返す
+			if (!l1->intersects(l2))
+			{
+				return l1->distance(l2);
+			}
+			//交点を持っていれば、それぞれの線分を交点で切断したときの4本の部分線のうち、最も短い部分線の長さを返す
+			return minimumSubLineLength(l1, l2);
+		};
+
+		const auto touchLineAndPolygon = [](const gg::Geometry* line, const gg::Geometry* polygon)->double
+		{
+			const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line);
+			const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon);
+			//交点を持たなければ距離を返す
+			if (!l1->intersects(p2))
+			{
+				return l1->distance(p2);
+			}
+			gg::Geometry* result = l1->intersection(p2);
+			if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
+			{
+				const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
+				return resultLine->getLength();
+			}
+			else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+			{
+				const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
+				return resultLineString->getLength();
+			}
+			else if (result->getGeometryTypeId() == gg::GEOS_POINT)
+			{
+				return 0;
+			}
+			CGL_DBG1(result->getGeometryType());
+			CGL_Error("不正な式です");
+		};
+
+		const auto touchPolygonAndPolygon = [](const gg::Geometry* polygon1, const gg::Geometry* polygon2)->double
+		{
+			CGL_Error("未対応の形状です");
+		};
+
+		enum TouchType { Point = 0, Line = 1, Polygon = 2 };
+		const auto getTouchType = [](const gg::Geometry* geometry)
+		{
+			switch (geometry->getGeometryTypeId())
+			{
+			case gg::GEOS_POINT: return Point;
+			case gg::GEOS_LINESTRING: return Line;
+			case gg::GEOS_POLYGON: return Polygon;
+			default:
+				CGL_Error("未対応の形状です");
+			}
+		};
+
+		struct TypeGeometry
+		{
+			TouchType type;
+			const gg::Geometry* geometry;
+			TypeGeometry(TouchType type, const gg::Geometry* geometry)
+				:type(type), geometry(geometry)
+			{}
+		};
+
+		const TouchType type1 = getTouchType(lhsPolygon[0]);
+		const TouchType type2 = getTouchType(rhsPolygon[0]);
+
+		const TypeGeometry smallerTypePoly = (type1 <= type2 ? TypeGeometry(type1, lhsPolygon[0]) : TypeGeometry(type2, rhsPolygon[0]));
+		const TypeGeometry largerTypePoly = (type1 <= type2 ? TypeGeometry(type2, rhsPolygon[0]) : TypeGeometry(type1, lhsPolygon[0]));
+
+		if (smallerTypePoly.type == TouchType::Point)
+		{
+			switch (largerTypePoly.type)
+			{
+			case TouchType::Point:
+				return touchPointAndPoint(smallerTypePoly.geometry, largerTypePoly.geometry);
+			case TouchType::Line:
+				return touchPointAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+			default:
+				return touchPointAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+		}
+		else if(smallerTypePoly.type == TouchType::Line)
+		{
+			if (largerTypePoly.type == TouchType::Line)
+			{
+				return touchLineAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+			else
+			{
+				return touchLineAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+		}
+		else
+		{
+			return touchPolygonAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+		}
+	}
 
 	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{

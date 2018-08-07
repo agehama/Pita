@@ -214,7 +214,7 @@ namespace cgl
 	//PackedRecord GetPolygonPacked(const gg::Polygon* poly);
 
 	using PackedPolyData = std::vector<PackedList>;
-	//最終的にShapeに変換する個所以外では、再利用性を考えPackedListは内部に頂点のみを表すものとし、
+	//最終的にShapeに変換する個所以外では、再利用性を考えPackedListは内部に頂点のみを持つものとし、
 	//複数のポリゴンはstd::vector<PackedList>で表現する
 	PackedPolyData GetPolygonVertices(const gg::Polygon* poly);
 	//PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);

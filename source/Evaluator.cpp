@@ -303,14 +303,14 @@ namespace cgl
 	Expr AddressReplacer::operator()(const DeclFree& node)const
 	{
 		DeclFree result;
-		for (const auto& accessor : node.accessors)
+		for (const auto& freeVar : node.accessors)
 		{
-			Expr expr = accessor;
+			Expr expr = freeVar.accessor;
 			result.addAccessor(boost::apply_visitor(*this, expr));
-		}
-		for (const auto& range : node.ranges)
-		{
-			result.addRange(boost::apply_visitor(*this, range));
+			if (freeVar.range)
+			{
+				result.addRange(boost::apply_visitor(*this, freeVar.range.get()));
+			}
 		}
 		return result.setLocation(node);
 	}
@@ -373,7 +373,7 @@ namespace cgl
 		result.type = node.type;
 		result.constraint = node.constraint;
 		result.isSatisfied = node.isSatisfied;
-		result.freeVariables = node.freeVariables;
+		result.boundedFreeVariables = node.boundedFreeVariables;
 
 		//result.unitConstraints = node.unitConstraints;
 		//result.variableAppearances = node.variableAppearances;
@@ -488,11 +488,11 @@ namespace cgl
 			for (size_t i = 0; i < problem.freeVariableRefs.size(); ++i)
 			{
 				auto& currentElem = problem.freeVariableRefs[i];
-				const Address oldAddress = currentElem.first;
+				const Address oldAddress = currentElem.address;
 				if (auto newAddressOpt = getOpt(oldAddress))
 				{
 					const Address newAddress = newAddressOpt.get();
-					currentElem.first = newAddress;
+					currentElem.address = newAddress;
 				}
 			}
 		}
@@ -520,17 +520,17 @@ namespace cgl
 			//elseの場合はReferenceであり、この場合はContextが勝手に参照先を切り替えるのでここでは何もしなくてよい
 		}
 		*/
-		for (auto& freeVariable : original.freeVars)
+		for (BoundedFreeVar& var : original.freeVars)
 		{
-			if (IsType<Accessor>(freeVariable))
+			if (IsType<Accessor>(var.freeVariable))
 			{
-				const Expr expr = As<Accessor>(freeVariable);
-				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
+				const Expr expr = As<Accessor>(var.freeVariable);
+				var.freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
 			}
 			else
 			{
-				const Reference reference = As<Reference>(freeVariable);
-				freeVariable = pEnv->cloneReference(reference, replaceMap);
+				const Reference reference = As<Reference>(var.freeVariable);
+				var.freeVariable = pEnv->cloneReference(reference, replaceMap);
 			}
 		}
 
@@ -585,11 +585,11 @@ namespace cgl
 			for (size_t i = 0; i < problem.freeVariableRefs.size(); ++i)
 			{
 				auto& currentElem = problem.freeVariableRefs[i];
-				const Address oldAddress = currentElem.first;
+				const Address oldAddress = currentElem.address;
 				if (auto newAddressOpt = getOpt(oldAddress))
 				{
 					const Address newAddress = newAddressOpt.get();
-					currentElem.first = newAddress;
+					currentElem.address = newAddress;
 				}
 			}
 		}
@@ -610,17 +610,17 @@ namespace cgl
 		}
 		*/
 
-		for (auto& freeVariable : node.freeVariables)
+		for (auto& freeVar : node.boundedFreeVariables)
 		{
-			if (IsType<Accessor>(freeVariable))
+			if (IsType<Accessor>(freeVar.freeVariable))
 			{
-				const Expr expr = As<Accessor>(freeVariable);
-				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
+				const Expr expr = As<Accessor>(freeVar.freeVariable);
+				freeVar.freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
 			}
 			else
 			{
-				const Reference reference = As<Reference>(freeVariable);
-				freeVariable = pEnv->cloneReference(reference, replaceMap);
+				const Reference reference = As<Reference>(freeVar.freeVariable);
+				freeVar.freeVariable = pEnv->cloneReference(reference, replaceMap);
 			}
 		}
 		
@@ -1014,9 +1014,9 @@ namespace cgl
 	Expr ClosureMaker::operator()(const DeclFree& node)
 	{
 		DeclFree result;
-		for (const auto& accessor : node.accessors)
+		for (const auto& freeVar : node.accessors)
 		{
-			const Expr expr = accessor;
+			const Expr expr = freeVar.accessor;
 			const Expr closedAccessor = boost::apply_visitor(*this, expr);
 			if (IsType<Accessor>(closedAccessor) || IsType<UnaryExpr>(closedAccessor))
 			{
@@ -1026,11 +1026,12 @@ namespace cgl
 			{
 				CGL_ErrorNodeInternal(node, "アクセッサの評価結果が不正です。");
 			}
-		}
-		for (const auto& range : node.ranges)
-		{
-			const Expr closedRange = boost::apply_visitor(*this, range);
-			result.addRange(closedRange);
+
+			if (freeVar.range)
+			{
+				const Expr closedRange = boost::apply_visitor(*this, freeVar.range.get());
+				result.addRange(closedRange);
+			}
 		}
 		return result.setLocation(node);
 	}
@@ -1703,7 +1704,6 @@ namespace cgl
 		}
 		
 		pEnv->printContext();
-		CGL_DebugLog("");
 
 		/*for (const auto& satExpr : innerSatClosures)
 		{
@@ -1711,16 +1711,21 @@ namespace cgl
 		}
 		innerSatClosures.clear();*/
 
-		CGL_DebugLog("");
-
 		//各free変数の範囲をまとめたレコードを作成する
-		const auto makePackedRanges = [&](std::shared_ptr<Context> pContext, const std::vector<Expr>& ranges)->std::vector<PackedVal>
+		const auto makePackedRanges = [&](std::shared_ptr<Context> pContext, const std::vector<BoundedFreeVar>& freeVars)->std::vector<PackedVal>
 		{
 			Eval evaluator(pContext);
 			std::vector<PackedVal> packedRanges;
-			for (const auto& rangeExpr : ranges)
+			for (const auto& rangeExpr : freeVars)
 			{
-				packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr), recordConsractor), *pContext));
+				if (rangeExpr.freeRange)
+				{
+					packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr.freeRange.get()), recordConsractor), *pContext));
+				}
+				else
+				{
+					packedRanges.push_back(0);
+				}
 			}
 			return packedRanges;
 		};
@@ -1779,12 +1784,16 @@ namespace cgl
 		};
 		*/
 
+		//declfreeで指定されたアクセッサを全て展開して辿れるアドレスを返す（範囲指定なし）
 		const auto makeFreeVariableAddresses = [&](std::shared_ptr<Context> pContext, const std::vector<FreeVarType>& freeVariables)
-			->std::vector<std::pair<Address, VariableRange>>
+			->std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>>
 		{
-			std::vector<std::pair<Address, VariableRange>> freeVariableAddresses;
+			std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>> results;
+			auto& resultAddresses = results.first;
+			auto& resultRegions = results.second;
 			for (size_t i = 0; i < freeVariables.size(); ++i)
 			{
+				std::vector<RegionVariable> currentResult;
 				const auto& accessor = freeVariables[i];
 				if (IsType<Accessor>(accessor))
 				{
@@ -1793,8 +1802,7 @@ namespace cgl
 					printExpr2(expr, pContext, std::cout);
 					std::cout << "\n";*/
 
-					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), boost::none, recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences2(As<Accessor>(accessor), recordConsractor);
 				}
 				else if(IsType<Reference>(accessor))
 				{
@@ -1802,21 +1810,34 @@ namespace cgl
 					std::cout << As<Reference>(accessor).toString();
 					std::cout << "\n";*/
 
-					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), boost::none, recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), recordConsractor);
 				}
+
+				const size_t startIndex = resultAddresses.size();
+				const size_t numOfIndices = currentResult.size();
+				resultAddresses.insert(resultAddresses.end(), currentResult.begin(), currentResult.end());
+
+				OptimizeRegion region;
+				region.region = Interval();
+				region.startIndex = startIndex;
+				region.numOfIndices = numOfIndices;
+				resultRegions.push_back(region);
 			}
-			return freeVariableAddresses;
+
+			return results;
 		};
 
 		//declfreeで指定されたアクセッサを全て展開して辿れるアドレスを返す（範囲指定あり）
-		const auto makeFreeVariableAddressesRange = [&](std::shared_ptr<Context> pContext, const std::vector<FreeVarType>& freeVariables, const std::vector<PackedVal>& packedRanges)
-			->std::vector<std::pair<Address, VariableRange>>
+		const auto makeFreeVariableAddressesRange = [&](std::shared_ptr<Context> pContext, const std::vector<BoundedFreeVar>& freeVariables,
+			const std::vector<PackedVal>& packedRanges)->std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>>
 		{
-			std::vector<std::pair<Address, VariableRange>> freeVariableAddresses;
+			std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>> results;
+			auto& resultAddresses = results.first;
+			auto& resultRegions = results.second;
 			for (size_t i = 0; i < freeVariables.size(); ++i)
 			{
-				const auto& accessor = freeVariables[i];
+				std::vector<RegionVariable> currentResult;
+				const auto& accessor = freeVariables[i].freeVariable;
 				if (IsType<Accessor>(accessor))
 				{
 					/*std::cout << "expand accessor: ";
@@ -1824,8 +1845,7 @@ namespace cgl
 					printExpr2(expr, pContext, std::cout);
 					std::cout << "\n";*/
 
-					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), packedRanges[i], recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences2(As<Accessor>(accessor), recordConsractor);
 				}
 				else if (IsType<Reference>(accessor))
 				{
@@ -1833,12 +1853,21 @@ namespace cgl
 					std::cout << As<Reference>(accessor).toString();
 					std::cout << "\n";*/
 
-					const auto reference = As<LRValue>(accessor).reference();
-					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), packedRanges[i], recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), recordConsractor);
 				}
+
+				const size_t startIndex = resultAddresses.size();
+				const size_t numOfIndices = currentResult.size();
+				resultAddresses.insert(resultAddresses.end(), currentResult.begin(), currentResult.end());
+
+				OptimizeRegion region;
+				region.region= packedRanges[i];
+				region.startIndex = startIndex;
+				region.numOfIndices = numOfIndices;
+				resultRegions.push_back(region);
 			}
-			return freeVariableAddresses;
+
+			return results;
 		};
 
 		//論理積で繋がれた制約をリストに分解して返す
@@ -1851,7 +1880,7 @@ namespace cgl
 
 		//それぞれのunitConstraintについて、出現するアドレスの集合を求めたものを返す
 		const auto searchFreeVariablesOfConstraint = [](std::shared_ptr<Context> pContext, const Expr& constraint,
-			const std::vector<std::pair<Address, VariableRange>>& freeVariableAddresses)->ConstraintAppearance
+			const std::vector<RegionVariable>& freeVariableAddresses)->ConstraintAppearance
 		{
 			//制約ID -> ConstraintAppearance
 			ConstraintAppearance appearingList;
@@ -1861,8 +1890,24 @@ namespace cgl
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
 
+			/*
+			CGL_DBG1("Expr: ");
+			printExpr2(constraint, pContext, std::cout);
+
+			CGL_DBG1("freeVariables: " + ToS(freeVariableAddresses.size()));
+			for (const auto& val : freeVariableAddresses)
+			{
+				CGL_DBG1(std::string("  Address(") + val.first.toString() + ")");
+			}*/
+
 			SatVariableBinder binder(pContext, freeVariableAddresses, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
+
+			/*CGL_DBG1("appearingList: " + ToS(appearingList.size()));
+			for (const auto& a : appearingList)
+			{
+				CGL_DBG1(std::string("  Address(") + a.toString() + ")");
+			}*/
 
 			return appearingList;
 		};
@@ -1882,6 +1927,7 @@ namespace cgl
 					return true;
 				}
 			}
+
 			return false;
 		};
 
@@ -1957,8 +2003,8 @@ namespace cgl
 		{
 			for (size_t i = 0; i < resultxs.size(); ++i)
 			{
-				Address address = problem.freeVariableRefs[i].first;
-				const auto range = problem.freeVariableRefs[i].second;
+				Address address = problem.freeVariableRefs[i].address;
+				//const auto range = problem.freeVariableRefs[i].second;
 				//std::cout << "Address(" << address.toString() << "): [" << range.minimum << ", " << range.maximum << "]\n";
 				std::cout << "Address(" << address.toString() << "): " << resultxs[i] << "\n";
 				pContext->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
@@ -2006,10 +2052,10 @@ namespace cgl
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
-			const auto& ranges = record.freeRanges;
-			const bool hasRange = !ranges.empty();
+			//const auto& ranges = record.freeRanges;
+			//const bool hasRange = !ranges.empty();
 
-			const std::vector<PackedVal> adderPackedRanges = makePackedRanges(pEnv, ranges);
+			const std::vector<PackedVal> adderPackedRanges = makePackedRanges(pEnv, record.boundedFreeVariables);
 
 #ifdef commentout
 			//変数ID->アドレス
@@ -2031,8 +2077,8 @@ namespace cgl
 			mergedFreeVariableAddresses.insert(mergedFreeVariableAddresses.end(), adderFreeVariableAddresses_.begin(), adderFreeVariableAddresses_.end());
 #endif
 
-			std::vector<FreeVarType> margedFreeVars = original.freeVars;
-			margedFreeVars.insert(margedFreeVars.end(), record.freeVariables.begin(), record.freeVariables.end());
+			std::vector<BoundedFreeVar> margedFreeVars = original.freeVars;
+			margedFreeVars.insert(margedFreeVars.end(), record.boundedFreeVariables.begin(), record.boundedFreeVariables.end());
 			/*{
 				std::cout << "margedFreeVars: ";
 				for (const auto& var : margedFreeVars)
@@ -2051,15 +2097,34 @@ namespace cgl
 				}
 			}*/
 
-			std::cout << "margedFreeVars: " << margedFreeVars.size();
-			std::vector<FreeVariableAddress> mergedFreeVariableAddresses = (hasRange
-				? makeFreeVariableAddressesRange(pEnv, margedFreeVars, adderPackedRanges)
-				: makeFreeVariableAddresses(pEnv, margedFreeVars));
+			std::cout << "margedFreeVars: " << margedFreeVars.size() << std::endl;
+			auto mergedFreeVariableAddresses = makeFreeVariableAddressesRange(pEnv, margedFreeVars, adderPackedRanges);
 			{
-				std::cout << "current variables: ";
-				for (const auto& val : mergedFreeVariableAddresses)
+				for (const auto& val : mergedFreeVariableAddresses.first)
 				{
-					std::cout << "Address(" << val.first.toString() << "), ";
+					std::cout << "Address(" << val.address.toString() << "): ";
+					if (val.attributes.empty())
+					{
+						std::cout << "No attribute";
+					}
+					else
+					{
+						RegionVariable::Attribute att;
+						switch (*val.attributes.begin())
+						{
+						case cgl::RegionVariable::Position:
+							std::cout << "Position"; break;
+						case cgl::RegionVariable::Scale:
+							std::cout << "Scale"; break;
+						case cgl::RegionVariable::Angle:
+							std::cout << "Angle"; break;
+						case cgl::RegionVariable::Other:
+							std::cout << "Other"; break;
+						default:
+							break;
+						}
+					}
+					std::cout << "\n";
 				}
 				std::cout << "\n";
 			}
@@ -2075,7 +2140,7 @@ namespace cgl
 			std::vector<ConstraintAppearance> adderVariableAppearances;
 			for (const auto& constraint : adderUnitConstraints)
 			{
-				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
+				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses.first));
 				/*std::cout << "constraint:\n";
 				printExpr(constraint, pEnv, std::cout);
 				std::stringstream ss;
@@ -2085,8 +2150,9 @@ namespace cgl
 				}
 				std::cout << ss.str() << "\n\n";*/
 			}
-			
-			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << std::endl;
+
+			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.first.size() << std::endl;
+
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
 				std::cout << "  3. Dependency analysis" << std::endl;
@@ -2188,10 +2254,10 @@ namespace cgl
 							currentProblem.addUnitConstraint(mergedUnitConstraints[constraintID]);
 						}
 
-						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
+						currentProblem.freeVariableRefs = mergedFreeVariableAddresses.first;
 
 						std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
-						std::cout << "2 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
+						std::cout << "2 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.first.size() << "\n";
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
 						readResult(pEnv, resultxs, currentProblem);
@@ -2214,6 +2280,7 @@ namespace cgl
 					//満たされなくなっていた制約は解きなおす
 					for (auto& oldConstraint : original.groupConstraints)
 					{
+						std::cout << "Old Constraint" << std::endl;
 						const Val result = pEnv->expand(boost::apply_visitor(*this, oldConstraint.expr.get()), recordConsractor);
 						/*if (!IsType<bool>(result))
 						{
@@ -2238,9 +2305,11 @@ namespace cgl
 
 						if (!currentConstraintIsSatisfied)
 						{
-							oldConstraint.freeVariableRefs = (hasRange
-								? makeFreeVariableAddressesRange(pEnv, original.freeVars, adderPackedRanges)
-								: makeFreeVariableAddresses(pEnv, original.freeVars));
+							const std::vector<PackedVal> oldPackedRanges = makePackedRanges(pEnv, original.freeVars);
+							auto oldFreeVariableAddresses = makeFreeVariableAddressesRange(pEnv, original.freeVars, oldPackedRanges);
+
+							oldConstraint.freeVariableRefs = oldFreeVariableAddresses.first;
+							oldConstraint.optimizeRegions = oldFreeVariableAddresses.second;
 
 							//TODO: SatVariableBinderをやり直す必要まではない？
 							//クローンでずれたアドレスを張り替えるだけで十分かもしれない？
@@ -2260,6 +2329,8 @@ namespace cgl
 							}
 						}
 					}
+
+					std::cout << "New Constraints" << std::endl;
 
 					//次に、新たに追加される制約について解く
 
@@ -2307,7 +2378,8 @@ namespace cgl
 							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 						}
 
-						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
+						currentProblem.freeVariableRefs = mergedFreeVariableAddresses.first;
+						currentProblem.optimizeRegions = mergedFreeVariableAddresses.second;
 
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
@@ -2321,15 +2393,13 @@ namespace cgl
 						}
 
 						original.groupConstraints.push_back(currentProblem);
-
 					}
 				}
 			}
 
 			record.problems.clear();
 			record.constraint = boost::none;
-			record.freeVariables.clear();
-			record.freeRanges.clear();
+			record.boundedFreeVariables.clear();
 
 			isInConstraint = false;
 		}
@@ -2466,7 +2536,7 @@ namespace cgl
 		UpdateCurrentLocation(node);
 
 		//std::cout << "Begin LRValue Eval::operator()(const DeclFree& node)" << std::endl;
-		for (const auto& accessor : node.accessors)
+		for (const auto& decl : node.accessors)
 		{
 			//std::cout << "  accessor:" << std::endl;
 			if (pEnv->currentRecords.empty())
@@ -2475,9 +2545,11 @@ namespace cgl
 			}
 
 			ClosureMaker closureMaker(pEnv, std::set<std::string>());
-			const Expr varExpr = accessor;
+
+			const Expr varExpr = decl.accessor;
 			const Expr closedVarExpr = boost::apply_visitor(closureMaker, varExpr);
 
+			auto& freeVars = pEnv->currentRecords.back().get().boundedFreeVariables;
 			/*std::cout << "VarExpr: ";
 			printExpr2(varExpr, pEnv, std::cout);
 			std::cout << "\n";
@@ -2487,29 +2559,33 @@ namespace cgl
 
 			if (IsType<Accessor>(closedVarExpr))
 			{
-				pEnv->currentRecords.back().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
+				//pEnv->currentRecords.back().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
+				freeVars.emplace_back(As<Accessor>(closedVarExpr));
 			}
 			else if (IsType<Identifier>(closedVarExpr))
 			{
 				Accessor result(closedVarExpr);
-				pEnv->currentRecords.back().get().freeVariables.push_back(result);
+				//pEnv->currentRecords.back().get().freeVariables.push_back(result);
+				freeVars.emplace_back(result);
 			}
 			else if (IsType<LRValue>(closedVarExpr) && As<LRValue>(closedVarExpr).isReference())
 			{
-				pEnv->currentRecords.back().get().freeVariables.push_back(As<LRValue>(closedVarExpr).reference());
+				//pEnv->currentRecords.back().get().freeVariables.push_back(As<LRValue>(closedVarExpr).reference());
+				freeVars.emplace_back(As<LRValue>(closedVarExpr).reference());
 			}
 			else
 			{
 				CGL_ErrorNode(node, "var宣言には識別子かアクセッサしか用いることができません。");
 			}
+
+			if (decl.range)
+			{
+				ClosureMaker closureMaker(pEnv, std::set<std::string>());
+				const Expr closedRangeExpr = boost::apply_visitor(closureMaker, decl.range.get());
+				freeVars.back().freeRange = closedRangeExpr;
+			}
 		}
 
-		for (const auto& range : node.ranges)
-		{
-			ClosureMaker closureMaker(pEnv, std::set<std::string>());
-			const Expr closedRangeExpr = boost::apply_visitor(closureMaker, range);
-			pEnv->currentRecords.back().get().freeRanges.push_back(closedRangeExpr);
-		}
 		//std::cout << "End LRValue Eval::operator()(const DeclFree& node)" << std::endl;
 		return RValue(0);
 	}

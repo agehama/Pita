@@ -92,7 +92,7 @@ Hexagon = Shape{
     p: (index -> globalPos( polygon[index] ))
 }
 
-Circle = (quality -> Shape{
+MakeCircle = (quality -> Shape{
     r = 0.5
     delta = 360.0 / quality
     polygon: for i in 0:quality list(
@@ -101,12 +101,23 @@ Circle = (quality -> Shape{
     )
 })
 
+Circle = MakeCircle(100)
+
 Arrow = Shape{
     body: Square{scale = Vec2(20, 200), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
     head: Triangle{scale = Vec2(50, 50), sat(Contact(bottom(), body.top())), var(pos)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))
     beginLine: (->globalShape(body.bottomEdge()))
+}
+
+Line = (p1, p2 -> Shape{line: [p1, p2]})
+
+Dot = (a, b -> a.x*b.x + a.y*b.y)
+Cross = (a, b -> a.x*b.y - a.y*b.x)
+
+Screen = Square{
+    scale: Vec2(2000, 2000)
 }
 
 GC()

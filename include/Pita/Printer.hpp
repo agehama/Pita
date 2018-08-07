@@ -254,6 +254,7 @@ namespace cgl
 	inline void printExpr2(const Expr& expr, std::shared_ptr<Context> pEnv, std::ostream& os)
 	{
 		boost::apply_visitor(Printer2(pEnv, os), expr);
+		os << std::endl;
 	}
 
 #ifdef CGL_EnableLogOutput

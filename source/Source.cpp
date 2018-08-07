@@ -1000,6 +1000,7 @@ Library.
 	cgl::Program program;
 
 	//cgl::Parse1(input_file);
+	//*
 	try
 	{
 		std::cout << std::setprecision(17);
@@ -1013,6 +1014,7 @@ Library.
 	{
 		std::cout << e.what() << std::endl;
 	}
+	//*/
 
 	//program.execute1(input_file, output_file, !isDebugMode);
 	/*

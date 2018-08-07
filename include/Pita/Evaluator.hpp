@@ -52,37 +52,21 @@ namespace cgl
 		boost::optional<Address> getOpt(Address address)const;
 
 		Expr operator()(const LRValue& node)const;
-
 		Expr operator()(const Identifier& node)const { return node; }
-
 		Expr operator()(const Import& node)const { return node; }
-
 		Expr operator()(const UnaryExpr& node)const;
-
 		Expr operator()(const BinaryExpr& node)const;
-
 		Expr operator()(const Range& node)const;
-
 		Expr operator()(const Lines& node)const;
-
 		Expr operator()(const DefFunc& node)const;
-
 		Expr operator()(const If& node)const;
-
 		Expr operator()(const For& node)const;
-
 		Expr operator()(const Return& node)const;
-
 		Expr operator()(const ListConstractor& node)const;
-
 		Expr operator()(const KeyExpr& node)const;
-
 		Expr operator()(const RecordConstractor& node)const;
-
 		Expr operator()(const Accessor& node)const;
-
 		Expr operator()(const DeclSat& node)const;
-
 		Expr operator()(const DeclFree& node)const;
 	};
 
@@ -102,21 +86,13 @@ namespace cgl
 		boost::optional<Address> getOpt(Address address)const;
 
 		Val operator()(bool node) { return node; }
-
 		Val operator()(int node) { return node; }
-
 		Val operator()(double node) { return node; }
-
 		Val operator()(const CharString& node) { return node; }
-
 		Val operator()(const List& node);
-
 		Val operator()(const KeyValue& node) { return node; }
-
 		Val operator()(const Record& node);
-
 		Val operator()(const FuncVal& node) { return node; }
-
 		Val operator()(const Jump& node) { return node; }
 	};
 
@@ -136,21 +112,13 @@ namespace cgl
 		boost::optional<Address> getOpt(Address address)const;
 
 		Val operator()(bool node) { return node; }
-
 		Val operator()(int node) { return node; }
-
 		Val operator()(double node) { return node; }
-
 		Val operator()(const CharString& node) { return node; }
-
 		Val operator()(const List& node);
-
 		Val operator()(const KeyValue& node) { return node; }
-
 		Val operator()(const Record& node);
-
 		Val operator()(const FuncVal& node)const;
-
 		Val operator()(const Jump& node) { return node; }
 	};
 
@@ -170,21 +138,13 @@ namespace cgl
 		Address replaced(Address address)const;
 
 		void operator()(bool& node) {}
-
 		void operator()(int& node) {}
-
 		void operator()(double& node) {}
-
 		void operator()(CharString& node) {}
-
 		void operator()(List& node) {}
-
 		void operator()(KeyValue& node) {}
-
 		void operator()(Record& node);
-
 		void operator()(FuncVal& node) {}
-
 		void operator()(Jump& node) {}
 	};
 
@@ -218,37 +178,21 @@ namespace cgl
 		bool isLocalVariable(const std::string& name)const;
 
 		Expr operator()(const LRValue& node) { return node; }
-
 		Expr operator()(const Identifier& node);
-
 		Expr operator()(const Import& node) { return node; }
-
 		Expr operator()(const UnaryExpr& node);
-
 		Expr operator()(const BinaryExpr& node);
-
 		Expr operator()(const Range& node);
-
 		Expr operator()(const Lines& node);
-
 		Expr operator()(const DefFunc& node);
-
 		Expr operator()(const If& node);
-
 		Expr operator()(const For& node);
-
 		Expr operator()(const Return& node);
-
 		Expr operator()(const ListConstractor& node);
-
 		Expr operator()(const KeyExpr& node);
-
 		Expr operator()(const RecordConstractor& node);
-
 		Expr operator()(const Accessor& node);
-		
 		Expr operator()(const DeclSat& node);
-
 		Expr operator()(const DeclFree& node);
 	};
 
@@ -258,40 +202,23 @@ namespace cgl
 		Eval(std::shared_ptr<Context> pEnv) :pEnv(pEnv) {}
 
 		virtual LRValue operator()(const LRValue& node) { return node; }
-
 		virtual LRValue operator()(const Identifier& node);
-
 		virtual LRValue operator()(const Import& node);
-
 		virtual LRValue operator()(const UnaryExpr& node);
-
 		virtual LRValue operator()(const BinaryExpr& node);
-
 		virtual LRValue operator()(const DefFunc& defFunc);
-
 		virtual LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& arguments);
 		virtual LRValue inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder);
-
 		virtual LRValue operator()(const Range& range) { return RValue(0); }
-
 		virtual LRValue operator()(const Lines& statement);
-
 		virtual LRValue operator()(const If& if_statement);
-
 		virtual LRValue operator()(const For& forExpression);
-
 		virtual LRValue operator()(const Return& return_statement);
-
 		virtual LRValue operator()(const ListConstractor& listConstractor);
-
 		virtual LRValue operator()(const KeyExpr& keyExpr);
-
 		virtual LRValue operator()(const RecordConstractor& recordConsractor);
-
 		virtual LRValue operator()(const DeclSat& node);
-
 		virtual LRValue operator()(const DeclFree& node);
-
 		virtual LRValue operator()(const Accessor& accessor);
 
 	protected:

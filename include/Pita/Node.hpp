@@ -1,6 +1,7 @@
 #pragma once
 #pragma warning(disable:4996)
 #include <cmath>
+#include <cfloat>
 #include <vector>
 #include <memory>
 #include <functional>
@@ -802,15 +803,49 @@ namespace cgl
 		boost::recursive_wrapper<SatFunctionReference>
 	>;
 
-	struct VariableRange
+	struct Interval
 	{
-		double minimum = -100.0;
-		double maximum = +100.0;
-		VariableRange() = default;
-		VariableRange(double minimum, double maximum) :
+		double minimum = -DBL_MAX;
+		double maximum = +DBL_MAX;
+		Interval() = default;
+		Interval(double minimum, double maximum) :
 			minimum(minimum),
 			maximum(maximum)
 		{}
+	};
+
+	struct RegionVariable
+	{
+		Address address;
+
+		enum Attribute {
+			Position = 1 << 0,
+			Scale = 1 << 1,
+			Angle = 1 << 2,
+			Other = 1 << 3
+			//Position
+			//Scale
+			//Angle
+			//Other
+			//X
+			//Y
+			//Shape
+		};
+		std::set<Attribute> attributes;
+
+		RegionVariable() = default;
+		RegionVariable(Address address, Attribute attribute) :
+			address(address),
+			attributes({ attribute })
+		{}
+	};
+
+	struct OptimizeRegion
+	{
+		boost::variant<Interval, PackedVal> region;
+		boost::optional<double> eps;
+		int startIndex;
+		int numOfIndices;
 	};
 
 	struct Import : public LocationInfo
@@ -883,8 +918,9 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
-												 //freeVariablesから辿れる全てのアドレス
-		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//変数ID->Address
+		//freeVariablesから辿れる全てのアドレス
+		std::vector<RegionVariable> freeVariableRefs;//変数ID->Address
+		std::vector<OptimizeRegion> optimizeRegions;
 
 		bool hasPlateausFunction = false;
 
@@ -2047,9 +2083,17 @@ namespace cgl
 
 	struct DeclFree : public LocationInfo
 	{
-		//std::vector<Accessor> accessors;
-		std::vector<Expr> accessors;
-		std::vector<Expr> ranges;
+		/*std::vector<Expr> accessors;
+		std::vector<Expr> ranges;*/
+		struct DeclVar
+		{
+			Expr accessor;
+			boost::optional<Expr> range;
+
+			DeclVar() = default;
+			DeclVar(const Expr& accessor) :accessor(accessor) {}
+		};
+		std::vector<DeclVar> accessors;
 
 		DeclFree() = default;
 
@@ -2064,13 +2108,12 @@ namespace cgl
 
 		void addAccessor(const Expr& accessor)
 		{
-			//accessors.push_back(accessor);
 			accessors.emplace_back(accessor);
 		}
 
 		void addRange(const Expr& range)
 		{
-			ranges.push_back(range);
+			accessors.back().range = range;
 		}
 
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
@@ -2080,12 +2123,12 @@ namespace cgl
 
 		static void AddAccessorDynamic(DeclFree& decl, const Accessor& accessor)
 		{
-			decl.accessors.push_back(UnaryExpr(accessor, UnaryOp::Dynamic));
+			decl.accessors.push_back(DeclVar(UnaryExpr(accessor, UnaryOp::Dynamic)));
 		}
 
 		static void AddRange(DeclFree& decl, const Expr& expr)
 		{
-			decl.ranges.push_back(expr);
+			decl.accessors.back().range = expr;
 		}
 
 		bool operator==(const DeclFree& other)const
@@ -2132,9 +2175,18 @@ namespace cgl
 
 	//using FreeVariable = std::pair<Address, VariableRange>;
 
-	using FreeVariableAddress = std::pair<Address, VariableRange>;
+	//using FreeVariableAddress = std::pair<Address, VariableRange>;
 
 	using FreeVarType = boost::variant<boost::recursive_wrapper<Accessor>, Reference>;
+
+	struct BoundedFreeVar
+	{
+		FreeVarType freeVariable;// Accessor | Reference
+		boost::optional<Expr> freeRange;
+
+		BoundedFreeVar() = default;
+		BoundedFreeVar(const FreeVarType& freeVariable) :freeVariable(freeVariable) {}
+	};
 
 	//unitConstraintに出現するfree変数のAddress
 	using ConstraintAppearance = std::unordered_set<Address>;
@@ -2148,7 +2200,7 @@ namespace cgl
 		OldRecordData() = default;
 
 		//変数ID->アドレス
-		std::vector<FreeVarType> freeVars;
+		std::vector<BoundedFreeVar> freeVars;
 
 		//分解された単位制約
 		std::vector<Expr> unitConstraints;
@@ -2179,12 +2231,8 @@ namespace cgl
 		std::vector<OptimizationProblemSat> problems;
 		boost::optional<Expr> constraint;
 
-		//var宣言で指定されたアクセッサ
-		//std::vector<Accessor> freeVariables;
-		std::vector<FreeVarType> freeVariables;
-
-		//var宣言で指定されたアクセッサの範囲
-		std::vector<Expr> freeRanges;
+		//var宣言で指定されたアクセッサとその範囲
+		std::vector<BoundedFreeVar> freeVariables;
 
 		OldRecordData original;
 
@@ -2214,7 +2262,6 @@ namespace cgl
 		Val unpacked(Context& context)const;
 
 	private:
-
 		template<typename HeadName, typename HeadVal>
 		void addsImpl(const HeadName& headName, const HeadVal& headVal)
 		{
@@ -2251,12 +2298,13 @@ namespace cgl
 
 		//var宣言で指定されたアクセッサ
 		//std::vector<Accessor> freeVariables;
-		std::vector<FreeVarType> freeVariables;// Accessor | Reference
-
-		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
+		//std::vector<FreeVarType> freeVariables;// Accessor | Reference
 
 		//var宣言で指定されたアクセッサの範囲
-		std::vector<Expr> freeRanges;
+		//std::vector<Expr> freeRanges;
+
+		//var宣言で指定されたアクセッサとその範囲
+		std::vector<BoundedFreeVar> boundedFreeVariables;
 
 		OldRecordData original;
 
@@ -2666,8 +2714,7 @@ namespace cereal
 		ar(node.values);
 		ar(node.problems);
 		ar(node.constraint);
-		ar(node.freeVariables);
-		ar(node.freeRanges);
+		ar(node.boundedFreeVariables);
 		ar(node.original);
 		ar(node.type);
 		ar(node.isSatisfied);
@@ -2851,17 +2898,39 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::DeclFree& node)
+	inline void serialize(Archive& ar, cgl::DeclFree::DeclVar& node)
 	{
-		ar(node.accessors);
-		ar(node.ranges);
+		ar(node.accessor);
+		ar(node.range);
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::VariableRange& node)
+	inline void serialize(Archive& ar, cgl::DeclFree& node)
+	{
+		ar(node.accessors);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Interval& node)
 	{
 		ar(node.minimum);
 		ar(node.maximum);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RegionVariable& node)
+	{
+		ar(node.address);
+		ar(node.attributes);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::OptimizeRegion& node)
+	{
+		ar(node.region);
+		ar(node.eps);
+		ar(node.startIndex);
+		ar(node.numOfIndices);
 	}
 
 	template<class Archive>
@@ -2873,6 +2942,13 @@ namespace cereal
 		ar(node.invRefs);
 		ar(node.freeVariableRefs);
 		ar(node.hasPlateausFunction);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::BoundedFreeVar& node)
+	{
+		ar(node.freeVariable);
+		ar(node.freeRange);
 	}
 
 	template<class Archive>

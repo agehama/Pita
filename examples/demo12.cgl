@@ -1,10 +1,10 @@
-innerCenterCircle = (p1,p2,p3 -> Shape{
+inscribedCircle = (p1, p2, p3 -> Shape{
     radius: 10
     center: Vec2(0, 0)
     polygon: (->
-        GlobalShape(Circle(10){scale: radius, pos: center}).polygon
+        GlobalShape(Circle{scale: radius, pos: center}).polygon
     )
-    sat(Contact(polygon, [p1, p2]) & Contact(polygon, [p2, p3]) & Contact(polygon, [p3, p1]))
+    sat(Touch(polygon, Line(p1, p2)) & Touch(polygon, Line(p2, p3)) & Touch(polygon, Line(p3, p1)))
     var(radius, center)
 })
 

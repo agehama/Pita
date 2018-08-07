@@ -4,6 +4,8 @@
 
 namespace cgl
 {
+	double ShapeTouch(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext);
+
 	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext);
 
 	PackedRecord ShapeUnion(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext);

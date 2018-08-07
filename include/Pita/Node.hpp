@@ -838,12 +838,43 @@ namespace cgl
 			address(address),
 			attributes({ attribute })
 		{}
+
+		std::string toString()const
+		{
+			std::string result = "Address(" + address.toString() + "): ";
+			if (!attributes.empty())
+			{
+				switch (*attributes.begin())
+				{
+				case cgl::RegionVariable::Position:
+					result += "Position";
+					break;
+				case cgl::RegionVariable::Scale:
+					result += "Scale";
+					break;
+				case cgl::RegionVariable::Angle:
+					result += "Angle";
+					break;
+				case cgl::RegionVariable::Other:
+					result += "Other";
+					break;
+				default:
+					result += "unknown";
+					break;
+				}
+				return result;
+			}
+			return result + "undefined";
+		}
 	};
 
 	struct OptimizeRegion
 	{
 		boost::variant<Interval, PackedVal> region;
 		boost::optional<double> eps;
+
+		//一つのregionはvariableの集合に対してかかる
+		//したがって、variableのリストのうちどこからどこまでに対応するかというインデックス情報を保存しておく
 		int startIndex;
 		int numOfIndices;
 	};
@@ -2199,8 +2230,9 @@ namespace cgl
 	{
 		OldRecordData() = default;
 
-		//変数ID->アドレス
-		std::vector<BoundedFreeVar> freeVars;
+		//変数ID->変数・範囲
+		std::vector<RegionVariable> regionVars;
+		std::vector<OptimizeRegion> optimizeRegions;
 
 		//分解された単位制約
 		std::vector<Expr> unitConstraints;
@@ -2702,6 +2734,19 @@ namespace cereal
 	}
 
 	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedList::Data& node)
+	{
+		ar(node.value);
+		ar(node.address);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedList& node)
+	{
+		ar(node.data);
+	}
+
+	template<class Archive>
 	inline void serialize(Archive& ar, cgl::KeyValue& node)
 	{
 		ar(node.name);
@@ -2716,6 +2761,25 @@ namespace cereal
 		ar(node.constraint);
 		ar(node.boundedFreeVariables);
 		ar(node.original);
+		ar(node.type);
+		ar(node.isSatisfied);
+		ar(node.pathPoints);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedRecord::Data& node)
+	{
+		ar(node.value);
+		ar(node.address);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedRecord& node)
+	{
+		ar(node.values);
+		ar(node.problems);
+		ar(node.constraint);
+		ar(node.freeVariables);
 		ar(node.type);
 		ar(node.isSatisfied);
 		ar(node.pathPoints);
@@ -2954,7 +3018,8 @@ namespace cereal
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::OldRecordData& node)
 	{
-		ar(node.freeVars);
+		ar(node.regionVars);
+		ar(node.optimizeRegions);
 		ar(node.unitConstraints);
 		ar(node.variableAppearances);
 		ar(node.groupConstraints);

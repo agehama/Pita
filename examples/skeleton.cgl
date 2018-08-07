@@ -11,7 +11,7 @@ skeleton = (num -> Shape{
     for i in 0:num-1 do(
         newKite = kite{pos.x = 100*i}
         ss = ss @ [newKite]
-        var(@ss[i].pos, @ss[i].angle)
+        var(ss[i].pos, ss[i].angle)
     )
     for i in 0:num-2 do(
         sat( Contact(ss[i].end(), ss[i+1].begin()) )

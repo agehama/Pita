@@ -520,17 +520,11 @@ namespace cgl
 			//elseの場合はReferenceであり、この場合はContextが勝手に参照先を切り替えるのでここでは何もしなくてよい
 		}
 		*/
-		for (BoundedFreeVar& var : original.freeVars)
+		for (RegionVariable& var : original.regionVars)
 		{
-			if (IsType<Accessor>(var.freeVariable))
+			if (auto newAddressOpt = getOpt(var.address))
 			{
-				const Expr expr = As<Accessor>(var.freeVariable);
-				var.freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
-			}
-			else
-			{
-				const Reference reference = As<Reference>(var.freeVariable);
-				var.freeVariable = pEnv->cloneReference(reference, replaceMap);
+				var.address = newAddressOpt.get();
 			}
 		}
 
@@ -656,7 +650,7 @@ namespace cgl
 		/*
 		関数値がアドレスを内部に持っている時、クローン作成の前後でその依存関係を保存する必要があるので、クローン作成は2ステップに分けて行う。
 		1. リスト・レコードの再帰的なコピー
-		2. 関数の持つアドレスを新しい方に付け替える		
+		2. 関数の持つアドレスを新しい方に付け替える
 		*/
 		ValueCloner cloner(pEnv, info);
 		const Val& evaluated = boost::apply_visitor(cloner, value);
@@ -664,7 +658,6 @@ namespace cgl
 		ValueCloner3 cloner3(pEnv, cloner.replaceMap);
 		Val evaluated2 = boost::apply_visitor(cloner2, evaluated);
 		boost::apply_visitor(cloner3, evaluated2);
-
 		/*{
 			std::cout << "Cloner replaceMap:\n";
 			std::vector<std::pair<Address, Address>> as;
@@ -1860,7 +1853,6 @@ namespace cgl
 				const size_t numOfIndices = currentResult.size();
 				resultAddresses.insert(resultAddresses.end(), currentResult.begin(), currentResult.end());
 
-				std::cout << "packedRanges size: " << packedRanges.size();
 				OptimizeRegion region;
 				region.region= packedRanges[i];
 				region.startIndex = startIndex;
@@ -1881,12 +1873,12 @@ namespace cgl
 
 		//それぞれのunitConstraintについて、出現するアドレスの集合を求めたものを返す
 		const auto searchFreeVariablesOfConstraint = [](std::shared_ptr<Context> pContext, const Expr& constraint,
-			const std::vector<RegionVariable>& freeVariableAddresses)->ConstraintAppearance
+			const std::vector<RegionVariable>& regionVars)->ConstraintAppearance
 		{
 			//制約ID -> ConstraintAppearance
 			ConstraintAppearance appearingList;
 
-			std::vector<char> usedInSat(freeVariableAddresses.size(), 0);
+			std::vector<char> usedInSat(regionVars.size(), 0);
 			std::vector<Address> refs;
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
@@ -1895,13 +1887,13 @@ namespace cgl
 			CGL_DBG1("Expr: ");
 			printExpr2(constraint, pContext, std::cout);
 
-			CGL_DBG1("freeVariables: " + ToS(freeVariableAddresses.size()));
-			for (const auto& val : freeVariableAddresses)
+			CGL_DBG1("freeVariables: " + ToS(regionVars.size()));
+			for (const auto& val : regionVars)
 			{
 				CGL_DBG1(std::string("  Address(") + val.first.toString() + ")");
 			}*/
 
-			SatVariableBinder binder(pContext, freeVariableAddresses, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
+			SatVariableBinder binder(pContext, regionVars, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
 
 			/*CGL_DBG1("appearingList: " + ToS(appearingList.size()));
@@ -2053,10 +2045,8 @@ namespace cgl
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
-			std::vector<BoundedFreeVar> margedFreeVars = original.freeVars;
-			margedFreeVars.insert(margedFreeVars.end(), record.boundedFreeVariables.begin(), record.boundedFreeVariables.end());
-
-			const std::vector<PackedVal> margedPackedRanges = makePackedRanges(pEnv, margedFreeVars);
+			const std::vector<PackedVal> recordPackedRanges = makePackedRanges(pEnv, record.boundedFreeVariables);
+			std::cout << "recordPackedRanges  : " << recordPackedRanges.size() << std::endl;
 
 			/*{
 				std::cout << "margedFreeVars: ";
@@ -2075,11 +2065,9 @@ namespace cgl
 					std::cout << "\n";
 				}
 			}*/
-
-			std::cout << "margedFreeVars: " << margedFreeVars.size() << std::endl;
-			auto mergedFreeVariableAddresses = makeFreeVariableAddressesRange(pEnv, margedFreeVars, margedPackedRanges);
+			auto recordVarAddresses = makeFreeVariableAddressesRange(pEnv, record.boundedFreeVariables, recordPackedRanges);
 			{
-				for (const auto& val : mergedFreeVariableAddresses.first)
+				for (const auto& val : recordVarAddresses.first)
 				{
 					std::cout << "Address(" << val.address.toString() << "): ";
 					if (val.attributes.empty())
@@ -2088,7 +2076,6 @@ namespace cgl
 					}
 					else
 					{
-						RegionVariable::Attribute att;
 						switch (*val.attributes.begin())
 						{
 						case cgl::RegionVariable::Position:
@@ -2108,6 +2095,13 @@ namespace cgl
 				std::cout << "\n";
 			}
 
+			std::vector<RegionVariable> mergedRegionVars = original.regionVars;
+			std::vector<OptimizeRegion> mergedOptimizeRegions = original.optimizeRegions;
+			{
+				mergedRegionVars.insert(mergedRegionVars.end(), recordVarAddresses.first.begin(), recordVarAddresses.first.end());
+				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
+			}
+
 			std::cout << "  2. Constraints separation" << std::endl;
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
@@ -2119,7 +2113,7 @@ namespace cgl
 			std::vector<ConstraintAppearance> adderVariableAppearances;
 			for (const auto& constraint : adderUnitConstraints)
 			{
-				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses.first));
+				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedRegionVars));
 				/*std::cout << "constraint:\n";
 				printExpr(constraint, pEnv, std::cout);
 				std::stringstream ss;
@@ -2130,7 +2124,7 @@ namespace cgl
 				std::cout << ss.str() << "\n\n";*/
 			}
 
-			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.first.size() << std::endl;
+			std::cout << "1 mergedRegionVars.size(): " << mergedRegionVars.size() << std::endl;
 
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
@@ -2214,7 +2208,8 @@ namespace cgl
 					}*/
 
 					//original.freeVariableAddresses = mergedFreeVariableAddresses;
-					original.freeVars = margedFreeVars;
+					original.regionVars = mergedRegionVars;
+					original.optimizeRegions = mergedOptimizeRegions;
 					original.unitConstraints = mergedUnitConstraints;
 					original.variableAppearances = mergedVariableAppearances;
 					original.constraintGroups = mergedConstraintGroups;
@@ -2233,10 +2228,10 @@ namespace cgl
 							currentProblem.addUnitConstraint(mergedUnitConstraints[constraintID]);
 						}
 
-						currentProblem.freeVariableRefs = mergedFreeVariableAddresses.first;
+						currentProblem.freeVariableRefs = mergedRegionVars;
 
 						std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
-						std::cout << "2 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.first.size() << "\n";
+						std::cout << "2 mergedRegionVars.size(): " << mergedRegionVars.size() << "\n";
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
 						readResult(pEnv, resultxs, currentProblem);
@@ -2284,11 +2279,8 @@ namespace cgl
 
 						if (!currentConstraintIsSatisfied)
 						{
-							const std::vector<PackedVal> oldPackedRanges = makePackedRanges(pEnv, original.freeVars);
-							auto oldFreeVariableAddresses = makeFreeVariableAddressesRange(pEnv, original.freeVars, oldPackedRanges);
-
-							oldConstraint.freeVariableRefs = oldFreeVariableAddresses.first;
-							oldConstraint.optimizeRegions = oldFreeVariableAddresses.second;
+							oldConstraint.freeVariableRefs = original.regionVars;
+							oldConstraint.optimizeRegions = original.optimizeRegions;
 
 							//TODO: SatVariableBinderをやり直す必要まではない？
 							//クローンでずれたアドレスを張り替えるだけで十分かもしれない？
@@ -2337,7 +2329,8 @@ namespace cgl
 					}
 
 					//original.freeVariableAddresses = mergedFreeVariableAddresses;
-					original.freeVars = margedFreeVars;
+					original.regionVars = mergedRegionVars;
+					original.optimizeRegions = mergedOptimizeRegions;
 					original.unitConstraints = mergedUnitConstraints;
 					original.variableAppearances = mergedVariableAppearances;
 					original.constraintGroups = mergedConstraintGroups;
@@ -2357,8 +2350,8 @@ namespace cgl
 							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 						}
 
-						currentProblem.freeVariableRefs = mergedFreeVariableAddresses.first;
-						currentProblem.optimizeRegions = mergedFreeVariableAddresses.second;
+						currentProblem.freeVariableRefs = mergedRegionVars;
+						currentProblem.optimizeRegions = mergedOptimizeRegions;
 
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 

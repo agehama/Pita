@@ -390,13 +390,13 @@ namespace cgl
 			}
 			else
 			{
-				if (pEnv)
+				/*if (pEnv)
 				{
 					os << indent() << "Reference" << static_cast<LocationInfo>(node).getInfo() << "(";
 					pEnv->printReference(node.reference(), os);
 					os << ")" << std::endl;
 				}
-				else
+				else*/
 				{
 					os << indent() << "Reference" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
 				}

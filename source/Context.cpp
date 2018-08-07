@@ -380,23 +380,9 @@ namespace cgl
 				}
 			}
 
-			for (const auto& varRange : node.original.freeVars)
+			for (const auto& var: node.original.regionVars)
 			{
-				if (IsType<Accessor>(varRange.freeVariable))
-				{
-					const Expr expr = As<Accessor>(varRange.freeVariable);
-					checkExpr(expr);
-				}
-				else
-				{
-					const Expr expr = LRValue(As<Reference>(varRange.freeVariable));
-					checkExpr(expr);
-				}
-
-				if (varRange.freeRange)
-				{
-					checkExpr(varRange.freeRange.get());
-				}
+				update(var.address);
 			}
 
 			for (const auto& oldExprs : node.original.unitConstraints)

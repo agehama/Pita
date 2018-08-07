@@ -1860,6 +1860,7 @@ namespace cgl
 				const size_t numOfIndices = currentResult.size();
 				resultAddresses.insert(resultAddresses.end(), currentResult.begin(), currentResult.end());
 
+				std::cout << "packedRanges size: " << packedRanges.size();
 				OptimizeRegion region;
 				region.region= packedRanges[i];
 				region.startIndex = startIndex;
@@ -2052,33 +2053,11 @@ namespace cgl
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
-			//const auto& ranges = record.freeRanges;
-			//const bool hasRange = !ranges.empty();
-
-			const std::vector<PackedVal> adderPackedRanges = makePackedRanges(pEnv, record.boundedFreeVariables);
-
-#ifdef commentout
-			//変数ID->アドレス
-			std::vector<FreeVariableAddress> adderFreeVariableAddresses_ = (hasRange
-				? makeFreeVariableAddressesRange(pEnv, record.freeVariables, adderPackedRanges)
-				: makeFreeVariableAddresses(pEnv, record.freeVariables));
-
-			//TODO:freeVariableAddressesの重複を削除するべき？
-			/*
-			std::cout << "freeVariableAddresses before unique: " << freeVariableAddresses.size() << std::endl;
-
-			freeVariableAddresses.erase(std::unique(freeVariableAddresses.begin(), freeVariableAddresses.end(), 
-				[](const FreeVariable& a, const FreeVariable& b) {return a.first == b.first; }), freeVariableAddresses.end());
-
-			std::cout << "freeVariableAddresses after  unique: " << freeVariableAddresses.size() << std::endl;
-			*/
-
-			std::vector<FreeVariableAddress> mergedFreeVariableAddresses = original.freeVariableAddresses;
-			mergedFreeVariableAddresses.insert(mergedFreeVariableAddresses.end(), adderFreeVariableAddresses_.begin(), adderFreeVariableAddresses_.end());
-#endif
-
 			std::vector<BoundedFreeVar> margedFreeVars = original.freeVars;
 			margedFreeVars.insert(margedFreeVars.end(), record.boundedFreeVariables.begin(), record.boundedFreeVariables.end());
+
+			const std::vector<PackedVal> margedPackedRanges = makePackedRanges(pEnv, margedFreeVars);
+
 			/*{
 				std::cout << "margedFreeVars: ";
 				for (const auto& var : margedFreeVars)
@@ -2098,7 +2077,7 @@ namespace cgl
 			}*/
 
 			std::cout << "margedFreeVars: " << margedFreeVars.size() << std::endl;
-			auto mergedFreeVariableAddresses = makeFreeVariableAddressesRange(pEnv, margedFreeVars, adderPackedRanges);
+			auto mergedFreeVariableAddresses = makeFreeVariableAddressesRange(pEnv, margedFreeVars, margedPackedRanges);
 			{
 				for (const auto& val : mergedFreeVariableAddresses.first)
 				{

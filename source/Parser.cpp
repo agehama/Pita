@@ -291,6 +291,11 @@ namespace cgl
 		std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 		std::string sourceCode = EscapedSourceCode(original);
 
+		std::cout << "escaped SourceCode:\n";
+		std::cout << "--------------------------------------------------"<< std::endl;
+		std::cout << sourceCode << std::endl;
+		std::cout << "--------------------------------------------------" << std::endl;
+
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
 
 		workingDirectories.emplace(currentDirectory);

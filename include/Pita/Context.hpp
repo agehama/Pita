@@ -247,7 +247,7 @@ namespace cgl
 
 		Address findAddress(const std::string& name)const;
 
-		void garbageCollect();
+		void garbageCollect(bool force = false);
 
 		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
 		std::vector<std::reference_wrapper<Record>> currentRecords;

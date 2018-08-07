@@ -1883,24 +1883,24 @@ namespace cgl
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
 
-			/*
+			
 			CGL_DBG1("Expr: ");
 			printExpr2(constraint, pContext, std::cout);
 
 			CGL_DBG1("freeVariables: " + ToS(regionVars.size()));
 			for (const auto& val : regionVars)
 			{
-				CGL_DBG1(std::string("  Address(") + val.first.toString() + ")");
-			}*/
+				CGL_DBG1(std::string("  Address(") + val.address.toString() + ")");
+			}
 
 			SatVariableBinder binder(pContext, regionVars, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
 
-			/*CGL_DBG1("appearingList: " + ToS(appearingList.size()));
+			CGL_DBG1("appearingList: " + ToS(appearingList.size()));
 			for (const auto& a : appearingList)
 			{
 				CGL_DBG1(std::string("  Address(") + a.toString() + ")");
-			}*/
+			}
 
 			return appearingList;
 		};
@@ -2100,6 +2100,24 @@ namespace cgl
 			{
 				mergedRegionVars.insert(mergedRegionVars.end(), recordVarAddresses.first.begin(), recordVarAddresses.first.end());
 				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
+			}
+			{
+				for (const OptimizeRegion& r : mergedOptimizeRegions)
+				{
+					if (IsType<Interval>(r.region))
+					{
+						auto interval = As<Interval>(r.region);
+						std::cout << "Region: [" << interval.minimum << ", " << interval.maximum << "]" << std::endl;
+					}
+					else if (IsType<PackedVal>(r.region))
+					{
+						std::cout << "Shape Region" << std::endl;
+					}
+					else
+					{
+						CGL_Error("Error");
+					}
+				}
 			}
 
 			std::cout << "  2. Constraints separation" << std::endl;

@@ -74,6 +74,13 @@ main = Shape{
 }
 */
 
+makeTriangle1 = (v1, v2, v3 -> Triangle{
+    polygon[0] = v1
+    polygon[1] = v2
+    polygon[2] = v3
+})
+
+
 main = Shape{
     a = Vec2(200, 0)
     b = Vec2(300, 150)
@@ -81,15 +88,20 @@ main = Shape{
 
     circlePos = (a+b+c)/3.0
     radius = 5.0
+
+    line: (->[[a, b],[c, b],[a, c]])
     
     circle: Shape{polygon:(->
         GlobalShape(Circle{scale: X2(radius), pos: circlePos}).polygon
     )}
     
-    line: (->[[a, b],[c, b],[a, c]])
-
-    sat( Touch(Line(a, b), circle)^2 + Touch(Line(c, b), circle)^2 + Touch(Line(a, c), circle)^2 == 0 )
-    var(circlePos, radius)
+    //Print(makeTriangle1(a,b,c))
+    
+    //Print((bb=BoundingBox(makeTriangle1(a,b,c)), bb.max-bb.min))
+    //dd = BoundingBox(Triangle{scale: X2(100)})
+    
+    sat( Touch(Line(a, b), circle) + Touch(Line(c, b), circle) + Touch(Line(a, c), circle) == 0 )
+    var(circlePos in makeTriangle1(a,b,c), radius in [1.0, 100])
     stroke: Rgb(0,0,0)
     fill: Rgb(255,255,255)
 }

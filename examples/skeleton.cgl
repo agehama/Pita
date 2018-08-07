@@ -23,6 +23,7 @@ skeleton = (num -> Shape{
 skeletonA = skeleton(7)
 
 main = skeletonA{
+    Print(Triangle{})
     sat( Contact(begin(), {x: 30, y:200}) )
     sat( Contact(end(), {x: 200, y:150}) )
 }

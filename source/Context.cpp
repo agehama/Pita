@@ -322,7 +322,10 @@ namespace cgl
 
 		void operator()(const Record& node)
 		{
-			{
+			//TODO: var(ShapeRecord in range)の場合はShapeRecordはpos,scale,angleのみ見ればよいと思ったが、
+			//SatVariableBinderでも参照可能なアドレスを探して紐付けるためにこの関数を呼んでいるため、
+			//これだとpos,scale,angle以外のメンバと紐付けられない問題が発生した。
+			/*{
 				const auto& values = node.values;
 				auto posIt = values.find("pos");
 				auto scaleIt = values.find("scale");
@@ -346,6 +349,33 @@ namespace cgl
 						update(keyval.second);
 					}
 				}
+			}*/
+			{
+				const RegionVariable::Attribute defaultAttribute = currentAttribute;
+				for (const auto& keyval : node.values)
+				{
+					if (keyval.first == "pos")
+					{
+						currentAttribute = RegionVariable::Attribute::Position;
+						update(keyval.second);
+					}
+					else if (keyval.first == "scale")
+					{
+						currentAttribute = RegionVariable::Attribute::Scale;
+						update(keyval.second);
+					}
+					else if (keyval.first == "angle")
+					{
+						currentAttribute = RegionVariable::Attribute::Angle;
+						update(keyval.second);
+					}
+					else
+					{
+						currentAttribute = defaultAttribute;
+						update(keyval.second);
+					}
+				}
+				currentAttribute = defaultAttribute;
 			}
 
 			if (node.constraint)
@@ -2636,9 +2666,9 @@ namespace cgl
 		//TODO: GCと同じ要領で環境から参照可能な全てのアドレスを参照し、該当アドレスを書き換える
 	}
 
-	void Context::garbageCollect()
+	void Context::garbageCollect(bool force)
 	{
-		if (!m_automaticGC)
+		if (!force && !m_automaticGC)
 		{
 			return;
 		}

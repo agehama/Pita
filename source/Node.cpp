@@ -19,6 +19,7 @@
 #include <Pita/Parser.hpp>
 #include <Pita/Evaluator.hpp>
 #include <Pita/Printer.hpp>
+#include <Pita/IntrinsicGeometricFunctions.hpp>
 
 namespace cgl
 {
@@ -599,6 +600,63 @@ namespace cgl
 		constructConstraint(pEnv);
 		std::cout << "Current constraint freeVariablesSize: " << std::to_string(freeVariableRefs.size()) << std::endl;
 
+		std::vector<Interval> rangeList;
+		{
+			for (const auto& r: optimizeRegions)
+			{
+				if (IsType<PackedVal>(r.region))
+				{
+					const auto& val = As<PackedVal>(r.region);
+					if (IsType<PackedRecord>(val))
+					{
+						const auto& shapeRegion = As<PackedRecord>(val);
+						const auto& values = shapeRegion.values;
+						if (values.find("pos") == values.end() ||
+							values.find("scale") == values.end() ||
+							values.find("angle") == values.end())
+						{
+							CGL_Error("範囲の型が不正");
+						}
+						const auto bb = GetBoundingBox(shapeRegion, pEnv);
+						const auto minRecord = As<PackedRecord>(bb.values.find("min")->second.value);
+						const auto maxRecord = As<PackedRecord>(bb.values.find("max")->second.value);
+
+						const double minX = AsDouble(minRecord.values.find("x")->second.value);
+						const double minY = AsDouble(minRecord.values.find("y")->second.value);
+						const double maxX = AsDouble(maxRecord.values.find("x")->second.value);
+						const double maxY = AsDouble(maxRecord.values.find("y")->second.value);
+
+						//TODO: ちゃんとインデックスを見て対応付ける
+						//現在はvarはVec2のみでx,yの順に並んでいると仮定している
+						rangeList.push_back(Interval(minX, maxX));
+						rangeList.push_back(Interval(minY, maxY));
+					}
+					else if (IsType<PackedList>(val))
+					{
+						const auto& intervalRegion = As<PackedList>(val);
+						if (intervalRegion.data.size() != 2 ||
+							!IsNum(intervalRegion.data[0].value) ||
+							!IsNum(intervalRegion.data[1].value))
+						{
+							CGL_Error("範囲の型が不正");
+						}
+						const double minV = AsDouble(intervalRegion.data[0].value);
+						const double maxV = AsDouble(intervalRegion.data[1].value);
+
+						rangeList.push_back(Interval(minV, maxV));
+					}
+					else
+					{
+						CGL_Error("範囲の型が不正");
+					}
+				}
+				else
+				{
+					CGL_Error("範囲の型が不正");
+				}
+			}
+		}
+
 		if (!initializeData(pEnv))
 		{
 			CGL_Error("制約の初期化に失敗");
@@ -641,7 +699,7 @@ namespace cgl
 				}
 			}
 			CGL_DebugLog("End Record MakeMap");
-			if (hasPlateausFunction)
+			if (hasPlateausFunction, false)
 			{
 				std::cout << "Solve constraint by CMA-ES...\n";
 
@@ -699,7 +757,7 @@ namespace cgl
 
 				std::cout << "solved\n";
 			}
-			else
+			else if(false)
 			{
 				std::cout << "Solve constraint by BFGS...\n";
 
@@ -749,6 +807,81 @@ namespace cgl
 				for (int i = 0; i < x0s.size(); ++i)
 				{
 					resultxs[i] = x0s[i];
+				}
+			}
+			else
+			{
+				std::cout << "Solve constraint by Random Search...\n";
+
+				const auto targetFunc = [&](const std::vector<double>& v)->double
+				{
+					for (int i = 0; i < v.size(); ++i)
+					{
+						update(variable2Data[i], v[i]);
+						//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
+					}
+
+					for (const auto& keyval : invRefs)
+					{
+						pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
+					}
+
+					pEnv->switchFrontScope();
+					double result = eval(pEnv, info);
+					pEnv->switchBackScope();
+
+					//CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+					return result;
+				};
+
+				std::vector<double> answer(freeVariableRefs.size());
+				for (int i = 0; i < answer.size(); ++i)
+				{
+					answer[i] = data[variable2Data[i]];
+				}
+
+				double beginTime = GetSec();
+
+				{
+					double minimumCost = targetFunc(answer);
+					std::vector<double> current(answer.size());
+					if (current.size() != rangeList.size())
+					{
+						CGL_Error("範囲と変数の数が対応していない");
+					}
+
+					std::vector<std::uniform_real_distribution<double>> dists;
+					for (size_t i = 0; i < rangeList.size(); ++i)
+					{
+						std::cout << "Range(" << i << "): [" << rangeList[i].minimum << ", " << rangeList[i].maximum << "]" << std::endl;
+						dists.emplace_back(rangeList[i].minimum, rangeList[i].maximum);
+					}
+
+					int count = 0;
+					std::mt19937 rng;
+					while (GetSec() - beginTime < 30.0)
+					{
+						for (size_t i = 0; i < current.size(); ++i)
+						{
+							current[i] = dists[i](rng);
+						}
+						if (minimumCost < targetFunc(current))
+						{
+							answer = current;
+						}
+						++count;
+
+						if (count % 1000 == 0)
+						{
+							pEnv->garbageCollect(true);
+						}
+					}
+				}
+
+				resultxs.resize(answer.size());
+				for (int i = 0; i < answer.size(); ++i)
+				{
+					resultxs[i] = answer[i];
 				}
 			}
 		}

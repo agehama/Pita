@@ -139,7 +139,7 @@ namespace cgl
 
 		void operator()(const DefFunc& node)
 		{
-			//boost::apply_visitor(*this, node.expr);
+			boost::apply_visitor(*this, node.expr);
 		}
 
 		void operator()(const If& node)
@@ -317,6 +317,7 @@ namespace cgl
 
 		void operator()(const KeyValue& node)
 		{
+			CGL_Error("未対応");
 			//CheckValue(node.value, context, reachableAddressSet, newAddressSet);
 		}
 
@@ -378,17 +379,27 @@ namespace cgl
 				currentAttribute = defaultAttribute;
 			}
 
-			if (node.constraint)
-			{
-				checkExpr(node.constraint.get());
-			}
-
 			for (const auto& problem : node.problems)
 			{
 				if (problem.expr)
 				{
 					checkExpr(problem.expr.get());
 				}
+
+				for (const Address address : problem.refs)
+				{
+					update(address);
+				}
+
+				for (const auto& var : problem.freeVariableRefs)
+				{
+					update(var.address);
+				}
+			}
+
+			if (node.constraint)
+			{
+				checkExpr(node.constraint.get());
 			}
 
 			for (const auto& varRange : node.boundedFreeVariables)
@@ -398,10 +409,14 @@ namespace cgl
 					const Expr expr = As<Accessor>(varRange.freeVariable);
 					checkExpr(expr);
 				}
-				else
+				else if(IsType<Reference>(varRange.freeVariable))
 				{
 					const Expr expr = LRValue(As<Reference>(varRange.freeVariable));
 					checkExpr(expr);
+				}
+				else
+				{
+					CGL_Error("不正な型");
 				}
 
 				if (varRange.freeRange)
@@ -445,7 +460,10 @@ namespace cgl
 			}
 		}
 
-		void operator()(const Jump& node) {}
+		void operator()(const Jump& node)
+		{
+			CGL_Error("未対応");
+		}
 	};
 
 	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
@@ -476,7 +494,7 @@ namespace cgl
 		boost::apply_visitor(cheker, evaluated);
 	}
 
-	std::unordered_set<Address> GetReachableAddressesFrom(const std::unordered_set<Address>& addresses, const Context& context)
+	/*std::unordered_set<Address> GetReachableAddressesFrom(const std::unordered_set<Address>& addresses, const Context& context)
 	{
 		std::unordered_set<Address> referenceableAddresses;
 
@@ -493,6 +511,20 @@ namespace cgl
 		traverse(addresses, traverse);
 
 		return referenceableAddresses;
+	}*/
+	void GetReachableAddressesFrom(std::unordered_set<Address>& referenceableAddresses, const std::unordered_set<Address>& targetAddresses, const Context& context)
+	{
+		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
+		{
+			for (const Address address : addresses)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
+				traverse(addressesDelta, traverse);
+			}
+		};
+
+		traverse(targetAddresses, traverse);
 	}
 
 	std::vector<RegionVariable> GetConstraintAddressesFrom(Address address, const Context& context, RegionVariable::Attribute attribute)
@@ -1934,7 +1966,17 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
+			double touch;
+			try
+			{
+				touch = ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
+			}
+			catch (std::exception& e)
+			{
+				std::cout << "Touch: " << e.what() << std::endl;
+				throw;
+			}
+			return touch;
 		},
 			false
 			);
@@ -2673,11 +2715,12 @@ namespace cgl
 			return;
 		}
 
-		/*static int count = 0;
-		std::cout << "garbageCollect(" << count << ")" << std::endl;
-		printContext(std::cout);
-		++count;*/
+		static int count = 0;
+		//std::cout << "garbageCollect(" << count << ")" << std::endl;
+		//printContext(std::cout);
 
+		//printContext(std::cout);
+		CGL_DBG1("GC begin");
 		std::unordered_set<Address> referenceableAddresses;
 
 		const auto isReachable = [&](const Address address)
@@ -2687,10 +2730,15 @@ namespace cgl
 
 		{
 			std::unordered_set<Address> addressesDelta;
+			std::cout << "Whole Local Env Stack Size: " << m_localEnvStack.size() << std::endl;
 			for (const auto& env : m_localEnvStack)
 			{
+				int scopeCount = 0;
+
+				std::cout << "Current Scope Depth: " << env.size() << ", ";
 				for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
 				{
+					const int varCount = scopeIt->variables.size() + scopeIt->temporaryAddresses.size();
 					for (const auto& var : scopeIt->variables)
 					{
 						const Address address = var.second;
@@ -2707,10 +2755,14 @@ namespace cgl
 							addressesDelta.emplace(address);
 						}
 					}
+
+					std::cout << "var(" << varCount << "), ";
 				}
+
+				std::cout << "\n";
 			}
 
-			GetReachableAddressesFrom(addressesDelta, *this);
+			GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 		}
 
 		{
@@ -2721,7 +2773,7 @@ namespace cgl
 				std::unordered_set<Address> addressesDelta;
 				CheckValue(evaluated, *this, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
 
-				GetReachableAddressesFrom(addressesDelta, *this);
+				GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 			}
 
 			if (temporaryRecord)
@@ -2729,7 +2781,7 @@ namespace cgl
 				std::unordered_set<Address> addressesDelta;
 				CheckValue(temporaryRecord.get(), *this, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
 
-				GetReachableAddressesFrom(addressesDelta, *this);
+				GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 			}
 		}
 
@@ -2740,10 +2792,19 @@ namespace cgl
 
 		const size_t prevGC = m_values.size();
 
+		/*CGL_DBG1("referenceableAddresses: ");
+		for (const Address add : referenceableAddresses)
+		{
+			std::cout << "Address(" << add.toString() << ")\n";
+		}*/
+
 		m_values.gc(referenceableAddresses);
 
 		const size_t postGC = m_values.size();
 
+		CGL_DBG1("GC end");
+
+		++count;
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
 	}
 }

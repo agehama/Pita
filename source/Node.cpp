@@ -21,6 +21,8 @@
 #include <Pita/Printer.hpp>
 #include <Pita/IntrinsicGeometricFunctions.hpp>
 
+
+extern bool printAddressInsertion;
 namespace cgl
 {
 	bool IsVec2(const Val& value)
@@ -600,6 +602,12 @@ namespace cgl
 		constructConstraint(pEnv);
 		std::cout << "Current constraint freeVariablesSize: " << std::to_string(freeVariableRefs.size()) << std::endl;
 
+		/*CGL_DBG;
+		pEnv->garbageCollect(true);
+		CGL_DBG;
+		pEnv->garbageCollect(true);
+		CGL_DBG;*/
+
 		std::vector<Interval> rangeList;
 		{
 			for (const auto& r: optimizeRegions)
@@ -826,8 +834,18 @@ namespace cgl
 						pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
 					}
 
+					double result;
+
 					pEnv->switchFrontScope();
-					double result = eval(pEnv, info);
+					try
+					{
+						result = eval(pEnv, info);
+					}
+					catch (std::exception& e)
+					{
+						std::cout << "Eval: " << e.what() << std::endl;
+						throw;
+					}
 					pEnv->switchBackScope();
 
 					//CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
@@ -859,12 +877,27 @@ namespace cgl
 
 					int count = 0;
 					std::mt19937 rng;
-					while (GetSec() - beginTime < 30.0)
+					//while (GetSec() - beginTime < 300.0)
+					while (count<10000)
 					{
+						if (6660 < count)
+						{
+							printAddressInsertion = true;
+							std::cout << count << ": ";
+						}
 						for (size_t i = 0; i < current.size(); ++i)
 						{
 							current[i] = dists[i](rng);
+							if (6660 < count)
+							{
+								std::cout << current[i] << ", ";
+							}
 						}
+						if (6660 < count)
+						{
+							std::cout << "\n";
+						}
+
 						if (minimumCost < targetFunc(current))
 						{
 							answer = current;
@@ -872,6 +905,7 @@ namespace cgl
 						++count;
 
 						if (count % 1000 == 0)
+						//if (count % 10 == 0)
 						{
 							pEnv->garbageCollect(true);
 						}

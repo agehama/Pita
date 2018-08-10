@@ -510,8 +510,20 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+		std::vector<gg::Geometry*> lhsPolygon, rhsPolygon;
+		/*std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);*/
+		
+		try
+		{
+			lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+			rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+		}
+		catch(std::exception& e)
+		{
+			std::cout << "Touch Begin: " << e.what() << std::endl;
+			throw;
+		}
 
 		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1)
 		{
@@ -646,30 +658,37 @@ namespace cgl
 
 		const auto touchLineAndPolygon = [](const gg::Geometry* line, const gg::Geometry* polygon)->double
 		{
-			const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line);
-			const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon);
-			//交点を持たなければ距離を返す
-			if (!l1->intersects(p2))
+			try
 			{
-				return l1->distance(p2);
+				const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line);
+				const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon);
+				//交点を持たなければ距離を返す
+				if (!l1->intersects(p2))
+				{
+					return l1->distance(p2);
+				}
+				gg::Geometry* result = l1->intersection(p2);
+				if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
+					return resultLine->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+				{
+					const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
+					return resultLineString->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_POINT)
+				{
+					return 0;
+				}
+				CGL_DBG1(result->getGeometryType());
+				CGL_Error("不正な式です");
 			}
-			gg::Geometry* result = l1->intersection(p2);
-			if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
+			catch (std::exception& e)
 			{
-				const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
-				return resultLine->getLength();
+				std::cout << "touchLineAndPolygon: " << e.what() << std::endl;
 			}
-			else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
-			{
-				const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
-				return resultLineString->getLength();
-			}
-			else if (result->getGeometryTypeId() == gg::GEOS_POINT)
-			{
-				return 0;
-			}
-			CGL_DBG1(result->getGeometryType());
-			CGL_Error("不正な式です");
 		};
 
 		const auto touchPolygonAndPolygon = [](const gg::Geometry* polygon1, const gg::Geometry* polygon2)->double
@@ -705,32 +724,39 @@ namespace cgl
 		const TypeGeometry smallerTypePoly = (type1 <= type2 ? TypeGeometry(type1, lhsPolygon[0]) : TypeGeometry(type2, rhsPolygon[0]));
 		const TypeGeometry largerTypePoly = (type1 <= type2 ? TypeGeometry(type2, rhsPolygon[0]) : TypeGeometry(type1, lhsPolygon[0]));
 
-		if (smallerTypePoly.type == TouchType::Point)
+		try
 		{
-			switch (largerTypePoly.type)
+			if (smallerTypePoly.type == TouchType::Point)
 			{
-			case TouchType::Point:
-				return touchPointAndPoint(smallerTypePoly.geometry, largerTypePoly.geometry);
-			case TouchType::Line:
-				return touchPointAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
-			default:
-				return touchPointAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				switch (largerTypePoly.type)
+				{
+				case TouchType::Point:
+					return touchPointAndPoint(smallerTypePoly.geometry, largerTypePoly.geometry);
+				case TouchType::Line:
+					return touchPointAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+				default:
+					return touchPointAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
 			}
-		}
-		else if(smallerTypePoly.type == TouchType::Line)
-		{
-			if (largerTypePoly.type == TouchType::Line)
+			else if (smallerTypePoly.type == TouchType::Line)
 			{
-				return touchLineAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+				if (largerTypePoly.type == TouchType::Line)
+				{
+					return touchLineAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
+				else
+				{
+					return touchLineAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
 			}
 			else
 			{
-				return touchLineAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				return touchPolygonAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
 			}
 		}
-		else
+		catch (std::exception& e)
 		{
-			return touchPolygonAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+			std::cout << "Touch End: " << e.what() << std::endl;
 		}
 	}
 

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <algorithm>
 #include <Pita/Node.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/IntrinsicGeometricFunctions.hpp>

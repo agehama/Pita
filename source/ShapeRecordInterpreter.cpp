@@ -10,6 +10,7 @@
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
 
+
 namespace cgl
 {
 	class BoundingRectMaker : public gg::CoordinateFilter
@@ -205,72 +206,101 @@ namespace cgl
 			if (member.first == "polygon")
 			{
 				std::vector<OutputPolygon> outputPolygons;
-
-				if (cgl::IsType<cgl::PackedList>(value))
+				try
 				{
-					if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(value), outputPolygons, transform))
+					if (cgl::IsType<cgl::PackedList>(value))
 					{
-						CGL_Error("polygonに指定されたデータの形式が不正です。");
-					}
-				}
-				else if (cgl::IsType<cgl::FuncVal>(value))
-				{
-					Eval evaluator(pContext);
-					const cgl::PackedVal evaluated = Packed(pContext->expand(evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {}), LocationInfo()), *pContext);
-
-					if (!cgl::IsType<cgl::PackedList>(evaluated))
-					{
-						CGL_Error("polygon()の評価結果の型が不正です。");
-					}
-
-					if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(evaluated), outputPolygons, transform))
-					{
-						CGL_Error("polygonに指定されたデータの形式が不正です。");
-					}
-				}
-
-				for (auto& polygonData : outputPolygons)
-				{
-					auto& currentPolygons = polygonData.polygon;
-					const auto& currentHoles = polygonData.hole;
-
-					if (!currentPolygons.empty())
-					{
-						if (!currentHoles.empty())
+						if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(value), outputPolygons, transform))
 						{
-							for (int s = 0; s < currentPolygons.size(); ++s)
-							{
-								gg::Geometry* erodeGeometry = currentPolygons[s];
+							CGL_Error("polygonに指定されたデータの形式が不正です。");
+						}
+					}
+					else if (cgl::IsType<cgl::FuncVal>(value))
+					{
+						pContext->switchFrontScope();
 
-								for (int d = 0; d < currentHoles.size(); ++d)
-								{
-									erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+						Eval evaluator(pContext);
+						LRValue result;
+						try
+						{
+							result = evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {});
+						}
+						catch (std::exception& e)
+						{
+							std::cout << "Packed Record Eval: " << e.what() << std::endl;
+							throw;
+						}
+						const cgl::PackedVal evaluated = Packed(pContext->expand(result, LocationInfo()), *pContext);
 
-									if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
-									{
-										currentPolygons.erase(currentPolygons.begin() + s);
+						pContext->switchBackScope();
 
-										const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
-										for (int i = 0; i < polygons->getNumGeometries(); ++i)
-										{
-											currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
-										}
-
-										erodeGeometry = currentPolygons[s];
-									}
-									else if (erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON
-										&& erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
-									{
-										CGL_Error("Differenceの評価結果の型が不正です。");
-									}
-								}
-
-								currentPolygons[s] = erodeGeometry;
-							}
+						if (!cgl::IsType<cgl::PackedList>(evaluated))
+						{
+							CGL_Error("polygon()の評価結果の型が不正です。");
 						}
 
-						GeosPolygonsConcat(resultPolygons, currentPolygons);
+						if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(evaluated), outputPolygons, transform))
+						{
+							CGL_Error("polygonに指定されたデータの形式が不正です。");
+						}
 					}
+				}
+				catch (std::exception& e)
+				{
+					std::cout << "Packed Record1: " << e.what() << std::endl;
+					throw;
+				}
+
+				try
+				{
+					for (auto& polygonData : outputPolygons)
+					{
+						auto& currentPolygons = polygonData.polygon;
+						const auto& currentHoles = polygonData.hole;
+
+						if (!currentPolygons.empty())
+						{
+							if (!currentHoles.empty())
+							{
+								for (int s = 0; s < currentPolygons.size(); ++s)
+								{
+									gg::Geometry* erodeGeometry = currentPolygons[s];
+
+									for (int d = 0; d < currentHoles.size(); ++d)
+									{
+										erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+
+										if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+										{
+											currentPolygons.erase(currentPolygons.begin() + s);
+
+											const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+											for (int i = 0; i < polygons->getNumGeometries(); ++i)
+											{
+												currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
+											}
+
+											erodeGeometry = currentPolygons[s];
+										}
+										else if (erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON
+											&& erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
+										{
+											CGL_Error("Differenceの評価結果の型が不正です。");
+										}
+									}
+
+									currentPolygons[s] = erodeGeometry;
+								}
+							}
+
+							GeosPolygonsConcat(resultPolygons, currentPolygons);
+						}
+					}
+				}
+				catch (std::exception& e)
+				{
+					std::cout << "Packed Record2: " << e.what() << std::endl;
+					throw;
 				}
 			}
 			else if (member.first == "line")
@@ -308,16 +338,24 @@ namespace cgl
 			}
 		}
 
-		auto factory = gg::GeometryFactory::create();
+		try
+		{
+			auto factory = gg::GeometryFactory::create();
 
-		if (resultPolygons.empty())
-		{
-			return currentLines;
+			if (resultPolygons.empty())
+			{
+				return currentLines;
+			}
+			else
+			{
+				resultPolygons.insert(resultPolygons.end(), currentLines.begin(), currentLines.end());
+				return resultPolygons;
+			}
 		}
-		else
+		catch (std::exception& e)
 		{
-			resultPolygons.insert(resultPolygons.end(), currentLines.begin(), currentLines.end());
-			return resultPolygons;
+			std::cout << "Packed Record End: " << e.what() << std::endl;
+			throw;
 		}
 	}
 

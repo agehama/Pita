@@ -1,5 +1,10 @@
 #pragma once
 #pragma warning(disable:4996)
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <cmath>
 #include <cfloat>
 #include <vector>
@@ -27,6 +32,7 @@
 
 #include <boost/regex/pending/unicode_iterator.hpp>
 
+#include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/array.hpp>
 #include <cereal/types/valarray.hpp>

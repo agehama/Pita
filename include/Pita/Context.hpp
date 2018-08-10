@@ -6,19 +6,38 @@
 
 #include "Node.hpp"
 
+extern bool printAddressInsertion;
+
 namespace cgl
 {
 	template<class ValueType>
 	class Values
 	{
 	public:
-		using ValueList = std::unordered_map<Address, ValueType>;
+		//using ValueList = std::unordered_map<Address, ValueType>;
+		using ValueList = std::map<Address, ValueType>;
 
 		Values() = default;
 
 		Address add(const ValueType& value)
 		{
-			m_values.insert({ newAddress(), value });
+			/*if (printAddressInsertion)
+			{
+				std::cout << "Insert Begin" << std::endl;
+			}*/
+			try
+			{
+				m_values.insert({ newAddress(), value });
+			}
+			catch (std::exception& e)
+			{
+				std::cout << "Values::add: " << e.what() << std::endl;
+				throw;
+			}
+			/*if (printAddressInsertion)
+			{
+				std::cout << "Insert End" << std::endl;
+			}*/
 
 			return Address(m_ID);
 		}
@@ -57,7 +76,15 @@ namespace cgl
 			}
 			else
 			{
-				m_values.emplace(key, value);
+				try
+				{
+					m_values.emplace(key, value);
+				}
+				catch (std::exception& e)
+				{
+					std::cout << "Values::bind: " << e.what() << std::endl;
+					throw;
+				}
 			}
 		}
 
@@ -92,6 +119,7 @@ namespace cgl
 			{
 				if (ramainAddresses.find(it->first) == ramainAddresses.end())
 				{
+					//std::cout << "remove " << it->first.toString() << "\n";
 					it = m_values.erase(it);
 				}
 				else
@@ -101,13 +129,21 @@ namespace cgl
 			}
 		}
 
+		template <class Archive>
+		void serialize(Archive & archive)
+		{
+			archive(m_values, m_ID);
+		}
+
 	private:
 		Address newAddress()
 		{
 			return Address(++m_ID);
 		}
 
-	public:
+		friend class Context;
+		friend class cereal::access;
+
 		ValueList m_values;
 
 		unsigned m_ID = 0;
@@ -211,7 +247,15 @@ namespace cgl
 			}
 			else
 			{
-				variables[name] = ID;
+				try
+				{
+					variables[name] = ID;
+				}
+				catch (std::exception& e)
+				{
+					std::cout << "Context::makeVariable: " << e.what() << std::endl;
+					throw;
+				}
 			}
 		}
 
@@ -330,12 +374,12 @@ namespace cereal
 		ar(scope.temporaryAddresses);
 	}
 
-	template<class Archive>
+	/*template<class Archive>
 	inline void serialize(Archive& ar, cgl::Values<cgl::Val>& values)
 	{
 		ar(values.m_values);
 		ar(values.m_ID);
-	}
+	}*/
 
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Context& context)

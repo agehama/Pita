@@ -30,6 +30,8 @@ bool isDebugMode;
 bool isBlockingMode;
 bool isInConstraint = false;
 
+bool printAddressInsertion = false;
+
 namespace cgl
 {
 	struct LinePos
@@ -414,12 +416,12 @@ namespace cgl
 
 			succeeded = false;
 		}
-		/*catch (const std::exception& other)
+		catch (const std::exception& other)
 		{
-			std::cerr << "Error: " << other.what() << std::endl;
+			std::cerr << "Program Error: " << other.what() << std::endl;
 
 			succeeded = false;
-		}*/
+		}
 
 		calculating = false;
 	}
@@ -486,6 +488,8 @@ namespace cgl
 			std::cerr << "Error: " << other.what() << std::endl;
 
 			succeeded = false;
+
+			throw;
 		}
 
 		calculating = false;

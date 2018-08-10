@@ -1966,7 +1966,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			double touch;
+			/*double touch;
 			try
 			{
 				touch = ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
@@ -1976,7 +1976,8 @@ namespace cgl
 				std::cout << "Touch: " << e.what() << std::endl;
 				throw;
 			}
-			return touch;
+			return touch;*/
+			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
 		},
 			false
 			);

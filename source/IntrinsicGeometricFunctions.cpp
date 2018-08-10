@@ -380,48 +380,73 @@ namespace cgl
 
 	PackedList GetPolygon(const std::vector<gg::Geometry*>& originalPolygons)
 	{
-		if (originalPolygons.empty())
+		try
 		{
-			//polygon: []
-			return PackedList();
-		}
-		else if (originalPolygons.size() == 1 && originalPolygons.front()->getGeometryTypeId() == GEOS_POLYGON)
-		{
-			const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(originalPolygons.front()));
-
-			//1つのポリゴンのみからなるケース
-			if (polygonList.size() == 1)
+			if (originalPolygons.empty())
 			{
-				//polygon: [p0, p1, ... , pn]
-				return polygonList.front();
+				//polygon: []
+				return PackedList();
 			}
+			else if (originalPolygons.size() == 1 && originalPolygons.front()->getGeometryTypeId() == GEOS_POLYGON)
+			{
+				const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(originalPolygons.front()));
 
-			//1つのポリゴンと複数の穴からなるケース
-			//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
-			return AsPackedListPolygons(polygonList);
+				//1つのポリゴンのみからなるケース
+				if (polygonList.size() == 1)
+				{
+					//polygon: [p0, p1, ... , pn]
+					return polygonList.front();
+				}
+
+				//1つのポリゴンと複数の穴からなるケース
+				//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
+				return AsPackedListPolygons(polygonList);
+			}
+		}
+		catch (std::exception& e)
+		{
+			std::cout << "GetPolygon 1: " << e.what() << std::endl;
+			throw;
 		}
 
 		std::vector<PackedList> polygons;
-		for (gg::Geometry* pGeometry : originalPolygons)
+
+		try
 		{
-			if (pGeometry->getGeometryTypeId() == GEOS_POLYGON)
+			for (gg::Geometry* pGeometry : originalPolygons)
 			{
-				const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pGeometry));
-				polygons.insert(polygons.end(), polygonList.begin(), polygonList.end());
-			}
-			else if (pGeometry->getGeometryTypeId() == GEOS_MULTIPOLYGON)
-			{
-				const gg::MultiPolygon* pMultiPolygon = dynamic_cast<const gg::MultiPolygon*>(pGeometry);
-				for (size_t i = 0; i < pMultiPolygon->getNumGeometries(); ++i)
+				if (pGeometry->getGeometryTypeId() == GEOS_POLYGON)
 				{
-					const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pMultiPolygon->getGeometryN(i)));
+					const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pGeometry));
 					polygons.insert(polygons.end(), polygonList.begin(), polygonList.end());
+				}
+				else if (pGeometry->getGeometryTypeId() == GEOS_MULTIPOLYGON)
+				{
+					const gg::MultiPolygon* pMultiPolygon = dynamic_cast<const gg::MultiPolygon*>(pGeometry);
+					for (size_t i = 0; i < pMultiPolygon->getNumGeometries(); ++i)
+					{
+						const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pMultiPolygon->getGeometryN(i)));
+						polygons.insert(polygons.end(), polygonList.begin(), polygonList.end());
+					}
 				}
 			}
 		}
+		catch (std::exception& e)
+		{
+			std::cout << "GetPolygon 2: " << e.what() << std::endl;
+			throw;
+		}
 
-		//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
-		return AsPackedListPolygons(polygons);
+		try
+		{
+			//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
+			return AsPackedListPolygons(polygons);
+		}
+		catch (std::exception& e)
+		{
+			std::cout << "GetPolygon 3: " << e.what() << std::endl;
+			throw;
+		}
 	}
 
 	PackedList GetPolygon(const PackedRecord& shape, std::shared_ptr<Context> pContext)
@@ -510,10 +535,11 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon, rhsPolygon;
-		/*std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);*/
+		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
+		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
 		
+		/*
+		std::vector<gg::Geometry*> lhsPolygon, rhsPolygon;
 		try
 		{
 			lhsPolygon = GeosFromRecordPacked(lhs, pContext);
@@ -523,7 +549,7 @@ namespace cgl
 		{
 			std::cout << "Touch Begin: " << e.what() << std::endl;
 			throw;
-		}
+		}*/
 
 		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1)
 		{
@@ -688,6 +714,7 @@ namespace cgl
 			catch (std::exception& e)
 			{
 				std::cout << "touchLineAndPolygon: " << e.what() << std::endl;
+				throw;
 			}
 		};
 
@@ -757,6 +784,7 @@ namespace cgl
 		catch (std::exception& e)
 		{
 			std::cout << "Touch End: " << e.what() << std::endl;
+			throw;
 		}
 	}
 
@@ -1910,8 +1938,29 @@ namespace cgl
 
 	PackedRecord GetGlobalShape(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext);
-		return MakePolygonResult(GetPolygon(lhsPolygon));
+		std::vector<gg::Geometry*> lhsPolygon;
+		PackedRecord result;
+		try
+		{
+			lhsPolygon = GeosFromRecordPacked(shape, pContext);
+		}
+		catch (std::exception& e)
+		{
+			std::cout << "GetGlobalShape 1: " << e.what() << std::endl;
+			throw;
+		}
+
+		try
+		{
+			result = MakePolygonResult(GetPolygon(lhsPolygon));
+		}
+		catch (std::exception& e)
+		{
+			std::cout << "GetGlobalShape 2: " << e.what() << std::endl;
+			throw;
+		}
+
+		return result;
 	}
 
 	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& posRecord, const PackedRecord& scaleRecord, double angle, std::shared_ptr<Context> pContext)

@@ -1,3 +1,13 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+//#include <windows.h>
+//#include <imagehlp.h>
+//
+//#pragma comment(lib, "imagehlp.lib")
+
+#include <StackWalker/StackWalker.h>
 #include <Eigen/Core>
 
 #include <geos/geom.h>
@@ -10,6 +20,38 @@
 #include <Pita/Printer.hpp>
 #include <Pita/Evaluator.hpp>
 
+//void printStack()
+//{
+//	unsigned int   i;
+//	void         * stack[100];
+//	unsigned short frames;
+//	SYMBOL_INFO  * symbol;
+//	HANDLE         process;
+//
+//	process = GetCurrentProcess();
+//
+//	SymInitialize(process, NULL, TRUE);
+//
+//	const size_t trace_frames_max = 50;
+//	frames = CaptureStackBackTrace(0, trace_frames_max, stack, NULL);
+//	symbol = (SYMBOL_INFO *)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+//	symbol->MaxNameLen = 255;
+//	symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+//
+//	for (i = 0; i < frames; i++)
+//	{
+//		SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
+//
+//		printf("%i: %s - 0x%0X\n", frames - i - 1, symbol->Name, symbol->Address);
+//	}
+//
+//	free(symbol);
+//}
+
+void printStack()
+{
+	StackWalker sw; sw.ShowCallstack();
+}
 
 namespace cgl
 {
@@ -206,50 +248,50 @@ namespace cgl
 			if (member.first == "polygon")
 			{
 				std::vector<OutputPolygon> outputPolygons;
-				try
+
+				if (cgl::IsType<cgl::PackedList>(value))
 				{
-					if (cgl::IsType<cgl::PackedList>(value))
+					try
 					{
 						if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(value), outputPolygons, transform))
 						{
 							CGL_Error("polygonに指定されたデータの形式が不正です。");
 						}
 					}
-					else if (cgl::IsType<cgl::FuncVal>(value))
+					catch (std::exception& e)
 					{
-						pContext->switchFrontScope();
-
-						Eval evaluator(pContext);
-						LRValue result;
-						try
-						{
-							result = evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {});
-						}
-						catch (std::exception& e)
-						{
-							std::cout << "Packed Record Eval: " << e.what() << std::endl;
-							throw;
-						}
-						const cgl::PackedVal evaluated = Packed(pContext->expand(result, LocationInfo()), *pContext);
-
-						pContext->switchBackScope();
-
-						if (!cgl::IsType<cgl::PackedList>(evaluated))
-						{
-							CGL_Error("polygon()の評価結果の型が不正です。");
-						}
-
-						if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(evaluated), outputPolygons, transform))
-						{
-							CGL_Error("polygonに指定されたデータの形式が不正です。");
-						}
+						std::cout << "Packed Record ReadList: " << e.what() << std::endl;
+						throw;
 					}
 				}
-				catch (std::exception& e)
+				else if (cgl::IsType<cgl::FuncVal>(value))
 				{
-					std::cout << "Packed Record1: " << e.what() << std::endl;
-					throw;
+					Eval evaluator(pContext);
+					LRValue result;
+					try
+					{
+						result = evaluator.callFunction(LocationInfo(), cgl::As<cgl::FuncVal>(value), {});
+					}
+					catch (std::exception& e)
+					{
+						std::cout << "Packed Record ReadFunc: " << e.what() << std::endl;
+						//std::cout << "stacktrace: "<< std::endl;
+						//printStack();
+						throw;
+					}
+					const cgl::PackedVal evaluated = Packed(pContext->expand(result, LocationInfo()), *pContext);
+
+					if (!cgl::IsType<cgl::PackedList>(evaluated))
+					{
+						CGL_Error("polygon()の評価結果の型が不正です。");
+					}
+
+					if (!ReadPackedPolyData(cgl::As<cgl::PackedList>(evaluated), outputPolygons, transform))
+					{
+						CGL_Error("polygonに指定されたデータの形式が不正です。");
+					}
 				}
+
 
 				try
 				{

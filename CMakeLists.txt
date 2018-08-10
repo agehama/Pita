@@ -64,6 +64,8 @@ if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
+#find_package (glog 0.3.5 REQUIRED)
+
 set(EIGEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/external/Eigen" CACHE STRING "Eigen include directory" FORCE)
 
 include_directories(external/Eigen)

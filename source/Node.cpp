@@ -878,7 +878,7 @@ namespace cgl
 					int count = 0;
 					std::mt19937 rng;
 					//while (GetSec() - beginTime < 300.0)
-					while (count<10000)
+					while (count < 10000)
 					{
 						if (6660 < count)
 						{
@@ -905,7 +905,7 @@ namespace cgl
 						++count;
 
 						if (count % 1000 == 0)
-						//if (count % 10 == 0)
+							//if (count % 10 == 0)
 						{
 							pEnv->garbageCollect(true);
 						}

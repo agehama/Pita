@@ -18,6 +18,23 @@
 #include <Pita/Vectorizer.hpp>
 #include <Pita/Printer.hpp>
 
+//#include <glog/logging.h>
+//#ifdef _DEBUG
+////#  pragma comment(lib, "Debug/gflags_static.lib")
+//#  pragma comment(lib, "Debug/glogd.lib")
+//#else
+////#  pragma comment(lib, "Release/gflags_static.lib")
+//#  pragma comment(lib, "Release/glog.lib")
+//#endif
+//#pragma comment(lib, "shlwapi.lib")
+
+
+#ifdef _DEBUG
+#  pragma comment(lib, "Debug/StackWalker.lib")
+#else
+#  pragma comment(lib, "Release/StackWalker.lib")
+#endif
+
 #ifdef __has_include
 #  if __has_include(<Pita/PitaStd>)
 #    define CGL_HAS_STANDARD_FILE
@@ -91,6 +108,11 @@ namespace cgl
 		cereal::JSONInputArchive ar(ss);
 		Context& context = *pEnv;
 		ar(context);
+
+		/*google::InitGoogleLogging("pita");
+		google::InstallFailureSignalHandler();*/
+
+		_set_se_translator(TranslateInternalException);
 	}
 #else
 	Program::Program() :
@@ -138,7 +160,9 @@ namespace cgl
 
 				const auto executeAndOutputSVG = [&]() {
 					if (logOutput) std::cerr << "execute ..." << std::endl;
-					
+
+					//_set_se_translator(TranslateInternalException);
+
 					const double executeBegin = GetSec();
 					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
 					executeSec = GetSec() - executeBegin;
@@ -421,6 +445,7 @@ namespace cgl
 			std::cerr << "Program Error: " << other.what() << std::endl;
 
 			succeeded = false;
+			throw;
 		}
 
 		calculating = false;

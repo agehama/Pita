@@ -1,10 +1,16 @@
 #pragma once
 #pragma warning(disable:4996)
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <string>
 #include <exception>
 #include <chrono>
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 
 namespace cgl
 {
@@ -34,6 +40,42 @@ namespace cgl
 		std::string message;
 	};
 
+	class InternalException : public std::exception
+	{
+	public:
+		InternalException() = default;
+		InternalException(unsigned int exceptionCode, EXCEPTION_POINTERS* exceptionPointers)
+			:exceptionCode(exceptionCode), exceptionPointers(exceptionPointers)
+		{
+			PEXCEPTION_RECORD p = exceptionPointers->ExceptionRecord;
+
+			/*std::stringstream ss;
+			ss << "Internal Error:\n";
+			ss << "Exception Address: " << static_cast<void*>(p->ExceptionAddress) << "\n";
+
+			ss << std::hex << std::setfill('0') << std::setw(8);
+			ss << "Exception Code:    " << p->ExceptionCode << "\n";
+			ss << "Exception Flags:   " << p->ExceptionFlags << "\n";*/
+
+			std::cout << "Internal Error:" << std::endl;
+			std::cout << "Exception Address: " << static_cast<void*>(p->ExceptionAddress) << std::endl;
+
+			std::cout << std::hex << std::setfill('0') << std::setw(8);
+			std::cout << "Exception Code:    " << p->ExceptionCode << std::endl;
+			std::cout << "Exception Flags:   " << p->ExceptionFlags << std::endl;
+		}
+
+		const char* what() const noexcept override
+		{
+			return message.c_str();
+		}
+
+	private:
+		unsigned int exceptionCode;
+		EXCEPTION_POINTERS* exceptionPointers;
+		std::string message;
+	};
+
 	inline void Log(std::ostream& os, const std::string& str)
 	{
 		std::regex regex("\n");
@@ -44,6 +86,11 @@ namespace cgl
 		return static_cast<double>(
 			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()
 			) / 1000000000.0;
+	}
+
+	inline void TranslateInternalException(unsigned int ExceptionCode, PEXCEPTION_POINTERS ExceptionPointers) 
+	{
+		throw InternalException(ExceptionCode, ExceptionPointers);
 	}
 }
 

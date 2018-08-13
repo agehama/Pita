@@ -110,7 +110,7 @@ namespace cgl
 			m_bernsteinY.initialize(yNum - 1);
 		}
 
-		std::vector<gg::Geometry*> FFD(const std::vector<gg::Geometry*>& originalShape)
+		Geometries FFD(const Geometries& originalShape)
 		{
 			const auto getUV = [&](double x, double y)->Eigen::Vector2d
 			{
@@ -204,12 +204,12 @@ namespace cgl
 
 			auto factory = gg::GeometryFactory::create();
 
-			std::vector<gg::Geometry*> result;
+			Geometries result;
 
 			const int num = 20;
 
 			//for (const gg::Geometry* geometry : originalShape)
-			for (int shapei=0;shapei<originalShape.size();++shapei)
+			for (int shapei = 0; shapei < originalShape.size(); ++shapei)
 			{
 				bool debugPrint = false;
 				if (shapei + 18 == originalShape.size())
@@ -219,11 +219,11 @@ namespace cgl
 				}
 
 				//int pointsCount = 0;
-				const gg::Geometry* geometry = originalShape[shapei];
+				auto pGeometry = originalShape.refer(shapei);
 				//CGL_DBG1(geometry->getGeometryType());
-				if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
+				if (pGeometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 				{
-					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
+					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(pGeometry);
 
 					const gg::LineString* exterior = polygon->getExteriorRing();
 
@@ -255,7 +255,7 @@ namespace cgl
 						newExterior.add(newExterior.front());
 					}
 
-					std::vector<gg::Geometry*>* holes = new std::vector<gg::Geometry*>;
+					Geometries* holes = new Geometries;
 					for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
 					{
 						const gg::LineString* hole = polygon->getInteriorRingN(i);
@@ -295,8 +295,9 @@ namespace cgl
 							newInterior.add(newInterior.front());
 						}
 
-						holes->push_back(factory->createLinearRing(newInterior));
-
+						//holes->push_back(ToUnique(factory->createLinearRing(newInterior)));
+						holes->push_back(ToShared(factory->createLinearRing(newInterior)));
+						
 						/*
 						PackedRecord pathRecord;
 						PackedList polygonList;
@@ -322,14 +323,14 @@ namespace cgl
 						pathList.add(pathRecord);
 						*/
 					}
-					
-					//result.push_back(factory->createPolygon(factory->createLinearRing(newExterior), {}));
-					result.push_back(factory->createPolygon(factory->createLinearRing(newExterior), holes));
+
+					//result.push_back(ToUnique(factory->createPolygon(factory->createLinearRing(newExterior), {})));
+					result.push_back(ToShared(factory->createPolygon(factory->createLinearRing(newExterior), {})));
 				}
-				else if(geometry->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				else if (pGeometry->getGeometryTypeId() == gg::GEOS_LINESTRING)
 				{
-					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(geometry);
-					
+					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(pGeometry);
+
 					gg::CoordinateArraySequence newPoints;
 					for (size_t p = 0; p + 1 < lineString->getNumPoints(); ++p)
 					{
@@ -349,7 +350,8 @@ namespace cgl
 						}
 					}
 
-					result.push_back(factory->createLineString(newPoints));
+					//result.push_back(ToUnique(factory->createLineString(newPoints)));
+					result.push_back(ToShared(factory->createLineString(newPoints)));
 				}
 			}
 
@@ -378,7 +380,7 @@ namespace cgl
 		}
 	};
 
-	PackedList GetPolygon(const std::vector<gg::Geometry*>& originalPolygons)
+	PackedList GetPolygon(const Geometries& originalPolygons)
 	{
 		try
 		{
@@ -387,9 +389,9 @@ namespace cgl
 				//polygon: []
 				return PackedList();
 			}
-			else if (originalPolygons.size() == 1 && originalPolygons.front()->getGeometryTypeId() == GEOS_POLYGON)
+			else if (originalPolygons.size() == 1 && originalPolygons.refer(0)->getGeometryTypeId() == GEOS_POLYGON)
 			{
-				const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(originalPolygons.front()));
+				const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(originalPolygons.refer(0)));
 
 				//1つのポリゴンのみからなるケース
 				if (polygonList.size() == 1)
@@ -410,11 +412,11 @@ namespace cgl
 		}
 
 		std::vector<PackedList> polygons;
-
 		try
 		{
-			for (gg::Geometry* pGeometry : originalPolygons)
+			for (size_t i = 0; i < originalPolygons.size(); ++i)
 			{
+				auto pGeometry = originalPolygons.refer(i);
 				if (pGeometry->getGeometryTypeId() == GEOS_POLYGON)
 				{
 					const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pGeometry));
@@ -535,21 +537,8 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
-		
-		/*
-		std::vector<gg::Geometry*> lhsPolygon, rhsPolygon;
-		try
-		{
-			lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-			rhsPolygon = GeosFromRecordPacked(rhs, pContext);
-		}
-		catch(std::exception& e)
-		{
-			std::cout << "Touch Begin: " << e.what() << std::endl;
-			throw;
-		}*/
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
 
 		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1)
 		{
@@ -694,22 +683,29 @@ namespace cgl
 					return l1->distance(p2);
 				}
 				gg::Geometry* result = l1->intersection(p2);
+				double resultLength = 0;
 				if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
 				{
 					const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
-					return resultLine->getLength();
+					resultLength = resultLine->getLength();
 				}
 				else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
 				{
 					const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
-					return resultLineString->getLength();
+					resultLength = resultLineString->getLength();
 				}
 				else if (result->getGeometryTypeId() == gg::GEOS_POINT)
 				{
-					return 0;
+					resultLength = 0;
 				}
-				CGL_DBG1(result->getGeometryType());
-				CGL_Error("不正な式です");
+				else
+				{
+					CGL_DBG1(result->getGeometryType());
+					CGL_Error("不正な式です");
+				}
+
+				delete result;
+				return resultLength;
 			}
 			catch (std::exception& e)
 			{
@@ -745,11 +741,11 @@ namespace cgl
 			{}
 		};
 
-		const TouchType type1 = getTouchType(lhsPolygon[0]);
-		const TouchType type2 = getTouchType(rhsPolygon[0]);
+		const TouchType type1 = getTouchType(lhsPolygon.refer(0));
+		const TouchType type2 = getTouchType(rhsPolygon.refer(0));
 
-		const TypeGeometry smallerTypePoly = (type1 <= type2 ? TypeGeometry(type1, lhsPolygon[0]) : TypeGeometry(type2, rhsPolygon[0]));
-		const TypeGeometry largerTypePoly = (type1 <= type2 ? TypeGeometry(type2, rhsPolygon[0]) : TypeGeometry(type1, lhsPolygon[0]));
+		const TypeGeometry smallerTypePoly = (type1 <= type2 ? TypeGeometry(type1, lhsPolygon.refer(0)) : TypeGeometry(type2, rhsPolygon.refer(0)));
+		const TypeGeometry largerTypePoly = (type1 <= type2 ? TypeGeometry(type2, rhsPolygon.refer(0)) : TypeGeometry(type1, lhsPolygon.refer(0)));
 
 		try
 		{
@@ -795,8 +791,8 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
 
 		auto factory = gg::GeometryFactory::create();
 
@@ -810,7 +806,7 @@ namespace cgl
 		}
 		else
 		{
-			std::vector<gg::Geometry*> resultGeometries;
+			/*Geometries resultGeometries;
 
 			for (int s = 0; s < lhsPolygon.size(); ++s)
 			{
@@ -844,6 +840,61 @@ namespace cgl
 			}
 
 			return MakePolygonResult(GetPolygon(resultGeometries));
+			*/
+			for (int s = 0; s < lhsPolygon.size();)
+			{
+				//std::unique_ptr<gg::Geometry> pErodeGeometry(lhsPolygon.takeOut(s));
+				std::shared_ptr<gg::Geometry> pErodeGeometry(lhsPolygon.takeOut(s));
+
+				for (int d = 0; d < rhsPolygon.size(); ++d)
+				{
+					gg::Geometry* temporaryGeometry = pErodeGeometry->difference(rhsPolygon.refer(d));
+
+					if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
+					{
+						delete temporaryGeometry;
+						//->次のpErodeGeometryには現在のポリゴンがそのまま入っている
+					}
+					else if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					{
+						gg::MultiPolygon* polygons = dynamic_cast<gg::MultiPolygon*>(temporaryGeometry);
+						for (int i = 0; i < polygons->getNumGeometries(); ++i)
+						{
+							//lhsPolygon.insert(s, ToUnique(polygons->getGeometryN(i)->clone()));
+							lhsPolygon.insert(s, ToShared(polygons->getGeometryN(i)->clone()));
+						}
+						pErodeGeometry = lhsPolygon.takeOut(s);
+
+						//currentPolygonsに挿入したのはcloneなのでdifferenceの結果はここで削除する
+						delete temporaryGeometry;
+
+						//->次のpErodeGeometryには分割された最初のポリゴンが入っている
+					}
+					else if (pErodeGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
+					{
+						//結果が空であれば、ポリゴンを削除する
+						pErodeGeometry.reset();
+						delete temporaryGeometry;
+						break;
+						//->次のpErodeGeometryには何も入っていないのでループを抜ける
+					}
+					else
+					{
+						delete temporaryGeometry;
+						CGL_Error("Differenceの評価結果の型が不正です。");
+					}
+				}
+
+				if (pErodeGeometry)
+				{
+					lhsPolygon.insert(s, std::move(pErodeGeometry));
+
+					//最初のcurrentPolygons.takeOutで要素が減っているので、ここで復活したときのみsを増やす
+					++s;
+				}
+			}
+
+			return MakePolygonResult(GetPolygon(lhsPolygon));
 		}
 	}
 
@@ -854,15 +905,17 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
-
-		lhsPolygon.insert(lhsPolygon.end(), rhsPolygon.begin(), rhsPolygon.end());
-
-		geos::operation::geounion::CascadedUnion unionCalc(&lhsPolygon);
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		{
+			Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
+			lhsPolygon.append(std::move(rhsPolygon));
+		}
+		
+		CGL_Error("TODO:未対応");
+		/*geos::operation::geounion::CascadedUnion unionCalc(&lhsPolygon);
 		gg::Geometry* result = unionCalc.Union();
 
-		return MakePolygonResult(GetPolygon({ result }));
+		return MakePolygonResult(GetPolygon({ result }));*/
 	}
 
 	PackedRecord ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
@@ -872,9 +925,12 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
 
+		CGL_Error("TODO:未対応");
+
+		/*
 		auto factory = gg::GeometryFactory::create();
 
 		if (lhsPolygon.empty() || rhsPolygon.empty())
@@ -883,7 +939,7 @@ namespace cgl
 		}
 		else
 		{
-			std::vector<gg::Geometry*> resultGeometries;
+			Geometries resultGeometries;
 
 			for (int s = 0; s < lhsPolygon.size(); ++s)
 			{
@@ -918,6 +974,7 @@ namespace cgl
 
 			return MakePolygonResult(GetPolygon(resultGeometries));
 		}
+		*/
 	}
 
 	PackedRecord ShapeSymDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
@@ -927,17 +984,19 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
 
-		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
+		CGL_Error("TODO:未対応");
+
+		/*geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
 		gg::Geometry* lhsUnion = unionCalcLhs.Union();
 
 		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPolygon);
 		gg::Geometry* rhsUnion = unionCalcRhs.Union();
 
 		gg::Geometry* resultGeometry = lhsUnion->symDifference(rhsUnion);
-		return MakePolygonResult(GetPolygon({ resultGeometry }));
+		return MakePolygonResult(GetPolygon({ resultGeometry }));*/
 	}
 
 	PackedRecord ShapeBuffer(const PackedVal& shape, const PackedVal& amount, std::shared_ptr<Context> pContext)
@@ -953,16 +1012,18 @@ namespace cgl
 		}
 
 		const double distance = AsDouble(amount);
-		std::vector<gg::Geometry*> polygons = GeosFromRecordPacked(shape, pContext);
+		Geometries polygons(GeosFromRecordPacked(shape, pContext));
 
-		std::vector<gg::Geometry*> resultGeometries;
+		CGL_Error("TODO:未対応");
+
+		/*Geometries resultGeometries;
 		for (int s = 0; s < polygons.size(); ++s)
 		{
 			gg::Geometry* currentGeometry = polygons[s];
 			resultGeometries.push_back(currentGeometry->buffer(distance));
 		}
 
-		return MakePolygonResult(GetPolygon(resultGeometries));
+		return MakePolygonResult(GetPolygon(resultGeometries));*/
 	}
 
 	PackedRecord ShapeSubDiv(const PackedVal& shape, int numSubDiv, std::shared_ptr<Context> pContext)
@@ -972,10 +1033,12 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext);
-		std::vector<gg::Geometry*> resultGeometries;
+		Geometries lhsPolygon(GeosFromRecordPacked(shape, pContext));
+		Geometries resultGeometries;
 
-		auto factory = gg::GeometryFactory::create();
+		CGL_Error("TODO:未対応");
+
+		/*auto factory = gg::GeometryFactory::create();
 
 		const auto subdividePoly = [&](const gg::Polygon* polygon)
 		{
@@ -1001,7 +1064,7 @@ namespace cgl
 				}
 			}
 
-			std::vector<gg::Geometry*>* holes = new std::vector<gg::Geometry*>;
+			Geometries* holes = new Geometries;
 			for (size_t i = 0; i < polygon->getNumInteriorRing(); ++i)
 			{
 				const gg::LineString* hole = polygon->getInteriorRingN(i);
@@ -1052,7 +1115,7 @@ namespace cgl
 			}
 		}
 
-		return MakePolygonResult(GetPolygon(resultGeometries));
+		return MakePolygonResult(GetPolygon(resultGeometries));*/
 	}
 
 	double ShapeArea(const PackedVal& lhs, std::shared_ptr<Context> pContext)
@@ -1062,15 +1125,17 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> geometries = GeosFromRecordPacked(lhs, pContext);
+		Geometries geometries(GeosFromRecordPacked(lhs, pContext));
 
-		double area = 0.0;
+		CGL_Error("TODO:未対応");
+
+		/*double area = 0.0;
 		for (gg::Geometry* geometry : geometries)
 		{
 			area += geometry->getArea();
 		}
 
-		return area;
+		return area;*/
 	}
 
 	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
@@ -1080,10 +1145,12 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
 
-		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
+		CGL_Error("TODO:未対応");
+
+		/*geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
 		gg::Geometry* lhsUnion = unionCalcLhs.Union();
 
 		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPolygon);
@@ -1092,7 +1159,7 @@ namespace cgl
 		geos::operation::distance::DistanceOp distOp(lhsUnion, rhsUnion);
 		const auto result = distOp.distance();
 
-		return result;
+		return result;*/
 	}
 
 	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
@@ -1102,10 +1169,12 @@ namespace cgl
 			CGL_Error("不正な式です");
 		}
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(lhs, pContext);
-		std::vector<gg::Geometry*> rhsPolygon = GeosFromRecordPacked(rhs, pContext);
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
 
-		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
+		CGL_Error("TODO:未対応");
+
+		/*geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPolygon);
 		gg::Geometry* lhsUnion = unionCalcLhs.Union();
 
 		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPolygon);
@@ -1120,7 +1189,7 @@ namespace cgl
 			points.add(MakeRecord("x", result->getX(i), "y", result->getY(i)));
 		}
 
-		return MakePathResult(points);
+		return MakePathResult(points);*/
 	}
 
 	PackedRecord GetDefaultFontString(const std::string& str)
@@ -1132,7 +1201,9 @@ namespace cgl
 
 		cgl::FontBuilder builder;
 		const auto result = builder.textToPolygon(str, 5);
-		return MakePolygonResult(GetPolygon(result));
+		//return MakePolygonResult(GetPolygon(result));
+
+		CGL_Error("TODO:未対応");
 	}
 
 	PackedRecord BuildPath(const PackedList& passes, std::shared_ptr<Context> pContext, int numOfPoints, const PackedList& obstacleList)
@@ -1171,7 +1242,7 @@ namespace cgl
 		std::vector<double> angles1(numOfPoints / 2);
 		std::vector<double> angles2(numOfPoints / 2);
 
-		std::vector<gg::Geometry*> obstacles = GeosFromRecordPacked(obstacleList, pContext);
+		Geometries obstacles = GeosFromRecordPacked(obstacleList, pContext);
 
 		const gg::Coordinate beginPos(points.front().x(), points.front().y());
 		const gg::Coordinate endPos(points.back().x(), points.back().y());
@@ -1316,7 +1387,7 @@ namespace cgl
 			{
 				try
 				{
-					gg::Geometry* g = obstacles[i]->intersection(ls2);
+					gg::Geometry* g = obstacles.refer(i)->intersection(ls2);
 					//std::cout << "E";
 					if (g->getGeometryTypeId() == gg::GEOS_LINESTRING)
 					{
@@ -1620,19 +1691,19 @@ namespace cgl
 				CGL_Error("Fontのパスは絶対パスで指定してください。");
 			}
 		}
-		//FontBuilder font;
-		//cgl::FontBuilder font("c:/windows/fonts/font_1_kokumr_1.00_rls.ttf");
 
 		std::u32string string = str.toString();
 		double offsetHorizontal = 0;
 
 		PackedList resultCharList;
-		
+
+		CGL_Error("TODO:未対応");
+		/*
 		if(!path.empty())
 		{
 			for (size_t i = 0; i < string.size(); ++i)
 			{
-				std::vector<gg::Geometry*> result;
+				Geometries result;
 				
 				const int codePoint = static_cast<int>(string[i]);
 				const double currentGlyphWidth = pFont->glyphWidth(codePoint);
@@ -1658,7 +1729,7 @@ namespace cgl
 			double offsetVertical = 0;
 			for (size_t i = 0; i < string.size(); ++i)
 			{
-				std::vector<gg::Geometry*> result;
+				Geometries result;
 
 				const int codePoint = static_cast<int>(string[i]);
 
@@ -1692,6 +1763,7 @@ namespace cgl
 		result.add("str", str);
 
 		return result;
+		*/
 	}
 
 	PackedRecord GetShapeOuterPaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
@@ -1701,7 +1773,7 @@ namespace cgl
 		std::vector<PackedList> pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
 		{
-			const gg::Geometry* geometry = geometries[g];
+			const gg::Geometry* geometry = geometries.refer(g);
 			if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 			{
 				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
@@ -1740,7 +1812,7 @@ namespace cgl
 		std::vector<PackedList> pathList;
 		for (size_t g = 0; g < geometries.size(); ++g)
 		{
-			const gg::Geometry* geometry = geometries[g];
+			const gg::Geometry* geometry = geometries.refer(g);
 			if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 			{
 				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
@@ -1838,7 +1910,7 @@ namespace cgl
 
 		for (size_t g = 0; g < geometries.size(); ++g)
 		{
-			const gg::Geometry* geometry = geometries[g];
+			const gg::Geometry* geometry = geometries.refer(g);
 			if (geometry->getGeometryTypeId() == gg::GEOS_POLYGON)
 			{
 				const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry);
@@ -1938,7 +2010,7 @@ namespace cgl
 
 	PackedRecord GetGlobalShape(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
-		std::vector<gg::Geometry*> lhsPolygon;
+		Geometries lhsPolygon;
 		PackedRecord result;
 		try
 		{
@@ -1970,7 +2042,7 @@ namespace cgl
 
 		TransformPacked transform(std::get<0>(pos), std::get<1>(pos), std::get<0>(scale), std::get<1>(scale), angle);
 
-		std::vector<gg::Geometry*> lhsPolygon = GeosFromRecordPacked(shape, pContext, transform);
+		Geometries lhsPolygon = GeosFromRecordPacked(shape, pContext, transform);
 		return MakePolygonResult(GetPolygon(lhsPolygon));
 	}
 
@@ -2328,7 +2400,7 @@ namespace cgl
 		const BoundingRect boundingRect = BoundingRectRecordPacked(shape, pContext);
 		const auto center = boundingRect.center();
 
-		std::vector<gg::Geometry*> shapePolygon = GeosFromRecordPacked(shape, pContext);
+		Geometries shapePolygon(GeosFromRecordPacked(shape, pContext));
 
 		/*for (const gg::Geometry* polygon : shapePolygon)
 		{
@@ -2348,8 +2420,10 @@ namespace cgl
 
 		const double eps = 1.e-3;
 
-		for (const gg::Geometry* polygon : shapePolygon)
+		//for (const gg::Geometry* polygon : shapePolygon)
+		for (size_t g = 0; g < shapePolygon.size(); ++g)
 		{
+			const gg::Geometry* polygon = shapePolygon.refer(g);
 			const gg::CoordinateSequence* points = polygon->getCoordinates();
 
 			if (points->isEmpty() || polygon->getGeometryTypeId() == gg::GeometryTypeId::GEOS_POINT)

@@ -3,6 +3,7 @@
 #include <cfloat>
 #include <numeric>
 #include <Eigen/Core>
+#include <geos/geom.h>
 
 #include "Node.hpp"
 #include "Context.hpp"
@@ -29,163 +30,91 @@ namespace cgl
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
 
-	/*class Geometries
-	{
-	public:
-		using Type = std::vector<gg::Geometry*>;
 
-		Geometries() = default;
-		~Geometries()
-		{
-			for (gg::Geometry* g : gs)
-			{
-				delete g;
-			}
-		}
+	//class Geometries
+	//{
+	//public:
+	//	//using Type = std::vector<std::unique_ptr<gg::Geometry>>;
 
-		bool empty()const
-		{
-			return gs.empty();
-		}
+	//	Geometries();
+	//	~Geometries();
 
-		size_t size()const
-		{
-			return gs.size();
-		}
+	//	bool empty()const;
 
-		const gg::Geometry* operator[](size_t i)const
-		{
-			return gs[i];
-		}
+	//	size_t size()const;
 
-		Type::iterator begin()
-		{
-			return gs.begin();
-		}
+	//	std::unique_ptr<gg::Geometry> takeOut(size_t index);
 
-		Type::const_iterator begin()const
-		{
-			return gs.begin();
-		}
+	//	const gg::Geometry* const refer(size_t index)const;
 
-		Type::iterator end()
-		{
-			return gs.end();
-		}
+	//	/*
+	//	Type::iterator begin();
 
-		Type::const_iterator end()const
-		{
-			return gs.end();
-		}
+	//	Type::const_iterator begin()const;
 
-		void insert(Type::iterator it, gg::Geometry* g)
-		{
-			gs.insert(it, g);
-		}
+	//	Type::iterator end();
 
-		void erase(Type::iterator it)
-		{
-			delete *it;
-			gs.erase(it);
-		}
+	//	Type::const_iterator end()const;
 
-		void push_back(gg::Geometry* g)
-		{
-			gs.push_back(g);
-		}
+	//	void insert(Type::iterator it, std::unique_ptr<gg::Geometry> g);
 
-		void pop_back()
-		{
-			delete gs.back();
-			gs.pop_back();
-		}
+	//	void erase(Type::iterator it);
+	//	*/
 
-		void append(Geometries&& tail)
-		{
-			gs.insert(gs.end(), tail.gs.begin(), tail.gs.end());
-			tail.gs.clear();
-		}
+	//	void insert(size_t index, std::unique_ptr<gg::Geometry> g);
 
-	private:
-		Type gs;
-	};*/
+	//	void erase(size_t index);
+
+	//	void push_back(std::unique_ptr<gg::Geometry> g);
+
+	//	void pop_back();
+
+	//	void append(Geometries&& tail);
+
+	//private:
+	//	//Type gs;
+	//	std::vector<std::unique_ptr<gg::Geometry>> gs;
+	//};
+
 	class Geometries
 	{
 	public:
-		using Type = std::vector<std::unique_ptr<gg::Geometry>>;
+		Geometries();
+		~Geometries();
 
-		Geometries() = default;
+		bool empty()const;
 
-		bool empty()const
-		{
-			return gs.empty();
-		}
+		size_t size()const;
 
-		size_t size()const
-		{
-			return gs.size();
-		}
+		std::shared_ptr<gg::Geometry> takeOut(size_t index);
 
-		/*const gg::Geometry* operator[](size_t i)const
-		{
-			return gs[i];
-		}*/
+		const gg::Geometry* const refer(size_t index)const;
 
-		std::unique_ptr<gg::Geometry> operator[](size_t i)
-		{
-			return std::move(gs[i]);
-		}
+		void insert(size_t index, std::shared_ptr<gg::Geometry> g);
 
-		Type::iterator begin()
-		{
-			return gs.begin();
-		}
+		void erase(size_t index);
 
-		Type::const_iterator begin()const
-		{
-			return gs.begin();
-		}
+		void push_back(std::shared_ptr<gg::Geometry> g);
 
-		Type::iterator end()
-		{
-			return gs.end();
-		}
+		void pop_back();
 
-		Type::const_iterator end()const
-		{
-			return gs.end();
-		}
-
-		void insert(Type::iterator it, std::unique_ptr<gg::Geometry> g)
-		{
-			gs.insert(it, g);
-		}
-
-		void erase(Type::iterator it)
-		{
-			gs.erase(it);
-		}
-
-		void push_back(std::unique_ptr<gg::Geometry> g)
-		{
-			gs.push_back(g);
-		}
-
-		void pop_back()
-		{
-			delete gs.back();
-			gs.pop_back();
-		}
-
-		void append(Geometries&& tail)
-		{
-			gs.insert(gs.end(), tail.gs.begin(), tail.gs.end());
-			tail.gs.clear();
-		}
+		void append(Geometries&& tail);
 
 	private:
-		Type gs;
+		std::vector<std::shared_ptr<gg::Geometry>> gs;
 	};
+
+	template<class T>
+	inline std::unique_ptr<T> ToUnique(T* p)
+	{
+		return std::unique_ptr<T>(p);
+	}
+
+	template<class T>
+	inline std::shared_ptr<T> ToShared(T* p)
+	{
+		return std::shared_ptr<T>(p);
+	}
 
 	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint);
 	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint);
@@ -373,8 +302,8 @@ namespace cgl
 	//PackedRecord GetPolygonPacked(const gg::Polygon* poly);
 
 	using PackedPolyData = std::vector<PackedList>;
-	//�ŏI�I��Shape�ɕϊ�������ȊO�ł́A�ė��p����l��PackedList�͓��ɒ��_�݂̂��̂Ƃ��A
-	//�����̃|���S����std::vector<PackedList>�ŕ\������
+	//最終的にShapeに変換する個所以外では、再利用性を考えPackedListは内部に頂点のみを持つものとし、
+	//複数のポリゴンはstd::vector<PackedList>で表現する
 	PackedPolyData GetPolygonVertices(const gg::Polygon* poly);
 	//PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
 

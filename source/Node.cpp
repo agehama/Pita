@@ -23,6 +23,8 @@
 
 
 extern bool printAddressInsertion;
+extern double cloneTime;
+extern int cloneCount;
 namespace cgl
 {
 	bool IsVec2(const Val& value)
@@ -880,6 +882,8 @@ namespace cgl
 					//while (GetSec() - beginTime < 300.0)
 					while (count < 10000)
 					{
+						cloneTime = 0.0;
+						cloneCount = 0;
 						if (6660 < count)
 						{
 							printAddressInsertion = true;
@@ -893,20 +897,22 @@ namespace cgl
 								std::cout << current[i] << ", ";
 							}
 						}
-						if (6660 < count)
-						{
-							std::cout << "\n";
-						}
 
 						if (minimumCost < targetFunc(current))
 						{
 							answer = current;
 						}
+						if (6660 < count)
+						{
+							std::cout << "cloneTime: " << cloneTime << " | " << cloneCount << "\n";
+						}
+
 						++count;
 
 						if (count % 1000 == 0)
 							//if (count % 10 == 0)
 						{
+							std::cout << "cloneTime: " << cloneTime << " | " << cloneCount << "\n";
 							pEnv->garbageCollect(true);
 						}
 					}

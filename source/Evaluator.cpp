@@ -11,6 +11,9 @@
 extern int constraintViolationCount;
 extern bool isInConstraint;
 
+extern double cloneTime;
+extern int cloneCount;
+extern bool printAddressInsertion;
 namespace cgl
 {
 	class ExprLocationInfo : public boost::static_visitor<std::string>
@@ -330,6 +333,11 @@ namespace cgl
 		List result;
 		const auto& data = node.data;
 		
+		/*if (printAddressInsertion)
+		{
+			std::cout << data.size() << ", ";
+		}*/
+
 		for (size_t i = 0; i < data.size(); ++i)
 		{
 			if (auto opt = getOpt(data[i]))
@@ -353,6 +361,10 @@ namespace cgl
 	{
 		Record result;
 
+		double time1 = 0;
+		double time2 = 0;
+		double time3 = 0;
+
 		for (const auto& value : node.values)
 		{
 			if (auto opt = getOpt(value.second))
@@ -361,12 +373,28 @@ namespace cgl
 			}
 			else
 			{
+				double begin1T = GetSec();
+
 				const Val& substance = pEnv->expand(value.second, info);
+				double begin2T = GetSec();
+
 				const Val clone = boost::apply_visitor(*this, substance);
+				double begin3T = GetSec();
+
 				const Address newAddress = pEnv->makeTemporaryValue(clone);
 				result.append(value.first, newAddress);
 				replaceMap[value.second] = newAddress;
+				double begin4T = GetSec();
+
+				time1 += begin2T - begin1T;
+				time2 += begin3T - begin2T;
+				time3 += begin4T - begin3T;
 			}
+		}
+
+		if (printAddressInsertion)
+		{
+			std::cout << "(" << time1 << ", " << time2 << ", " << time3 << ")\n";
 		}
 
 		result.problems = node.problems;
@@ -652,12 +680,39 @@ namespace cgl
 		1. リスト・レコードの再帰的なコピー
 		2. 関数の持つアドレスを新しい方に付け替える
 		*/
+		/*++cloneCount;
+		double beginT = GetSec();
+
 		ValueCloner cloner(pEnv, info);
 		const Val& evaluated = boost::apply_visitor(cloner, value);
+		double begin2T = GetSec();
+
 		ValueCloner2 cloner2(pEnv, cloner.replaceMap, info);
 		ValueCloner3 cloner3(pEnv, cloner.replaceMap);
 		Val evaluated2 = boost::apply_visitor(cloner2, evaluated);
+		
+		double begin3T = GetSec();
 		boost::apply_visitor(cloner3, evaluated2);
+		double endT = GetSec();
+		
+		cloneTime += GetSec() - beginT;*/
+
+		++cloneCount;
+
+		ValueCloner cloner(pEnv, info);
+		const Val& evaluated = boost::apply_visitor(cloner, value);
+		
+		ValueCloner2 cloner2(pEnv, cloner.replaceMap, info);
+		ValueCloner3 cloner3(pEnv, cloner.replaceMap);
+		Val evaluated2 = boost::apply_visitor(cloner2, evaluated);
+
+		boost::apply_visitor(cloner3, evaluated2);
+		
+		/*if (printAddressInsertion)
+		{
+			std::cout << "(" << (begin2T - beginT) << ", " << (begin3T - begin2T) << ", " << (endT - begin3T) << ")\n";
+		}*/
+
 		/*{
 			std::cout << "Cloner replaceMap:\n";
 			std::vector<std::pair<Address, Address>> as;

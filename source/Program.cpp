@@ -48,6 +48,8 @@ bool isBlockingMode;
 bool isInConstraint = false;
 
 bool printAddressInsertion = false;
+double cloneTime = 0.0;
+int cloneCount = 0;
 
 namespace cgl
 {
@@ -111,8 +113,6 @@ namespace cgl
 
 		/*google::InitGoogleLogging("pita");
 		google::InstallFailureSignalHandler();*/
-
-		_set_se_translator(TranslateInternalException);
 	}
 #else
 	Program::Program() :

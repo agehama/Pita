@@ -83,6 +83,29 @@ namespace cgl
 		return sum < 0.0;
 	}
 
+	std::tuple<bool, std::unique_ptr<gg::Geometry>> IsClockWise(std::unique_ptr<gg::Geometry> pLineString)
+	{
+		double sum = 0;
+
+		const gg::LineString* closedPath = dynamic_cast<const gg::LineString*>(pLineString.get());
+
+		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
+		{
+			const gg::Point* p1 = closedPath->getPointN(p);
+			const gg::Point* p2 = closedPath->getPointN(p + 1);
+
+			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+		}
+		{
+			const gg::Point*  p1 = closedPath->getPointN(closedPath->getNumPoints() - 1);
+			const gg::Point*  p2 = closedPath->getPointN(0);
+
+			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+		}
+
+		return std::make_tuple(sum < 0.0, std::move(pLineString));
+	}
+
 	std::string GetGeometryType(gg::Geometry* geometry)
 	{
 		switch (geometry->getGeometryTypeId())
@@ -132,10 +155,10 @@ namespace cgl
 		return factory->createLineString(pts);
 	}
 
-	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail)
+	/*void GeosPolygonsConcat(Geometries& head, const Geometries& tail)
 	{
 		head.insert(head.end(), tail.begin(), tail.end());
-	}
+	}*/
 
 	void DebugPrint(const gg::Geometry* geometry)
 	{

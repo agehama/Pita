@@ -7,7 +7,7 @@
 //
 //#pragma comment(lib, "imagehlp.lib")
 
-#include <StackWalker/StackWalker.h>
+//#include <StackWalker/StackWalker.h>
 #include <Eigen/Core>
 
 #include <geos/geom.h>
@@ -48,10 +48,10 @@
 //	free(symbol);
 //}
 
-void printStack()
-{
-	StackWalker sw; sw.ShowCallstack();
-}
+//void printStack()
+//{
+//	StackWalker sw; sw.ShowCallstack();
+//}
 
 namespace cgl
 {
@@ -90,10 +90,28 @@ namespace cgl
 		return indent;
 	}
 
+	/*struct OutputPolygon
+	{
+		Geometries polygon;
+		Geometries hole;
+
+		~OutputPolygon()
+		{
+			for (gg::Geometry* g : polygon)
+			{
+				delete g;
+			}
+			for (gg::Geometry* g : hole)
+			{
+				delete g;
+			}
+		}
+	};*/
+
 	struct OutputPolygon
 	{
-		std::vector<gg::Geometry*> polygon;
-		std::vector<gg::Geometry*> hole;
+		Geometries polygon;
+		Geometries hole;
 	};
 
 	bool ReadPackedPolyData(const PackedList& polygons, std::vector<OutputPolygon>& outputPolygonDatas, const TransformPacked& transform)
@@ -102,7 +120,7 @@ namespace cgl
 
 		const auto readPolygon = [&](const std::vector<PackedList::Data>& vertices)->bool
 		{
-			gg::CoordinateArraySequence pts;
+			gg::CoordinateSequence::Ptr pPoints = std::make_unique<gg::CoordinateArraySequence>();
 
 			for (const auto& vertexData : vertices)
 			{
@@ -120,27 +138,29 @@ namespace cgl
 				}
 
 				auto pos = transform.product(EigenVec2(AsDouble(itX->second.value), AsDouble(itY->second.value)));
-				pts.add(gg::Coordinate(pos.x(), pos.y()));
+				pPoints->add(gg::Coordinate(pos.x(), pos.y()));
 			}
 
-			if (!pts.empty())
+			if (!pPoints->isEmpty())
 			{
-				pts.add(pts.front());
+				pPoints->add(pPoints->front());
 
-				auto factory = gg::GeometryFactory::create();
-				gg::LinearRing* linearRing = factory->createLinearRing(pts);
+				auto pFactory = gg::GeometryFactory::create();
+				std::unique_ptr<gg::Geometry> pLinearRing = pFactory->createLinearRing(std::move(pPoints));
 
-				if (IsClockWise(linearRing))
+				bool isClockWise;
+				std::tie(isClockWise, pLinearRing) = IsClockWise(std::move(pLinearRing));
+				if (isClockWise)
 				{
 					outputPolygonDatas.emplace_back();
 					auto& outputPolygons = outputPolygonDatas.back().polygon;
-					outputPolygons.push_back(factory->createPolygon(linearRing, {}));
+					outputPolygons.push_back(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}));
 				}
 				//穴がデータに追加されるのは、既存のポリゴンが存在するときのみ
 				else if(!outputPolygonDatas.empty())
 				{
 					auto& outputHoles = outputPolygonDatas.back().hole;
-					outputHoles.push_back(factory->createPolygon(linearRing, {}));
+					outputHoles.push_back(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}));
 				}
 			}
 
@@ -170,13 +190,14 @@ namespace cgl
 		return false;
 	}
 
-	bool ReadPackedLineData(const PackedList& lines, std::vector<gg::Geometry*>& outputLineDatas, const TransformPacked& transform)
+	//bool ReadPackedLineData(const PackedList& lines, Geometries& outputLineDatas, const TransformPacked& transform)
+	bool ReadPackedLineData(const PackedList& lines, Geometries& outputLineDatas, const TransformPacked& transform)
 	{
 		const auto type = GetPackedListType(lines);
 
 		const auto readLine = [&](const std::vector<PackedList::Data>& vertices)->bool
 		{
-			gg::CoordinateArraySequence pts;
+			gg::CoordinateSequence::Ptr pPoints = std::make_unique<gg::CoordinateArraySequence>();
 
 			for (const auto& vertexData : vertices)
 			{
@@ -194,14 +215,13 @@ namespace cgl
 				}
 
 				auto pos = transform.product(EigenVec2(AsDouble(itX->second.value), AsDouble(itY->second.value)));
-				pts.add(gg::Coordinate(pos.x(), pos.y()));
-				
+				pPoints->add(gg::Coordinate(pos.x(), pos.y()));
 			}
 
-			if (!pts.empty())
+			if (!pPoints->isEmpty())
 			{
-				auto factory = gg::GeometryFactory::create();
-				outputLineDatas.push_back(factory->createLineString(pts));
+				auto pFactory = gg::GeometryFactory::create();
+				outputLineDatas.push_back(pFactory->createLineString(std::move(pPoints)).release());
 			}
 
 			return true;
@@ -230,16 +250,15 @@ namespace cgl
 		return false;
 	}
 
-	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
+	Geometries GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
 
-	std::vector<gg::Geometry*> GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
+	Geometries GeosFromRecordPackedImpl(const cgl::PackedRecord& record, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
 	{
 		const cgl::TransformPacked current(record);
-
 		const cgl::TransformPacked transform = parent * current;
 
-		std::vector<gg::Geometry*> resultPolygons;
-		std::vector<gg::Geometry*> currentLines;
+		Geometries resultPolygons;
+		Geometries currentLines;
 
 		for (const auto& member : record.values)
 		{
@@ -275,8 +294,6 @@ namespace cgl
 					catch (std::exception& e)
 					{
 						std::cout << "Packed Record ReadFunc: " << e.what() << std::endl;
-						//std::cout << "stacktrace: "<< std::endl;
-						//printStack();
 						throw;
 					}
 					const cgl::PackedVal evaluated = Packed(pContext->expand(result, LocationInfo()), *pContext);
@@ -291,7 +308,6 @@ namespace cgl
 						CGL_Error("polygonに指定されたデータの形式が不正です。");
 					}
 				}
-
 
 				try
 				{
@@ -310,32 +326,44 @@ namespace cgl
 
 									for (int d = 0; d < currentHoles.size(); ++d)
 									{
-										erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+										gg::Geometry* temporaryGeometry = erodeGeometry->difference(currentHoles[d]);
 
-										if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+										if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
+										{
+											delete temporaryGeometry;
+											continue;
+										}
+										else if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 										{
 											currentPolygons.erase(currentPolygons.begin() + s);
 
-											const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+											gg::MultiPolygon* polygons = dynamic_cast<gg::MultiPolygon*>(temporaryGeometry);
 											for (int i = 0; i < polygons->getNumGeometries(); ++i)
 											{
 												currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
 											}
 
+											//次の穴の処理は分割された最初のポリゴンから始める
 											erodeGeometry = currentPolygons[s];
+
+											delete temporaryGeometry;
 										}
 										else if (erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON
 											&& erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
 										{
+											delete temporaryGeometry;
 											CGL_Error("Differenceの評価結果の型が不正です。");
 										}
+
+										//currentPolygonsにinsertしたのはcloneなのでdifferenceの結果はここで削除する必要がある
 									}
 
 									currentPolygons[s] = erodeGeometry;
 								}
 							}
 
-							GeosPolygonsConcat(resultPolygons, currentPolygons);
+							//GeosPolygonsConcat(resultPolygons, currentPolygons);
+							resultPolygons.append(std::move(currentPolygons));
 						}
 					}
 				}
@@ -401,9 +429,9 @@ namespace cgl
 		}
 	}
 
-	std::vector<gg::Geometry*> GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform)
+	Geometries GeosFromListPacked(const cgl::PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform)
 	{
-		std::vector<gg::Geometry*> currentPolygons;
+		Geometries currentPolygons;
 		for (const auto& val : list.data)
 		{
 			const PackedVal& value = val.value;
@@ -420,7 +448,7 @@ namespace cgl
 		return currentPolygons;
 	}
 
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
+	Geometries GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
 	{
 		if (cgl::IsType<cgl::PackedRecord>(value))
 		{
@@ -433,7 +461,7 @@ namespace cgl
 				const cgl::TransformPacked current(record);
 				const cgl::TransformPacked transform = parent * current;
 
-				std::vector<gg::Geometry*> currentPolygons;
+				Geometries currentPolygons;
 
 				const auto v = ReadVec2Packed(record, transform);
 
@@ -464,9 +492,9 @@ namespace cgl
 
 		std::vector<PitaGeometry> wholePolygons;
 
-		std::vector<gg::Geometry*> resultPolygons;
+		Geometries resultPolygons;
 		//gg::Geometry* currentLine = nullptr;
-		std::vector<gg::Geometry*> currentLines;
+		Geometries currentLines;
 
 		//現時点では実際に描画されるデータを持っているかどうかわからないため、一旦別のストリームに保存しておく
 		std::stringstream currentStream;

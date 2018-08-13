@@ -29,11 +29,11 @@
 //#pragma comment(lib, "shlwapi.lib")
 
 
-#ifdef _DEBUG
-#  pragma comment(lib, "Debug/StackWalker.lib")
-#else
-#  pragma comment(lib, "Release/StackWalker.lib")
-#endif
+//#ifdef _DEBUG
+//#  pragma comment(lib, "Debug/StackWalker.lib")
+//#else
+//#  pragma comment(lib, "Release/StackWalker.lib")
+//#endif
 
 #ifdef __has_include
 #  if __has_include(<Pita/PitaStd>)

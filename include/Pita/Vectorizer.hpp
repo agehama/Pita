@@ -3,7 +3,6 @@
 #include <cfloat>
 #include <numeric>
 #include <Eigen/Core>
-#include <geos/geom.h>
 
 #include "Node.hpp"
 #include "Context.hpp"
@@ -128,7 +127,6 @@ namespace cgl
 	std::string GetGeometryType(gg::Geometry* geometry);
 	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior);
 	gg::LineString* ToLineString(const Vector<Eigen::Vector2d>& exterior);
-	//void GeosPolygonsConcat(Geometries& head, const Geometries& tail);
 
 	void DebugPrint(const gg::Geometry* geometry);
 

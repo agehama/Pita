@@ -68,19 +68,11 @@ namespace cgl
 
 		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
 		{
-			/*const gg::Point* p1 = closedPath->getPointN(p);
-			const gg::Point* p2 = closedPath->getPointN(p + 1);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());*/
 			const gg::Coordinate& p1 = closedPath->getCoordinateN(p);
 			const gg::Coordinate& p2 = closedPath->getCoordinateN(p + 1);
 			sum += (p2.x - p1.x)*(p2.y + p1.y);
 		}
 		{
-			/*const gg::Point*  p1 = closedPath->getPointN(closedPath->getNumPoints() - 1);
-			const gg::Point*  p2 = closedPath->getPointN(0);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());*/
 			const gg::Coordinate& p1 = closedPath->getCoordinateN(closedPath->getNumPoints() - 1);
 			const gg::Coordinate& p2 = closedPath->getCoordinateN(0);
 			sum += (p2.x - p1.x)*(p2.y + p1.y);
@@ -97,19 +89,11 @@ namespace cgl
 
 		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
 		{
-			/*const gg::Point* p1 = closedPath->getPointN(p);
-			const gg::Point* p2 = closedPath->getPointN(p + 1);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());*/
 			const gg::Coordinate& p1 = closedPath->getCoordinateN(p);
 			const gg::Coordinate& p2 = closedPath->getCoordinateN(p + 1);
 			sum += (p2.x - p1.x)*(p2.y + p1.y);
 		}
 		{
-			/*const gg::Point*  p1 = closedPath->getPointN(closedPath->getNumPoints() - 1);
-			const gg::Point*  p2 = closedPath->getPointN(0);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());*/
 			const gg::Coordinate& p1 = closedPath->getCoordinateN(closedPath->getNumPoints() - 1);
 			const gg::Coordinate& p2 = closedPath->getCoordinateN(0);
 			sum += (p2.x - p1.x)*(p2.y + p1.y);
@@ -165,11 +149,6 @@ namespace cgl
 		auto factory = gg::GeometryFactory::create();
 		return factory->createLineString(pts);
 	}
-
-	/*void GeosPolygonsConcat(Geometries& head, const Geometries& tail)
-	{
-		head.insert(head.end(), tail.begin(), tail.end());
-	}*/
 
 	void DebugPrint(const gg::Geometry* geometry)
 	{

@@ -109,6 +109,7 @@ namespace cgl
 				ps.push_back(gs[i].release());
 			}
 			gs.clear();
+			return ps;
 		}
 
 		Geometries& operator=(Geometries&&);

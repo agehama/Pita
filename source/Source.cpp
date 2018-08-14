@@ -11,7 +11,19 @@
 #include <string.h>
 #include <curses.h>
 #include <stdlib.h>
+
+#ifdef _MSC_VER
 #include <crtdbg.h> // for _CrtDumpMemoryLeaks
+static void MEM_Init()
+{
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_DELAY_FREE_MEM_DF);
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
+}
+#else
+static void MEM_Init() {}
+#endif
+
 #include <stdio.h>
 #include <time.h>
 
@@ -31,13 +43,6 @@ void trap(int sig)
 		endwin();
 		exit(0);
 	}
-}
-
-static void MEM_Init()
-{
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_DELAY_FREE_MEM_DF);
-	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
 }
 
 int main(int argc, char* argv[])

@@ -76,7 +76,7 @@ namespace cgl
 		delete fontInfo2;
 	}
 
-	std::vector<gg::Geometry*> FontBuilder::makePolygon(int codePoint, int quality, double offsetX, double offsetY)
+	Geometries FontBuilder::makePolygon(int codePoint, int quality, double offsetX, double offsetY)
 	{
 		const auto vec2 = [&](short x, short y)
 		{
@@ -105,8 +105,8 @@ namespace cgl
 
 		using Vertices = Vector<Eigen::Vector2d>;
 
-		std::vector<gg::Geometry*> currentPolygons;
-		std::vector<gg::Geometry*> currentHoles;
+		Geometries currentPolygons;
+		Geometries currentHoles;
 
 		int polygonBeginIndex = 0;
 		while (polygonBeginIndex < verticesNum)
@@ -149,11 +149,11 @@ namespace cgl
 
 			if (clockWisePolygons == IsClockWise(points))
 			{
-				currentPolygons.push_back(ToPolygon(points));
+				currentPolygons.push_back_raw(ToPolygon(points));
 			}
 			else
 			{
-				currentHoles.push_back(ToPolygon(points));
+				currentHoles.push_back_raw(ToPolygon(points));
 			}
 
 			polygonBeginIndex = nextPolygonFirstIndex;
@@ -171,45 +171,49 @@ namespace cgl
 		}
 		else
 		{
-			for (int s = 0; s < currentPolygons.size(); ++s)
+			for (int s = 0; s < currentPolygons.size();)
 			{
-				gg::Geometry* erodeGeometry = currentPolygons[s];
+				GeometryPtr pErodeGeometry(currentPolygons.takeOut(s));
 
 				for (int d = 0; d < currentHoles.size(); ++d)
 				{
 					//穴に含まれるポリゴンについては、引かないようにする
 					//本当は包含判定をすべきだがフォントならそんなに複雑な構造にならないはず
-					if (erodeGeometry->getArea() < currentHoles[d]->getArea())
+					if (pErodeGeometry->getArea() < currentHoles.refer(d)->getArea())
 					{
 						continue;
 					}
 
-					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+					GeometryPtr pTemporaryGeometry(ToUnique<GeometryDeleter>(pErodeGeometry->difference(currentHoles.refer(d))));
 
-					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 					{
-						currentPolygons.erase(currentPolygons.begin() + s);
+						currentPolygons.erase(s);
 
-						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(pTemporaryGeometry.get());
 						for (int i = 0; i < polygons->getNumGeometries(); ++i)
 						{
-							currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
+							currentPolygons.insert(s, ToUnique<GeometryDeleter>(polygons->getGeometryN(i)->clone()));
 						}
 
-						erodeGeometry = currentPolygons[s];
+						pErodeGeometry = currentPolygons.takeOut(s);
 					}
 				}
 
-				currentPolygons[s] = erodeGeometry;
+				if (pErodeGeometry)
+				{
+					currentPolygons.insert(s, std::move(pErodeGeometry));
+					++s;
+				}
 			}
 
 			return currentPolygons;
 		}
 	}
 
-	std::vector<gg::Geometry*> FontBuilder::textToPolygon(const std::string& str, int quality)
+	Geometries FontBuilder::textToPolygon(const std::string& str, int quality)
 	{
-		std::vector<gg::Geometry*> result;
+		Geometries result;
 		int offsetX = 0;
 		for (int i = 0; i < str.size(); ++i)
 		{
@@ -217,8 +221,8 @@ namespace cgl
 			const int codePoint = static_cast<int>(str[i]);
 			//int x0, x1, y0, y1;
 			//stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
-			const auto characterPolygon = makePolygon(codePoint, quality, offsetX, 0);
-			result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
+			auto characterPolygon = makePolygon(codePoint, quality, offsetX, 0);
+			result.append(std::move(characterPolygon));
 			//offsetX += (x1 - x0);
 
 			offsetX += glyphWidth(codePoint);

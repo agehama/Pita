@@ -9,6 +9,7 @@
 #include <Pita/Printer.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 
+extern unsigned cloneCount;
 namespace cgl
 {
 	struct OutputAddresses
@@ -1335,6 +1336,10 @@ namespace cgl
 	Address Context::makeTemporaryValue(const Val& value)
 	{
 		const Address address = m_values.add(value);
+
+		//cloneCount = std::max(cloneCount, static_cast<int>(m_values.size()));
+		
+		cloneCount = std::max(cloneCount, address.valueID);
 
 		localEnv().back().temporaryAddresses.push_back(address);
 

@@ -30,91 +30,93 @@ namespace cgl
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
 
+	template<class DeleterT, class PointerT>
+	inline std::unique_ptr<PointerT, DeleterT> ToUnique(PointerT* p)
+	{
+		return std::unique_ptr<PointerT, DeleterT>(p);
+	}
 
-	//class Geometries
-	//{
-	//public:
-	//	//using Type = std::vector<std::unique_ptr<gg::Geometry>>;
-
-	//	Geometries();
-	//	~Geometries();
-
-	//	bool empty()const;
-
-	//	size_t size()const;
-
-	//	std::unique_ptr<gg::Geometry> takeOut(size_t index);
-
-	//	const gg::Geometry* const refer(size_t index)const;
-
-	//	/*
-	//	Type::iterator begin();
-
-	//	Type::const_iterator begin()const;
-
-	//	Type::iterator end();
-
-	//	Type::const_iterator end()const;
-
-	//	void insert(Type::iterator it, std::unique_ptr<gg::Geometry> g);
-
-	//	void erase(Type::iterator it);
-	//	*/
-
-	//	void insert(size_t index, std::unique_ptr<gg::Geometry> g);
-
-	//	void erase(size_t index);
-
-	//	void push_back(std::unique_ptr<gg::Geometry> g);
-
-	//	void pop_back();
-
-	//	void append(Geometries&& tail);
-
-	//private:
-	//	//Type gs;
-	//	std::vector<std::unique_ptr<gg::Geometry>> gs;
-	//};
+	struct GeometryDeleter
+	{
+		void operator()(gg::Geometry* pGeometry) const;
+	};
+	using GeometryPtr = std::unique_ptr<gg::Geometry, GeometryDeleter>;
 
 	class Geometries
 	{
 	public:
 		Geometries();
 		~Geometries();
+		Geometries(Geometries&&);
 
-		bool empty()const;
+		bool empty()const
+		{
+			return gs.empty();
+		}
 
-		size_t size()const;
+		size_t size()const
+		{
+			return gs.size();
+		}
 
-		std::shared_ptr<gg::Geometry> takeOut(size_t index);
+		GeometryPtr takeOut(size_t index)
+		{
+			GeometryPtr ptr(std::move(gs[index]));
+			gs.erase(gs.begin() + index);
+			return ptr;
+		}
 
-		const gg::Geometry* const refer(size_t index)const;
+		const gg::Geometry* const refer(size_t index)const
+		{
+			return gs[index].get();
+		}
 
-		void insert(size_t index, std::shared_ptr<gg::Geometry> g);
+		void insert(size_t index, GeometryPtr g)
+		{
+			gs.insert(gs.begin() + index, std::move(g));
+		}
 
-		void erase(size_t index);
+		void erase(size_t index)
+		{
+			gs.erase(gs.begin() + index);
+		}
 
-		void push_back(std::shared_ptr<gg::Geometry> g);
+		void push_back(GeometryPtr g)
+		{
+			gs.push_back(std::move(g));
+		}
 
-		void pop_back();
+		void push_back_raw(gg::Geometry* g)
+		{
+			gs.push_back(ToUnique<GeometryDeleter>(g));
+		}
 
-		void append(Geometries&& tail);
+		void pop_back()
+		{
+			gs.pop_back();
+		}
+
+		void append(Geometries&& tail)
+		{
+			gs.insert(gs.end(), std::make_move_iterator(tail.gs.begin()), std::make_move_iterator(tail.gs.end()));
+			tail.gs.clear();
+		}
+
+		std::vector<gg::Geometry*> releaseAsRawPtrs()
+		{
+			std::vector<gg::Geometry*> ps;
+			for (size_t i = 0; i < gs.size(); ++i)
+			{
+				ps.push_back(gs[i].release());
+			}
+			gs.clear();
+		}
+
+		Geometries& operator=(Geometries&&);
 
 	private:
-		std::vector<std::shared_ptr<gg::Geometry>> gs;
+		std::vector<GeometryPtr> gs;
 	};
-
-	template<class T>
-	inline std::unique_ptr<T> ToUnique(T* p)
-	{
-		return std::unique_ptr<T>(p);
-	}
-
-	template<class T>
-	inline std::shared_ptr<T> ToShared(T* p)
-	{
-		return std::shared_ptr<T>(p);
-	}
 
 	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint);
 	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint);
@@ -154,12 +156,12 @@ namespace cgl
 	public:
 		PitaGeometry() = default;
 
-		PitaGeometry(gg::Geometry* shape, const Color& color) :
+		PitaGeometry(std::shared_ptr<gg::Geometry> shape, const Color& color) :
 			shape(shape),
 			color(color)
 		{}
 
-		gg::Geometry* shape;
+		std::shared_ptr<gg::Geometry> shape;
 		Color color;
 	};
 

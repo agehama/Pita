@@ -1,4 +1,5 @@
 #define NOMINMAX
+#define _CRTDBG_MAP_ALLOC
 
 #pragma warning(disable:4996)
 #pragma comment(lib, "pdcurses.lib")
@@ -10,6 +11,8 @@
 #include <string.h>
 #include <curses.h>
 #include <stdlib.h>
+#include <crtdbg.h> // for _CrtDumpMemoryLeaks
+#include <stdio.h>
 #include <time.h>
 
 #include <cxxopts.hpp>
@@ -30,9 +33,18 @@ void trap(int sig)
 	}
 }
 
+static void MEM_Init()
+{
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_DELAY_FREE_MEM_DF);
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
+}
+
 int main(int argc, char* argv[])
 {
 	std::string input_file, output_file;
+
+	MEM_Init();
 
 	try
 	{

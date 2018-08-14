@@ -83,6 +83,8 @@ namespace cgl
 		std::shared_ptr<Context> pEnv;
 		std::unordered_map<Address, Address> replaceMap;
 
+		double time1 = 0, time2 = 0, time3 = 0;
+
 		boost::optional<Address> getOpt(Address address)const;
 
 		Val operator()(bool node) { return node; }

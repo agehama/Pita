@@ -12,7 +12,7 @@ extern int constraintViolationCount;
 extern bool isInConstraint;
 
 extern double cloneTime;
-extern int cloneCount;
+extern unsigned cloneCount;
 extern bool printAddressInsertion;
 namespace cgl
 {
@@ -346,11 +346,23 @@ namespace cgl
 			}
 			else
 			{
+				double begin1T = GetSec();
 				const Val& substance = pEnv->expand(data[i], info);
+				double end1T = GetSec();
+
 				const Val clone = boost::apply_visitor(*this, substance);
+
+				double begin2T = GetSec();
 				const Address newAddress = pEnv->makeTemporaryValue(clone);
+				double begin3T = GetSec();
+
 				result.push_back(newAddress);
 				replaceMap[data[i]] = newAddress;
+				double begin4T = GetSec();
+
+				time1 += end1T - begin1T;
+				time2 += begin3T - begin2T;
+				time3 += begin4T - begin3T;
 			}
 		}
 
@@ -361,10 +373,6 @@ namespace cgl
 	{
 		Record result;
 
-		double time1 = 0;
-		double time2 = 0;
-		double time3 = 0;
-
 		for (const auto& value : node.values)
 		{
 			if (auto opt = getOpt(value.second))
@@ -374,28 +382,29 @@ namespace cgl
 			else
 			{
 				double begin1T = GetSec();
-
 				const Val& substance = pEnv->expand(value.second, info);
-				double begin2T = GetSec();
+				double end1T = GetSec();
 
 				const Val clone = boost::apply_visitor(*this, substance);
+
+				double begin2T = GetSec();
+				const Address newAddress = pEnv->makeTemporaryValue(clone);
 				double begin3T = GetSec();
 
-				const Address newAddress = pEnv->makeTemporaryValue(clone);
 				result.append(value.first, newAddress);
 				replaceMap[value.second] = newAddress;
 				double begin4T = GetSec();
 
-				time1 += begin2T - begin1T;
+				time1 += end1T - begin1T;
 				time2 += begin3T - begin2T;
 				time3 += begin4T - begin3T;
 			}
 		}
 
-		if (printAddressInsertion)
+		/*if (printAddressInsertion)
 		{
 			std::cout << "(" << time1 << ", " << time2 << ", " << time3 << ")\n";
-		}
+		}*/
 
 		result.problems = node.problems;
 		result.type = node.type;
@@ -697,8 +706,8 @@ namespace cgl
 		
 		cloneTime += GetSec() - beginT;*/
 
-		++cloneCount;
-
+		//++cloneCount;
+		double beginT = GetSec();
 		ValueCloner cloner(pEnv, info);
 		const Val& evaluated = boost::apply_visitor(cloner, value);
 		
@@ -707,7 +716,11 @@ namespace cgl
 		Val evaluated2 = boost::apply_visitor(cloner2, evaluated);
 
 		boost::apply_visitor(cloner3, evaluated2);
-		
+		cloneTime += GetSec() - beginT;
+		/*if (printAddressInsertion)
+		{
+			std::cout << "(" << cloner.time1 << ", " << cloner.time2 << ", " << cloner.time3 << ")\n";
+		}*/
 		/*if (printAddressInsertion)
 		{
 			std::cout << "(" << (begin2T - beginT) << ", " << (begin3T - begin2T) << ", " << (endT - begin3T) << ")\n";

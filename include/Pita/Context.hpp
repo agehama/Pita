@@ -14,8 +14,8 @@ namespace cgl
 	class Values
 	{
 	public:
-		//using ValueList = std::unordered_map<Address, ValueType>;
-		using ValueList = std::map<Address, ValueType>;
+		using ValueList = std::unordered_map<Address, ValueType>;
+		//using ValueList = std::map<Address, ValueType>;
 
 		Values() = default;
 
@@ -25,7 +25,7 @@ namespace cgl
 			{
 				std::cout << "Insert Begin" << std::endl;
 			}*/
-			try
+			/*try
 			{
 				m_values.insert({ newAddress(), value });
 			}
@@ -33,7 +33,10 @@ namespace cgl
 			{
 				std::cout << "Values::add: " << e.what() << std::endl;
 				throw;
-			}
+			}*/
+
+			m_values.emplace(newAddress(), value);
+
 			/*if (printAddressInsertion)
 			{
 				std::cout << "Insert End" << std::endl;

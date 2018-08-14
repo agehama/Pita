@@ -2,12 +2,6 @@
 #define NOMINMAX
 #endif
 
-//#include <windows.h>
-//#include <imagehlp.h>
-//
-//#pragma comment(lib, "imagehlp.lib")
-
-//#include <StackWalker/StackWalker.h>
 #include <Eigen/Core>
 
 #include <geos/geom.h>
@@ -22,172 +16,17 @@
 
 extern bool printAddressInsertion;
 
-//void printStack()
-//{
-//	unsigned int   i;
-//	void         * stack[100];
-//	unsigned short frames;
-//	SYMBOL_INFO  * symbol;
-//	HANDLE         process;
-//
-//	process = GetCurrentProcess();
-//
-//	SymInitialize(process, NULL, TRUE);
-//
-//	const size_t trace_frames_max = 50;
-//	frames = CaptureStackBackTrace(0, trace_frames_max, stack, NULL);
-//	symbol = (SYMBOL_INFO *)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
-//	symbol->MaxNameLen = 255;
-//	symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-//
-//	for (i = 0; i < frames; i++)
-//	{
-//		SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
-//
-//		printf("%i: %s - 0x%0X\n", frames - i - 1, symbol->Name, symbol->Address);
-//	}
-//
-//	free(symbol);
-//}
-
-//void printStack()
-//{
-//	StackWalker sw; sw.ShowCallstack();
-//}
-
 namespace cgl
 {
-	//Geometries::Geometries() = default;
-	//Geometries::~Geometries() = default;
-
-	//bool Geometries::empty()const
-	//{
-	//	return gs.empty();
-	//}
-
-	//size_t Geometries::size()const
-	//{
-	//	return gs.size();
-	//}
-
-	//std::unique_ptr<gg::Geometry> Geometries::takeOut(size_t index)
-	//{
-	//	std::unique_ptr<gg::Geometry> ptr(std::move(gs[index]));
-	//	gs.erase(gs.begin() + index);
-	//	return ptr;
-	//}
-
-	//const gg::Geometry* const Geometries::refer(size_t index)const
-	//{
-	//	return gs[index].get();
-	//}
-
-	///*Geometries::Type::iterator Geometries::begin()
-	//{
-	//return gs.begin();
-	//}
-
-	//Geometries::Type::const_iterator Geometries::begin()const
-	//{
-	//return gs.begin();
-	//}
-
-	//Geometries::Type::iterator Geometries::end()
-	//{
-	//return gs.end();
-	//}
-
-	//Geometries::Type::const_iterator Geometries::end()const
-	//{
-	//return gs.end();
-	//}
-
-	//void Geometries::insert(Type::iterator it, std::unique_ptr<gg::Geometry> g)
-	//{
-	//gs.insert(it, std::move(g));
-	//}
-
-	//void Geometries::erase(Type::iterator it)
-	//{
-	//gs.erase(it);
-	//}*/
-
-	//void Geometries::insert(size_t i, std::unique_ptr<gg::Geometry> g)
-	//{
-	//	gs.insert(gs.begin() + i, std::move(g));
-	//}
-
-	//void Geometries::erase(size_t i)
-	//{
-	//	gs.erase(gs.begin() + i);
-	//}
-
-	//void Geometries::push_back(std::unique_ptr<gg::Geometry> g)
-	//{
-	//	gs.push_back(std::move(g));
-	//}
-
-	//void Geometries::pop_back()
-	//{
-	//	gs.pop_back();
-	//}
-
-	//void Geometries::append(Geometries&& tail)
-	//{
-	//	gs.insert(gs.end(), std::make_move_iterator(tail.gs.begin()), std::make_move_iterator(tail.gs.end()));
-	//	tail.gs.clear();
-	//}
+	void GeometryDeleter::operator()(gg::Geometry* pGeometry)const
+	{
+		delete pGeometry;
+	}
 
 	Geometries::Geometries() = default;
 	Geometries::~Geometries() = default;
-
-	bool Geometries::empty()const
-	{
-		return gs.empty();
-	}
-
-	size_t Geometries::size()const
-	{
-		return gs.size();
-	}
-
-	std::shared_ptr<gg::Geometry> Geometries::takeOut(size_t index)
-	{
-		std::shared_ptr<gg::Geometry> ptr(std::move(gs[index]));
-		gs.erase(gs.begin() + index);
-		return ptr;
-	}
-
-	const gg::Geometry* const Geometries::refer(size_t index)const
-	{
-		return gs[index].get();
-	}
-
-	void Geometries::insert(size_t i, std::shared_ptr<gg::Geometry> g)
-	{
-		gs.insert(gs.begin() + i, std::move(g));
-	}
-
-	void Geometries::erase(size_t i)
-	{
-		gs.erase(gs.begin() + i);
-	}
-
-	void Geometries::push_back(std::shared_ptr<gg::Geometry> g)
-	{
-		gs.push_back(std::move(g));
-	}
-
-	void Geometries::pop_back()
-	{
-		gs.pop_back();
-	}
-
-	void Geometries::append(Geometries&& tail)
-	{
-		gs.insert(gs.end(), std::make_move_iterator(tail.gs.begin()), std::make_move_iterator(tail.gs.end()));
-		tail.gs.clear();
-	}
+	Geometries::Geometries(Geometries&&) = default;
+	Geometries& Geometries::operator=(Geometries&&) = default;
 
 	class BoundingRectMaker : public gg::CoordinateFilter
 	{
@@ -205,10 +44,6 @@ namespace cgl
 		auto geometries = GeosFromRecordPacked(value, pContext);
 
 		BoundingRectMaker maker;
-		/*for (auto geometry : geometries)
-		{
-			geometry->apply_ro(&maker);
-		}*/
 		for (size_t i = 0; i < geometries.size(); ++i)
 		{
 			geometries.refer(i)->apply_ro(&maker);
@@ -227,24 +62,6 @@ namespace cgl
 		}
 		return indent;
 	}
-
-	/*struct OutputPolygon
-	{
-		Geometries polygon;
-		Geometries hole;
-
-		~OutputPolygon()
-		{
-			for (gg::Geometry* g : polygon)
-			{
-				delete g;
-			}
-			for (gg::Geometry* g : hole)
-			{
-				delete g;
-			}
-		}
-	};*/
 
 	struct OutputPolygon
 	{
@@ -292,19 +109,13 @@ namespace cgl
 				{
 					outputPolygonDatas.emplace_back();
 					auto& outputPolygons = outputPolygonDatas.back().polygon;
-					outputPolygons.push_back(
-						//ToUnique(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}))
-						ToShared(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}))
-					);
+					outputPolygons.push_back_raw(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}));
 				}
 				//穴がデータに追加されるのは、既存のポリゴンが存在するときのみ
 				else if(!outputPolygonDatas.empty())
 				{
 					auto& outputHoles = outputPolygonDatas.back().hole;
-					outputHoles.push_back(
-						//ToUnique(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}))
-						ToShared(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}))
-					);
+					outputHoles.push_back_raw(pFactory->createPolygon(dynamic_cast<LinearRing*>(pLinearRing.release()), {}));
 				}
 			}
 
@@ -334,7 +145,6 @@ namespace cgl
 		return false;
 	}
 
-	//bool ReadPackedLineData(const PackedList& lines, Geometries& outputLineDatas, const TransformPacked& transform)
 	bool ReadPackedLineData(const PackedList& lines, Geometries& outputLineDatas, const TransformPacked& transform)
 	{
 		const auto type = GetPackedListType(lines);
@@ -365,10 +175,7 @@ namespace cgl
 			if (!pPoints->isEmpty())
 			{
 				auto pFactory = gg::GeometryFactory::create();
-				outputLineDatas.push_back(
-					//ToUnique(pFactory->createLineString(std::move(pPoints)).release())
-					ToShared(pFactory->createLineString(std::move(pPoints)).release())
-				);
+				outputLineDatas.push_back_raw(pFactory->createLineString(std::move(pPoints)).release());
 			}
 
 			return true;
@@ -469,8 +276,7 @@ namespace cgl
 							{
 								for (int s = 0; s < currentPolygons.size();)
 								{
-									//std::unique_ptr<gg::Geometry> pErodeGeometry(currentPolygons.takeOut(s));
-									std::shared_ptr<gg::Geometry> pErodeGeometry(currentPolygons.takeOut(s));
+									GeometryPtr pErodeGeometry(currentPolygons.takeOut(s));
 
 									for (int d = 0; d < currentHoles.size(); ++d)
 									{
@@ -486,8 +292,7 @@ namespace cgl
 											gg::MultiPolygon* polygons = dynamic_cast<gg::MultiPolygon*>(temporaryGeometry);
 											for (int i = 0; i < polygons->getNumGeometries(); ++i)
 											{
-												//currentPolygons.insert(s, ToUnique(polygons->getGeometryN(i)->clone()));
-												currentPolygons.insert(s, ToShared(polygons->getGeometryN(i)->clone()));
+												currentPolygons.insert(s, ToUnique<GeometryDeleter>(polygons->getGeometryN(i)->clone()));
 											}
 											pErodeGeometry = currentPolygons.takeOut(s);
 
@@ -560,12 +365,10 @@ namespace cgl
 			}
 			else if (cgl::IsType<cgl::PackedRecord>(value))
 			{
-				//GeosPolygonsConcat(resultPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, transform));
 				resultPolygons.append(GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, transform));
 			}
 			else if (cgl::IsType<cgl::PackedList>(value))
 			{
-				//GeosPolygonsConcat(resultPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, transform));
 				resultPolygons.append(GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, transform));
 			}
 		}
@@ -580,7 +383,6 @@ namespace cgl
 			}
 			else
 			{
-				//resultPolygons.insert(resultPolygons.end(), currentLines.begin(), currentLines.end());
 				resultPolygons.append(std::move(currentLines));
 				return resultPolygons;
 			}
@@ -600,12 +402,10 @@ namespace cgl
 			const PackedVal& value = val.value;
 			if (cgl::IsType<cgl::PackedRecord>(value))
 			{
-				//GeosPolygonsConcat(currentPolygons, GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, transform));
 				currentPolygons.append(GeosFromRecordPackedImpl(cgl::As<cgl::PackedRecord>(value), pContext, transform));
 			}
 			else if (cgl::IsType<cgl::PackedList>(value))
 			{
-				//GeosPolygonsConcat(currentPolygons, GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, transform));
 				currentPolygons.append(GeosFromListPacked(cgl::As<cgl::PackedList>(value), pContext, transform));
 			}
 		}
@@ -635,11 +435,7 @@ namespace cgl
 				const auto v = ReadVec2Packed(record, transform);
 
 				auto factory = gg::GeometryFactory::create();
-				//currentPolygons.push_back(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v))));
-				currentPolygons.push_back(
-					//ToUnique(static_cast<gg::Geometry*>(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v)))))
-					ToShared(static_cast<gg::Geometry*>(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v)))))
-				);
+				currentPolygons.push_back_raw(factory->createPoint(gg::Coordinate(std::get<0>(v), std::get<1>(v))));
 
 				if (printAddressInsertion)
 				{
@@ -728,10 +524,10 @@ namespace cgl
 					}
 				}
 
-				for (size_t i = 0; i < outputPolygons.size();)
+				while(!outputPolygons.empty())
 				{
-					auto& currentPolygons = outputPolygons[i].polygon;
-					const auto& currentHoles = outputPolygons[i].hole;
+					auto& currentPolygons = outputPolygons[0].polygon;
+					const auto& currentHoles = outputPolygons[0].hole;
 
 					if (!currentPolygons.empty())
 					{
@@ -739,8 +535,8 @@ namespace cgl
 						{
 							for (int s = 0; s < currentPolygons.size();)
 							{
-								//std::unique_ptr<gg::Geometry> pErodeGeometry(currentPolygons.takeOut(s));
-								std::shared_ptr<gg::Geometry> pErodeGeometry(currentPolygons.takeOut(s));
+								std::unique_ptr<gg::Geometry, GeometryDeleter> pErodeGeometry(currentPolygons.takeOut(s));
+								//std::shared_ptr<gg::Geometry> pErodeGeometry(currentPolygons.takeOut(s));
 
 								for (int d = 0; d < currentHoles.size(); ++d)
 								{
@@ -756,8 +552,7 @@ namespace cgl
 										gg::MultiPolygon* polygons = dynamic_cast<gg::MultiPolygon*>(temporaryGeometry);
 										for (int i = 0; i < polygons->getNumGeometries(); ++i)
 										{
-											//currentPolygons.insert(s, ToUnique(polygons->getGeometryN(i)->clone()));
-											currentPolygons.insert(s, ToShared(polygons->getGeometryN(i)->clone()));
+											currentPolygons.insert(s, ToUnique<GeometryDeleter>(polygons->getGeometryN(i)->clone()));
 										}
 										pErodeGeometry = currentPolygons.takeOut(s);
 
@@ -794,7 +589,7 @@ namespace cgl
 						resultPolygons.append(std::move(currentPolygons));
 					}
 
-					outputPolygons.erase(outputPolygons.begin() + i);
+					outputPolygons.erase(outputPolygons.begin());
 				}
 			}
 			else if (member.first == "line")
@@ -989,12 +784,12 @@ namespace cgl
 				if (geometry.shape->getGeometryTypeId() == gg::GeometryTypeId::GEOS_POLYGON)
 				{
 					hasShape = true;
-					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry.shape);
+					const gg::Polygon* polygon = dynamic_cast<const gg::Polygon*>(geometry.shape.get());
 					writePolygon(os, polygon);
 				}
 				else if (geometry.shape->getGeometryTypeId() == gg::GeometryTypeId::GEOS_MULTIPOLYGON)
 				{
-					const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(geometry.shape);
+					const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(geometry.shape.get());
 					for (int i = 0; i < polygons->getNumGeometries(); ++i)
 					{
 						hasShape = true;
@@ -1005,7 +800,7 @@ namespace cgl
 				else if (geometry.shape->getGeometryTypeId() == gg::GeometryTypeId::GEOS_LINESTRING)
 				{
 					hasShape = true;
-					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(geometry.shape);
+					const gg::LineString* lineString = dynamic_cast<const gg::LineString*>(geometry.shape.get());
 					writeLine(os, lineString);
 				}
 			}
@@ -1029,7 +824,6 @@ namespace cgl
 		if (resultPolygons.empty() && currentLines.empty())
 		{
 			writeWholeData();
-
 			return hasShape;
 		}
 		else if (resultPolygons.empty())
@@ -1042,7 +836,7 @@ namespace cgl
 			}*/
 			while (!currentLines.empty())
 			{
-				wholePolygons.emplace_back(currentLines.takeOut(0).get(), Color());
+				wholePolygons.emplace_back(currentLines.takeOut(0), Color());
 			}
 
 			writeWholeData();
@@ -1053,12 +847,12 @@ namespace cgl
 		{
 			while (!resultPolygons.empty())
 			{
-				wholePolygons.emplace_back(resultPolygons.takeOut(0).get(), Color());
+				wholePolygons.emplace_back(resultPolygons.takeOut(0), Color());
 			}
 
 			while (!currentLines.empty())
 			{
-				wholePolygons.emplace_back(currentLines.takeOut(0).get(), Color());
+				wholePolygons.emplace_back(currentLines.takeOut(0), Color());
 			}
 			/*for (gg::Geometry* geometry : resultPolygons)
 			{

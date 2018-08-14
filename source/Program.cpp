@@ -49,7 +49,7 @@ bool isInConstraint = false;
 
 bool printAddressInsertion = false;
 double cloneTime = 0.0;
-int cloneCount = 0;
+unsigned cloneCount = 0;
 
 namespace cgl
 {

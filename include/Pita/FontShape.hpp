@@ -17,9 +17,9 @@ namespace cgl
 		FontBuilder(const std::string& fontPath);
 		~FontBuilder();
 
-		std::vector<gg::Geometry*> makePolygon(int codePoint, int quality = 1, double offsetX = 0, double offsetY = 0);
+		Geometries makePolygon(int codePoint, int quality = 1, double offsetX = 0, double offsetY = 0);
 
-		std::vector<gg::Geometry*> textToPolygon(const std::string& str, int quality = 1);
+		Geometries textToPolygon(const std::string& str, int quality = 1);
 
 		double glyphWidth(int codePoint);
 

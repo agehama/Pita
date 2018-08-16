@@ -610,14 +610,60 @@ namespace cgl
 		pEnv->garbageCollect(true);
 		CGL_DBG;*/
 
+		{
+			for (const auto& r : optimizeRegions)
+			{
+				std::cout << "index(" << r.startIndex << "," << (r.startIndex + r.numOfIndices) << ")\n";
+			}
+		}
 		std::vector<Interval> rangeList;
 		{
 			for (const auto& r: optimizeRegions)
 			{
+				//std::cout << "index(" << r.startIndex << "," << (r.startIndex + r.numOfIndices) << ")\n";
+
 				if (IsType<PackedVal>(r.region))
 				{
 					const auto& val = As<PackedVal>(r.region);
-					if (IsType<PackedRecord>(val))
+
+					//varに範囲指定がないときはmakePackedRanges中で仮として0に設定されている。
+					if (IsType<int>(val))
+					{
+						for (int i = 0; i < r.numOfIndices; ++i)
+						{
+							const int currentIndex = r.startIndex + i;
+
+							double minVal;
+							double maxVal;
+							if (freeVariableRefs[currentIndex].has(RegionVariable::Position))
+							{
+								minVal = -500;
+								maxVal = +500;
+							}
+							else if (freeVariableRefs[currentIndex].has(RegionVariable::Scale))
+							{
+								minVal = 1.e-3;
+								maxVal = 1.e+3;
+							}
+							else if (freeVariableRefs[currentIndex].has(RegionVariable::Angle))
+							{
+								minVal = -180;
+								maxVal = +180;
+							}
+							else if (freeVariableRefs[currentIndex].has(RegionVariable::Other))
+							{
+								minVal = -1.e+6;
+								maxVal = +1.e+6;
+							}
+							else
+							{
+								CGL_Error("不明な属性");
+							}
+
+							rangeList.push_back(Interval(minVal, maxVal));
+						}
+					}
+					else if (IsType<PackedRecord>(val))
 					{
 						const auto& shapeRegion = As<PackedRecord>(val);
 						const auto& values = shapeRegion.values;
@@ -653,7 +699,10 @@ namespace cgl
 						const double minV = AsDouble(intervalRegion.data[0].value);
 						const double maxV = AsDouble(intervalRegion.data[1].value);
 
-						rangeList.push_back(Interval(minV, maxV));
+						for (int i = 0; i < r.numOfIndices; ++i)
+						{
+							rangeList.push_back(Interval(minV, maxV));
+						}
 					}
 					else
 					{
@@ -828,7 +877,6 @@ namespace cgl
 					for (int i = 0; i < v.size(); ++i)
 					{
 						update(variable2Data[i], v[i]);
-						//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
 					}
 
 					for (const auto& keyval : invRefs)
@@ -882,7 +930,7 @@ namespace cgl
 					//while (GetSec() - beginTime < 300.0)
 					//while (count < 20000)
 					//while (count < 6900)
-					while(count < 20000)
+					while(count < 50000)
 					{
 						cloneTime = 0.0;
 						cloneCount = 0;
@@ -905,8 +953,11 @@ namespace cgl
 						{
 							std::cout << "\n";
 						}
-						if (minimumCost < targetFunc(current))
+
+						const double currentCost = targetFunc(current);
+						if (currentCost < minimumCost)
 						{
+							minimumCost = currentCost;
 							answer = current;
 						}
 						if (printAddressInsertion)

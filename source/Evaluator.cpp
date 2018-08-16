@@ -1781,10 +1781,13 @@ namespace cgl
 			{
 				if (rangeExpr.freeRange)
 				{
+					//TODO:ここでrangeの型が妥当か判定すべき（図形かもしくはIntervalでなければはじく）
+					std::cout << "Has range\n";
 					packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr.freeRange.get()), recordConsractor), *pContext));
 				}
 				else
 				{
+					std::cout << "Has not range\n";
 					packedRanges.push_back(0);
 				}
 			}
@@ -1921,8 +1924,12 @@ namespace cgl
 				const size_t numOfIndices = currentResult.size();
 				resultAddresses.insert(resultAddresses.end(), currentResult.begin(), currentResult.end());
 
+				/*
+				RegionVariableは最小のdouble型単位であるのに対し、OptimizeRegionはvar宣言に指定された形がそのまま保持される。
+				したがって、各RegionVaribaleごとの範囲はここでは計算せず、実際に評価する前に計算することにする。
+				*/
 				OptimizeRegion region;
-				region.region= packedRanges[i];
+				region.region = packedRanges[i];
 				region.startIndex = startIndex;
 				region.numOfIndices = numOfIndices;
 				resultRegions.push_back(region);

@@ -5,5 +5,6 @@ main = Shape{
 
     sat( Contact(a.topRight(), b.bottomLeft()) & Contact(a.bottomRight(), c.topLeft()) )
     sat( Contact(b.bottomRight(), c.topRight()) )
-    var(b.pos in {x: [0, 10], y: [20, 30]}, c.pos in {x: [-10, 10], y: [45, 55]}, c.angle in [90, 180])
+    //var(b.pos in {x: [0, 10], y: [20, 30]}, c.pos in {x: [-10, 10], y: [45, 55]}, c.angle in [90, 180])
+    var(b.pos in [-200, 200], c.pos in [-200, 200], c.angle in [0, 90])
 }

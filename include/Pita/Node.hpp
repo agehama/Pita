@@ -845,6 +845,11 @@ namespace cgl
 			attributes({ attribute })
 		{}
 
+		bool has(Attribute attribute)const
+		{
+			return attributes.find(attribute) != attributes.end();
+		}
+
 		std::string toString()const
 		{
 			std::string result = "Address(" + address.toString() + "): ";

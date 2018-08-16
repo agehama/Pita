@@ -13,6 +13,146 @@
 
 #include <Unicode.hpp>
 
+#define USE_NLOPT
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#include <nlopt.hpp>
+
+#include <limbo/acqui/gp_ucb.hpp>
+#include <limbo/bayes_opt/boptimizer.hpp>
+#include <limbo/kernel/matern_five_halves.hpp>
+#include <limbo/mean/data.hpp>
+#include <limbo/model/gp.hpp>
+#include <limbo/stat.hpp>
+#include <limbo/tools/macros.hpp>
+
+#ifdef _DEBUG
+#pragma comment(lib, "Debug/nlopt_cxx.lib")
+#else
+#pragma comment(lib, "Release/nlopt_cxx.lib")
+#endif
+
+//struct Params {
+//	struct acqui_gpucb : public limbo::defaults::acqui_gpucb {
+//	};
+//
+//#ifdef USE_NLOPT
+//	struct opt_nloptnograd : public limbo::defaults::opt_nloptnograd {
+//	};
+//#elif defined(USE_LIBCMAES)
+//	struct opt_cmaes : public defaults::opt_cmaes {
+//	};
+//#else
+//	struct opt_gridsearch : public limbo::defaults::opt_gridsearch {
+//	};
+//#endif
+//	struct acqui_ucb {
+//		BO_PARAM(double, alpha, 0.1);
+//	};
+//
+//	struct kernel : public limbo::defaults::kernel {
+//		BO_PARAM(double, noise, 0.001);
+//	};
+//
+//	struct kernel_maternfivehalves {
+//		BO_PARAM(double, sigma_sq, 1);
+//		BO_PARAM(double, l, 0.2);
+//	};
+//	struct kernel_exp : public limbo::defaults::kernel_exp {
+//	};
+//	struct bayes_opt_bobase : public limbo::defaults::bayes_opt_bobase {
+//		BO_PARAM(bool, stats_enabled, true);
+//	};
+//
+//	struct bayes_opt_boptimizer : public limbo::defaults::bayes_opt_boptimizer {
+//	};
+//
+//	struct init_randomsampling {
+//		BO_PARAM(int, samples, 5);
+//	};
+//
+//	struct stop_maxiterations {
+//		BO_PARAM(int, iterations, 20);
+//	};
+//	struct stat_gp {
+//		BO_PARAM(int, bins, 20);
+//	};
+//
+//	struct kernel_squared_exp_ard : public limbo::defaults::kernel_squared_exp_ard {
+//	};
+//
+//	struct opt_rprop : public limbo::defaults::opt_rprop {
+//	};
+//};
+
+struct Params {
+	struct acqui_gpucb : public limbo::defaults::acqui_gpucb {
+	};
+
+#ifdef USE_NLOPT
+	struct opt_nloptnograd : public limbo::defaults::opt_nloptnograd {
+	};
+#elif defined(USE_LIBCMAES)
+	struct opt_cmaes : public defaults::opt_cmaes {
+	};
+#else
+	struct opt_gridsearch : public limbo::defaults::opt_gridsearch {
+	};
+#endif
+	struct acqui_ucb {
+		//BO_PARAM(double, alpha, 0.1);
+		//BO_PARAM(double, alpha, 0.3);
+		BO_PARAM(double, alpha, 0.5);
+	};
+
+	struct kernel : public limbo::defaults::kernel {
+		BO_PARAM(double, noise, 0.001);
+	};
+
+	struct kernel_maternfivehalves {
+		BO_PARAM(double, sigma_sq, 1);
+		BO_PARAM(double, l, 0.2);
+	};
+	struct kernel_exp : public limbo::defaults::kernel_exp {
+	};
+	struct bayes_opt_bobase : public limbo::defaults::bayes_opt_bobase {
+	};
+
+	struct bayes_opt_boptimizer : public limbo::defaults::bayes_opt_boptimizer {
+	};
+
+	struct init_randomsampling {
+		BO_PARAM(int, samples, 100);
+	};
+
+	struct stop_maxiterations {
+		BO_PARAM(int, iterations, 500);
+	};
+	struct stat_gp {
+		BO_PARAM(int, bins, 3);
+	};
+
+	struct kernel_squared_exp_ard : public limbo::defaults::kernel_squared_exp_ard {
+	};
+
+	struct opt_rprop : public limbo::defaults::opt_rprop {
+	};
+};
+
+struct LimboFitFunc {
+	std::function<double(const Eigen::VectorXd& x)> func;
+	size_t numOfVars;
+	size_t dim_in()const { return numOfVars; }
+	size_t dim_out()const { return 1; }
+
+	Eigen::VectorXd operator()(const Eigen::VectorXd& x) const
+	{
+		return limbo::tools::make_vector(func(x));
+	}
+};
+
 #include <Pita/Node.hpp>
 #include <Pita/Context.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
@@ -20,7 +160,6 @@
 #include <Pita/Evaluator.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/IntrinsicGeometricFunctions.hpp>
-
 
 extern bool printAddressInsertion;
 extern double cloneTime;
@@ -626,7 +765,7 @@ namespace cgl
 				{
 					const auto& val = As<PackedVal>(r.region);
 
-					//varに範囲指定がないときはmakePackedRanges中で仮として0に設定されている。
+					//varに範囲指定がないときはmakePackedRangesを通るときに仮として0が設定されている。
 					if (IsType<int>(val))
 					{
 						for (int i = 0; i < r.numOfIndices; ++i)
@@ -637,8 +776,8 @@ namespace cgl
 							double maxVal;
 							if (freeVariableRefs[currentIndex].has(RegionVariable::Position))
 							{
-								minVal = -500;
-								maxVal = +500;
+								minVal = -1000;
+								maxVal = +1000;
 							}
 							else if (freeVariableRefs[currentIndex].has(RegionVariable::Scale))
 							{
@@ -868,7 +1007,7 @@ namespace cgl
 					resultxs[i] = x0s[i];
 				}
 			}
-			else
+			else if(false)
 			{
 				std::cout << "Solve constraint by Random Search...\n";
 
@@ -930,7 +1069,7 @@ namespace cgl
 					//while (GetSec() - beginTime < 300.0)
 					//while (count < 20000)
 					//while (count < 6900)
-					while(count < 50000)
+					while(count < 100000)
 					{
 						cloneTime = 0.0;
 						cloneCount = 0;
@@ -980,6 +1119,124 @@ namespace cgl
 				for (int i = 0; i < answer.size(); ++i)
 				{
 					resultxs[i] = answer[i];
+				}
+			}
+			/*else if (true)
+			{
+				std::cout << "Solve constraint by nlopt...\n";
+
+				auto targetFunc = [&](unsigned N, const double *x, double *grad, void *my_func_data)
+				{
+					for (int i = 0; i < N; ++i)
+					{
+						update(variable2Data[i], x[i]);
+					}
+
+					{
+						for (const auto& keyval : invRefs)
+						{
+							pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
+						}
+					}
+
+					pEnv->switchFrontScope();
+					double result = eval(pEnv, info);
+					pEnv->switchBackScope();
+
+					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+
+					return result;
+				};
+
+				std::vector<double> lb, ub;
+				for (size_t i = 0; i < rangeList.size(); ++i)
+				{
+					lb.push_back(rangeList[i].minimum);
+					ub.push_back(rangeList[i].maximum);
+				}
+
+				nlopt_opt opt;
+				opt = nlopt_create(NLOPT_LD_MMA, freeVariableRefs.size());
+				nlopt_set_lower_bounds(opt, lb.data());
+				nlopt_set_upper_bounds(opt, ub.data());
+				nlopt_set_min_objective(opt, targetFunc, NULL);
+				
+
+				std::vector<double> xs(freeVariableRefs.size());
+				for (int i = 0; i < xs.size(); ++i)
+				{
+					xs[i] = data[variable2Data[i]];
+				}
+			}*/
+			else
+			{
+				std::cout << "Solve constraint by Limbo...\n";
+
+				const auto targetFunc = [&](const Eigen::VectorXd& x)->double
+				{
+					for (int i = 0; i < x.size(); ++i)
+					{
+						//std::cout << (x[i] * (rangeList[i].maximum - rangeList[i].minimum) + rangeList[i].minimum) << ", ";
+						update(variable2Data[i], x[i] * (rangeList[i].maximum - rangeList[i].minimum) + rangeList[i].minimum);
+					}
+					//std::cout << "\n";
+
+					for (const auto& keyval : invRefs)
+					{
+						pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
+					}
+
+					double result;
+
+					pEnv->switchFrontScope();
+					try
+					{
+						result = eval(pEnv, info);
+					}
+					catch (std::exception& e)
+					{
+						std::cout << "Eval: " << e.what() << std::endl;
+						throw;
+					}
+					pEnv->switchBackScope();
+
+					//limbo maximizes target function
+					return -result;
+				};
+
+				//*
+				using Kernel_t = limbo::kernel::MaternFiveHalves<Params>;
+				using Mean_t = limbo::mean::Data<Params>;
+				using GP_t = limbo::model::GP<Params, Kernel_t, Mean_t>;
+				using Acqui_t = limbo::acqui::UCB<Params, GP_t>;
+				using stat_t = boost::fusion::vector<limbo::stat::ConsoleSummary<Params>,
+					limbo::stat::Samples<Params>,
+					limbo::stat::Observations<Params>,
+					limbo::stat::GP<Params>>;
+
+				limbo::bayes_opt::BOptimizer<Params, limbo::modelfun<GP_t>, limbo::statsfun<stat_t>, limbo::acquifun<Acqui_t>> opt;
+				//*/
+
+				// example with basic HP opt
+				//limbo::bayes_opt::BOptimizerHPOpt<Params> opt;
+
+				LimboFitFunc target;
+
+				target.numOfVars = freeVariableRefs.size();
+				target.func = targetFunc;
+
+				opt.optimize2(target);
+
+				/*std::cout << opt.best_observation() << " res  "
+					<< opt.best_sample().transpose() << std::endl;*/
+
+				//const auto answer = opt.best_observation();
+				const auto answer = opt.best_sample();
+				resultxs.resize(answer.size());
+				for (int i = 0; i < answer.size(); ++i)
+				{
+					std::cout << "answer[" << i << "]: " << answer[i] << "\n";
+					resultxs[i] = answer[i] * (rangeList[i].maximum - rangeList[i].minimum) + rangeList[i].minimum;
 				}
 			}
 		}

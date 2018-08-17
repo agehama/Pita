@@ -1783,16 +1783,25 @@ namespace cgl
 			"Text",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
-			if (arguments.size() != 1 && arguments.size() != 2 && arguments.size() != 3)
+			if (arguments.size() != 1 && arguments.size() != 2 && arguments.size() != 3 && arguments.size() != 4)
 			{
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& strVal = pEnv->expand(arguments[0], info);
-			auto baseLineOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
-			auto fontNameOpt = 3 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
+			Val strVal = pEnv->expand(arguments[0], info);
+			auto heightOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
+			auto baseLineOpt = 3 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
+			auto fontNameOpt = 4 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[3], info)) : boost::none;
 
 			if (!IsType<CharString>(strVal))
+			{
+				std::stringstream ss;
+				ValuePrinter2 printer(m_weakThis.lock(), ss, 0);
+				boost::apply_visitor(printer, strVal);
+				CharString printedStr(AsUtf32(ss.str()));
+				strVal = printedStr;
+			}
+			if (heightOpt && !IsNum(heightOpt.get()))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
@@ -1805,17 +1814,22 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			if (3 <= arguments.size())
+			if (4 <= arguments.size())
 			{
 				return BuildText(
 					As<CharString>(strVal), 
+					AsDouble(heightOpt.get()),
 					As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this)), 
 					As<CharString>(fontNameOpt.get())
 				).unpacked(*this);
 			}
+			else if (3 <= arguments.size())
+			{
+				return BuildText(As<CharString>(strVal), AsDouble(heightOpt.get()), As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this))).unpacked(*this);
+			}
 			else if (2 <= arguments.size())
 			{
-				return BuildText(As<CharString>(strVal), As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this))).unpacked(*this);
+				return BuildText(As<CharString>(strVal), AsDouble(heightOpt.get())).unpacked(*this);
 			}
 			return BuildText(As<CharString>(strVal)).unpacked(*this);
 		},

@@ -1,0 +1,72 @@
+EnableTimeLimit(110)
+
+Combination = (list, binaryFunc ->
+    sum = 0.0
+    for i in 0:Size(list)-2 do(
+        for j in i+1:Size(list)-1 do(
+            sum = sum + binaryFunc(list[i], list[j])
+        )
+    )
+    sum
+)
+
+main = Shape{
+    a: Text("北海道")
+    b: Text("山形県")
+    c: Text("滋賀県")
+    d: Text("石川県")
+
+    sat( Touch(a, Union(b,c,d)) &
+         Touch(b, Union(a,c,d)) &
+         Touch(c, Union(a,b,d)) &
+         Touch(d, Union(a,b,c)) )
+
+    minimize( Area(BoundingBox(a,b,c,d)) )
+
+    fill: Rgb(0, 0, 0)
+}
+
+main = Shape{
+    shapes: ["北海道", "山形県", "滋賀県", "石川県"] * (a -> Text(a))
+
+    forall s in shapes do(
+        sat( Touch(s, Union(Except(shapes, s))) )
+    )
+
+    //shapes * ( a -> Touch(a, Except(shapes, a)) )
+
+    shapes * ( a -> Touch(a, shapes #Except a) )
+
+    //shapes * ( a -> a #Touch Except(shapes, a) )
+    
+    minimize( Area(BoundingBox(shapes)) )
+
+    fill: Rgb(0, 0, 0)
+}
+
+main = Shape{
+    shapes: ["北海道", "山形県", "滋賀県", "石川県"] * a -> Text(a).
+
+    ! shapes * a -> Touch(a, shapes #Except a). |> Fold(a, b -> a & b.) !
+
+    > Area(BoundingBox(shapes)) <
+
+    ? shapes[*].pos ?
+
+    fill: Rgb(0, 0, 0)
+}
+
+
+((list * f) * g)
+
+(list * (f * g))
+
+list |> f |> g
+
+
+畳み込み演算子 *
+パイプライン演算子 |>
+
+
+(g * f)(x) = g(f(x))
+

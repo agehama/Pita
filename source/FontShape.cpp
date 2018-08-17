@@ -14,12 +14,6 @@
 
 namespace cgl
 {
-	double FontSizeToReal(int fontSize)
-	{
-		const double size = 0.05;
-		return fontSize*size;
-	}
-
 	FontBuilder::FontBuilder()
 	{
 		//mplus-1m-medium-sub.ttf
@@ -84,8 +78,8 @@ namespace cgl
 			
 			//const double size = 0.025;
 			//return EigenVec2(size * (offsetX + x), size * (offsetY - y));
-			//return EigenVec2(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
-			return EigenVec2(offsetX + FontSizeToReal(x), FontSizeToReal(offsetY - y));
+			//return EigenVec2(offsetX + fontSizeToReal(x), offsetY + fontSizeToReal(-y));
+			return EigenVec2(offsetX + fontSizeToReal(x), fontSizeToReal(offsetY - y));
 		};
 
 		bool isFont1 = true;
@@ -186,7 +180,12 @@ namespace cgl
 
 					GeometryPtr pTemporaryGeometry(ToUnique<GeometryDeleter>(pErodeGeometry->difference(currentHoles.refer(d))));
 
-					if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
+					{
+						pErodeGeometry = std::move(pTemporaryGeometry);
+						continue;
+					}
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 					{
 						currentPolygons.erase(s);
 
@@ -197,6 +196,11 @@ namespace cgl
 						}
 
 						pErodeGeometry = currentPolygons.takeOut(s);
+					}
+					else if (pErodeGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
+					{
+						pErodeGeometry.reset();
+						break;
 					}
 				}
 
@@ -237,7 +241,7 @@ namespace cgl
 		int advanceWidth;
 		int leftSideBearing;
 		stbtt_GetCodepointHMetrics(fontInfo, codePoint, &advanceWidth, &leftSideBearing);
-		return FontSizeToReal(advanceWidth - leftSideBearing);
+		return fontSizeToReal(advanceWidth - leftSideBearing);
 		*/
 
 		bool isFont1 = true;
@@ -258,14 +262,14 @@ namespace cgl
 			? stbtt_GetCodepointHMetrics(fontInfo1, codePoint, &advanceWidth, &leftSideBearing)
 			: stbtt_GetCodepointHMetrics(fontInfo2, codePoint, &advanceWidth, &leftSideBearing);
 
-		return FontSizeToReal(advanceWidth - leftSideBearing);
+		return fontSizeToReal(advanceWidth - leftSideBearing);
 	}
 
 	void FontBuilder::checkClockWise()
 	{
 		const auto vec2 = [&](short x, short y)
 		{
-			return EigenVec2(FontSizeToReal(x), FontSizeToReal(-y));
+			return EigenVec2(fontSizeToReal(x), fontSizeToReal(-y));
 		};
 
 		const int codePoint = static_cast<int>('.');
@@ -332,5 +336,16 @@ namespace cgl
 			clockWisePolygons = IsClockWise(points);
 			return;
 		}
+	}
+
+	double  FontBuilder::scaledHeight()const
+	{
+		return fontSizeToReal(ascent() - descent());
+	}
+
+	void FontBuilder::setScaledHeight(double newScale)
+	{
+		baseScale = 0.05;
+		baseScale *= newScale / scaledHeight();
 	}
 }

@@ -1,6 +1,7 @@
 #include <iomanip>
 
 #include <Pita/Parser.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
@@ -151,19 +152,96 @@ namespace cgl
 			}
 		}
 
-		void operator()(const BinaryExpr& node)const {}
+		void operator()(const BinaryExpr& node)const
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
 		void operator()(const LRValue& node)const {}
+
 		void operator()(const Identifier& node)const {}
-		void operator()(const UnaryExpr& node)const {}
-		void operator()(const Range& node)const {}
-		void operator()(const DefFunc& node)const {}
-		void operator()(const If& node)const {}
-		void operator()(const For& node)const {}
+
+		void operator()(const UnaryExpr& node)const
+		{
+			boost::apply_visitor(*this, node.lhs);
+		}
+
+		void operator()(const Range& node)const
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const DefFunc& node)const
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const If& node)const
+		{
+			boost::apply_visitor(*this, node.cond_expr);
+			boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				boost::apply_visitor(*this, node.else_expr.get());
+			}
+		}
+
+		void operator()(const For& node)const
+		{
+			boost::apply_visitor(*this, node.doExpr);
+		}
+
 		void operator()(const Return& node)const {}
-		void operator()(const ListConstractor& node)const {}
-		void operator()(const KeyExpr& node)const {}
-		void operator()(const RecordConstractor& node)const {}
-		void operator()(const Accessor& node)const {}
+
+		void operator()(const ListConstractor& node)const
+		{
+			for (const auto& expr : node.data)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const KeyExpr& node)const
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const RecordConstractor& node)const
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const Accessor& node)const
+		{
+			boost::apply_visitor(*this, node.head);
+			for (const auto& access : node.accesses)
+			{
+				if (auto opt = AsOpt<ListAccess>(access))
+				{
+					boost::apply_visitor(*this, opt.get().index);
+				}
+				else if (auto opt = AsOpt<FunctionAccess>(access))
+				{
+					for (const auto& arg : opt.get().actualArguments)
+					{
+						boost::apply_visitor(*this, arg);
+					}
+				}
+				else if (auto opt = AsOpt<InheritAccess>(access))
+				{
+					const Expr adder = opt.get().adder;
+					boost::apply_visitor(*this, adder);
+				}
+				//RecordAccess‚Í“Á‚ÉŒ©‚é‚×‚«‚à‚Ì‚Í‚È‚¢
+				//else if (auto opt = AsOpt<RecordAccess>(access)){}
+			}
+		}
+
 		void operator()(const DeclSat& node)const {}
 		void operator()(const DeclFree& node)const {}
 	};

@@ -38,13 +38,22 @@ namespace cgl
 			return std::max(lineGap1, lineGap2);
 		}
 
+		double scaledHeight()const;
+		void setScaledHeight(double newScale);
+
 	private:
 		void checkClockWise();
+
+		double fontSizeToReal(int fontSize)const
+		{
+			return fontSize * baseScale;
+		}
 
 		std::string fontDataRawEN, fontDataRawJP;
 		stbtt_fontinfo *fontInfo1 = nullptr, *fontInfo2 = nullptr;
 		int ascent1 = 0, descent1 = 0, lineGap1 = 0;
 		int ascent2 = 0, descent2 = 0, lineGap2 = 0;
 		bool clockWisePolygons;
+		double baseScale = 0.05;
 	};
 }

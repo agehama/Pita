@@ -20,7 +20,8 @@
 
 #include <nlopt.hpp>
 
-#include <limbo/acqui/gp_ucb.hpp>
+//#include <limbo/acqui/gp_ucb.hpp>
+#include <limbo/acqui.hpp>
 #include <limbo/bayes_opt/boptimizer.hpp>
 #include <limbo/kernel/matern_five_halves.hpp>
 #include <limbo/mean/data.hpp>
@@ -88,55 +89,57 @@
 //};
 
 struct Params {
-	struct acqui_gpucb : public limbo::defaults::acqui_gpucb {
+	struct bayes_opt_boptimizer : public limbo::defaults::bayes_opt_boptimizer {
+		BO_PARAM(int, hp_period, 10);
+	};
+	struct bayes_opt_bobase : public limbo::defaults::bayes_opt_bobase {
+		BO_PARAM(int, stats_enabled, true);
+	};
+	
+	struct init_randomsampling {
+		BO_PARAM(int, samples, 100);
+	};
+	struct stop_maxiterations {
+		BO_PARAM(int, iterations, 500);
+	};
+	struct stop_mintolerance {
+		BO_PARAM(double, tolerance, -0.1);
 	};
 
-#ifdef USE_NLOPT
-	struct opt_nloptnograd : public limbo::defaults::opt_nloptnograd {
-	};
-#elif defined(USE_LIBCMAES)
-	struct opt_cmaes : public defaults::opt_cmaes {
-	};
-#else
-	struct opt_gridsearch : public limbo::defaults::opt_gridsearch {
-	};
-#endif
-	struct acqui_ucb {
-		//BO_PARAM(double, alpha, 0.1);
-		//BO_PARAM(double, alpha, 0.3);
-		BO_PARAM(double, alpha, 0.5);
+	struct acqui_ei {
+		BO_PARAM(double, jitter, 0.0);
 	};
 
-	struct kernel : public limbo::defaults::kernel {
+	//struct acqui_gpucb : public limbo::defaults::acqui_gpucb {
+	//};
+	//struct acqui_ucb {
+	//	//BO_PARAM(double, alpha, 0.1);
+	//	//BO_PARAM(double, alpha, 0.3);
+	//	BO_PARAM(double, alpha, 0.5);
+	//};
+
+	/*struct kernel : public limbo::defaults::kernel {
 		BO_PARAM(double, noise, 0.001);
+	};*/
+	struct kernel : public limbo::defaults::kernel {
+		//BO_PARAM(double, noise, 1.e-10);
+		BO_PARAM(double, noise, 0.01);
 	};
-
+	struct kernel_squared_exp_ard : public limbo::defaults::kernel_squared_exp_ard {
+	};
 	struct kernel_maternfivehalves {
 		BO_PARAM(double, sigma_sq, 1);
 		BO_PARAM(double, l, 0.2);
 	};
 	struct kernel_exp : public limbo::defaults::kernel_exp {
 	};
-	struct bayes_opt_bobase : public limbo::defaults::bayes_opt_bobase {
-	};
 
-	struct bayes_opt_boptimizer : public limbo::defaults::bayes_opt_boptimizer {
-	};
-
-	struct init_randomsampling {
-		BO_PARAM(int, samples, 100);
-	};
-
-	struct stop_maxiterations {
-		BO_PARAM(int, iterations, 500);
-	};
 	struct stat_gp {
 		BO_PARAM(int, bins, 3);
 	};
 
-	struct kernel_squared_exp_ard : public limbo::defaults::kernel_squared_exp_ard {
+	struct opt_nloptnograd : public limbo::defaults::opt_nloptnograd {
 	};
-
 	struct opt_rprop : public limbo::defaults::opt_rprop {
 	};
 };
@@ -384,6 +387,8 @@ namespace cgl
 			const auto currentFilePath = currentDirectory / path;
 			const std::string pathStr = filesystem::canonical(currentFilePath).string();
 
+			//CGL_DBG1(pathStr);
+
 			importPath = pathStr;
 			/*if (alreadyImportedFiles.find(filesystem::canonical(currentFilePath)) != alreadyImportedFiles.end())
 			{
@@ -429,7 +434,6 @@ namespace cgl
 		if (it == importedParseTrees.end() || !it->second)
 		{
 			CGL_Error("ファイルのimportに失敗");
-			return RValue(0);
 		}
 
 		if (!importName.empty())
@@ -897,7 +901,7 @@ namespace cgl
 				}
 			}
 			CGL_DebugLog("End Record MakeMap");
-			if (hasPlateausFunction, false)
+			if (hasPlateausFunction)
 			{
 				std::cout << "Solve constraint by CMA-ES...\n";
 
@@ -955,7 +959,7 @@ namespace cgl
 
 				std::cout << "solved\n";
 			}
-			else if(false)
+			else if(true)
 			{
 				std::cout << "Solve constraint by BFGS...\n";
 
@@ -1160,7 +1164,6 @@ namespace cgl
 				nlopt_set_lower_bounds(opt, lb.data());
 				nlopt_set_upper_bounds(opt, ub.data());
 				nlopt_set_min_objective(opt, targetFunc, NULL);
-				
 
 				std::vector<double> xs(freeVariableRefs.size());
 				for (int i = 0; i < xs.size(); ++i)
@@ -1207,8 +1210,14 @@ namespace cgl
 				//*
 				using Kernel_t = limbo::kernel::MaternFiveHalves<Params>;
 				using Mean_t = limbo::mean::Data<Params>;
-				using GP_t = limbo::model::GP<Params, Kernel_t, Mean_t>;
-				using Acqui_t = limbo::acqui::UCB<Params, GP_t>;
+
+				using gp_opt_t = limbo::model::gp::KernelLFOpt<Params>;
+				using GP_t = limbo::model::GP<Params, Kernel_t, Mean_t, gp_opt_t>;
+				//using GP_t = limbo::model::GP<Params, Kernel_t, Mean_t>;
+				
+				//using Acqui_t = limbo::acqui::UCB<Params, GP_t>;
+				using Acqui_t = limbo::acqui::EI<Params, GP_t>;
+				
 				using stat_t = boost::fusion::vector<limbo::stat::ConsoleSummary<Params>,
 					limbo::stat::Samples<Params>,
 					limbo::stat::Observations<Params>,

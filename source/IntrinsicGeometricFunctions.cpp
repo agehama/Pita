@@ -848,6 +848,7 @@ namespace cgl
 
 					if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 					{
+						pErodeGeometry = std::move(pTemporaryGeometry);
 						continue;
 						//->次のpErodeGeometryには現在のポリゴンがそのまま入っている
 					}
@@ -949,6 +950,7 @@ namespace cgl
 
 					if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 					{
+						pErodeGeometry = std::move(pTemporaryGeometry);
 						continue;
 					}
 					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
@@ -1693,8 +1695,10 @@ namespace cgl
 		return MakePathResult(polygonList);
 	}
 
-	PackedRecord BuildText(const CharString& str, const PackedRecord& packedPathRecord, const CharString& fontPath)
+	PackedRecord BuildText(const CharString& str, double textHeight, const PackedRecord& packedPathRecord, const CharString& fontPath)
 	{
+		CGL_DBG1(ToS(textHeight));
+
 		Path path = packedPathRecord.values.empty() ? Path() : std::move(ReadPathPacked(packedPathRecord));
 
 		auto factory = gg::GeometryFactory::create();
@@ -1726,6 +1730,8 @@ namespace cgl
 
 		PackedList resultCharList;
 
+		pFont->setScaledHeight(textHeight);
+
 		if(!path.empty())
 		{
 			for (size_t i = 0; i < string.size(); ++i)
@@ -1755,6 +1761,9 @@ namespace cgl
 		}
 		else
 		{
+			CGL_DBG1("TextHeight: ");
+			CGL_DBG1(ToS(pFont->scaledHeight()));
+
 			double offsetVertical = 0;
 			for (size_t i = 0; i < string.size(); ++i)
 			{
@@ -1789,11 +1798,14 @@ namespace cgl
 			}
 		}
 
-		PackedRecord result;
-		result.add("text", resultCharList);
-		result.add("str", str);
-
-		return result;
+		return MakeRecord(
+			"polygon", PackedList(),
+			"text", resultCharList,
+			"str", str,
+			"pos", MakeRecord("x", 0, "y", 0),
+			"scale", MakeRecord("x", 1.0, "y", 1.0),
+			"angle", 0
+		);
 	}
 
 	PackedRecord GetShapeOuterPaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)

@@ -2657,61 +2657,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const Accessor& accessor)
 	{
-		/*
-		ObjectReference result;
-
-		Val headValue = boost::apply_visitor(*this, accessor.head);
-		if (auto opt = AsOpt<Identifier>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else if (auto opt = AsOpt<Record>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else if (auto opt = AsOpt<List>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else if (auto opt = AsOpt<FuncVal>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else
-		{
-			//エラー：識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return 0;
-		}
-		*/
-
 		Address address;
-
-		/*
-		Val headValue = boost::apply_visitor(*this, accessor.head);
-		if (auto opt = AsOpt<Address>(headValue))
-		{
-			address = opt.get();
-		}
-		else if (auto opt = AsOpt<Record>(headValue))
-		{
-			address = pEnv->makeTemporaryValue(opt.get());
-		}
-		else if (auto opt = AsOpt<List>(headValue))
-		{
-			address = pEnv->makeTemporaryValue(opt.get());
-		}
-		else if (auto opt = AsOpt<FuncVal>(headValue))
-		{
-			address = pEnv->makeTemporaryValue(opt.get());
-		}
-		else
-		{
-			//エラー：識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return 0;
-		}
-		*/
 
 		if (IsType<Identifier>(accessor.head))
 		{
@@ -2842,7 +2788,7 @@ namespace cgl
 				std::vector<Address> args;
 				for (const auto& expr : funcAccess.actualArguments)
 				{
-					const LRValue currentArgument = pEnv->expand(boost::apply_visitor(*this, expr), accessor);
+					const LRValue currentArgument = boost::apply_visitor(*this, expr);
 					currentArgument.push_back(args, *pEnv);
 				}
 

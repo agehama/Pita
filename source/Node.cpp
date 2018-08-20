@@ -20,7 +20,6 @@
 
 #include <nlopt.hpp>
 
-//#include <limbo/acqui/gp_ucb.hpp>
 #include <limbo/acqui.hpp>
 #include <limbo/bayes_opt/boptimizer.hpp>
 #include <limbo/kernel/matern_five_halves.hpp>

@@ -1,4 +1,49 @@
-Plot = (width,height,data->Shape{
+/*
+record1 = {
+    a: {xs:[1,2,3]}
+    b: [1,2,3]
+    c: {xs:[1,2,3]}
+    funcA: (->a.xs = a.xs @ [4])
+    funcB: (->b = b @ [4])
+    funcC: (->Push(c.xs, 4))
+}
+
+Print(record1)
+record1.funcA()
+record1.funcB()
+record1.funcC()
+Print(record1)
+*/
+
+
+GradationMap = {
+    list: []
+    add: (c, t -> 
+        Push(list, {c:c, t:t})
+        Sort(list, (a, b -> a.t < b.t))
+    )
+    //color: (t -> )
+}
+
+/*
+Print(GradationMap.list)
+
+GradationMap.add(5,6)
+GradationMap.add(1,2)
+GradationMap.add(3,4)
+
+Print(GradationMap.list)
+*/
+
+map = GradationMap{}
+map.add(Rgb(0,0,255), 0.75)
+map.add(Rgb(255,0,0), 0.0)
+map.add(Rgb(0,255,0), 0.5)
+Print(map.list)
+
+
+/*
+Plot = (width, height, data -> Shape{
     minX: data[0].x
     maxX: data[0].x
     minY: data[0].y
@@ -25,7 +70,7 @@ Plot = (width,height,data->Shape{
         stroke: Rgb(0,0,0)
     }
     points: for i in 0:Size(data)-1 list(
-        Square{pos: map(data[i]), scale: X2(3)}
+        Square{pos: map(data[i]), scale: X2(3), fill: Hsv(Mod(15*i,360),1,1)}
     )
 
     numOfAxes = 5
@@ -42,7 +87,7 @@ Plot = (width,height,data->Shape{
                 var(pos.y)
             }
             number: Text(currentInput, 20)
-            sat(Contact(Bottom(BoundingBox(number)), basePos))
+            sat(Contact(Bottom(Buffer(BoundingBox(number), 5)), basePos))
             var(number.pos)
         }
     )
@@ -59,10 +104,11 @@ Plot = (width,height,data->Shape{
                 var(pos.x)
             }
             number: Text(currentInput, 20)
-            sat(Contact(Left(BoundingBox(number)), basePos))
+            sat(Contact(Left(Buffer(BoundingBox(number), 5)), basePos))
             var(number.pos)
         }
     )
 })
 
 Plot(500, 500, import "data.cgl")
+*/

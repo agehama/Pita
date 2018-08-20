@@ -9,7 +9,6 @@
 #include <Pita/Printer.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 
-extern unsigned cloneCount;
 namespace cgl
 {
 	struct OutputAddresses
@@ -1337,10 +1336,6 @@ namespace cgl
 	{
 		const Address address = m_values.add(value);
 
-		//cloneCount = std::max(cloneCount, static_cast<int>(m_values.size()));
-		
-		cloneCount = std::max(cloneCount, address.valueID);
-
 		localEnv().back().temporaryAddresses.push_back(address);
 
 		//const int thresholdGC = 20000;
@@ -1489,6 +1484,110 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Push",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			LRValue address = arguments[0];
+			CGL_DBG1(arguments[0].toString());
+			Val& listValue = pEnv->mutableExpand(address, info);
+			if (!IsType<List>(listValue))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			const Val& value = pEnv->expand(arguments[1], info);
+
+			List& original = As<List>(listValue);
+			original.data.push_back(pEnv->makeTemporaryValue(value));
+			return original;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Pop",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			LRValue address = arguments[0];
+			Val& listValue = pEnv->mutableExpand(address, info);
+			if (!IsType<List>(listValue))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			List& original = As<List>(listValue);
+			original.data.pop_back();
+			return original;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Sort",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1 && arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			LRValue address = arguments[0];
+			Val& listValue = pEnv->mutableExpand(address, info);
+			if (!IsType<List>(listValue))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			List& original = As<List>(listValue);
+
+			if (arguments.size() == 1)
+			{
+				std::sort(original.data.begin(), original.data.end(), 
+					[&](const Address& a, const Address& b)->bool
+				{
+					return LessThanFunc(pEnv->expand(a, info), pEnv->expand(b, info), *pEnv);
+				});
+			}
+			else
+			{
+				const Val& value = pEnv->expand(arguments[1], info);
+				if (!IsType<FuncVal>(value))
+				{
+					CGL_ErrorNode(info, "引数の型が正しくありません");
+				}
+				const FuncVal& predicate = As<FuncVal>(value);
+
+				Eval eval(pEnv);
+
+				std::sort(original.data.begin(), original.data.end(),
+					[&](const Address& a, const Address& b)->bool
+				{
+					std::vector<Address> args({a,b});
+					const Val result = pEnv->expand(eval.callFunction(info, predicate, args), info);
+					if (!IsType<bool>(result))
+					{
+						CGL_ErrorNode(info, "不正な型");
+					}
+					return As<bool>(result);
+				});
+			}
+
+			return original;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Cmaes",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -1578,6 +1677,46 @@ namespace cgl
 				return As<int>(x) % As<int>(y);
 			}
 			return fmod(AsDouble(x), AsDouble(y));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Floor",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(arguments[0], info);
+			if (!IsNum(x))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return static_cast<int>(std::floor(AsDouble(x)));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Ceil",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(arguments[0], info);
+			if (!IsNum(x))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return static_cast<int>(std::ceil(AsDouble(x)));
 		},
 			false
 			);
@@ -1985,17 +2124,6 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			/*double touch;
-			try
-			{
-				touch = ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
-			}
-			catch (std::exception& e)
-			{
-				std::cout << "Touch: " << e.what() << std::endl;
-				throw;
-			}
-			return touch;*/
 			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
 		},
 			false

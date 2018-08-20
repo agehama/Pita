@@ -280,16 +280,17 @@ namespace cgl
 
 									for (int d = 0; d < currentHoles.size(); ++d)
 									{
-										gg::Geometry* temporaryGeometry = pErodeGeometry->difference(currentHoles.refer(d));
+										GeometryPtr pTemporaryGeometry(ToUnique<GeometryDeleter>(pErodeGeometry->difference(currentHoles.refer(d))));
 
-										if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
+										if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 										{
-											delete temporaryGeometry;
 											//->次のpErodeGeometryには現在のポリゴンがそのまま入っている
+											pErodeGeometry = std::move(pTemporaryGeometry);
+											continue;
 										}
-										else if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+										else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 										{
-											gg::MultiPolygon* polygons = dynamic_cast<gg::MultiPolygon*>(temporaryGeometry);
+											const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(pTemporaryGeometry.get());
 											for (int i = 0; i < polygons->getNumGeometries(); ++i)
 											{
 												currentPolygons.insert(s, ToUnique<GeometryDeleter>(polygons->getGeometryN(i)->clone()));
@@ -297,7 +298,6 @@ namespace cgl
 											pErodeGeometry = currentPolygons.takeOut(s);
 
 											//currentPolygonsに挿入したのはcloneなのでdifferenceの結果はここで削除する
-											delete temporaryGeometry;
 
 											//->次のpErodeGeometryには分割された最初のポリゴンが入っている
 										}
@@ -305,13 +305,11 @@ namespace cgl
 										{
 											//結果が空であれば、ポリゴンを削除する
 											pErodeGeometry.reset();
-											delete temporaryGeometry;
 											break;
 											//->次のpErodeGeometryには何も入っていないのでループを抜ける
 										}
 										else
 										{
-											delete temporaryGeometry;
 											CGL_Error("Differenceの評価結果の型が不正です。");
 										}
 									}
@@ -535,21 +533,21 @@ namespace cgl
 						{
 							for (int s = 0; s < currentPolygons.size();)
 							{
-								std::unique_ptr<gg::Geometry, GeometryDeleter> pErodeGeometry(currentPolygons.takeOut(s));
-								//std::shared_ptr<gg::Geometry> pErodeGeometry(currentPolygons.takeOut(s));
+								GeometryPtr pErodeGeometry(currentPolygons.takeOut(s));
 
 								for (int d = 0; d < currentHoles.size(); ++d)
 								{
-									gg::Geometry* temporaryGeometry = pErodeGeometry->difference(currentHoles.refer(d));
+									GeometryPtr pTemporaryGeometry(ToUnique<GeometryDeleter>(pErodeGeometry->difference(currentHoles.refer(d))));
 
-									if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
+									if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 									{
-										delete temporaryGeometry;
 										//->次のpErodeGeometryには現在のポリゴンがそのまま入っている
+										pErodeGeometry = std::move(pTemporaryGeometry);
+										continue;
 									}
-									else if (temporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+									else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 									{
-										gg::MultiPolygon* polygons = dynamic_cast<gg::MultiPolygon*>(temporaryGeometry);
+										const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(pTemporaryGeometry.get());
 										for (int i = 0; i < polygons->getNumGeometries(); ++i)
 										{
 											currentPolygons.insert(s, ToUnique<GeometryDeleter>(polygons->getGeometryN(i)->clone()));
@@ -557,7 +555,6 @@ namespace cgl
 										pErodeGeometry = currentPolygons.takeOut(s);
 
 										//currentPolygonsに挿入したのはcloneなのでdifferenceの結果はここで削除する
-										delete temporaryGeometry;
 
 										//->次のpErodeGeometryには分割された最初のポリゴンが入っている
 									}
@@ -565,13 +562,11 @@ namespace cgl
 									{
 										//結果が空であれば、ポリゴンを削除する
 										pErodeGeometry.reset();
-										delete temporaryGeometry;
 										break;
 										//->次のpErodeGeometryには何も入っていないのでループを抜ける
 									}
 									else
 									{
-										delete temporaryGeometry;
 										CGL_Error("Differenceの評価結果の型が不正です。");
 									}
 								}

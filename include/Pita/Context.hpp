@@ -154,11 +154,11 @@ namespace cgl
 
 	struct Scope
 	{
-		using VriableMap = std::unordered_map<std::string, Address>;
+		using VariableMap = std::unordered_map<std::string, Address>;
 
 		Scope() = default;
 
-		VriableMap variables;
+		VariableMap variables;
 		std::vector<Address> temporaryAddresses;
 	};
 
@@ -321,6 +321,8 @@ namespace cgl
 		{
 			m_solveTimeLimit = limitSec;
 		}
+
+		std::string makeLabel(const Address& address)const;
 
 	private:
 		void initialize();

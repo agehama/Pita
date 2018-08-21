@@ -2955,4 +2955,162 @@ namespace cgl
 		++count;
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
 	}
+
+	class ValueAccessorSearcher : public boost::static_visitor<bool>
+	{
+	public:
+		ValueAccessorSearcher(const Context& context, const Address searchAddress) :
+			context(context),
+			searchAddress(searchAddress)
+		{}
+
+		const Context& context;
+		const Address searchAddress;
+		std::stack<std::pair<std::string, Address>> currentSearchAddresses;
+
+		bool operator()(bool node) { return false; }
+
+		bool operator()(int node) { return false; }
+
+		bool operator()(double node) { return false; }
+
+		bool operator()(const CharString& node) { return false; }
+
+		bool operator()(const KeyValue& node) { return false; }
+
+		bool operator()(const FuncVal& node) { return false; }
+
+		bool operator()(const Jump& node) { return false; }
+
+		bool operator()(const List& node)
+		{
+			for (size_t i = 0; i < node.data.size(); ++i)
+			{
+				const Address address = node.data[i];
+				if (address == searchAddress)
+				{
+					std::stringstream ss;
+					ss << "[" << i << "]";
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					return true;
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					std::stringstream ss;
+					ss << "[" << i << "]";
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					if (boost::apply_visitor(*this, opt.get()))
+					{
+						return true;
+					}
+					currentSearchAddresses.pop();
+				}
+			}
+
+			return false;
+		}
+
+		bool operator()(const Record& node)
+		{
+			for (const auto& keyval : node.values)
+			{
+				const Address address = keyval.second;
+				if (keyval.second == searchAddress)
+				{
+					std::stringstream ss;
+					ss << "." << keyval.first;
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					return true;
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					std::stringstream ss;
+					ss << "." << keyval.first;
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					if (boost::apply_visitor(*this, opt.get()))
+					{
+						return true;
+					}
+					currentSearchAddresses.pop();
+				}
+			}
+
+			return false;
+		}
+	};
+
+	std::string Context::makeLabel(const Address& address)const
+	{
+		for (size_t i = 0; i < currentRecords.size(); ++i)
+		{
+			Record& record = currentRecords[i];
+			Val evaluated = record;
+			ValueAccessorSearcher searcher(*this, address);
+			if (boost::apply_visitor(searcher, evaluated))
+			{
+				std::string str;
+				while (!searcher.currentSearchAddresses.empty())
+				{
+					str = searcher.currentSearchAddresses.top().first + str;
+					searcher.currentSearchAddresses.pop();
+				}
+				return str;
+			}
+		}
+
+		if (temporaryRecord)
+		{
+			Val evaluated = temporaryRecord.get();
+			ValueAccessorSearcher searcher(*this, address);
+			if (boost::apply_visitor(searcher, evaluated))
+			{
+				std::string str;
+				while (!searcher.currentSearchAddresses.empty())
+				{
+					str = searcher.currentSearchAddresses.top().first + str;
+					searcher.currentSearchAddresses.pop();
+				}
+				return str;
+			}
+		}
+
+		for (const auto& env : m_localEnvStack)
+		{
+			for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
+			{
+				auto it = std::find_if(scopeIt->variables.begin(), scopeIt->variables.end(),
+					[&](const Scope::VariableMap::value_type& value)
+				{
+					return value.second == address;
+				});
+
+				if (it != scopeIt->variables.end())
+				{
+					return it->first;
+				}
+
+				for (const auto& nameVal : scopeIt->variables)
+				{
+					if (auto opt = expandOpt(nameVal.second))
+					{
+						ValueAccessorSearcher searcher(*this, address);
+						if (boost::apply_visitor(searcher, opt.get()))
+						{
+							std::string str;
+							while (!searcher.currentSearchAddresses.empty())
+							{
+								str = searcher.currentSearchAddresses.top().first + str;
+								searcher.currentSearchAddresses.pop();
+							}
+							return nameVal.first + str;
+						}
+					}
+				}
+			}
+		}
+
+		return "(unknown)";
+	}
 }

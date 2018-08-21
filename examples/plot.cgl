@@ -15,6 +15,17 @@ record1.funcC()
 Print(record1)
 */
 
+LerpColor = (a, b, t -> Rgb(a.r + (b.r - a.r)*t, a.g + (b.g - a.g)*t, a.b + (b.b - a.b)*t))
+UpperIndex = (list, t ->
+    lowerIndex = 0
+    for i in 0:Size(list)-1 do(
+        if list[i].t < t
+        then(
+            lowerIndex = i
+        )
+    )
+    lowerIndex + 1
+)
 
 GradationMap = {
     list: []
@@ -22,46 +33,36 @@ GradationMap = {
         Push(list, {t:t, c:c})
         Sort(list, (a, b -> a.t < b.t))
     )
-    color: (t -> Search(list)list[0] )
-}
-
-LinearMap = {
-    list: []
-    add: (t, c -> 
-        Push(list, {t:t, c:c})
-        Sort(list, (a, b -> a.t < b.t))
+    get: (t -> 
+        upperIndex = UpperIndex(list, t)
+        lowerIndex = upperIndex - 1
+        currentTWidth = list[upperIndex].t - list[lowerIndex].t
+        dt = (t - list[lowerIndex].t) / currentTWidth
+        LerpColor(list[lowerIndex].c, list[upperIndex].c, dt)
     )
-    get: (t -> UpperIndex(list, t), Lerp(list[0],list[1],dt))
 }
-
-/*
-Print(GradationMap.list)
-
-GradationMap.add(5,6)
-GradationMap.add(1,2)
-GradationMap.add(3,4)
-
-Print(GradationMap.list)
-*/
 
 map = GradationMap{}
 
-map.add(0.0, Rgb(255,0,0))
-map.add(0.5, Rgb(0,255,0))
-map.add(0.75, Rgb(0,0,255))
-map.add(1.0, Rgb(255,255,255))
+dt = 1.0/9.0
+map.add(dt*0, Rgb(255,255,255))
+map.add(dt*1, Rgb(248,231,76))
+map.add(dt*2, Rgb(248,191,40))
+map.add(dt*3, Rgb(240,136,35))
+map.add(dt*4, Rgb(231,89,30))
+map.add(dt*5, Rgb(209,38,98))
+map.add(dt*6, Rgb(173,0,142))
+map.add(dt*7, Rgb(120,0,146))
+map.add(dt*8, Rgb(43,0,118))
+map.add(dt*9, Rgb(0,0,0))
 
-Print(map.list)
-
-
-/*
 Plot = (width, height, data -> Shape{
     minX: data[0].x
     maxX: data[0].x
     minY: data[0].y
     maxY: data[0].y
 
-    for i in 0:Size(data)-1 do(
+    for i in 1:Size(data)-1 do(
         if(data[i].x < minX)then(minX = data[i].x)
         if(maxX < data[i].x)then(maxX = data[i].x)
         if(data[i].y < minY)then(minY = data[i].y)
@@ -123,4 +124,3 @@ Plot = (width, height, data -> Shape{
 })
 
 Plot(500, 500, import "data.cgl")
-*/

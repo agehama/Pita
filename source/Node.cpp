@@ -166,6 +166,8 @@ struct LimboFitFunc {
 extern bool printAddressInsertion;
 extern double cloneTime;
 extern unsigned cloneCount;
+extern bool isDebugMode;
+
 namespace cgl
 {
 	bool IsVec2(const Val& value)
@@ -744,19 +746,37 @@ namespace cgl
 	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const LocationInfo& info, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
 	{
 		constructConstraint(pEnv);
-		std::cout << "Current constraint freeVariablesSize: " << std::to_string(freeVariableRefs.size()) << std::endl;
+		CGL_DBG1(std::string("Current constraint freeVariablesSize: ") + ToS(freeVariableRefs.size()));
 
-		/*CGL_DBG;
-		pEnv->garbageCollect(true);
-		CGL_DBG;
-		pEnv->garbageCollect(true);
-		CGL_DBG;*/
+		std::ofstream logger;
+		if (isDebugMode)
+		{
+			logger.open("optimize_log.cgl");
+
+			for (const auto& ref : freeVariableRefs)
+			{
+				CGL_DBG1(pEnv->makeLabel(ref.address));
+			}
+
+			logger << "{\n";
+			logger << "\tsize: " << freeVariableRefs.size() << "\n";
+			logger << "\tlabels: [\n";
+			for (const auto& ref : freeVariableRefs)
+			{
+				logger << "\t\t\"" << pEnv->makeLabel(ref.address) << "\"\n";
+			}
+			logger << "\t]\n";
+
+			logger << "\tdata: [\n";
+		}
 
 		{
+			std::stringstream ss;
 			for (const auto& r : optimizeRegions)
 			{
-				std::cout << "index(" << r.startIndex << "," << (r.startIndex + r.numOfIndices) << ")\n";
+				ss << "index(" << r.startIndex << "," << (r.startIndex + r.numOfIndices) << "), ";
 			}
+			CGL_DBG1(ss.str());
 		}
 		std::vector<Interval> rangeList;
 		{
@@ -900,7 +920,7 @@ namespace cgl
 				}
 			}
 			CGL_DebugLog("End Record MakeMap");
-			if (hasPlateausFunction)
+			if (hasPlateausFunction, false)
 			{
 				std::cout << "Solve constraint by CMA-ES...\n";
 
@@ -958,25 +978,21 @@ namespace cgl
 
 				std::cout << "solved\n";
 			}
-			else if(true)
+			else if(false)
 			{
 				std::cout << "Solve constraint by BFGS...\n";
 
 				ConstraintProblem constraintProblem;
 				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
 				{
-					//-1000 -> 1000
 					for (int i = 0; i < v.size(); ++i)
 					{
 						update(variable2Data[i], v[i]);
-						//problem.update(variable2Data[i], (v[i] - 0.5)*2000.0);
 					}
 
+					for (const auto& keyval : invRefs)
 					{
-						for (const auto& keyval : invRefs)
-						{
-							pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
-						}
+						pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
 					}
 
 					pEnv->switchFrontScope();
@@ -1010,7 +1026,7 @@ namespace cgl
 					resultxs[i] = x0s[i];
 				}
 			}
-			else if(false)
+			else if(true)
 			{
 				std::cout << "Solve constraint by Random Search...\n";
 
@@ -1039,6 +1055,16 @@ namespace cgl
 						throw;
 					}
 					pEnv->switchBackScope();
+
+					if (isDebugMode)
+					{
+						logger << "[";
+						for (int i = 0; i < v.size(); ++i)
+						{
+							logger << v[i] << ", ";
+						}
+						logger << result << "], ";
+					}
 
 					//CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
 					return result;
@@ -1072,7 +1098,7 @@ namespace cgl
 					//while (GetSec() - beginTime < 300.0)
 					//while (count < 20000)
 					//while (count < 6900)
-					while(count < 100000)
+					while(count < 20000)
 					{
 						cloneTime = 0.0;
 						cloneCount = 0;
@@ -1115,6 +1141,19 @@ namespace cgl
 							std::cout <<"it("<< count <<") | "<< "cloneTime: " << cloneTime << ", cloneCount: " << cloneCount << "\n";
 							pEnv->garbageCollect(true);
 						}
+					}
+
+					if (isDebugMode)
+					{
+						logger << "[";
+						for (int i = 0; i < answer.size(); ++i)
+						{
+							logger << answer[i] << ", ";
+						}
+						logger << minimumCost << "]\n";
+
+						logger << "\t]\n";
+						logger << "}\n";
 					}
 				}
 

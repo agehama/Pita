@@ -441,7 +441,32 @@ namespace cgl
 	{
 		if (IsNum(lhs) && IsNum(rhs))
 		{
-			return AsDouble(lhs) / AsDouble(rhs);
+			if (IsType<int>(lhs) && IsType<int>(rhs))
+			{
+				const int x = As<int>(lhs);
+				const int y = As<int>(rhs);
+				if (y == 0)
+				{
+					return 1;
+				}
+				else if (1 <= y)
+				{
+					int result = 1;
+					for (int i = 0; i < y; ++i)
+					{
+						result *= x;
+					}
+					return result;
+				}
+				else
+				{
+					return std::pow(AsDouble(lhs), AsDouble(rhs));
+				}
+			}
+			else
+			{
+				return std::pow(AsDouble(lhs), AsDouble(rhs));
+			}
 		}
 		else if (IsShape(lhs) && IsShape(rhs))
 		{

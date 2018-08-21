@@ -18,11 +18,20 @@ Print(record1)
 
 GradationMap = {
     list: []
-    add: (c, t -> 
-        Push(list, {c:c, t:t})
+    add: (t, c -> 
+        Push(list, {t:t, c:c})
         Sort(list, (a, b -> a.t < b.t))
     )
-    //color: (t -> )
+    color: (t -> Search(list)list[0] )
+}
+
+LinearMap = {
+    list: []
+    add: (t, c -> 
+        Push(list, {t:t, c:c})
+        Sort(list, (a, b -> a.t < b.t))
+    )
+    get: (t -> UpperIndex(list, t), Lerp(list[0],list[1],dt))
 }
 
 /*
@@ -36,9 +45,12 @@ Print(GradationMap.list)
 */
 
 map = GradationMap{}
-map.add(Rgb(0,0,255), 0.75)
-map.add(Rgb(255,0,0), 0.0)
-map.add(Rgb(0,255,0), 0.5)
+
+map.add(0.0, Rgb(255,0,0))
+map.add(0.5, Rgb(0,255,0))
+map.add(0.75, Rgb(0,0,255))
+map.add(1.0, Rgb(255,255,255))
+
 Print(map.list)
 
 

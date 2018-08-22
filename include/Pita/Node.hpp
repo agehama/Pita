@@ -886,8 +886,14 @@ namespace cgl
 
 		//一つのregionはvariableの集合に対してかかる
 		//したがって、variableのリストのうちどこからどこまでに対応するかというインデックス情報を保存しておく
-		int startIndex;
-		int numOfIndices;
+		//->制約が分解されたときにインデックスがずれるのでこれではだめだった。普通にアドレスの集合を持つ
+		//->また、freeVariablesに対応した順序でAddressが取り出せないといけないので、setではなくvectorで管理する
+		std::vector<Address> addresses;
+
+		bool has(Address address)const
+		{
+			return std::find(addresses.begin(), addresses.end(), address) != addresses.end();
+		}
 	};
 
 	struct Import : public LocationInfo
@@ -3004,8 +3010,7 @@ namespace cereal
 	{
 		ar(node.region);
 		ar(node.eps);
-		ar(node.startIndex);
-		ar(node.numOfIndices);
+		ar(node.addresses);
 	}
 
 	template<class Archive>

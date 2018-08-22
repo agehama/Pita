@@ -770,14 +770,15 @@ namespace cgl
 			logger << "\tdata: [\n";
 		}
 
-		{
+		/*{
 			std::stringstream ss;
 			for (const auto& r : optimizeRegions)
 			{
 				ss << "index(" << r.startIndex << "," << (r.startIndex + r.numOfIndices) << "), ";
 			}
 			CGL_DBG1(ss.str());
-		}
+		}*/
+
 		std::vector<Interval> rangeList;
 		{
 			for (const auto& r: optimizeRegions)
@@ -791,7 +792,49 @@ namespace cgl
 					//varに範囲指定がないときはmakePackedRangesを通るときに仮として0が設定されている。
 					if (IsType<int>(val))
 					{
-						for (int i = 0; i < r.numOfIndices; ++i)
+						for (const Address address : r.addresses)
+						{
+							auto it = std::find_if(freeVariableRefs.begin(), freeVariableRefs.end(), 
+								[&](const RegionVariable& regionVariable) {
+								return regionVariable.address == address;
+							});
+
+							if (it == freeVariableRefs.end())
+							{
+								CGL_Error("恐らく Evaluator.cpp の maskedRegionVariables() のバグ");
+							}
+
+							double minVal;
+							double maxVal;
+							if (it->has(RegionVariable::Position))
+							{
+								minVal = -1000;
+								maxVal = +1000;
+							}
+							else if (it->has(RegionVariable::Scale))
+							{
+								minVal = 1.e-3;
+								maxVal = 1.e+3;
+							}
+							else if (it->has(RegionVariable::Angle))
+							{
+								minVal = -180;
+								maxVal = +180;
+							}
+							else if (it->has(RegionVariable::Other))
+							{
+								minVal = -1.e+6;
+								maxVal = +1.e+6;
+							}
+							else
+							{
+								CGL_Error("不明な属性");
+							}
+
+							rangeList.push_back(Interval(minVal, maxVal));
+						}
+
+						/*for (int i = 0; i < r.numOfIndices; ++i)
 						{
 							const int currentIndex = r.startIndex + i;
 
@@ -823,7 +866,7 @@ namespace cgl
 							}
 
 							rangeList.push_back(Interval(minVal, maxVal));
-						}
+						}*/
 					}
 					else if (IsType<PackedRecord>(val))
 					{
@@ -861,7 +904,12 @@ namespace cgl
 						const double minV = AsDouble(intervalRegion.data[0].value);
 						const double maxV = AsDouble(intervalRegion.data[1].value);
 
-						for (int i = 0; i < r.numOfIndices; ++i)
+						/*for (int i = 0; i < r.numOfIndices; ++i)
+						{
+							rangeList.push_back(Interval(minV, maxV));
+						}*/
+
+						for (const Address address : r.addresses)
 						{
 							rangeList.push_back(Interval(minV, maxV));
 						}
@@ -920,7 +968,7 @@ namespace cgl
 				}
 			}
 			CGL_DebugLog("End Record MakeMap");
-			if (hasPlateausFunction, false)
+			if (hasPlateausFunction)
 			{
 				std::cout << "Solve constraint by CMA-ES...\n";
 
@@ -978,7 +1026,7 @@ namespace cgl
 
 				std::cout << "solved\n";
 			}
-			else if(false)
+			else if(true)
 			{
 				std::cout << "Solve constraint by BFGS...\n";
 

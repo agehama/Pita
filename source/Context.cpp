@@ -1919,6 +1919,38 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Fixed",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			Val strVal = pEnv->expand(arguments[0], info);
+			Val digitsVal = pEnv->expand(arguments[1], info);
+
+			if (!IsNum(strVal))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+			if (!IsType<int>(digitsVal))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			const double num = AsDouble(strVal);
+			std::stringstream ss;
+			ss << std::setprecision(As<int>(digitsVal));
+			ss << num;
+			CharString printedStr(AsUtf32(ss.str()));
+
+			return printedStr;
+		},
+			true
+			);
+
+		registerBuiltInFunction(
 			"Text",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

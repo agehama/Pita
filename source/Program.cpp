@@ -159,47 +159,73 @@ namespace cgl
 				}
 
 				const auto executeAndOutputSVG = [&]() {
-					if (logOutput) std::cerr << "execute ..." << std::endl;
-
-					//_set_se_translator(TranslateInternalException);
-
-					const double executeBegin = GetSec();
-					const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
-					executeSec = GetSec() - executeBegin;
-
-					evaluated = pEnv->expand(lrvalue, LocationInfo());
-					if (logOutput)
+					try
 					{
-						std::cerr << "execute succeeded" << std::endl;
-						//printVal(evaluated.get(), pEnv, std::cout, 0);
+						if (logOutput) std::cerr << "execute ..." << std::endl;
+
+						//_set_se_translator(TranslateInternalException);
+
+						const double executeBegin = GetSec();
+						const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
+						executeSec = GetSec() - executeBegin;
+
+						evaluated = pEnv->expand(lrvalue, LocationInfo());
+						if (logOutput)
+						{
+							std::cerr << "execute succeeded" << std::endl;
+							//printVal(evaluated.get(), pEnv, std::cout, 0);
+						}
+
+						if (logOutput)
+							std::cerr << "output SVG ..." << std::endl;
+
+						const double outputBegin = GetSec();
+						if (output_filename.empty())
+						{
+							OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape", pEnv);
+						}
+						else
+						{
+							std::ofstream file(output_filename);
+							OutputSVG2(file, Packed(evaluated.get(), *pEnv), "shape", pEnv);
+							file.close();
+						}
+						outputSec = GetSec() - outputBegin;
+
+						if (logOutput)
+						{
+							std::cerr << "completed" << std::endl;
+						}
+
+						std::cerr << "parse     : " << parseSec << "[sec]" << std::endl;
+						std::cerr << "execute   : " << executeSec << "[sec]" << std::endl;
+						std::cerr << "output    : " << outputSec << "[sec]" << std::endl;
+
+						succeeded = true;
 					}
-
-					if (logOutput)
-						std::cerr << "output SVG ..." << std::endl;
-
-					const double outputBegin = GetSec();
-					if (output_filename.empty())
+					catch (const cgl::Exception& e)
 					{
-						OutputSVG2(std::cout, Packed(evaluated.get(), *pEnv), "shape", pEnv);
+						if (!errorMessagePrinted)
+						{
+							std::cerr << e.what() << std::endl;
+							if (e.hasInfo)
+							{
+								PrintErrorPos(filepath, e.info);
+							}
+							else
+							{
+								std::cerr << "Exception does not has any location info." << std::endl;
+							}
+						}
+
+						succeeded = false;
 					}
-					else
+					catch (const std::exception& other)
 					{
-						std::ofstream file(output_filename);
-						OutputSVG2(file, Packed(evaluated.get(), *pEnv), "shape", pEnv);
-						file.close();
+						std::cerr << "Program Error: " << other.what() << std::endl;
+
+						succeeded = false;
 					}
-					outputSec = GetSec() - outputBegin;
-
-					if (logOutput)
-					{
-						std::cerr << "completed" << std::endl;
-					}
-
-					std::cerr << "parse     : " << parseSec << "[sec]" << std::endl;
-					std::cerr << "execute   : " << executeSec << "[sec]" << std::endl;
-					std::cerr << "output    : " << outputSec << "[sec]" << std::endl;
-
-					succeeded = true;
 				};
 
 				const int windowWidth = COLS;

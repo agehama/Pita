@@ -3,6 +3,7 @@
 #include <Pita/Node.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/IntrinsicGeometricFunctions.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
@@ -351,6 +352,21 @@ namespace cgl
 		{
 			Eigen::Vector2d v = AsVec2(lhs, env) + AsVec2(rhs, env);
 			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
+		}
+		else if (IsType<CharString>(lhs))
+		{
+			if (IsType<CharString>(rhs))
+			{
+				CharString str = As<CharString>(lhs);
+				str.str.append(As<CharString>(rhs).str);
+				return str;
+			}
+			std::stringstream ss;
+			ValuePrinter2 printer(nullptr, ss, 0);
+			boost::apply_visitor(printer, rhs);
+			CharString lhsStr = As<CharString>(lhs);
+			lhsStr.str.append(AsUtf32(ss.str()));
+			return lhsStr;
 		}
 
 		CGL_Error("不正な式です");

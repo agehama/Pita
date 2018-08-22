@@ -1883,8 +1883,10 @@ namespace cgl
 
 				OptimizeRegion region;
 				region.region = Interval();
-				region.startIndex = startIndex;
-				region.numOfIndices = numOfIndices;
+				for (const auto& var : currentResult)
+				{
+					region.addresses.push_back(var.address);
+				}
 				resultRegions.push_back(region);
 			}
 
@@ -1930,8 +1932,10 @@ namespace cgl
 				*/
 				OptimizeRegion region;
 				region.region = packedRanges[i];
-				region.startIndex = startIndex;
-				region.numOfIndices = numOfIndices;
+				for (const auto& var : currentResult)
+				{
+					region.addresses.push_back(var.address);
+				}
 				resultRegions.push_back(region);
 			}
 
@@ -2104,6 +2108,43 @@ namespace cgl
 			}
 
 			return true;
+		};
+
+		//RegionVariablesとOptimizeRegionsについて実際に制約グループに登場するAddressでマスクをかける
+		const auto maskedRegionVariables = [&](const std::vector<RegionVariable>& regionVariables, const std::vector<OptimizeRegion>& optimizeRegions,
+			const ConstraintAppearance& constraintAppearance)->std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>>
+		{
+			std::vector<RegionVariable> currentConstraintRegionVars;
+			for (size_t i = 0; i < regionVariables.size(); ++i)
+			{
+				if (constraintAppearance.find(regionVariables[i].address) != constraintAppearance.end())
+				{
+					currentConstraintRegionVars.push_back(regionVariables[i]);
+				}
+			}
+
+			std::vector<OptimizeRegion> currentConstraintOptimizeRegions;
+			for (size_t i = 0; i < optimizeRegions.size(); ++i)
+			{
+				const auto& originalAddresses = optimizeRegions[i].addresses;
+
+				OptimizeRegion newRegion = optimizeRegions[i];
+				newRegion.addresses.clear();
+				for (const Address address : optimizeRegions[i].addresses)
+				{
+					if (constraintAppearance.find(address) != constraintAppearance.end())
+					{
+						newRegion.addresses.push_back(address);
+					}
+				}
+
+				if (!newRegion.addresses.empty())
+				{
+					currentConstraintOptimizeRegions.push_back(newRegion);
+				}
+			}
+
+			return { currentConstraintRegionVars, currentConstraintOptimizeRegions };
 		};
 
 		auto& original = record.original;
@@ -2315,13 +2356,18 @@ namespace cgl
 						auto& currentProblem = record.problems[constraintGroupID];
 						const auto& currentConstraintIDs = mergedConstraintGroups[constraintGroupID];
 
+						ConstraintAppearance currentGroupDependentAddresses;
 						for (size_t constraintID : currentConstraintIDs)
 						{
 							//currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 							currentProblem.addUnitConstraint(mergedUnitConstraints[constraintID]);
+							currentGroupDependentAddresses.insert(mergedVariableAppearances[constraintID].begin(), mergedVariableAppearances[constraintID].end());
 						}
 
-						currentProblem.freeVariableRefs = mergedRegionVars;
+						const auto maskedVars = maskedRegionVariables(mergedRegionVars, mergedOptimizeRegions, currentGroupDependentAddresses);
+
+						currentProblem.freeVariableRefs = maskedVars.first;
+						currentProblem.optimizeRegions = maskedVars.second;
 
 						std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
 						std::cout << "2 mergedRegionVars.size(): " << mergedRegionVars.size() << "\n";
@@ -2421,7 +2467,6 @@ namespace cgl
 						std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
 					}
 
-					//original.freeVariableAddresses = mergedFreeVariableAddresses;
 					original.regionVars = mergedRegionVars;
 					original.optimizeRegions = mergedOptimizeRegions;
 					original.unitConstraints = mergedUnitConstraints;
@@ -2436,15 +2481,20 @@ namespace cgl
 						auto& currentProblem = record.problems[constraintGroupID];
 						const auto& currentConstraintIDs = constraintGroups[constraintGroupID];
 
+						ConstraintAppearance currentGroupDependentAddresses;
 						for (size_t constraintID : currentConstraintIDs)
 						{
 							//CGL_DBG1("Constraint:");
 							//printExpr(adderUnitConstraints[constraintID], pEnv, std::cout);
 							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
+							//ここで現在の制約グループに対応したAddressを引っ張ってくる
+							currentGroupDependentAddresses.insert(adderVariableAppearances[constraintID].begin(), adderVariableAppearances[constraintID].end());
 						}
 
-						currentProblem.freeVariableRefs = mergedRegionVars;
-						currentProblem.optimizeRegions = mergedOptimizeRegions;
+						const auto maskedVars = maskedRegionVariables(recordVarAddresses.first, recordVarAddresses.second, currentGroupDependentAddresses);
+
+						currentProblem.freeVariableRefs = maskedVars.first;
+						currentProblem.optimizeRegions = maskedVars.second;
 
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
@@ -2708,12 +2758,12 @@ namespace cgl
 
 			if (auto listAccessOpt = AsOpt<ListAccess>(access))
 			{
-				Val value = pEnv->expand(boost::apply_visitor(*this, listAccessOpt.get().index), accessor);
-
 				if (!IsType<List>(objRef))
 				{
 					CGL_ErrorNode(accessor, "リストでない値に対してリストアクセスを行おうとしました。");
 				}
+
+				Val value = pEnv->expand(boost::apply_visitor(*this, listAccessOpt.get().index), accessor);
 
 				List& list = As<List>(objRef);
 
@@ -2763,12 +2813,12 @@ namespace cgl
 			}
 			else if (auto recordAccessOpt = AsOpt<FunctionAccess>(access))
 			{
-				auto funcAccess = As<FunctionAccess>(access);
-
 				if (!IsType<FuncVal>(objRef))
 				{
 					CGL_ErrorNode(accessor, "関数でない値に対して関数呼び出しを行おうとしました。");
 				}
+
+				auto funcAccess = As<FunctionAccess>(access);
 
 				const FuncVal& function = As<FuncVal>(objRef);
 
@@ -2797,12 +2847,12 @@ namespace cgl
 			}
 			else
 			{
-				auto inheritAccess = As<InheritAccess>(access);
-
 				if (!IsType<Record>(objRef))
 				{
 					CGL_ErrorNode(accessor, "レコードでない値に対して継承式を適用しようとしました。");
 				}
+
+				auto inheritAccess = As<InheritAccess>(access);
 
 				const Record& record = As<Record>(objRef);
 				const Val returnedValue = pEnv->expand(inheritRecord(accessor, record, inheritAccess.adder), accessor);

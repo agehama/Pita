@@ -1,7 +1,6 @@
 {
-	size: 2
+	size: 1
 	labels: [
-		"number.pos.x"
-		"number.pos.y"
+		"pos.y"
 	]
 	data: [

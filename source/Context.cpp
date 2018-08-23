@@ -1493,7 +1493,6 @@ namespace cgl
 			}
 
 			LRValue address = arguments[0];
-			CGL_DBG1(arguments[0].toString());
 			Val& listValue = pEnv->mutableExpand(address, info);
 			if (!IsType<List>(listValue))
 			{

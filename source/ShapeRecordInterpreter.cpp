@@ -16,6 +16,8 @@
 
 extern bool printAddressInsertion;
 
+bool testtesttest = false;
+
 namespace cgl
 {
 	void GeometryDeleter::operator()(gg::Geometry* pGeometry)const
@@ -478,16 +480,9 @@ namespace cgl
 		std::vector<PitaGeometry> wholePolygons;
 
 		Geometries resultPolygons;
-		//gg::Geometry* currentLine = nullptr;
 		Geometries currentLines;
 
-		//現時点では実際に描画されるデータを持っているかどうかわからないため、一旦別のストリームに保存しておく
-		std::stringstream currentStream;
-		currentStream << getIndent(depth) << "<g id=\"" << name << "\" ";
-
-		std::stringstream currentChildStream;
-
-		//Color currentColor;
+		os << getIndent(depth) << "<g id=\"" << name << "\" ";
 
 		bool hasShape = false;
 
@@ -495,7 +490,11 @@ namespace cgl
 		{
 			const auto& value = member.second.value;
 
-			if (member.first == "polygon")
+			if (member.first == "pos" || member.first == "scale")
+			{
+				continue;
+			}
+			else if (member.first == "polygon")
 			{
 				std::vector<OutputPolygon> outputPolygons;
 
@@ -618,11 +617,11 @@ namespace cgl
 				{
 					Color currentColor;
 					ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
-					currentStream << "fill=\"" << currentColor.toString() << "\" ";
+					os << "fill=\"" << currentColor.toString() << "\" ";
 				}
 				else
 				{
-					currentStream << "fill=\"none\" ";
+					os << "fill=\"none\" ";
 				}
 			}
 			else if (member.first == "stroke")
@@ -631,11 +630,11 @@ namespace cgl
 				{
 					Color currentColor;
 					ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
-					currentStream << "stroke=\"" << currentColor.toString() << "\" ";
+					os << "stroke=\"" << currentColor.toString() << "\" ";
 				}
 				else
 				{
-					currentStream << "stroke=\"none\" ";
+					os << "stroke=\"none\" ";
 				}
 			}
 			else if (member.first == "stroke_width")
@@ -644,19 +643,36 @@ namespace cgl
 				{
 					CGL_Error("stroke_widthに数値以外の値が指定されました");
 				}
-				currentStream << "stroke-width=\"" << AsDouble(value) << "\" ";
-			}
-			else if (IsType<PackedRecord>(value))
-			{
-				hasShape = GeosFromRecordImpl2Packed(currentChildStream, As<PackedRecord>(value), member.first, depth + 1, pContext, transform) || hasShape;
-			}
-			else if (IsType<PackedList>(value))
-			{
-				hasShape = GeosFromList2Packed(currentChildStream, As<PackedList>(value), member.first, depth + 1, pContext, transform) || hasShape;
+				os << "stroke-width=\"" << AsDouble(value) << "\" ";
 			}
 		}
 
-		currentStream << ">\n";
+		os << ">\n";
+
+		for (const auto& member : record.values)
+		{
+			const auto& value = member.second.value;
+
+			if (member.first == "pos"
+				|| member.first == "scale"
+				|| member.first == "polygon"
+				|| member.first == "line"
+				|| member.first == "fill"
+				|| member.first == "stroke"
+				|| member.first == "stroke_width"
+				)
+			{
+				continue;
+			}
+			else if (IsType<PackedRecord>(value))
+			{
+				hasShape = GeosFromRecordImpl2Packed(os, As<PackedRecord>(value), member.first, depth + 1, pContext, transform) || hasShape;
+			}
+			else if (IsType<PackedList>(value))
+			{
+				hasShape = GeosFromList2Packed(os, As<PackedList>(value), member.first, depth + 1, pContext, transform) || hasShape;
+			}
+		}
 
 		const auto writePolygon = [&depth](std::ostream& os, const gg::Polygon* polygon)
 		{
@@ -670,16 +686,16 @@ namespace cgl
 				{
 					for (int i = 0; i < outer->getNumPoints(); ++i)
 					{
-						auto p = outer->getPointN(i);
-						os << p->getX() << "," << p->getY() << " ";
+						const auto& p = outer->getCoordinateN(i);
+						os << p.x << "," << p.y << " ";
 					}
 				}
 				else
 				{
 					for (int i = outer->getNumPoints() - 1; 0 <= i; --i)
 					{
-						auto p = outer->getPointN(i);
-						os << p->getX() << "," << p->getY() << " ";
+						const auto& p = outer->getCoordinateN(i);
+						os << p.x << "," << p.y << " ";
 					}
 				}
 
@@ -697,24 +713,24 @@ namespace cgl
 					{
 						if (IsClockWise(outer))
 						{
-							auto p = outer->getPointN(0);
-							os << "M" << p->getX() << "," << p->getY() << " ";
+							const auto&  p = outer->getCoordinateN(0);
+							os << "M" << p.x << "," << p.y << " ";
 
 							for (int i = 1; i < outer->getNumPoints(); ++i)
 							{
-								auto p = outer->getPointN(i);
-								os << "L" << p->getX() << "," << p->getY() << " ";
+								const auto& p = outer->getCoordinateN(i);
+								os << "L" << p.x << "," << p.y << " ";
 							}
 						}
 						else
 						{
-							auto p = outer->getPointN(outer->getNumPoints() - 1);
-							os << "M" << p->getX() << "," << p->getY() << " ";
+							const auto&  p = outer->getCoordinateN(outer->getNumPoints() - 1);
+							os << "M" << p.x << "," << p.y << " ";
 
 							for (int i = outer->getNumPoints() - 2; 0 < i; --i)
 							{
-								auto p = outer->getPointN(i);
-								os << "L" << p->getX() << "," << p->getY() << " ";
+								const auto& p = outer->getCoordinateN(i);
+								os << "L" << p.x << "," << p.y << " ";
 							}
 						}
 
@@ -730,24 +746,24 @@ namespace cgl
 					{
 						if (IsClockWise(hole))
 						{
-							auto p = hole->getPointN(hole->getNumPoints() - 1);
-							os << "M" << p->getX() << "," << p->getY() << " ";
+							const auto& p = hole->getCoordinateN(hole->getNumPoints() - 1);
+							os << "M" << p.x << "," << p.y << " ";
 
 							for (int n = hole->getNumPoints() - 2; 0 < n; --n)
 							{
-								auto p = hole->getPointN(n);
-								os << "L" << p->getX() << "," << p->getY() << " ";
+								const auto& p = hole->getCoordinateN(n);
+								os << "L" << p.x << "," << p.y << " ";
 							}
 						}
 						else
 						{
-							auto p = hole->getPointN(0);
-							os << "M" << p->getX() << "," << p->getY() << " ";
+							const auto& p = hole->getCoordinateN(0);
+							os << "M" << p.x << "," << p.y << " ";
 
 							for (int n = 1; n < hole->getNumPoints(); ++n)
 							{
-								auto p = hole->getPointN(n);
-								os << "L" << p->getX() << "," << p->getY() << " ";
+								const auto& p = hole->getCoordinateN(n);
+								os << "L" << p.x << "," << p.y << " ";
 							}
 						}
 
@@ -762,11 +778,10 @@ namespace cgl
 		const auto writeLine = [&depth](std::ostream& os, const gg::LineString* lineString)
 		{
 			os << getIndent(depth + 1) << "<polyline " << "fill=\"none\" points=\"";
-			//os << getIndent(depth + 1) << "<polyline " << "points=\"";
 			for (int i = 0; i < lineString->getNumPoints(); ++i)
 			{
-				const gg::Point* p = lineString->getPointN(i);
-				os << p->getX() << "," << p->getY() << " ";
+				const auto& p = lineString->getCoordinateN(i);
+				os << p.x << "," << p.y << " ";
 			}
 			os << "\"/>\n";
 		};
@@ -804,14 +819,15 @@ namespace cgl
 
 		const auto writeWholeData = [&]()
 		{
-			hasShape = writePolygons(currentStream) || hasShape;
-			currentStream << currentChildStream.str();
-			currentStream << getIndent(depth) << "</g>\n";
+			hasShape = writePolygons(os) || hasShape;
+			os << getIndent(depth) << "</g>\n";
 
-			if (hasShape)
-			{
-				os << currentStream.str();
-			}
+			if (os.bad())
+				std::cout << "I/O error while reading" << std::endl;
+			else if (os.eof())
+				std::cout << "End of file reached successfully" << std::endl;
+			else if (os.fail())
+				std::cout << "Non-integer data encountered" << std::endl;
 		};
 
 		auto factory = gg::GeometryFactory::create();
@@ -878,6 +894,11 @@ namespace cgl
 			std::stringstream currentName;
 			currentName << name << "[" << i << "]";
 
+			if (i == 3185)
+			{
+				testtesttest = true;
+			}
+
 			if (IsType<PackedRecord>(value))
 			{
 				hasShape = GeosFromRecordImpl2Packed(os, As<PackedRecord>(value), currentName.str(), depth + 1, pContext, transform) || hasShape;
@@ -886,6 +907,8 @@ namespace cgl
 			{
 				hasShape = GeosFromList2Packed(os, As<PackedList>(value), currentName.str(), depth + 1, pContext, transform) || hasShape;
 			}
+
+			testtesttest = false;
 
 			++i;
 		}
@@ -914,6 +937,8 @@ namespace cgl
 		auto boundingBoxOpt = IsType<PackedRecord>(value) ? boost::optional<BoundingRect>(BoundingRectRecordPacked(value, pContext)) : boost::none;
 		if (IsType<PackedRecord>(value) && boundingBoxOpt)
 		{
+			os.exceptions(std::ostream::failbit | std::ostream::badbit);
+
 			const BoundingRect& rect = boundingBoxOpt.get();
 			//const auto pos = rect.pos();
 			const auto widthXY = rect.width();

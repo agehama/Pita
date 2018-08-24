@@ -16,8 +16,6 @@
 
 extern bool printAddressInsertion;
 
-bool testtesttest = false;
-
 namespace cgl
 {
 	void GeometryDeleter::operator()(gg::Geometry* pGeometry)const
@@ -894,11 +892,6 @@ namespace cgl
 			std::stringstream currentName;
 			currentName << name << "[" << i << "]";
 
-			if (i == 3185)
-			{
-				testtesttest = true;
-			}
-
 			if (IsType<PackedRecord>(value))
 			{
 				hasShape = GeosFromRecordImpl2Packed(os, As<PackedRecord>(value), currentName.str(), depth + 1, pContext, transform) || hasShape;
@@ -907,8 +900,6 @@ namespace cgl
 			{
 				hasShape = GeosFromList2Packed(os, As<PackedList>(value), currentName.str(), depth + 1, pContext, transform) || hasShape;
 			}
-
-			testtesttest = false;
 
 			++i;
 		}

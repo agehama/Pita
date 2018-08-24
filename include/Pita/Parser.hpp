@@ -243,7 +243,8 @@ namespace cgl
 				((lit("do") >> s >> general_expr[Call(For::SetDo, _val, _1, false)]) |
 				(lit("list") >> s >> general_expr[Call(For::SetDo, _val, _1, true)]));
 
-			import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] >> '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
+			//import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] >> '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
+			import_expr = lit("import") >> s >> char_string[_val = Call(Import::Make, _1)] >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
 
 			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
 
@@ -365,7 +366,8 @@ namespace cgl
 			factor = 
 				  import_expr[_val = _1]
 				| ('(' >> s > expr_seq[_val = _1] > s > ')')
-				| ('\"' > char_string[_val = Call(BuildString, _1)] > '\"')
+				|  char_string[_val = Call(BuildString, _1)]
+				//| lexeme['\"' > (*(encode::char_ - encode::char_('\"')))[_val = Call(BuildString, _1)] > '\"']
 				| constraints[_val = _1]
 				//| record_inheritor[_val = _1]
 				| freeVals[_val = _1]
@@ -387,7 +389,8 @@ namespace cgl
 
 			id = unchecked_identifier[_val = Call(Identifier::MakeIdentifier, _1)] - distinct_keyword;
 
-			char_string = lexeme[*(encode::char_ - encode::char_('\"'))];
+			//char_string = lexeme[*(encode::char_ - encode::char_('\"'))];
+			char_string = lexeme['\"' > *(encode::char_ - encode::char_('\"')) > '\"'];
 
 			distinct_keyword = lexeme[keywords >> !(encode::alnum | '_')];
 			unchecked_identifier = lexeme[(encode::alpha | encode::char_('_')) >> *(encode::alnum | encode::char_('_'))];

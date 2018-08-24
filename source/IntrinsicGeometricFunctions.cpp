@@ -1781,6 +1781,16 @@ namespace cgl
 					offsetHorizontal = 0;
 					continue;
 				}
+				if (codePoint == '\t')
+				{
+					offsetHorizontal += pFont->glyphWidth('_') * 4;
+					continue;
+				}
+				if (codePoint == ' ')
+				{
+					offsetHorizontal += pFont->glyphWidth('_');
+					continue;
+				}
 
 				{
 					Geometries characterPolygon = pFont->makePolygon(codePoint, 5, offsetHorizontal, offsetVertical);

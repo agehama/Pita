@@ -748,6 +748,13 @@ namespace cgl
 		constructConstraint(pEnv);
 		CGL_DBG1(std::string("Current constraint freeVariablesSize: ") + ToS(freeVariableRefs.size()));
 
+		/*if (isDebugMode && expr)
+		{
+			std::ofstream graphFile;
+			graphFile.open("constraint_CFG.dot");
+			MakeGraph(*pEnv, expr.get(), graphFile);
+		}*/
+
 		std::ofstream logger;
 		if (isDebugMode)
 		{

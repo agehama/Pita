@@ -1,0 +1,46 @@
+digraph constraint_flow_graph {
+  graph [
+    charset = "UTF-8",
+    bgcolor = "#EDEDED",
+    rankdir = TB,
+    nodesep = 1.1,
+    ranksep = 1.05
+  ];
+
+  node [
+    shape = record,
+    fontname = "Migu 1M",
+    fontsize = 12,
+  ];
+
+  node0 [label = "{<ptop>funcB = 0|Branch 5 \< EitherReference(a \| Address(3081))|{<ptrue>true|<pfalse>false}}"];
+  node1 [label = "{<ptop>Phi($1, $2)|Branch 10 \< EitherReference(a \| Address(3081))|{<ptrue>true|<pfalse>false}}"];
+  node2 [label = "{<ptop>$1 = 
+    funcB = 
+        (x -\> 
+                    x ^ 2 + 2
+
+        )
+
+|Branch true|{<ptrue>true|<pfalse>false}}"];
+  node3 [label = "{<ptop>$2 = 
+    funcB = 
+        (x -\> 
+                    x + 200
+
+        )
+
+|Branch true|{<ptrue>true|<pfalse>false}}"];
+  node4 [label = "{<ptop>Branch Phi($3, $4) == 150|{<ptrue>true|<pfalse>false}}"];
+  node5 [label = "{<ptop>$3 = EitherReference(funcA \| Address(3080))(EitherReference(a \| Address(3081)))|Branch true|{<ptrue>true|<pfalse>false}}"];
+  node6 [label = "{<ptop>$4 = funcB(EitherReference(a \| Address(3081)))|Branch true|{<ptrue>true|<pfalse>false}}"];
+
+  node0:ptrue -> node2:ptop;
+  node0:pfalse -> node3:ptop;
+  node1:ptrue -> node5:ptop;
+  node1:pfalse -> node6:ptop;
+  node2:ptrue -> node1:ptop;
+  node3:ptrue -> node1:ptop;
+  node5:ptrue -> node4:ptop;
+  node6:ptrue -> node4:ptop;
+}

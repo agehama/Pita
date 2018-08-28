@@ -1,0 +1,8 @@
+funcA = (x -> x^3 + 1)
+funcB = (x -> x^2 + 2)
+
+main = {
+    a: 0
+    sat( (if 10 < a then(funcA(a)) else(funcB(a))) == 150 )
+    var(a)
+}

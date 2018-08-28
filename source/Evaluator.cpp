@@ -8,6 +8,367 @@
 #include <Pita/IntrinsicGeometricFunctions.hpp>
 #include <Pita/Program.hpp>
 
+extern bool isDebugMode;
+namespace cgl
+{
+	struct EdgeInfo
+	{
+		size_t toNodeIndex;
+		bool isTrueBranch;
+		EdgeInfo() = default;
+		EdgeInfo(size_t toNodeIndex, bool isTrueBranch) :
+			toNodeIndex(toNodeIndex),
+			isTrueBranch(isTrueBranch)
+		{}
+	};
+
+	class Graph
+	{
+	public:
+		Graph() :
+			m_blockNodes(1),
+			m_edgeIndices(1)
+		{}
+
+		size_t addNode()
+		{
+			m_blockNodes.emplace_back();
+			m_edgeIndices.emplace_back();
+			return m_blockNodes.size() - 1;
+		}
+
+		size_t addNode(const Lines& lines)
+		{
+			m_blockNodes.push_back(lines);
+			m_edgeIndices.emplace_back();
+			return m_blockNodes.size() - 1;
+		}
+
+		Lines & node(size_t nodeIndex)
+		{
+			return m_blockNodes[nodeIndex];
+		}
+
+		const Lines & node(size_t nodeIndex)const
+		{
+			return m_blockNodes[nodeIndex];
+		}
+
+		void addEdge(size_t fromNode, size_t toNode, bool isTrue)
+		{
+			m_edgeIndices[fromNode].emplace_back(toNode, isTrue);
+		}
+
+		void outputGraphViz(std::ostream& os)const
+		{
+			os << R"(digraph constraint_flow_graph {
+  graph [
+    charset = "UTF-8",
+    bgcolor = "#EDEDED",
+    rankdir = TB,
+    nodesep = 1.1,
+    ranksep = 1.05
+  ];
+
+  node [
+    shape = record,
+    fontname = "Migu 1M",
+    fontsize = 12,
+  ];)";
+			os << "\n\n";
+
+			for (size_t i = 0; i < m_blockNodes.size(); ++i)
+			{
+				os << "  node" << i << R"( [label = "{<ptop>)";
+				const auto& lines = m_blockNodes[i];
+
+				for (size_t exprIndex = 0; exprIndex < lines.exprs.size(); ++exprIndex)
+				{
+					std::stringstream ss;
+					Printer2 printer(nullptr, ss);
+					boost::apply_visitor(printer, lines.exprs[exprIndex]);
+
+					if (exprIndex + 1 != lines.exprs.size())
+					{
+						os << escaped(ss.str());
+						os << "|";
+					}
+					else
+					{
+						os << "Branch " << escaped(ss.str());
+					}
+				}
+
+				os << R"(|{<ptrue>true|<pfalse>false})";
+
+				os << R"(}"];)" << "\n";
+			}
+
+			os << "\n";
+
+			for (size_t fromNodeIndex = 0; fromNodeIndex < m_edgeIndices.size(); ++fromNodeIndex)
+			{
+				for (const auto& edge : m_edgeIndices[fromNodeIndex])
+				{
+					os << "  node" << fromNodeIndex << ":" << (edge.isTrueBranch ? "ptrue" : "pfalse");
+					os << " -> node" << edge.toNodeIndex << ":ptop;\n";
+				}
+			}
+
+			os << "}\n";
+		}
+
+		static Identifier NewVariable()
+		{
+			static size_t auxiliaryVariables = 0;
+			++auxiliaryVariables;
+			return Identifier(std::string("$") + ToS(auxiliaryVariables));
+		}
+
+	private:
+		std::string escaped(const std::string& str)const
+		{
+			std::stringstream ss;
+			for (char c : str)
+			{
+				switch (c)
+				{
+				case '|':
+					ss << "\\|";
+					break;
+				case '<':
+					ss << "\\<";
+					break;
+				case '>':
+					ss << "\\>";
+					break;
+				default:
+					ss << c;
+					break;
+				}
+			}
+
+			return ss.str();
+		}
+
+		std::vector<Lines> m_blockNodes;
+		std::vector<std::vector<EdgeInfo>> m_edgeIndices;
+	};
+
+	class GraphMaker : public boost::static_visitor<boost::optional<Expr>>
+	{
+	public:
+		GraphMaker(const Context& context, Graph& graph, size_t currentNodeIndex) :
+			context(context),
+			graph(graph),
+			currentNodeIndex(currentNodeIndex)
+		{}
+
+		const Context& context;
+		Graph& graph;
+		size_t currentNodeIndex;
+
+		boost::optional<Expr> operator()(const LRValue& node)
+		{
+			if (node.isRValue())
+			{
+				return node;
+			}
+			//図形などの場合は評価される式を展開する
+			return node;
+		}
+
+		boost::optional<Expr> operator()(const Identifier& node) { return node; }
+
+		boost::optional<Expr> operator()(const UnaryExpr& node)
+		{
+			auto expr = boost::apply_visitor(*this, node.lhs);
+			if (!expr)
+			{
+				CGL_Error("エラー");
+			}
+
+			return UnaryExpr(expr.get(), node.op);
+		}
+
+		boost::optional<Expr> operator()(const BinaryExpr& node)
+		{
+			auto expr1 = boost::apply_visitor(*this, node.lhs);
+			auto expr2 = boost::apply_visitor(*this, node.rhs);
+			if (!expr1 || !expr2)
+			{
+				CGL_Error("エラー");
+			}
+
+			return BinaryExpr(expr1.get(), expr2.get(), node.op);
+		}
+
+		boost::optional<Expr> operator()(const Lines& node)
+		{
+			for (size_t i = 0; i + 1 < node.exprs.size(); ++i)
+			{
+				const auto& expr = node.exprs[i];
+				if (auto resultExpr = boost::apply_visitor(*this, expr))
+				{
+					graph.node(currentNodeIndex).add(resultExpr.get());
+				}
+			}
+
+			if (!node.exprs.empty())
+			{
+				return boost::apply_visitor(*this, node.exprs.back());
+			}
+
+			return boost::none;
+		}
+
+		boost::optional<Expr> operator()(const DefFunc& node)
+		{
+			//boost::apply_visitor(*this, node.expr);
+			return node;
+		}
+
+		boost::optional<Expr> operator()(const If& node)
+		{
+			if (auto expr = boost::apply_visitor(*this, node.cond_expr))
+			{
+				graph.node(currentNodeIndex).add(expr.get());
+			}
+
+			const size_t nextNodeIndex = graph.addNode();
+
+			std::vector<Identifier> results;
+			{
+				const size_t thenNodeIndex = graph.addNode();
+				graph.addEdge(currentNodeIndex, thenNodeIndex, true);
+
+				GraphMaker child(context, graph, thenNodeIndex);
+				if (auto thenResultExpr = boost::apply_visitor(child, node.then_expr))
+				{
+					results.push_back(Graph::NewVariable());
+					graph.node(thenNodeIndex).add(BinaryExpr(results.back(), thenResultExpr.get(), BinaryOp::Assign));
+				}
+
+				//then式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
+				graph.node(thenNodeIndex).add(LRValue(true));
+				graph.addEdge(thenNodeIndex, nextNodeIndex, true);
+			}
+
+			if (node.else_expr)
+			{
+				const size_t elseNodeIndex = graph.addNode();
+				graph.addEdge(currentNodeIndex, elseNodeIndex, false);
+
+				GraphMaker child(context, graph, elseNodeIndex);
+				if (auto elseResultExpr = boost::apply_visitor(child, node.else_expr.get()))
+				{
+					results.push_back(Graph::NewVariable());
+					graph.node(elseNodeIndex).add(BinaryExpr(results.back(), elseResultExpr.get(), BinaryOp::Assign));
+				}
+
+				//else式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
+				graph.node(elseNodeIndex).add(LRValue(true));
+				graph.addEdge(elseNodeIndex, nextNodeIndex, true);
+			}
+			else
+			{
+				//else式がない場合は、condが満たされないと自動で次のノードへ行く
+				graph.addEdge(currentNodeIndex, nextNodeIndex, false);
+			}
+
+			currentNodeIndex = nextNodeIndex;
+
+			if (results.empty())
+			{
+				return boost::none;
+			}
+			else if (results.size() == 1)
+			{
+				return results.front();
+			}
+			else
+			{
+				std::stringstream ss;
+				ss << "Phi(";
+				for (size_t i = 0; i + 1 < results.size(); ++i)
+				{
+					ss << results[i].toString() << ", ";
+				}
+				ss << results.back().toString() << ")";
+
+				return Identifier(ss.str());
+			}
+		}
+
+		boost::optional<Expr> operator()(const For& node)
+		{
+			/*boost::apply_visitor(*this, node.rangeStart);
+			boost::apply_visitor(*this, node.rangeEnd);
+			boost::apply_visitor(*this, node.doExpr);*/
+			return node;
+		}
+
+		boost::optional<Expr> operator()(const ListConstractor& node)
+		{
+			/*for (const auto& expr : node.data)
+			{
+			boost::apply_visitor(*this, expr);
+			}*/
+			return node;
+		}
+
+		boost::optional<Expr> operator()(const KeyExpr& node)
+		{
+			//boost::apply_visitor(*this, node.expr);
+			return node;
+		}
+
+		boost::optional<Expr> operator()(const RecordConstractor& node)
+		{
+			/*for (const auto& expr : node.exprs)
+			{
+			boost::apply_visitor(*this, expr);
+			}*/
+			return node;
+		}
+
+		boost::optional<Expr> operator()(const Accessor& node)
+		{
+			node;
+			return node;
+		}
+
+		boost::optional<Expr> operator()(const DeclSat& node) { CGL_Error("未対応"); }
+		boost::optional<Expr> operator()(const DeclFree& node) { CGL_Error("未対応"); }
+		boost::optional<Expr> operator()(const Import& node) { CGL_Error("未対応"); }
+		boost::optional<Expr> operator()(const Range& node) { CGL_Error("未対応"); }
+		boost::optional<Expr> operator()(const Return& node) { CGL_Error("未対応"); }
+	};
+
+	void inline MakeGraph(const Context& context, const Expr& constraintExpr, std::ostream& os)
+	{
+		Graph graph;
+		GraphMaker graphMaker(context, graph, 0);
+
+		std::cout << "constraint expr:" << std::endl;
+		Printer printer(nullptr, std::cout);
+		boost::apply_visitor(printer, constraintExpr);
+
+		std::cout << "build graph:" << std::endl;
+
+		if (auto resultExpr = boost::apply_visitor(graphMaker, constraintExpr))
+		{
+			graph.node(graphMaker.currentNodeIndex).add(resultExpr.get());
+		}
+
+		std::cout << "output graphviz:" << std::endl;
+
+		graph.outputGraphViz(os);
+
+		std::cout << "completed MakeGraph:" << std::endl;
+	}
+}
+
 extern int constraintViolationCount;
 extern bool isInConstraint;
 
@@ -2152,6 +2513,13 @@ namespace cgl
 		//TODO: record.constraintには継承時のoriginalが持つ制約は含まれていないものとする
 		if (record.constraint || !original.unitConstraints.empty())
 		{
+			if (isDebugMode && record.constraint)
+			{
+				std::ofstream graphFile;
+				graphFile.open("constraint_CFG.dot");
+				MakeGraph(*pEnv, record.constraint.get(), graphFile);
+			}
+
 			isInConstraint = true;
 			std::cout << "--------------------------------------------------------------\n";
 			std::cout << "Solve Record Constraints:" << std::endl;

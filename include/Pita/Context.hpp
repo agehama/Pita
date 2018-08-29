@@ -379,13 +379,6 @@ namespace cereal
 		ar(scope.temporaryAddresses);
 	}
 
-	/*template<class Archive>
-	inline void serialize(Archive& ar, cgl::Values<cgl::Val>& values)
-	{
-		ar(values.m_values);
-		ar(values.m_ID);
-	}*/
-
 	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Context& context)
 	{

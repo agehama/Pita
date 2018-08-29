@@ -12,6 +12,32 @@
 
 namespace cgl
 {
+	//Expr -> Expr の変換を行う処理全般のひな型
+	class ExprTransformer : public boost::static_visitor<Expr>
+	{
+	public:
+		ExprTransformer() = default;
+		virtual ~ExprTransformer() = default;
+
+		virtual Expr operator()(const LRValue& node);
+		virtual Expr operator()(const Identifier& node);
+		virtual Expr operator()(const UnaryExpr& node);
+		virtual Expr operator()(const BinaryExpr& node);
+		virtual Expr operator()(const Lines& node);
+		virtual Expr operator()(const DefFunc& node);
+		virtual Expr operator()(const If& node);
+		virtual Expr operator()(const For& node);
+		virtual Expr operator()(const ListConstractor& node);
+		virtual Expr operator()(const KeyExpr& node);
+		virtual Expr operator()(const RecordConstractor& node);
+		virtual Expr operator()(const Accessor& node);
+		virtual Expr operator()(const DeclSat& node);
+		virtual Expr operator()(const DeclFree& node);
+		virtual Expr operator()(const Import& node);
+		virtual Expr operator()(const Range& node);
+		virtual Expr operator()(const Return& node);
+	};
+
 	class ProgressStore
 	{
 	public:
@@ -38,7 +64,7 @@ namespace cgl
 		std::mutex mtx;
 	};
 
-	class AddressReplacer : public boost::static_visitor<Expr>
+	class AddressReplacer : public ExprTransformer
 	{
 	public:
 		const std::unordered_map<Address, Address>& replaceMap;
@@ -51,23 +77,23 @@ namespace cgl
 
 		boost::optional<Address> getOpt(Address address)const;
 
-		Expr operator()(const LRValue& node)const;
-		Expr operator()(const Identifier& node)const { return node; }
-		Expr operator()(const Import& node)const { return node; }
-		Expr operator()(const UnaryExpr& node)const;
-		Expr operator()(const BinaryExpr& node)const;
-		Expr operator()(const Range& node)const;
-		Expr operator()(const Lines& node)const;
-		Expr operator()(const DefFunc& node)const;
-		Expr operator()(const If& node)const;
-		Expr operator()(const For& node)const;
-		Expr operator()(const Return& node)const;
-		Expr operator()(const ListConstractor& node)const;
-		Expr operator()(const KeyExpr& node)const;
-		Expr operator()(const RecordConstractor& node)const;
-		Expr operator()(const Accessor& node)const;
-		Expr operator()(const DeclSat& node)const;
-		Expr operator()(const DeclFree& node)const;
+		Expr operator()(const LRValue& node)override;
+		Expr operator()(const Identifier& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Import& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const UnaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const BinaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Range& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Lines& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DefFunc& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const If& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const For& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Return& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const KeyExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Accessor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclSat& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclFree& node)override { return ExprTransformer::operator()(node); }
 	};
 
 	//Valのアドレス値を再帰的に展開したクローンを作成する

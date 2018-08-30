@@ -1492,7 +1492,9 @@ namespace cgl
 			const auto& opt = context.expandOpt(address);
 			if (!opt)
 			{
-				CGL_Error("参照エラー");
+				std::stringstream ss;
+				ss << "リスト中の " << LRValue(address).toString() << " 参照に失敗しました。";
+				CGL_Error("参照エラー: ");
 			}
 			const PackedVal packedValue = boost::apply_visitor(packer, opt.get());
 
@@ -1554,7 +1556,9 @@ namespace cgl
 			const auto& opt = context.expandOpt(keyval.second);
 			if (!opt)
 			{
-				CGL_Error("参照エラー");
+				std::stringstream ss;
+				ss << "レコード中のキー \"" << keyval.first << "\": " << LRValue(keyval.second).toString() << " の参照に失敗しました。";
+				CGL_Error("参照エラー: " + ss.str());
 			}
 			const PackedVal packedValue = boost::apply_visitor(packer, opt.get());
 

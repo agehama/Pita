@@ -62,6 +62,14 @@ namespace cgl
 				Packed(rhs, context), context.m_weakThis.lock()), context);
 		}
 
+		std::cout << "lhs: \n";
+		printVal2(lhs, nullptr, std::cout);
+		std::cout << std::endl;
+
+		std::cout << "rhs: \n";
+		printVal2(rhs, nullptr, std::cout);
+		std::cout << std::endl;
+
 		CGL_Error("不正な式です");
 		return 0;
 	}
@@ -419,6 +427,14 @@ namespace cgl
 			Eigen::Vector2d v = AsVec2(rhs, env) * AsDouble(lhs);
 			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
 		}
+
+		std::cout << "lhs: \n";
+		printVal2(lhs, nullptr, std::cout);
+		std::cout << std::endl;
+
+		std::cout << "rhs: \n";
+		printVal2(rhs, nullptr, std::cout);
+		std::cout << std::endl;
 
 		CGL_Error("不正な式です");
 		return 0;

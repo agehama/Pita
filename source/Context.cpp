@@ -2155,7 +2155,21 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
+			/*Printer printer(pEnv, std::cout, 0);
+			{
+				std::cout << "Touch lhs:\n";
+				Expr expr = LRValue(arguments[0]);
+				boost::apply_visitor(printer, expr);
+				std::cout << std::endl;
+			}
+			{
+				std::cout << "Touch rhs:\n";
+				Expr expr = LRValue(arguments[1]);
+				boost::apply_visitor(printer, expr);
+				std::cout << std::endl;
+			}*/
+
+			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *pEnv), Packed(pEnv->expand(arguments[1], info), *pEnv), pEnv);
 		},
 			false
 			);
@@ -3143,5 +3157,28 @@ namespace cgl
 		}
 
 		return "(unknown)";
+	}
+
+	std::shared_ptr<Context> Context::cloneContext()
+	{
+		std::shared_ptr<Context> inst = Context::Make();
+		inst->currentRecords = currentRecords;
+		inst->temporaryRecord = temporaryRecord;
+		inst->m_functions = m_functions;
+		inst->m_plateausFunctions = m_plateausFunctions;
+		inst->m_refAddressMap = m_refAddressMap;
+		inst->m_addressRefMap = m_addressRefMap;
+		inst->m_values = m_values.clone();
+		inst->m_localEnvStack = m_localEnvStack;
+		inst->m_referenceID = m_referenceID;
+		inst->m_lastGCValueSize = m_lastGCValueSize;
+		inst->m_automaticExtendMode = m_automaticExtendMode;
+		inst->m_automaticGC = m_automaticGC;
+		inst->m_solveTimeLimit = m_solveTimeLimit;
+		inst->m_dist = m_dist;
+		inst->m_random = m_random;
+		inst->m_weakThis = inst;
+
+		return inst;
 	}
 }

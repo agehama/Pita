@@ -13,34 +13,42 @@ digraph constraint_flow_graph {
     fontsize = 12,
   ];
 
-  node0 [label = "{<ptop>funcB = 0|Branch 5 \< EitherReference(a \| Address(3081))|{<ptrue>true|<pfalse>false}}"];
-  node1 [label = "{<ptop>Phi($1, $2)|Branch 10 \< EitherReference(a \| Address(3081))|{<ptrue>true|<pfalse>false}}"];
-  node2 [label = "{<ptop>$1 = 
-    funcB = 
-        (x -\> 
-                    x ^ 2 + 2
+  node0 [label = "{<ptop>Branch Touch(((    cosT: Cos(Reference(144))\n
+    sinT: Sin(Reference(144))\n
+    \{\n
+        x: Reference(142).x + cosT * Reference(143).x * polygon[2].x - sinT * Reference(143).y * polygon[2].y\n
+        y: Reference(142).y + sinT * Reference(143).x * polygon[2].x + cosT * Reference(143).y * polygon[2].y\n
+    \}\n
+)), ((    cosT: Cos(Reference(153))\n
+    sinT: Sin(Reference(153))\n
+    \{\n
+        x: Reference(151).x + cosT * Reference(152).x * polygon[0].x - sinT * Reference(152).y * polygon[0].y\n
+        y: Reference(151).y + sinT * Reference(152).x * polygon[0].x + cosT * Reference(152).y * polygon[0].y\n
+    \}\n
+))) & Touch(((    cosT: Cos(Reference(156))\n
+    sinT: Sin(Reference(156))\n
+    \{\n
+        x: Reference(154).x + cosT * Reference(155).x * polygon[2].x - sinT * Reference(155).y * polygon[2].y\n
+        y: Reference(154).y + sinT * Reference(155).x * polygon[2].x + cosT * Reference(155).y * polygon[2].y\n
+    \}\n
+)), ((    cosT: Cos(Reference(165))\n
+    sinT: Sin(Reference(165))\n
+    \{\n
+        x: Reference(163).x + cosT * Reference(164).x * polygon[0].x - sinT * Reference(164).y * polygon[0].y\n
+        y: Reference(163).y + sinT * Reference(164).x * polygon[0].x + cosT * Reference(164).y * polygon[0].y\n
+    \}\n
+))) & Touch(((    cosT: Cos(Reference(168))\n
+    sinT: Sin(Reference(168))\n
+    \{\n
+        x: Reference(166).x + cosT * Reference(167).x * polygon[2].x - sinT * Reference(167).y * polygon[2].y\n
+        y: Reference(166).y + sinT * Reference(167).x * polygon[2].x + cosT * Reference(167).y * polygon[2].y\n
+    \}\n
+)), ((    cosT: Cos(Reference(177))\n
+    sinT: Sin(Reference(177))\n
+    \{\n
+        x: Reference(175).x + cosT * Reference(176).x * polygon[0].x - sinT * Reference(176).y * polygon[0].y\n
+        y: Reference(175).y + sinT * Reference(176).x * polygon[0].x + cosT * Reference(176).y * polygon[0].y\n
+    \}\n
+)))|{<ptrue>true|<pfalse>false}}"];
 
-        )
-
-|Branch true|{<ptrue>true|<pfalse>false}}"];
-  node3 [label = "{<ptop>$2 = 
-    funcB = 
-        (x -\> 
-                    x + 200
-
-        )
-
-|Branch true|{<ptrue>true|<pfalse>false}}"];
-  node4 [label = "{<ptop>Branch Phi($3, $4) == 150|{<ptrue>true|<pfalse>false}}"];
-  node5 [label = "{<ptop>$3 = EitherReference(funcA \| Address(3080))(EitherReference(a \| Address(3081)))|Branch true|{<ptrue>true|<pfalse>false}}"];
-  node6 [label = "{<ptop>$4 = funcB(EitherReference(a \| Address(3081)))|Branch true|{<ptrue>true|<pfalse>false}}"];
-
-  node0:ptrue -> node2:ptop;
-  node0:pfalse -> node3:ptop;
-  node1:ptrue -> node5:ptop;
-  node1:pfalse -> node6:ptop;
-  node2:ptrue -> node1:ptop;
-  node3:ptrue -> node1:ptop;
-  node5:ptrue -> node4:ptop;
-  node6:ptrue -> node4:ptop;
 }

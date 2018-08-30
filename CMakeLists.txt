@@ -41,8 +41,8 @@ if(OPENMP_FOUND)
 endif()
 
 if(MSVC)
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /source-charset:utf-8 /bigobj")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /source-charset:utf-8 /bigobj")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /source-charset:utf-8 /bigobj /Zi /DEBUG")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /source-charset:utf-8 /bigobj /Zi /DEBUG")
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -106,7 +106,7 @@ include_directories(external/stb)
 
 include_directories(include)
 
-add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/Geometry.cpp)
+add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Graph.cpp source/Evaluator.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/Geometry.cpp)
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 else()

@@ -7,6 +7,7 @@
 #include <Pita/Printer.hpp>
 #include <Pita/IntrinsicGeometricFunctions.hpp>
 #include <Pita/Program.hpp>
+#include <Pita/Graph.hpp>
 
 extern bool isDebugMode;
 namespace cgl
@@ -176,363 +177,6 @@ namespace cgl
 		return Return(boost::apply_visitor(*this, node.expr)).setLocation(node);
 	}
 
-	struct EdgeInfo
-	{
-		size_t toNodeIndex;
-		bool isTrueBranch;
-		EdgeInfo() = default;
-		EdgeInfo(size_t toNodeIndex, bool isTrueBranch) :
-			toNodeIndex(toNodeIndex),
-			isTrueBranch(isTrueBranch)
-		{}
-	};
-
-	class Graph
-	{
-	public:
-		Graph() :
-			m_blockNodes(1),
-			m_edgeIndices(1)
-		{}
-
-		size_t addNode()
-		{
-			m_blockNodes.emplace_back();
-			m_edgeIndices.emplace_back();
-			return m_blockNodes.size() - 1;
-		}
-
-		size_t addNode(const Lines& lines)
-		{
-			m_blockNodes.push_back(lines);
-			m_edgeIndices.emplace_back();
-			return m_blockNodes.size() - 1;
-		}
-
-		Lines & node(size_t nodeIndex)
-		{
-			return m_blockNodes[nodeIndex];
-		}
-
-		const Lines & node(size_t nodeIndex)const
-		{
-			return m_blockNodes[nodeIndex];
-		}
-
-		void addEdge(size_t fromNode, size_t toNode, bool isTrue)
-		{
-			m_edgeIndices[fromNode].emplace_back(toNode, isTrue);
-		}
-
-		void outputGraphViz(std::ostream& os)const
-		{
-			os << R"(digraph constraint_flow_graph {
-  graph [
-    charset = "UTF-8",
-    bgcolor = "#EDEDED",
-    rankdir = TB,
-    nodesep = 1.1,
-    ranksep = 1.05
-  ];
-
-  node [
-    shape = record,
-    fontname = "Migu 1M",
-    fontsize = 12,
-  ];)";
-			os << "\n\n";
-
-			for (size_t i = 0; i < m_blockNodes.size(); ++i)
-			{
-				os << "  node" << i << R"( [label = "{<ptop>)";
-				const auto& lines = m_blockNodes[i];
-
-				for (size_t exprIndex = 0; exprIndex < lines.exprs.size(); ++exprIndex)
-				{
-					std::stringstream ss;
-					Printer2 printer(nullptr, ss);
-					boost::apply_visitor(printer, lines.exprs[exprIndex]);
-
-					if (exprIndex + 1 != lines.exprs.size())
-					{
-						os << escaped(ss.str());
-						os << "|";
-					}
-					else
-					{
-						os << "Branch " << escaped(ss.str());
-					}
-				}
-
-				os << R"(|{<ptrue>true|<pfalse>false})";
-
-				os << R"(}"];)" << "\n";
-			}
-
-			os << "\n";
-
-			for (size_t fromNodeIndex = 0; fromNodeIndex < m_edgeIndices.size(); ++fromNodeIndex)
-			{
-				for (const auto& edge : m_edgeIndices[fromNodeIndex])
-				{
-					os << "  node" << fromNodeIndex << ":" << (edge.isTrueBranch ? "ptrue" : "pfalse");
-					os << " -> node" << edge.toNodeIndex << ":ptop;\n";
-				}
-			}
-
-			os << "}\n";
-		}
-
-		static Identifier NewVariable()
-		{
-			static size_t auxiliaryVariables = 0;
-			++auxiliaryVariables;
-			return Identifier(std::string("$") + ToS(auxiliaryVariables));
-		}
-
-	private:
-		std::string escaped(const std::string& str)const
-		{
-			std::stringstream ss;
-			for (char c : str)
-			{
-				switch (c)
-				{
-				case '|':
-					ss << "\\|";
-					break;
-				case '<':
-					ss << "\\<";
-					break;
-				case '>':
-					ss << "\\>";
-					break;
-				default:
-					ss << c;
-					break;
-				}
-			}
-
-			return ss.str();
-		}
-
-		std::vector<Lines> m_blockNodes;
-		std::vector<std::vector<EdgeInfo>> m_edgeIndices;
-	};
-
-	class GraphMaker : public boost::static_visitor<boost::optional<Expr>>
-	{
-	public:
-		GraphMaker(const Context& context, Graph& graph, size_t currentNodeIndex) :
-			context(context),
-			graph(graph),
-			currentNodeIndex(currentNodeIndex)
-		{}
-
-		const Context& context;
-		Graph& graph;
-		size_t currentNodeIndex;
-
-		boost::optional<Expr> operator()(const LRValue& node)
-		{
-			if (node.isRValue())
-			{
-				return node;
-			}
-			//図形などの場合は評価される式を展開する
-			return node;
-		}
-
-		boost::optional<Expr> operator()(const Identifier& node) { return node; }
-
-		boost::optional<Expr> operator()(const UnaryExpr& node)
-		{
-			auto expr = boost::apply_visitor(*this, node.lhs);
-			if (!expr)
-			{
-				CGL_Error("エラー");
-			}
-
-			return UnaryExpr(expr.get(), node.op);
-		}
-
-		boost::optional<Expr> operator()(const BinaryExpr& node)
-		{
-			auto expr1 = boost::apply_visitor(*this, node.lhs);
-			auto expr2 = boost::apply_visitor(*this, node.rhs);
-			if (!expr1 || !expr2)
-			{
-				CGL_Error("エラー");
-			}
-
-			return BinaryExpr(expr1.get(), expr2.get(), node.op);
-		}
-
-		boost::optional<Expr> operator()(const Lines& node)
-		{
-			for (size_t i = 0; i + 1 < node.exprs.size(); ++i)
-			{
-				const auto& expr = node.exprs[i];
-				if (auto resultExpr = boost::apply_visitor(*this, expr))
-				{
-					graph.node(currentNodeIndex).add(resultExpr.get());
-				}
-			}
-
-			if (!node.exprs.empty())
-			{
-				return boost::apply_visitor(*this, node.exprs.back());
-			}
-
-			return boost::none;
-		}
-
-		boost::optional<Expr> operator()(const DefFunc& node)
-		{
-			//boost::apply_visitor(*this, node.expr);
-			return node;
-		}
-
-		boost::optional<Expr> operator()(const If& node)
-		{
-			if (auto expr = boost::apply_visitor(*this, node.cond_expr))
-			{
-				graph.node(currentNodeIndex).add(expr.get());
-			}
-
-			const size_t nextNodeIndex = graph.addNode();
-
-			std::vector<Identifier> results;
-			{
-				const size_t thenNodeIndex = graph.addNode();
-				graph.addEdge(currentNodeIndex, thenNodeIndex, true);
-
-				GraphMaker child(context, graph, thenNodeIndex);
-				if (auto thenResultExpr = boost::apply_visitor(child, node.then_expr))
-				{
-					results.push_back(Graph::NewVariable());
-					graph.node(thenNodeIndex).add(BinaryExpr(results.back(), thenResultExpr.get(), BinaryOp::Assign));
-				}
-
-				//then式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
-				graph.node(thenNodeIndex).add(LRValue(true));
-				graph.addEdge(thenNodeIndex, nextNodeIndex, true);
-			}
-
-			if (node.else_expr)
-			{
-				const size_t elseNodeIndex = graph.addNode();
-				graph.addEdge(currentNodeIndex, elseNodeIndex, false);
-
-				GraphMaker child(context, graph, elseNodeIndex);
-				if (auto elseResultExpr = boost::apply_visitor(child, node.else_expr.get()))
-				{
-					results.push_back(Graph::NewVariable());
-					graph.node(elseNodeIndex).add(BinaryExpr(results.back(), elseResultExpr.get(), BinaryOp::Assign));
-				}
-
-				//else式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
-				graph.node(elseNodeIndex).add(LRValue(true));
-				graph.addEdge(elseNodeIndex, nextNodeIndex, true);
-			}
-			else
-			{
-				//else式がない場合は、condが満たされないと自動で次のノードへ行く
-				graph.addEdge(currentNodeIndex, nextNodeIndex, false);
-			}
-
-			currentNodeIndex = nextNodeIndex;
-
-			if (results.empty())
-			{
-				return boost::none;
-			}
-			else if (results.size() == 1)
-			{
-				return results.front();
-			}
-			else
-			{
-				std::stringstream ss;
-				ss << "Phi(";
-				for (size_t i = 0; i + 1 < results.size(); ++i)
-				{
-					ss << results[i].toString() << ", ";
-				}
-				ss << results.back().toString() << ")";
-
-				return Identifier(ss.str());
-			}
-		}
-
-		boost::optional<Expr> operator()(const For& node)
-		{
-			/*boost::apply_visitor(*this, node.rangeStart);
-			boost::apply_visitor(*this, node.rangeEnd);
-			boost::apply_visitor(*this, node.doExpr);*/
-			return node;
-		}
-
-		boost::optional<Expr> operator()(const ListConstractor& node)
-		{
-			/*for (const auto& expr : node.data)
-			{
-			boost::apply_visitor(*this, expr);
-			}*/
-			return node;
-		}
-
-		boost::optional<Expr> operator()(const KeyExpr& node)
-		{
-			//boost::apply_visitor(*this, node.expr);
-			return node;
-		}
-
-		boost::optional<Expr> operator()(const RecordConstractor& node)
-		{
-			/*for (const auto& expr : node.exprs)
-			{
-			boost::apply_visitor(*this, expr);
-			}*/
-			return node;
-		}
-
-		boost::optional<Expr> operator()(const Accessor& node)
-		{
-			node;
-			return node;
-		}
-
-		boost::optional<Expr> operator()(const DeclSat& node) { CGL_Error("未対応"); }
-		boost::optional<Expr> operator()(const DeclFree& node) { CGL_Error("未対応"); }
-		boost::optional<Expr> operator()(const Import& node) { CGL_Error("未対応"); }
-		boost::optional<Expr> operator()(const Range& node) { CGL_Error("未対応"); }
-		boost::optional<Expr> operator()(const Return& node) { CGL_Error("未対応"); }
-	};
-
-	void inline MakeGraph(const Context& context, const Expr& constraintExpr, std::ostream& os)
-	{
-		Graph graph;
-		GraphMaker graphMaker(context, graph, 0);
-
-		std::cout << "constraint expr:" << std::endl;
-		Printer printer(nullptr, std::cout);
-		boost::apply_visitor(printer, constraintExpr);
-
-		std::cout << "build graph:" << std::endl;
-
-		if (auto resultExpr = boost::apply_visitor(graphMaker, constraintExpr))
-		{
-			graph.node(graphMaker.currentNodeIndex).add(resultExpr.get());
-		}
-
-		std::cout << "output graphviz:" << std::endl;
-
-		graph.outputGraphViz(os);
-
-		std::cout << "completed MakeGraph:" << std::endl;
-	}
-
 	class NameReplacer : public ExprTransformer
 	{
 	public:
@@ -580,21 +224,147 @@ namespace cgl
 	class InlineExpander : public ExprTransformer
 	{
 	public:
-		InlineExpander(std::shared_ptr<Context> pContext) :
-			pContext(pContext)
+		InlineExpander(std::unordered_map<std::string, size_t>& identifierCounts,
+			std::shared_ptr<Context> pContext,
+			const std::unordered_map<std::string, std::string>& renameTable,
+			int indent) :
+			identifierCounts(identifierCounts),
+			pContext(pContext),
+			renameTable(renameTable),
+			m_indent(indent)
 		{}
 
+		//全体で共通
+		std::unordered_map<std::string, size_t>& identifierCounts;
+
+		//パスごとに異なる
 		std::shared_ptr<Context> pContext;
 
+		//呼び出し階層ごとに異なる
+		std::unordered_map<std::string, std::string> renameTable;
+		int m_indent;
+
+		static bool IsVersioned(const Identifier& identifier)
+		{
+			const auto& str = identifier.toString();
+			return !str.empty() && str[0] == '$';
+		}
+
+		//n番目のname => $(n)name
+		//Identifier GetVersioned(const Identifier& identifier)
+		//{
+		//	//入力に既にバージョンが付いていればそのまま返す
+		//	if (IsVersioned(identifier))
+		//	{
+		//		return identifier;
+		//	}
+
+		//	//現在のローカル環境で既にリネームされたものならそれを返す
+		//	auto it = renameTable.find(identifier);
+		//	if (it != renameTable.end())
+		//	{
+		//		return Identifier(it->second);
+		//	}
+
+		//	const std::string& original = identifier.toString();
+
+		//	std::stringstream ss;
+		//	ss << "$(" << identifierCounts[original] << ")" << original;
+		//	const std::string renamed = ss.str();
+
+		//	renameTable[original] = renamed;
+		//	++identifierCounts[original];
+
+		//	return Identifier(renamed);
+		//}
+
+		Identifier NewVersioned(const Identifier& identifier)
+		{
+			const std::string& original = identifier.toString();
+
+			std::stringstream ss;
+			ss << "$(" << identifierCounts[original] << ")" << original;
+			const std::string renamed = ss.str();
+
+			renameTable[original] = renamed;
+			++identifierCounts[original];
+
+			return Identifier(renamed);
+		}
+
+		std::string indent()const
+		{
+			const int tabSize = 4;
+			std::string str;
+			for (int i = 0; i < m_indent*tabSize; ++i)
+			{
+				str += ' ';
+			}
+			return str;
+		}
+
+		//TODO: EitherReferenceのlocalはここでrenameすべき？
 		Expr operator()(const LRValue& node)override { return ExprTransformer::operator()(node); }
 
-		Expr operator()(const Identifier& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Identifier& node)override
+		{
+			auto it = renameTable.find(node.toString());
+			if (it == renameTable.end())
+			{
+				CGL_ErrorNode(node, msgs::Undefined(node));
+			}
+			return Identifier(it->second).setLocation(node);
+		}
 
-		Expr operator()(const UnaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const UnaryExpr& node)override
+		{
+			return ExprTransformer::operator()(node);
+		}
 
-		Expr operator()(const BinaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const BinaryExpr& node)override
+		{
+			if (node.op == BinaryOp::Assign)
+			{
+				if (auto opt = AsOpt<Identifier>(node.lhs))
+				{
+					return BinaryExpr(
+						NewVersioned(opt.get()),
+						boost::apply_visitor(*this, node.rhs),
+						node.op).setLocation(node);
+					Eval eval;
+					//TODO: Evalはどちらの識別子を使うべきか？やりやすいほう
+				}
+				else
+				{
+					Eval eval(pContext);
+					Expr expr = node;
+					boost::apply_visitor(eval, expr);
+				}
+			}
 
-		Expr operator()(const Lines& node)override { return ExprTransformer::operator()(node); }
+			return ExprTransformer::operator()(node);
+		}
+
+		Expr operator()(const Lines& node)override
+		{
+			/*Eval eval(pContext);
+			Expr expr = node;
+			boost::apply_visitor(eval, expr);
+
+			return ExprTransformer::operator()(node);*/
+
+			Eval eval;
+			//TODO: Eval
+
+			InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+			Lines result;
+			for (size_t i = 0; i < node.size(); ++i)
+			{
+				result.add(boost::apply_visitor(child, node.exprs[i]));
+			}
+			return result.setLocation(node);
+		}
 
 		Expr operator()(const DefFunc& node)override { return ExprTransformer::operator()(node); }
 
@@ -605,26 +375,32 @@ namespace cgl
 			//else式がない場合は分岐は必要ない
 			if (!node.else_expr)
 			{
-				result.then_expr = boost::apply_visitor(*this, node.then_expr);
+				InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+				result.then_expr = boost::apply_visitor(child, node.then_expr);
 				return result.setLocation(node);
 			}
 			else
 			{
-				//A: ここでContextを保存する
+				//最初にContextを保存する
+				std::shared_ptr<Context> originalContext = pContext;
 
-				result.then_expr = boost::apply_visitor(*this, node.then_expr);
+				{
+					//保存したContextのクローンを作る
+					pContext = originalContext->cloneContext();
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+					result.then_expr = boost::apply_visitor(child, node.then_expr);
+				}
 
-				//B: ここでContextを保存する
+				{
+					//再び保存したContextのクローンを作る
+					pContext = originalContext->cloneContext();
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+					result.else_expr = boost::apply_visitor(child, node.else_expr.get());
+				}
 
-				//AのContextを復元する
-
-				result.else_expr = boost::apply_visitor(*this, node.else_expr.get());
-
-				//C: ここでContextを保存する
-
-				//これ以降の変数表はBとCを合成したものとする
+				//最初のContextを復元する
+				pContext = originalContext;
 			}
-			
 
 			return result.setLocation(node);
 		}
@@ -633,7 +409,17 @@ namespace cgl
 
 		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
 
-		Expr operator()(const KeyExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const KeyExpr& node)override
+		{
+			return KeyExpr(
+				NewVersioned(node.name),
+				boost::apply_visitor(*this, node.expr)).setLocation(node);
+			/*Eval eval(pContext);
+			Expr expr = node;
+			boost::apply_visitor(eval, expr);
+
+			return ExprTransformer::operator()(node);*/
+		}
 
 		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
 
@@ -688,6 +474,16 @@ namespace cgl
 				}
 			}
 
+			{
+				std::cout <<indent() << "====== Expansion Accessor HeadValue ======" << std::endl;
+				Printer printer(pContext, std::cout, 0);
+
+				Expr expr = headValue;
+				boost::apply_visitor(printer, expr);
+				std::cout << std::endl;
+			}
+
+			//InlineExpander child(pContext, m_indent + 1);
 			for(size_t accessIndex = 0; accessIndex < accessor.accesses.size(); ++accessIndex)
 			{
 				const auto& access = accessor.accesses[accessIndex];
@@ -702,16 +498,22 @@ namespace cgl
 
 				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
+					std::cout << indent() << "====== Expansion Accessor List(begin) ======" << std::endl;
+
 					if (!IsType<List>(objRef))
 					{
 						CGL_ErrorNode(accessor, "リストでない値に対してリストアクセスを行おうとしました。");
 					}
 
 					{
-						Expr replacedIndex = boost::apply_visitor(*this, listAccessOpt.get().index);
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+						Expr replacedIndex = boost::apply_visitor(child, listAccessOpt.get().index);
 						ListAccess replacedListAccess;
 						replacedListAccess.isArbitrary = listAccessOpt.get().isArbitrary;
-						replacedListAccess.index = replacedIndex;
+						replacedListAccess.index = boost::apply_visitor(child, replacedIndex);
+						
+						なぜ二回visitorにかける必要があるか？
+
 
 						newAccessor.accesses.push_back(replacedListAccess);
 					}
@@ -747,9 +549,13 @@ namespace cgl
 					{
 						CGL_ErrorNode(accessor, "リストアクセスのインデックスが整数値ではありませんでした。");
 					}
+
+					std::cout << indent() << "====== Expansion Accessor List(end) ======" << std::endl;
 				}
 				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
 				{
+					std::cout << indent() << "====== Expansion Accessor Record(begin) ======" << std::endl;
+
 					if (!IsType<Record>(objRef))
 					{
 						CGL_ErrorNode(accessor, "レコードでない値に対してレコードアクセスを行おうとしました。");
@@ -768,9 +574,12 @@ namespace cgl
 					}
 
 					address = it->second;
+					std::cout << indent() << "====== Expansion Accessor Record(end) ======" << std::endl;
 				}
 				else if (auto recordAccessOpt = AsOpt<FunctionAccess>(access))
 				{
+					std::cout << indent() << "====== Expansion Accessor Function(begin) ======" << std::endl;
+
 					if (!IsType<FuncVal>(objRef))
 					{
 						CGL_ErrorNode(accessor, "関数でない値に対して関数呼び出しを行おうとしました。");
@@ -780,33 +589,92 @@ namespace cgl
 
 					const FuncVal& function = As<FuncVal>(objRef);
 
-					if (function.arguments.size() != funcAccess.actualArguments.size())
+					//引数を展開する
+					std::vector<Expr> replacedArguments;
+					std::unordered_map<std::string, Expr> replaceMap;
 					{
-						CGL_ErrorNode(accessor, "仮引数と実引数の数が一致しませんでした。");
-					}
+						std::cout << indent() << "====== Expansion Function Arguments ======" << std::endl;
+						Printer printer(pContext, std::cout, 0);
 
-					//組み込み関数の場合は展開はしないが、これ以降でまだ展開できる部分があるかもしれないので、関数を呼んで処理を続行する
-					if (!function.builtinFuncAddress)
-					{
-						std::unordered_map<std::string, Expr> replaceMap;
-						for (size_t argIndex = 0; argIndex < function.arguments.size(); ++argIndex)
+						for (const auto& expr : funcAccess.actualArguments)
 						{
-							replaceMap.emplace(function.arguments[argIndex].toString(), funcAccess.actualArguments[argIndex]);
+							std::cout << indent() << "Argument: \n";
+							boost::apply_visitor(printer, expr);
+							std::cout << std::endl;
+							replacedArguments.push_back(boost::apply_visitor(child, expr));
 						}
 
-						Expr expandedFunction = ReplaceName(function.expr, replaceMap);
+						for (size_t argIndex = 0; argIndex < function.arguments.size(); ++argIndex)
+						{
+							replaceMap.emplace(function.arguments[argIndex].toString(), replacedArguments[argIndex]);
+						}
+					}
 
-						//関数が持っていたスコープはそのまま残すためにLineで囲む
-						Lines lines;
-						lines.add(expandedFunction);
+					//組み込み関数の場合は、展開した引数をアクセッサの引数に入れておく
+					if (function.builtinFuncAddress)
+					{
+						FunctionAccess newFunctionAccess = funcAccess;
+						newFunctionAccess.actualArguments.clear();
 
-						newAccessor.head = lines;
-						//newAccessor.accesses.insert(newAccessor.accesses.end(), accessor.accesses.begin() + accessIndex + 1, accessor.accesses.end());
+						//置き換えた式自体がまた関数呼び出しを含む可能性があるので再帰的に展開する
+						for (size_t i = 0; i < replacedArguments.size(); ++i)
+						{
+							const Expr expandedArgument = boost::apply_visitor(child, replacedArguments[i]);
+							newFunctionAccess.actualArguments.push_back(expandedArgument);
+						}
+
+						Access newAccess = newFunctionAccess;
+						newAccessor.accesses.push_back(newAccess);
+					}
+					//Pita関数の場合は、展開した引数を直接関数の定義の該当箇所に挿入する
+					else
+					{
+						if (function.arguments.size() != funcAccess.actualArguments.size())
+						{
+							std::stringstream ss;
+							ss << "(仮引数: " << function.arguments.size() << " | 実引数: " << funcAccess.actualArguments.size() << ")";
+							CGL_ErrorNode(accessor, "仮引数と実引数の数が一致しませんでした。" + ss.str());
+						}
+
+						Expr expandedFunction;
+						{
+							//関数は展開するとLines(expr1,expr2,...)という形になる
+							expandedFunction = ReplaceName(function.expr, replaceMap);
+							if (!IsType<Lines>(expandedFunction))
+							{
+								CGL_ErrorNode(accessor, "関数を展開した結果の型がLinesではありませんでした。");
+							}
+
+							//普通に展開していくと、どんどんLines(Lines(...))というようにネストが増えていく
+							//したがって、Linesの中に単一のLinesがいる場合は取り出すようにする
+							Lines lines = As<Lines>(expandedFunction);
+							while (lines.exprs.size() == 1 && IsType<Lines>(lines.exprs.front()))
+							{
+								expandedFunction = lines.exprs.front();
+								lines = As<Lines>(expandedFunction);
+							}
+						}
+
+						//置き換えた式自体がまた関数呼び出しを含む可能性があるので再帰的に展開する
+						{
+							std::cout << indent() << "====== Expanded Function ======" << std::endl;
+							Printer2 printer2(pContext, std::cout, 0);
+							boost::apply_visitor(printer2, expandedFunction);
+							std::cout << std::endl;
+						}
+
+						std::cout << indent() << "====== Expanded Function Arguments Recursively(begin) ======" << std::endl;
+						expandedFunction = boost::apply_visitor(child, expandedFunction);
+						std::cout << indent() << "====== Expanded Function Arguments Recursively(end) ======" << std::endl;
+
+						newAccessor.head = expandedFunction;
+						newAccessor.accesses.clear();
 
 						//Input  => record1.func1(arg1).record2.[list1]
 						//Output => (... arg1 ...).record2.[list1]
 					}
-					
+
+					std::cout << indent() << "====== Expansion Function Eval(begin) ======" << std::endl;
 					std::vector<Address> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
@@ -816,9 +684,14 @@ namespace cgl
 
 					const Val returnedValue = pContext->expand(evaluator.callFunction(accessor, function, args), accessor);
 					address = pContext->makeTemporaryValue(returnedValue);
+					std::cout << indent() << "====== Expansion Function Eval(end) ======" << std::endl;
+
+					std::cout << indent() << "====== Expansion Accessor Function(end) ======" << std::endl;
 				}
 				else
 				{
+					std::cout << indent() << "====== Expansion Accessor Inherit(begin) ======" << std::endl;
+
 					if (!IsType<Record>(objRef))
 					{
 						CGL_ErrorNode(accessor, "レコードでない値に対して継承式を適用しようとしました。");
@@ -832,14 +705,11 @@ namespace cgl
 					for (const auto& keyval : record.values)
 					{
 						Expr expr = LRValue(keyval.second);
-						recordConstructor.adds(Identifier(keyval.first), boost::apply_visitor(*this, expr));
+
+						recordConstructor.adds(Identifier(keyval.first), boost::apply_visitor(child, expr));
 					}
 
-					//先頭が処理済みであれば次へ行く
-					//if (accessIndex == 0 && IsType<RecordConstractor>(accessor.head))
-				
 					//今見ているレコードがアクセッサの先頭要素かどうかにかかわらず、勝手に先頭に置き換える
-					
 					//func1().record{scale: ...}
 					//のようなレコードも全て展開して、{ ... }{scale: ...}　このようになるが、これで問題になるケースは少ないはず。
 					newAccessor.head = recordConstructor;
@@ -847,13 +717,15 @@ namespace cgl
 
 					newAccessor.accesses.push_back(inheritAccess);
 
-					const Record& record = As<Record>(objRef);
 					const Val returnedValue = pContext->expand(evaluator.inheritRecord(accessor, record, inheritAccess.adder), accessor);
 					address = pContext->makeTemporaryValue(returnedValue);
+
+					std::cout << indent() << "====== Expansion Accessor Inherit(end) ======" << std::endl;
 				}
 			}
 
-			return accessor;
+			std::cout << indent() << "====== Return Expansion Accessor ======" << std::endl;
+			return newAccessor;
 		}
 
 		Expr operator()(const DeclSat& node) { CGL_Error("未対応"); }
@@ -862,6 +734,13 @@ namespace cgl
 		Expr operator()(const Range& node) { CGL_Error("未対応"); }
 		Expr operator()(const Return& node) { CGL_Error("未対応"); }
 	};
+
+	inline Expr InlineExpand(Expr expr, std::shared_ptr<Context> pContext)
+	{
+		auto contextClone = pContext->cloneContext();
+		InlineExpander expander(contextClone, 0);
+		return boost::apply_visitor(expander, expr);
+	}
 }
 
 extern int constraintViolationCount;
@@ -2850,9 +2729,24 @@ namespace cgl
 		{
 			if (isDebugMode && record.constraint)
 			{
-				std::ofstream graphFile;
-				graphFile.open("constraint_CFG.dot");
-				MakeGraph(*pEnv, record.constraint.get(), graphFile);
+				{
+					std::cout << "====== Before expansion ======" << std::endl;
+					Printer2 printer(pEnv, std::cout, 0);
+					boost::apply_visitor(printer, record.constraint.get());
+					std::cout << std::endl;
+				}
+
+				{
+					std::cout << "====== After expansion ======" << std::endl;
+					Printer2 printer(pEnv, std::cout, 0);
+					auto expanded = InlineExpand(record.constraint.get(), pEnv);
+					boost::apply_visitor(printer, expanded);
+					std::cout << std::endl;
+
+					std::ofstream graphFile;
+					graphFile.open("constraint_CFG.dot");
+					MakeControlFlowGraph(*pEnv, expanded, graphFile);
+				}
 			}
 
 			isInConstraint = true;

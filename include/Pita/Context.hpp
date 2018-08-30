@@ -138,6 +138,15 @@ namespace cgl
 			archive(m_values, m_ID);
 		}
 
+		//変数表の分岐を作るためのコピー
+		Values clone()const
+		{
+			Values inst;
+			inst.m_values = m_values;
+			inst.m_ID = m_ID;
+			return inst;
+		}
+
 	private:
 		Address newAddress()
 		{
@@ -165,9 +174,10 @@ namespace cgl
 	class Context
 	{
 	public:
+		Context() = default;
+
 		using LocalContext = std::vector<Scope>;
 
-		//using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
 		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&, const LocationInfo& info)>;
 
 		Address makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
@@ -187,7 +197,6 @@ namespace cgl
 		{
 			m_localEnvStack.push_back(LocalContext());
 		}
-
 		void switchBackScope()
 		{
 			m_localEnvStack.pop_back();
@@ -199,17 +208,13 @@ namespace cgl
 		bool isPlateausBuiltInFunction(Address functionAddress);
 
 		const Val& expand(const LRValue& lrvalue, const LocationInfo& info)const;
-
 		Val& mutableExpand(LRValue& lrvalue, const LocationInfo& info);
-
 		boost::optional<const Val&> expandOpt(const LRValue& lrvalue)const;
-
 		boost::optional<Val&> mutableExpandOpt(LRValue& lrvalue);
 
 		Address evalReference(const Accessor& access);
 
 		std::vector<RegionVariable> expandReferences(Address address, const LocationInfo& info, RegionVariable::Attribute attribute = RegionVariable::Attribute::Other);
-
 		std::vector<RegionVariable> expandReferences2(const Accessor& access, const LocationInfo& info);
 
 		Reference bindReference(Address address);
@@ -224,12 +229,10 @@ namespace cgl
 		{
 			bindValueID(name, ref);
 		}
-
 		void bindNewValue(const std::string& name, const Val& value)
 		{
 			makeVariable(name, makeTemporaryValue(value));
 		}
-
 		void bindValueID(const std::string& name, const Address ID);
 
 		bool existsInCurrentScope(const std::string& name)const;
@@ -267,18 +270,15 @@ namespace cgl
 
 		void TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(Address address, const Val& newValue)
 		{
-			//m_values[address] = newValue;
 			m_values.bind(address, newValue);
 		}
 
 		//Accessorの示すリスト or レコードの持つアドレスを書き換える
 		void assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info);
-
 		//Referenceの示すアドレスを書き換える
 		void assignToReference(const Reference& accessor, const LRValue& newValue, const LocationInfo& info);
 
 		static std::shared_ptr<Context> Make();
-
 		static std::shared_ptr<Context> Make(const Context& other);
 
 		std::shared_ptr<Context> clone()
@@ -290,19 +290,11 @@ namespace cgl
 		//式の評価途中でGCは走らないようにするべきか？
 		Address makeTemporaryValue(const Val& value);
 
-		Context() = default;
-
 		Address findAddress(const std::string& name)const;
 
 		void garbageCollect(bool force = false);
 
-		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
-		std::vector<std::reference_wrapper<Record>> currentRecords;
-
-		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
-		boost::optional<Record&> temporaryRecord;
-
-		bool isAutomaticExtendMode()
+		bool isAutomaticExtendMode()const
 		{
 			return m_automaticExtendMode;
 		}
@@ -323,6 +315,14 @@ namespace cgl
 		}
 
 		std::string makeLabel(const Address& address)const;
+
+		std::shared_ptr<Context> cloneContext();
+
+		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
+		std::vector<std::reference_wrapper<Record>> currentRecords;
+
+		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
+		boost::optional<Record&> temporaryRecord;
 
 	private:
 		void initialize();

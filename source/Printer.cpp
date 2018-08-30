@@ -378,15 +378,19 @@ namespace cgl
 		{
 			if (node.isAddress())
 			{
-				os << indent() << node.toString() << std::endl;
-				/*if (pEnv)
+				if (pEnv)
 				{
-					os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.deref(*pEnv).get().toString() << ")" << std::endl;
+					auto opt = pEnv->expandOpt(node);
+					os << indent() << node.toString() << ": " << (opt ? "val" : "none") << std::endl;
+					if (opt)
+					{
+						printVal(opt.get(), pEnv, os, m_indent);
+					}
 				}
 				else
 				{
-					os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
-				}*/
+					os << indent() << node.toString() << std::endl;
+				}
 			}
 			else
 			{
@@ -689,9 +693,18 @@ namespace cgl
 
 	void Printer2::operator()(const LRValue& node)const
 	{
+		/*os << indent();*/
+
 		if (node.isLValue())
 		{
-			os << node.toString() << footer();
+			if (node.isEitherReference() && node.eitherReference().local)
+			{
+				os << node.eitherReference().local.get().toString() << footer();
+			}
+			else
+			{
+				os << node.toString() << footer();
+			}
 		}
 		else
 		{
@@ -705,7 +718,7 @@ namespace cgl
 	void Printer2::operator()(const Identifier& node)const
 	{
 		//os << indent() << "Identifier(" << static_cast<std::string>(node) << ")" << footer();
-		os << static_cast<std::string>(node);
+		os /*<< indent()*/ << static_cast<std::string>(node);
 	}
 
 	void Printer2::operator()(const Import& node)const
@@ -855,10 +868,11 @@ namespace cgl
 		{
 			std::stringstream ss;
 			boost::apply_visitor(Printer2(pEnv, ss, 0), statement.exprs.front());
-			os << indent() << ss.str() << footer();
+			os << indent() << "(" << ss.str() << ")" << footer();
 		}
 		else
 		{
+			os << indent() << "(" << footer();
 			for (const auto& expr : statement.exprs)
 			{
 				/*os << indent() << "(" << i << "): " << footer();
@@ -867,6 +881,7 @@ namespace cgl
 				//boost::apply_visitor(*this, expr);
 				boost::apply_visitor(Printer2(pEnv, os, m_indent + 1), expr);
 			}
+			os << indent() << ")" << footer();
 		}
 
 		//os << indent() << "Statement end" << footer();
@@ -973,7 +988,11 @@ namespace cgl
 
 	void Printer2::operator()(const KeyExpr& keyExpr)const
 	{
-		boost::apply_visitor(Printer2(pEnv, os, m_indent, static_cast<std::string>(keyExpr.name) + ": "), keyExpr.expr);
+		//boost::apply_visitor(Printer2(pEnv, os, m_indent, static_cast<std::string>(keyExpr.name) + ": "), keyExpr.expr);
+
+		os << indent() << keyExpr.name.toString() << ": ";
+		boost::apply_visitor(Printer2(pEnv, os, 0), keyExpr.expr);
+		os << footer();
 	}
 
 	void Printer2::operator()(const RecordConstractor& recordConstractor)const

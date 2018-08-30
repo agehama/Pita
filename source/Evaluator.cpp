@@ -577,7 +577,7 @@ namespace cgl
 	}
 
 	//Contextのクローンを作って評価しながら、全実行可能パスの解析を行う
-	class InlineExpander : public boost::static_visitor<Expr>
+	class InlineExpander : public ExprTransformer
 	{
 	public:
 		InlineExpander(std::shared_ptr<Context> pContext) :
@@ -585,147 +585,63 @@ namespace cgl
 		{}
 
 		std::shared_ptr<Context> pContext;
-		//std::vector<std::reference_wrapper<Expr>> expandedNodes;
 
-		Expr operator()(const LRValue& node) { return node; }
+		Expr operator()(const LRValue& node)override { return ExprTransformer::operator()(node); }
 
-		Expr operator()(const Identifier& node) { return node; }
+		Expr operator()(const Identifier& node)override { return ExprTransformer::operator()(node); }
 
-		Expr operator()(const UnaryExpr& node)
+		Expr operator()(const UnaryExpr& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const BinaryExpr& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const Lines& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const DefFunc& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const If& node)override
 		{
-			return boost::apply_visitor(*this, node.lhs);
+			If result(boost::apply_visitor(*this, node.cond_expr));
+
+			//else式がない場合は分岐は必要ない
+			if (!node.else_expr)
+			{
+				result.then_expr = boost::apply_visitor(*this, node.then_expr);
+				return result.setLocation(node);
+			}
+			else
+			{
+				//A: ここでContextを保存する
+
+				result.then_expr = boost::apply_visitor(*this, node.then_expr);
+
+				//B: ここでContextを保存する
+
+				//AのContextを復元する
+
+				result.else_expr = boost::apply_visitor(*this, node.else_expr.get());
+
+				//C: ここでContextを保存する
+
+				//これ以降の変数表はBとCを合成したものとする
+			}
+			
+
+			return result.setLocation(node);
 		}
 
-		Expr operator()(const BinaryExpr& node)
-		{
-			auto expr1 = boost::apply_visitor(*this, node.lhs);
-			auto expr2 = boost::apply_visitor(*this, node.rhs);
+		Expr operator()(const For& node)override { return ExprTransformer::operator()(node); }
 
-			return BinaryExpr(expr1, expr2, node.op);
-		}
+		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
 
-		Expr operator()(const Lines& node)
-		{
-			//for (size_t i = 0; i + 1 < node.exprs.size(); ++i)
-			//{
-			//	const auto& expr = node.exprs[i];
-			//	if (auto resultExpr = boost::apply_visitor(*this, expr))
-			//	{
-			//		graph.node(currentNodeIndex).add(resultExpr.get());
-			//	}
-			//}
+		Expr operator()(const KeyExpr& node)override { return ExprTransformer::operator()(node); }
 
-			//if (!node.exprs.empty())
-			//{
-			//	return boost::apply_visitor(*this, node.exprs.back());
-			//}
-
-			//return boost::none;
-		}
-
-		Expr operator()(const DefFunc& node)
-		{
-			//boost::apply_visitor(*this, node.expr);
-			return node;
-		}
-
-		Expr operator()(const If& node)
-		{
-			//if (auto expr = boost::apply_visitor(*this, node.cond_expr))
-			//{
-			//	graph.node(currentNodeIndex).add(expr.get());
-			//}
-
-			//const size_t nextNodeIndex = graph.addNode();
-
-			//std::vector<Identifier> results;
-			//{
-			//	const size_t thenNodeIndex = graph.addNode();
-			//	graph.addEdge(currentNodeIndex, thenNodeIndex, true);
-
-			//	GraphMaker child(context, graph, thenNodeIndex);
-			//	if (auto thenResultExpr = boost::apply_visitor(child, node.then_expr))
-			//	{
-			//		results.push_back(Graph::NewVariable());
-			//		graph.node(thenNodeIndex).add(BinaryExpr(results.back(), thenResultExpr.get(), BinaryOp::Assign));
-			//	}
-
-			//	//then式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
-			//	graph.node(thenNodeIndex).add(LRValue(true));
-			//	graph.addEdge(thenNodeIndex, nextNodeIndex, true);
-			//}
-
-			//if (node.else_expr)
-			//{
-			//	const size_t elseNodeIndex = graph.addNode();
-			//	graph.addEdge(currentNodeIndex, elseNodeIndex, false);
-
-			//	GraphMaker child(context, graph, elseNodeIndex);
-			//	if (auto elseResultExpr = boost::apply_visitor(child, node.else_expr.get()))
-			//	{
-			//		results.push_back(Graph::NewVariable());
-			//		graph.node(elseNodeIndex).add(BinaryExpr(results.back(), elseResultExpr.get(), BinaryOp::Assign));
-			//	}
-
-			//	//else式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
-			//	graph.node(elseNodeIndex).add(LRValue(true));
-			//	graph.addEdge(elseNodeIndex, nextNodeIndex, true);
-			//}
-			//else
-			//{
-			//	//else式がない場合は、condが満たされないと自動で次のノードへ行く
-			//	graph.addEdge(currentNodeIndex, nextNodeIndex, false);
-			//}
-
-			//currentNodeIndex = nextNodeIndex;
-
-			//if (results.empty())
-			//{
-			//	return boost::none;
-			//}
-			//else if (results.size() == 1)
-			//{
-			//	return results.front();
-			//}
-			//else
-			//{
-			//	std::stringstream ss;
-			//	ss << "Phi(";
-			//	for (size_t i = 0; i + 1 < results.size(); ++i)
-			//	{
-			//		ss << results[i].toString() << ", ";
-			//	}
-			//	ss << results.back().toString() << ")";
-
-			//	return Identifier(ss.str());
-			//}
-		}
-
-		Expr operator()(const For& node)
-		{
-			return node;
-		}
-
-		Expr operator()(const ListConstractor& node)
-		{
-			return node;
-		}
-
-		Expr operator()(const KeyExpr& node)
-		{
-			return node;
-		}
-
-		Expr operator()(const RecordConstractor& node)
-		{
-			return node;
-		}
+		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
 
 		//Accessorの評価について：
 		//List/Recordアクセスしかなければ、特に形は変更せずそのまま返す（依存性解析の前にあまりいじるべきではないため、できるだけ保守的に）
 		//Function/Inheritアクセスについては、インライン展開可能という仮定をおいており、展開した式を返す
 		//再帰的にやるつもりだったが、別に1パスで行けそう
-		Expr operator()(const Accessor& accessor)
+		Expr operator()(const Accessor& accessor)override
 		{
 			Accessor newAccessor;
 

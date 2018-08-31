@@ -11,27 +11,6 @@
 
 namespace cgl
 {
-	struct OutputAddresses
-	{
-		std::function<bool(Address)> pred;
-		std::vector<RegionVariable>& outputs;
-
-		OutputAddresses(const std::function<bool(Address)>& pred, std::vector<RegionVariable>& outputs) :
-			pred(pred),
-			outputs(outputs)
-		{}
-	};
-
-	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
-		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute);
-	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet,
-		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute);
-
-	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
-		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses);
-	void CheckValue(const Val& val, const Context& context, std::unordered_set<Address>& reachableAddressSet,
-		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses);
-
 	class ExprAddressCheker : public boost::static_visitor<void>
 	{
 	public:

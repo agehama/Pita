@@ -46,14 +46,27 @@ namespace cgl
 
 	Val AndFunc(const Val& lhs, const Val& rhs, Context& context)
 	{
-		if (IsType<bool>(lhs) && IsType<bool>(rhs))
+		if ((IsType<bool>(lhs) || IsNum(lhs)) && (IsType<bool>(rhs) || IsNum(rhs)))
 		{
-			return As<bool>(lhs) && As<bool>(rhs);
-		}
-		else if (IsNum(lhs) && IsNum(rhs))
-		{
-			const double eps = 1.e-4;
-			return AsDouble(lhs) < eps && AsDouble(rhs) < eps;
+			if (IsType<bool>(lhs) && IsType<bool>(rhs))
+			{
+				return As<bool>(lhs) && As<bool>(rhs);
+			}
+			else if (IsNum(lhs) && IsNum(rhs))
+			{
+				const double eps = 1.e-4;
+				return AsDouble(lhs) < eps && AsDouble(rhs) < eps;
+			}
+			else if (IsType<bool>(lhs) && IsNum(rhs))
+			{
+				const double eps = 1.e-4;
+				return As<bool>(lhs) && AsDouble(rhs) < eps;
+			}
+			else if (IsNum(lhs) && IsType<bool>(rhs))
+			{
+				const double eps = 1.e-4;
+				return AsDouble(lhs) < eps && As<bool>(rhs);
+			}
 		}
 		else if (IsShape(lhs) && IsShape(rhs))
 		{

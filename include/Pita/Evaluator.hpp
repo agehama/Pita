@@ -258,4 +258,18 @@ namespace cgl
 	bool IsEqualVal(const Val& value1, const Val& value2);
 
 	bool IsEqual(const Expr& value1, const Expr& value2);
+
+	inline Expr ExpandedEmptyLines(const Expr& expr)
+	{
+		Expr result = expr;
+
+		//一番外側の空のLinesは展開して返す
+		while (IsType<Lines>(result) && As<Lines>(result).exprs.size() == 1)
+		{
+			const Expr copy = As<Lines>(result).exprs.front();
+			result = copy;
+		}
+
+		return result;
+	}
 }

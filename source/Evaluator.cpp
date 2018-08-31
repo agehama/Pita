@@ -348,8 +348,32 @@ namespace cgl
 			return str;
 		}
 
-		//TODO: EitherReferenceのlocalはここでrenameすべき？
-		Expr operator()(const LRValue& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const LRValue& node)override
+		{
+			/*
+			インライン展開をした結果ここでは名前の解決を静的に行えるようになったはずなので、
+			EitherReferenceがローカル変数なのかAddressなのかをここで解決する。
+			また、ローカル変数であればリネームも行う。
+			*/
+			if (node.isEitherReference())
+			{
+				const auto& ref = node.eitherReference();
+				if (ref.local)
+				{
+					auto it = renameTable.find(ref.local.get().toString());
+					if (it != renameTable.end())
+					{
+						return Identifier(it->second);
+					}
+				}
+
+				return LRValue(ref.replaced);
+			}
+			else
+			{
+				return ExprTransformer::operator()(node);
+			}
+		}
 
 		Expr operator()(const Identifier& node)override
 		{
@@ -377,8 +401,9 @@ namespace cgl
 				//こうすれば、後からその変数を参照するときは普通に名前で検索でき、そしてrenameTableを見ればその場でリネームすることができる
 				if (auto opt = AsOpt<Identifier>(node.lhs))
 				{
+					const auto currentName = opt.get();
 					result = BinaryExpr(
-						NewVersioned(opt.get()),
+						(IsVersioned(currentName) ? currentName : NewVersioned(currentName)),
 						boost::apply_visitor(*this, node.rhs),
 						node.op).setLocation(node);
 
@@ -458,7 +483,7 @@ namespace cgl
 		Expr operator()(const KeyExpr& node)override
 		{
 			const auto result = KeyExpr(
-				NewVersioned(node.name),
+				(IsVersioned(node.name) ? node.name : NewVersioned(node.name)),
 				boost::apply_visitor(*this, node.expr)).setLocation(node);
 
 			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
@@ -540,12 +565,11 @@ namespace cgl
 			}
 
 			{
-				std::cout <<indent() << "====== Expansion Accessor HeadValue ======" << std::endl;
-				Printer printer(pContext, std::cout, 0);
+				std::cout << indent() << "====== Replace Accessor HeadValue ======" << std::endl;
 
-				Expr expr = headValue;
-				boost::apply_visitor(printer, expr);
-				std::cout << std::endl;
+				InlineExpander child(identifierCounts, pContext, renameTable, m_indent);
+				Expr replacedHead = boost::apply_visitor(child, newAccessor.head);
+				newAccessor.head = replacedHead;
 			}
 
 			for(size_t accessIndex = 0; accessIndex < accessor.accesses.size(); ++accessIndex)
@@ -706,8 +730,8 @@ namespace cgl
 							newFunctionAccess.actualArguments.push_back(expandedArgument);
 						}
 
-						Access newAccess = newFunctionAccess;
-						newAccessor.accesses.push_back(newAccess);
+						newAccessor.accesses.clear();
+						newAccessor.accesses.push_back(newFunctionAccess);
 					}
 					//Pita関数の場合は、展開した引数を直接関数の定義の該当箇所に挿入する
 					else
@@ -810,7 +834,52 @@ namespace cgl
 					{
 						Expr expr = LRValue(keyval.second);
 
-						recordConstructor.adds(Identifier(keyval.first), boost::apply_visitor(child, expr));
+						const auto currentName = Identifier(keyval.first);
+						recordConstructor.adds(
+							(IsVersioned(currentName) ? currentName : NewVersioned(currentName)),
+							boost::apply_visitor(child, expr));
+					}
+
+					const Expr adderExpr = inheritAccess.adder;
+					const Expr newAdderExpr = boost::apply_visitor(child, adderExpr);
+					if (!IsType<RecordConstractor>(newAdderExpr))
+					{
+						CGL_Error("エラー");
+					}
+
+					const RecordConstractor newAdder = As<RecordConstractor>(newAdderExpr);
+					recordConstructor.exprs.insert(recordConstructor.exprs.end(), newAdder.exprs.begin(), newAdder.exprs.end());
+					newAccessor.head = recordConstructor;
+					newAccessor.accesses.clear();
+
+					const Val returnedValue = pContext->expand(evaluator.inheritRecord(accessor, record, inheritAccess.adder), accessor);
+					address = pContext->makeTemporaryValue(returnedValue);
+
+					std::cout << indent() << "====== Expansion Accessor Inherit(end) ======" << std::endl;
+				}
+				/*{
+					std::cout << indent() << "====== Expansion Accessor Inherit(begin) ======" << std::endl;
+
+					if (!IsType<Record>(objRef))
+					{
+						CGL_ErrorNode(accessor, "レコードでない値に対して継承式を適用しようとしました。");
+					}
+
+					auto inheritAccess = As<InheritAccess>(access);
+
+					const Record& record = As<Record>(objRef);
+
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+					RecordConstractor recordConstructor;
+					for (const auto& keyval : record.values)
+					{
+						Expr expr = LRValue(keyval.second);
+
+						const auto currentName = Identifier(keyval.first);
+						recordConstructor.adds(
+							(IsVersioned(currentName) ? currentName : NewVersioned(currentName)),
+							boost::apply_visitor(child, expr));
 					}
 
 					//今見ているレコードがアクセッサの先頭要素かどうかにかかわらず、勝手に先頭に置き換える
@@ -819,16 +888,51 @@ namespace cgl
 					newAccessor.head = recordConstructor;
 					newAccessor.accesses.clear();
 
-					newAccessor.accesses.push_back(inheritAccess);
+					const Expr adderExpr = inheritAccess.adder;
+					const auto newAdder = boost::apply_visitor(child, adderExpr);
+					if (!IsType<RecordConstractor>(newAdder))
+					{
+						CGL_Error("エラー");
+					}
+					
+					InheritAccess newInheritAccess = inheritAccess;
+					newInheritAccess.adder = As<RecordConstractor>(newAdder);
+
+					newAccessor.accesses.push_back(newInheritAccess);
+
+					{
+						std::cout << indent() << "====== Inherit(begin) Line(" << __LINE__ << ")" << std::endl;
+						{
+							std::cout << "Adder:\n";
+							Expr expr = inheritAccess.adder;
+							Printer2 printer(pContext, std::cout);
+							boost::apply_visitor(printer, expr);
+							std::cout << std::endl;
+						}
+						{
+							std::cout << "Adder(renamed):\n";
+							Expr expr2 = newAdder;
+							Printer2 printer(pContext, std::cout);
+							boost::apply_visitor(printer, expr2);
+							std::cout << std::endl;
+						}
+						std::cout << indent() << "====== Inherit(end)   Line(" << __LINE__ << ")" << std::endl;
+					}
 
 					const Val returnedValue = pContext->expand(evaluator.inheritRecord(accessor, record, inheritAccess.adder), accessor);
 					address = pContext->makeTemporaryValue(returnedValue);
 
 					std::cout << indent() << "====== Expansion Accessor Inherit(end) ======" << std::endl;
-				}
+				}*/
 			}
 
 			std::cout << indent() << "====== Return Expansion Accessor ======" << std::endl;
+
+			if (newAccessor.accesses.empty())
+			{
+				return newAccessor.head;
+			}
+
 			return newAccessor;
 		}
 
@@ -844,7 +948,8 @@ namespace cgl
 		auto contextClone = pContext->cloneContext();
 		std::unordered_map<std::string, size_t> identifierCounts;
 		InlineExpander expander(identifierCounts, pContext, {}, 0);
-		return boost::apply_visitor(expander, expr);
+
+		return ExpandedEmptyLines(boost::apply_visitor(expander, expr));
 	}
 }
 
@@ -2832,28 +2937,6 @@ namespace cgl
 		//TODO: record.constraintには継承時のoriginalが持つ制約は含まれていないものとする
 		if (record.constraint || !original.unitConstraints.empty())
 		{
-			if (isDebugMode && record.constraint)
-			{
-				{
-					std::cout << "====== Before expansion ======" << std::endl;
-					Printer2 printer(pEnv, std::cout, 0);
-					boost::apply_visitor(printer, record.constraint.get());
-					std::cout << std::endl;
-				}
-
-				{
-					std::cout << "====== After expansion ======" << std::endl;
-					Printer2 printer(pEnv, std::cout, 0);
-					auto expanded = InlineExpand(record.constraint.get(), pEnv);
-					boost::apply_visitor(printer, expanded);
-					std::cout << std::endl;
-
-					std::ofstream graphFile;
-					graphFile.open("constraint_CFG.dot");
-					MakeControlFlowGraph(*pEnv, expanded, graphFile);
-				}
-			}
-
 			isInConstraint = true;
 			std::cout << "--------------------------------------------------------------\n";
 			std::cout << "Solve Record Constraints:" << std::endl;
@@ -2986,6 +3069,40 @@ namespace cgl
 
 				std::vector<ConstraintAppearance> mergedVariableAppearances = original.variableAppearances;
 				mergedVariableAppearances.insert(mergedVariableAppearances.end(), adderVariableAppearances.begin(), adderVariableAppearances.end());
+
+
+				if (isDebugMode && record.constraint)
+				{
+					{
+						std::cout << "====== Before expansion ======" << std::endl;
+						Printer2 printer(pEnv, std::cout, 0);
+						boost::apply_visitor(printer, record.constraint.get());
+						std::cout << std::endl;
+					}
+
+					{
+						std::cout << "====== After expansion ======" << std::endl;
+						Printer2 printer(pEnv, std::cout, 0);
+						auto expanded = InlineExpand(record.constraint.get(), pEnv);
+						boost::apply_visitor(printer, expanded);
+						std::cout << std::endl;
+
+						std::ofstream graphFile;
+						graphFile.open("constraint_CFG.dot");
+						//MakeControlFlowGraph(*pEnv, expanded, graphFile);
+						//MakeConstraintGraph(pEnv, expanded, graphFile);
+
+						ConstraintAppearance flattenAddresses;
+						for (const auto& appears : mergedVariableAppearances)
+						{
+							flattenAddresses.insert(appears.begin(), appears.end());
+						}
+
+						ConstraintGraph graph = ConstructConstraintGraph(pEnv, expanded);
+						graph.addVariableAddresses(*pEnv, flattenAddresses);
+						graph.outputGraphViz(graphFile, pEnv);
+					}
+				}
 
 				/*{
 					for (const Address address : wholeAddressesOriginal)

@@ -13,246 +13,302 @@ digraph constraint_flow_graph {
     fontsize = 12,
   ];
 
-  node0 [label = "{<ptop>Branch ((((    $(3)cosT: Cos(Reference(243))\n
-    $(3)sinT: Sin(Reference(243))\n
-    \{\n
-        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+  node1 [shape = diamond, label = "{And}"];
+  node2 [shape = diamond, label = "{And}"];
+  node3 [label = "{Address(33): val\n
+Built-in function()\n
+}"];
+  node4 [shape = hexagon, label = "{Function Caller}"];
+  node5 [shape = trapezium, label = "{Record Constructor}"];
+  node6 [label = "{$(2)scale: Address(72)}"];
+  node7 [label = "{$(2)pos: Address(68)}"];
+  node8 [label = "{$(2)angle: Address(73)}"];
+  node9 [label = "{$(2)globalPos: Address(75)}"];
+  node10 [label = "{$(2)globalShape: Address(77)}"];
+  node11 [label = "{$(2)line: [Address(3096), Address(3103)]}"];
+  node12 [label = "{Address(3135): val\n
+\{\n
+    polygon(3131): FuncVal(\n
+        \n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L95:9-L95:71](\n
+                Reference[L95:9-L95:20](EitherReference(GlobalShape \| Address(56)))\n
+                (\n
+                Accessor[L95:21-L95:62](\n
+                    Reference[L95:21-L95:27](EitherReference(Circle \| Address(1438)))\n
+                    \{\n
+                    KeyExpr[L95:28-L95:45](\n
+                        scale\n
+                        Accessor[L95:35-L95:45](\n
+                            Reference[L95:35-L95:37](EitherReference(X2 \| Address(89)))\n
+                            (\n
+                            Reference[L95:38-L95:44](EitherReference(radius \| Address(3118)))\n
+                            )\n
+                        )\n
+                    )\n
+                    KeyExpr[L95:47-L95:61](\n
+                        pos\n
+                        Reference[L95:52-L95:61](EitherReference(circlePos \| Address(3117)))\n
+                    )\n
+                    \}\n
+                )\n
+                )\n
+                .polygon\n
+            )\n
+        ) Statement end\n
+    )\n
+    scale(3126): \{\n
+        x(3124): Int(1)\n
+        y(3125): Int(1)\n
     \}\n
-)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    pos(3123): \{\n
+        x(3121): Int(0)\n
+        y(3122): Int(0)\n
     \}\n
-)).y\n
-        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    angle(3127): Int(0)\n
+    globalPos(3128): FuncVal(\n
+        p\n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L0:0-L0:0](\n
+                Reference[L0:0-L0:0](EitherReference(Transform \| Address(64)))\n
+                (\n
+                Reference[L0:0-L0:0](Reference(121))\n
+                Reference[L0:0-L0:0](Reference(122))\n
+                Reference[L0:0-L0:0](Reference(123))\n
+                Identifier[L0:0-L0:0](p)\n
+                )\n
+            )\n
+        ) Statement end\n
+    )\n
+    globalShape(3129): FuncVal(\n
+        s\n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L0:0-L0:0](\n
+                Reference[L0:0-L0:0](EitherReference(TransformShape \| Address(57)))\n
+                (\n
+                Reference[L0:0-L0:0](Reference(124))\n
+                Reference[L0:0-L0:0](Reference(125))\n
+                Reference[L0:0-L0:0](Reference(126))\n
+                Identifier[L0:0-L0:0](s)\n
+                )\n
+            )\n
+        ) Statement end\n
+    )\n
+\}\n
+}"];
+  node13 [label = "{Address(33): val\n
+Built-in function()\n
+}"];
+  node14 [shape = hexagon, label = "{Function Caller}"];
+  node15 [shape = trapezium, label = "{Record Constructor}"];
+  node16 [label = "{$(1)scale: Address(72)}"];
+  node17 [label = "{$(1)pos: Address(68)}"];
+  node18 [label = "{$(1)angle: Address(73)}"];
+  node19 [label = "{$(1)globalPos: Address(75)}"];
+  node20 [label = "{$(1)globalShape: Address(77)}"];
+  node21 [label = "{$(1)line: [Address(3110), Address(3103)]}"];
+  node22 [label = "{Address(3135): val\n
+\{\n
+    polygon(3131): FuncVal(\n
+        \n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L95:9-L95:71](\n
+                Reference[L95:9-L95:20](EitherReference(GlobalShape \| Address(56)))\n
+                (\n
+                Accessor[L95:21-L95:62](\n
+                    Reference[L95:21-L95:27](EitherReference(Circle \| Address(1438)))\n
+                    \{\n
+                    KeyExpr[L95:28-L95:45](\n
+                        scale\n
+                        Accessor[L95:35-L95:45](\n
+                            Reference[L95:35-L95:37](EitherReference(X2 \| Address(89)))\n
+                            (\n
+                            Reference[L95:38-L95:44](EitherReference(radius \| Address(3118)))\n
+                            )\n
+                        )\n
+                    )\n
+                    KeyExpr[L95:47-L95:61](\n
+                        pos\n
+                        Reference[L95:52-L95:61](EitherReference(circlePos \| Address(3117)))\n
+                    )\n
+                    \}\n
+                )\n
+                )\n
+                .polygon\n
+            )\n
+        ) Statement end\n
+    )\n
+    scale(3126): \{\n
+        x(3124): Int(1)\n
+        y(3125): Int(1)\n
     \}\n
-)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    pos(3123): \{\n
+        x(3121): Int(0)\n
+        y(3122): Int(0)\n
     \}\n
-)).y\n
+    angle(3127): Int(0)\n
+    globalPos(3128): FuncVal(\n
+        p\n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L0:0-L0:0](\n
+                Reference[L0:0-L0:0](EitherReference(Transform \| Address(64)))\n
+                (\n
+                Reference[L0:0-L0:0](Reference(121))\n
+                Reference[L0:0-L0:0](Reference(122))\n
+                Reference[L0:0-L0:0](Reference(123))\n
+                Identifier[L0:0-L0:0](p)\n
+                )\n
+            )\n
+        ) Statement end\n
+    )\n
+    globalShape(3129): FuncVal(\n
+        s\n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L0:0-L0:0](\n
+                Reference[L0:0-L0:0](EitherReference(TransformShape \| Address(57)))\n
+                (\n
+                Reference[L0:0-L0:0](Reference(124))\n
+                Reference[L0:0-L0:0](Reference(125))\n
+                Reference[L0:0-L0:0](Reference(126))\n
+                Identifier[L0:0-L0:0](s)\n
+                )\n
+            )\n
+        ) Statement end\n
+    )\n
+\}\n
+}"];
+  node23 [label = "{Address(33): val\n
+Built-in function()\n
+}"];
+  node24 [shape = hexagon, label = "{Function Caller}"];
+  node25 [shape = trapezium, label = "{Record Constructor}"];
+  node26 [label = "{$(0)scale: Address(72)}"];
+  node27 [label = "{$(0)pos: Address(68)}"];
+  node28 [label = "{$(0)angle: Address(73)}"];
+  node29 [label = "{$(0)globalPos: Address(75)}"];
+  node30 [label = "{$(0)globalShape: Address(77)}"];
+  node31 [label = "{$(0)line: [Address(3096), Address(3110)]}"];
+  node32 [label = "{Address(3135): val\n
+\{\n
+    polygon(3131): FuncVal(\n
+        \n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L95:9-L95:71](\n
+                Reference[L95:9-L95:20](EitherReference(GlobalShape \| Address(56)))\n
+                (\n
+                Accessor[L95:21-L95:62](\n
+                    Reference[L95:21-L95:27](EitherReference(Circle \| Address(1438)))\n
+                    \{\n
+                    KeyExpr[L95:28-L95:45](\n
+                        scale\n
+                        Accessor[L95:35-L95:45](\n
+                            Reference[L95:35-L95:37](EitherReference(X2 \| Address(89)))\n
+                            (\n
+                            Reference[L95:38-L95:44](EitherReference(radius \| Address(3118)))\n
+                            )\n
+                        )\n
+                    )\n
+                    KeyExpr[L95:47-L95:61](\n
+                        pos\n
+                        Reference[L95:52-L95:61](EitherReference(circlePos \| Address(3117)))\n
+                    )\n
+                    \}\n
+                )\n
+                )\n
+                .polygon\n
+            )\n
+        ) Statement end\n
+    )\n
+    scale(3126): \{\n
+        x(3124): Int(1)\n
+        y(3125): Int(1)\n
     \}\n
-)).x - \{$(5)x: 30, $(5)y: 200\}.x) * (((    $(3)cosT: Cos(Reference(243))\n
-    $(3)sinT: Sin(Reference(243))\n
-    \{\n
-        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    pos(3123): \{\n
+        x(3121): Int(0)\n
+        y(3122): Int(0)\n
     \}\n
-)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).y\n
-        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).y\n
-    \}\n
-)).x - \{$(5)x: 30, $(5)y: 200\}.x) + (((    $(3)cosT: Cos(Reference(243))\n
-    $(3)sinT: Sin(Reference(243))\n
-    \{\n
-        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).y\n
-        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).y\n
-    \}\n
-)).y - \{$(5)x: 30, $(5)y: 200\}.y) * (((    $(3)cosT: Cos(Reference(243))\n
-    $(3)sinT: Sin(Reference(243))\n
-    \{\n
-        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).y\n
-        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
-    $(2)sinT: Sin(Reference(201))\n
-    \{\n
-        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
-        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
-    \}\n
-)).y\n
-    \}\n
-)).y - \{$(5)x: 30, $(5)y: 200\}.y) == 0) & ((((    $(1)cosT: Cos(Reference(246))\n
-    $(1)sinT: Sin(Reference(246))\n
-    \{\n
-        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-    \}\n
-)).x - \{$(2)x: 200, $(2)y: 150\}.x) * (((    $(1)cosT: Cos(Reference(246))\n
-    $(1)sinT: Sin(Reference(246))\n
-    \{\n
-        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-    \}\n
-)).x - \{$(2)x: 200, $(2)y: 150\}.x) + (((    $(1)cosT: Cos(Reference(246))\n
-    $(1)sinT: Sin(Reference(246))\n
-    \{\n
-        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-    \}\n
-)).y - \{$(2)x: 200, $(2)y: 150\}.y) * (((    $(1)cosT: Cos(Reference(246))\n
-    $(1)sinT: Sin(Reference(246))\n
-    \{\n
-        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
-    $(0)sinT: Sin(Reference(240))\n
-    \{\n
-        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
-        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
-    \}\n
-)).y\n
-    \}\n
-)).y - \{$(2)x: 200, $(2)y: 150\}.y) == 0)|{<ptrue>true|<pfalse>false}}"];
+    angle(3127): Int(0)\n
+    globalPos(3128): FuncVal(\n
+        p\n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L0:0-L0:0](\n
+                Reference[L0:0-L0:0](EitherReference(Transform \| Address(64)))\n
+                (\n
+                Reference[L0:0-L0:0](Reference(121))\n
+                Reference[L0:0-L0:0](Reference(122))\n
+                Reference[L0:0-L0:0](Reference(123))\n
+                Identifier[L0:0-L0:0](p)\n
+                )\n
+            )\n
+        ) Statement end\n
+    )\n
+    globalShape(3129): FuncVal(\n
+        s\n
+        -\>        Statement begin[L0:0-L0:0](\n
+        (0): \n
+            Accessor[L0:0-L0:0](\n
+                Reference[L0:0-L0:0](EitherReference(TransformShape \| Address(57)))\n
+                (\n
+                Reference[L0:0-L0:0](Reference(124))\n
+                Reference[L0:0-L0:0](Reference(125))\n
+                Reference[L0:0-L0:0](Reference(126))\n
+                Identifier[L0:0-L0:0](s)\n
+                )\n
+            )\n
+        ) Statement end\n
+    )\n
+\}\n
+}"];
+  node33 [shape = doublecircle, color = "#FF0000", label = "{Var: Address(3118)}"];
+  node34 [shape = doublecircle, color = "#FF0000", label = "{Var: Address(3115)}"];
+  node35 [shape = doublecircle, color = "#FF0000", label = "{Var: Address(3116)}"];
 
+  node2 -> node1;
+  node3 -> node4;
+  node4 -> node2;
+  node5 -> node4;
+  node6 -> node5;
+  node7 -> node5;
+  node8 -> node5;
+  node9 -> node5;
+  node10 -> node5;
+  node11 -> node5;
+  node12 -> node4;
+  node13 -> node14;
+  node14 -> node2;
+  node15 -> node14;
+  node16 -> node15;
+  node17 -> node15;
+  node18 -> node15;
+  node19 -> node15;
+  node20 -> node15;
+  node21 -> node15;
+  node22 -> node14;
+  node23 -> node24;
+  node24 -> node1;
+  node25 -> node24;
+  node26 -> node25;
+  node27 -> node25;
+  node28 -> node25;
+  node29 -> node25;
+  node30 -> node25;
+  node31 -> node25;
+  node32 -> node24;
+  node33 -> node12;
+  node33 -> node22;
+  node33 -> node32;
+  node34 -> node12;
+  node34 -> node22;
+  node34 -> node32;
+  node35 -> node12;
+  node35 -> node22;
+  node35 -> node32;
 }

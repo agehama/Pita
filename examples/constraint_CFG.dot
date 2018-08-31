@@ -13,42 +13,246 @@ digraph constraint_flow_graph {
     fontsize = 12,
   ];
 
-  node0 [label = "{<ptop>Branch Touch(((    cosT: Cos(Reference(144))\n
-    sinT: Sin(Reference(144))\n
+  node0 [label = "{<ptop>Branch ((((    $(3)cosT: Cos(Reference(243))\n
+    $(3)sinT: Sin(Reference(243))\n
     \{\n
-        x: Reference(142).x + cosT * Reference(143).x * polygon[2].x - sinT * Reference(143).y * polygon[2].y\n
-        y: Reference(142).y + sinT * Reference(143).x * polygon[2].x + cosT * Reference(143).y * polygon[2].y\n
-    \}\n
-)), ((    cosT: Cos(Reference(153))\n
-    sinT: Sin(Reference(153))\n
+        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
     \{\n
-        x: Reference(151).x + cosT * Reference(152).x * polygon[0].x - sinT * Reference(152).y * polygon[0].y\n
-        y: Reference(151).y + sinT * Reference(152).x * polygon[0].x + cosT * Reference(152).y * polygon[0].y\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
     \}\n
-))) & Touch(((    cosT: Cos(Reference(156))\n
-    sinT: Sin(Reference(156))\n
+)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
     \{\n
-        x: Reference(154).x + cosT * Reference(155).x * polygon[2].x - sinT * Reference(155).y * polygon[2].y\n
-        y: Reference(154).y + sinT * Reference(155).x * polygon[2].x + cosT * Reference(155).y * polygon[2].y\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
     \}\n
-)), ((    cosT: Cos(Reference(165))\n
-    sinT: Sin(Reference(165))\n
+)).y\n
+        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
     \{\n
-        x: Reference(163).x + cosT * Reference(164).x * polygon[0].x - sinT * Reference(164).y * polygon[0].y\n
-        y: Reference(163).y + sinT * Reference(164).x * polygon[0].x + cosT * Reference(164).y * polygon[0].y\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
     \}\n
-))) & Touch(((    cosT: Cos(Reference(168))\n
-    sinT: Sin(Reference(168))\n
+)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
     \{\n
-        x: Reference(166).x + cosT * Reference(167).x * polygon[2].x - sinT * Reference(167).y * polygon[2].y\n
-        y: Reference(166).y + sinT * Reference(167).x * polygon[2].x + cosT * Reference(167).y * polygon[2].y\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
     \}\n
-)), ((    cosT: Cos(Reference(177))\n
-    sinT: Sin(Reference(177))\n
+)).y\n
+    \}\n
+)).x - \{$(5)x: 30, $(5)y: 200\}.x) * (((    $(3)cosT: Cos(Reference(243))\n
+    $(3)sinT: Sin(Reference(243))\n
     \{\n
-        x: Reference(175).x + cosT * Reference(176).x * polygon[0].x - sinT * Reference(176).y * polygon[0].y\n
-        y: Reference(175).y + sinT * Reference(176).x * polygon[0].x + cosT * Reference(176).y * polygon[0].y\n
+        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
     \}\n
-)))|{<ptrue>true|<pfalse>false}}"];
+)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).y\n
+        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).y\n
+    \}\n
+)).x - \{$(5)x: 30, $(5)y: 200\}.x) + (((    $(3)cosT: Cos(Reference(243))\n
+    $(3)sinT: Sin(Reference(243))\n
+    \{\n
+        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).y\n
+        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).y\n
+    \}\n
+)).y - \{$(5)x: 30, $(5)y: 200\}.y) * (((    $(3)cosT: Cos(Reference(243))\n
+    $(3)sinT: Sin(Reference(243))\n
+    \{\n
+        $(4)x: Reference(241).x + $(3)cosT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).x - $(3)sinT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).y\n
+        $(4)y: Reference(241).y + $(3)sinT * Reference(242).x * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).x + $(3)cosT * Reference(242).y * ((    $(2)cosT: Cos(Reference(201))\n
+    $(2)sinT: Sin(Reference(201))\n
+    \{\n
+        $(3)x: Reference(199).x + $(2)cosT * Reference(200).x * polygon[0].x - $(2)sinT * Reference(200).y * polygon[0].y\n
+        $(3)y: Reference(199).y + $(2)sinT * Reference(200).x * polygon[0].x + $(2)cosT * Reference(200).y * polygon[0].y\n
+    \}\n
+)).y\n
+    \}\n
+)).y - \{$(5)x: 30, $(5)y: 200\}.y) == 0) & ((((    $(1)cosT: Cos(Reference(246))\n
+    $(1)sinT: Sin(Reference(246))\n
+    \{\n
+        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+    \}\n
+)).x - \{$(2)x: 200, $(2)y: 150\}.x) * (((    $(1)cosT: Cos(Reference(246))\n
+    $(1)sinT: Sin(Reference(246))\n
+    \{\n
+        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+    \}\n
+)).x - \{$(2)x: 200, $(2)y: 150\}.x) + (((    $(1)cosT: Cos(Reference(246))\n
+    $(1)sinT: Sin(Reference(246))\n
+    \{\n
+        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+    \}\n
+)).y - \{$(2)x: 200, $(2)y: 150\}.y) * (((    $(1)cosT: Cos(Reference(246))\n
+    $(1)sinT: Sin(Reference(246))\n
+    \{\n
+        $(1)x: Reference(244).x + $(1)cosT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x - $(1)sinT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+        $(1)y: Reference(244).y + $(1)sinT * Reference(245).x * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).x + $(1)cosT * Reference(245).y * ((    $(0)cosT: Cos(Reference(240))\n
+    $(0)sinT: Sin(Reference(240))\n
+    \{\n
+        $(0)x: Reference(238).x + $(0)cosT * Reference(239).x * polygon[2].x - $(0)sinT * Reference(239).y * polygon[2].y\n
+        $(0)y: Reference(238).y + $(0)sinT * Reference(239).x * polygon[2].x + $(0)cosT * Reference(239).y * polygon[2].y\n
+    \}\n
+)).y\n
+    \}\n
+)).y - \{$(2)x: 200, $(2)y: 150\}.y) == 0)|{<ptrue>true|<pfalse>false}}"];
 
 }

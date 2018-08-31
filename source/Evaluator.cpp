@@ -177,6 +177,66 @@ namespace cgl
 		return Return(boost::apply_visitor(*this, node.expr)).setLocation(node);
 	}
 
+	class VersionReducer : public ExprTransformer
+	{
+	public:
+		VersionReducer() = default;
+
+		static bool IsVersioned(const Identifier& identifier)
+		{
+			const auto& str = identifier.toString();
+			return !str.empty() && str[0] == '$';
+		}
+
+		static Identifier WithoutVersion(const Identifier& identifier)
+		{
+			if (IsVersioned(identifier))
+			{
+				const std::string& str = identifier.toString();
+				std::string originalName(str.begin() + str.find(')') + 1, str.end());
+				return Identifier(originalName);
+			}
+
+			return identifier;
+		}
+
+		Expr operator()(const Identifier& node)override
+		{
+			std::cout << node.toString() << ", ";
+			return WithoutVersion(node);
+		}
+
+		Expr operator()(const KeyExpr& node)override
+		{
+			const KeyExpr result(WithoutVersion(node.name), boost::apply_visitor(*this, node.expr));
+			return result;
+		}
+
+		Expr operator()(const LRValue& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const UnaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const BinaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Lines& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DefFunc& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const If& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const For& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Accessor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclSat& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclFree& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Import& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Range& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Return& node)override { return ExprTransformer::operator()(node); }
+	};
+
+	inline Expr VersionReduced(const Expr& expr)
+	{
+		VersionReducer reducer;
+		auto result = boost::apply_visitor(reducer, expr);
+		std::cout << std::endl;
+		return result;
+	}
+
 	class NameReplacer : public ExprTransformer
 	{
 	public:
@@ -186,7 +246,7 @@ namespace cgl
 
 		const std::unordered_map<std::string, Expr>& replaceMap;
 
-		Expr operator()(const Identifier& node)
+		Expr operator()(const Identifier& node)override
 		{
 			auto it = replaceMap.find(node.toString());
 			if (it != replaceMap.end())
@@ -250,34 +310,19 @@ namespace cgl
 			return !str.empty() && str[0] == '$';
 		}
 
+		static Identifier WithoutVersion(const Identifier& identifier)
+		{
+			if (IsVersioned(identifier))
+			{
+				const std::string& str = identifier.toString();
+				std::string originalName(str.begin() + str.find(')') + 1, str.end());
+				return Identifier(originalName);
+			}
+
+			return identifier;
+		}
+
 		//n番目のname => $(n)name
-		//Identifier GetVersioned(const Identifier& identifier)
-		//{
-		//	//入力に既にバージョンが付いていればそのまま返す
-		//	if (IsVersioned(identifier))
-		//	{
-		//		return identifier;
-		//	}
-
-		//	//現在のローカル環境で既にリネームされたものならそれを返す
-		//	auto it = renameTable.find(identifier);
-		//	if (it != renameTable.end())
-		//	{
-		//		return Identifier(it->second);
-		//	}
-
-		//	const std::string& original = identifier.toString();
-
-		//	std::stringstream ss;
-		//	ss << "$(" << identifierCounts[original] << ")" << original;
-		//	const std::string renamed = ss.str();
-
-		//	renameTable[original] = renamed;
-		//	++identifierCounts[original];
-
-		//	return Identifier(renamed);
-		//}
-
 		Identifier NewVersioned(const Identifier& identifier)
 		{
 			const std::string& original = identifier.toString();
@@ -325,21 +370,31 @@ namespace cgl
 		{
 			if (node.op == BinaryOp::Assign)
 			{
+				Expr result;
+				Expr evalExpr = node;
+
+				//識別子の名前が変化した時も、変更前の名前でEvalしてContextに登録しておく
+				//こうすれば、後からその変数を参照するときは普通に名前で検索でき、そしてrenameTableを見ればその場でリネームすることができる
 				if (auto opt = AsOpt<Identifier>(node.lhs))
 				{
-					return BinaryExpr(
+					result = BinaryExpr(
 						NewVersioned(opt.get()),
 						boost::apply_visitor(*this, node.rhs),
 						node.op).setLocation(node);
-					Eval eval;
-					//TODO: Evalはどちらの識別子を使うべきか？やりやすいほう
+
+					evalExpr = VersionReduced(node);
 				}
 				else
 				{
-					Eval eval(pContext);
-					Expr expr = node;
-					boost::apply_visitor(eval, expr);
+					result = ExprTransformer::operator()(node);
 				}
+
+				std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+				Eval eval(pContext);
+				boost::apply_visitor(eval, evalExpr);
+				std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+				return result;
 			}
 
 			return ExprTransformer::operator()(node);
@@ -347,15 +402,6 @@ namespace cgl
 
 		Expr operator()(const Lines& node)override
 		{
-			/*Eval eval(pContext);
-			Expr expr = node;
-			boost::apply_visitor(eval, expr);
-
-			return ExprTransformer::operator()(node);*/
-
-			Eval eval;
-			//TODO: Eval
-
 			InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
 
 			Lines result;
@@ -411,14 +457,30 @@ namespace cgl
 
 		Expr operator()(const KeyExpr& node)override
 		{
-			return KeyExpr(
+			const auto result = KeyExpr(
 				NewVersioned(node.name),
 				boost::apply_visitor(*this, node.expr)).setLocation(node);
-			/*Eval eval(pContext);
-			Expr expr = node;
-			boost::apply_visitor(eval, expr);
 
-			return ExprTransformer::operator()(node);*/
+			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+			Eval eval(pContext);
+			Expr expr = VersionReduced(node);
+			{
+				std::cout << "Expr:\n";
+				Printer2 printer(pContext, std::cout);
+				boost::apply_visitor(printer, expr);
+				std::cout << std::endl;
+			}
+			{
+				std::cout << "Expr(renamed):\n";
+				Expr expr2 = result;
+				Printer2 printer(pContext, std::cout);
+				boost::apply_visitor(printer, expr2);
+				std::cout << std::endl;
+			}
+			boost::apply_visitor(eval, expr);
+			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+			return result;
 		}
 
 		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
@@ -448,7 +510,10 @@ namespace cgl
 
 			Eval evaluator(pContext);
 
-			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
+			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+			LRValue headValue = boost::apply_visitor(evaluator, VersionReduced(accessor.head));
+			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
 			if (headValue.isLValue() && headValue.deref(*pContext))
 			{
 				address = headValue.deref(*pContext).get();
@@ -483,7 +548,6 @@ namespace cgl
 				std::cout << std::endl;
 			}
 
-			//InlineExpander child(pContext, m_indent + 1);
 			for(size_t accessIndex = 0; accessIndex < accessor.accesses.size(); ++accessIndex)
 			{
 				const auto& access = accessor.accesses[accessIndex];
@@ -508,17 +572,18 @@ namespace cgl
 					{
 						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
 						Expr replacedIndex = boost::apply_visitor(child, listAccessOpt.get().index);
+
 						ListAccess replacedListAccess;
 						replacedListAccess.isArbitrary = listAccessOpt.get().isArbitrary;
-						replacedListAccess.index = boost::apply_visitor(child, replacedIndex);
-						
-						なぜ二回visitorにかける必要があるか？
-
+						//replacedListAccess.index = boost::apply_visitor(child, replacedIndex);
+						replacedListAccess.index = replacedIndex;
 
 						newAccessor.accesses.push_back(replacedListAccess);
 					}
 
-					Val value = pContext->expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), accessor);
+					std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+					Val value = pContext->expand(boost::apply_visitor(evaluator, VersionReduced(listAccessOpt.get().index)), accessor);
+					std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
 
 					List& list = As<List>(objRef);
 
@@ -561,19 +626,33 @@ namespace cgl
 						CGL_ErrorNode(accessor, "レコードでない値に対してレコードアクセスを行おうとしました。");
 					}
 
+					const Record& record = As<Record>(objRef);
+					
+					bool found = false;
+					const std::string searchName = recordAccessOpt.get().name.toString();
+					//レコードメンバにアクセッサはまだリネームされてないので、元の名前で探す
+					for (const auto& value : record.values)
 					{
-						//Recordアクセスは特に何もreplaceしない
-						newAccessor.accesses.push_back(access);
+						std::cout << indent() << "====== Matching with: " << Identifier(value.first).toString() << std::endl;
+						if (WithoutVersion(Identifier(value.first)).toString() == searchName)
+						{
+							RecordAccess newRecordAccess = recordAccessOpt.get();
+							newRecordAccess.name = Identifier(value.first);
+
+							//Recordアクセスはリネーム後の名前をpushする
+							newAccessor.accesses.emplace_back(newRecordAccess);
+							
+							address = value.second;
+							found = true;
+							break;
+						}
 					}
 
-					const Record& record = As<Record>(objRef);
-					auto it = record.values.find(recordAccessOpt.get().name);
-					if (it == record.values.end())
+					if (!found)
 					{
 						CGL_ErrorNode(accessor, std::string("指定された識別子\"") + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しませんでした。");
 					}
 
-					address = it->second;
 					std::cout << indent() << "====== Expansion Accessor Record(end) ======" << std::endl;
 				}
 				else if (auto recordAccessOpt = AsOpt<FunctionAccess>(access))
@@ -596,6 +675,8 @@ namespace cgl
 						std::cout << indent() << "====== Expansion Function Arguments ======" << std::endl;
 						Printer printer(pContext, std::cout, 0);
 
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
 						for (const auto& expr : funcAccess.actualArguments)
 						{
 							std::cout << indent() << "Argument: \n";
@@ -615,6 +696,8 @@ namespace cgl
 					{
 						FunctionAccess newFunctionAccess = funcAccess;
 						newFunctionAccess.actualArguments.clear();
+
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
 
 						//置き換えた式自体がまた関数呼び出しを含む可能性があるので再帰的に展開する
 						for (size_t i = 0; i < replacedArguments.size(); ++i)
@@ -657,11 +740,30 @@ namespace cgl
 
 						//置き換えた式自体がまた関数呼び出しを含む可能性があるので再帰的に展開する
 						{
-							std::cout << indent() << "====== Expanded Function ======" << std::endl;
-							Printer2 printer2(pContext, std::cout, 0);
+							std::cout << indent() << "====== Expanded Function(prev) ======" << std::endl;
+							Expr prevExpand = accessor;
+							Printer2 printer2(pContext, std::cout, m_indent);
+							boost::apply_visitor(printer2, prevExpand);
+							std::cout << std::endl;
+						}
+						{
+							std::cout << indent() << "====== Expanded Function(args) ======" << std::endl;
+							for (const auto& arg : replacedArguments)
+							{
+								std::cout << indent() << "====== Arg:" << std::endl;
+								Printer2 printer2(pContext, std::cout, m_indent);
+								boost::apply_visitor(printer2, arg);
+								std::cout << std::endl;
+							}
+						}
+						{
+							std::cout << indent() << "====== Expanded Function(post) ======" << std::endl;
+							Printer2 printer2(pContext, std::cout, m_indent);
 							boost::apply_visitor(printer2, expandedFunction);
 							std::cout << std::endl;
 						}
+
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
 
 						std::cout << indent() << "====== Expanded Function Arguments Recursively(begin) ======" << std::endl;
 						expandedFunction = boost::apply_visitor(child, expandedFunction);
@@ -678,7 +780,7 @@ namespace cgl
 					std::vector<Address> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
-						const LRValue currentArgument = boost::apply_visitor(evaluator, expr);
+						const LRValue currentArgument = boost::apply_visitor(evaluator, VersionReduced(expr));
 						currentArgument.push_back(args, *pContext);
 					}
 
@@ -700,6 +802,8 @@ namespace cgl
 					auto inheritAccess = As<InheritAccess>(access);
 
 					const Record& record = As<Record>(objRef);
+
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
 
 					RecordConstractor recordConstructor;
 					for (const auto& keyval : record.values)
@@ -738,7 +842,8 @@ namespace cgl
 	inline Expr InlineExpand(Expr expr, std::shared_ptr<Context> pContext)
 	{
 		auto contextClone = pContext->cloneContext();
-		InlineExpander expander(contextClone, 0);
+		std::unordered_map<std::string, size_t> identifierCounts;
+		InlineExpander expander(identifierCounts, pContext, {}, 0);
 		return boost::apply_visitor(expander, expr);
 	}
 }

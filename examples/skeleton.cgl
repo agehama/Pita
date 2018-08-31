@@ -14,7 +14,7 @@ skeleton = (num -> Shape{
         var(ss[i].pos, ss[i].angle)
     )
     for i in 0:num-2 do(
-        sat( Touch(ss[i].end(), ss[i+1].begin()) )
+        sat( Contact(ss[i].end(), ss[i+1].begin()) )
     )
     begin: (->Transform(@pos, @scale, @angle, ss[0].begin()))
     end:   (->Transform(@pos, @scale, @angle, ss[num-1].end()))
@@ -25,6 +25,6 @@ skeletonA = skeleton(4)
 
 main = skeletonA{
     Print(Triangle{})
-    sat( Touch(begin(), {x: 30, y:200}) )
-    sat( Touch(end(), {x: 200, y:150}) )
+    sat( Contact(begin(), {x: 30, y:200}) )
+    sat( Contact(end(), {x: 200, y:150}) )
 }

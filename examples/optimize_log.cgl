@@ -1,8 +1,20 @@
 {
-	size: 3
+	size: 15
 	labels: [
-		"circlePos.x"
-		"circlePos.y"
-		"radius"
+		"ss[0].pos.x"
+		"ss[0].pos.y"
+		"ss[0].angle"
+		"ss[1].pos.x"
+		"ss[1].pos.y"
+		"ss[1].angle"
+		"ss[2].pos.x"
+		"ss[2].pos.y"
+		"ss[2].angle"
+		"ss[3].pos.x"
+		"ss[3].pos.y"
+		"ss[3].angle"
+		"ss[4].pos.x"
+		"ss[4].pos.y"
+		"ss[4].angle"
 	]
 	data: [

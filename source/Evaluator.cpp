@@ -377,11 +377,17 @@ namespace cgl
 
 		Expr operator()(const Identifier& node)override
 		{
+			if (IsVersioned(node))
+			{
+				return node;
+			}
+
 			auto it = renameTable.find(node.toString());
 			if (it == renameTable.end())
 			{
 				CGL_ErrorNode(node, msgs::Undefined(node));
 			}
+
 			return Identifier(it->second).setLocation(node);
 		}
 
@@ -3073,34 +3079,47 @@ namespace cgl
 
 				if (isDebugMode && record.constraint)
 				{
+					const auto dependencyGraphAnalysis = [&](const Expr& constraint)
 					{
-						std::cout << "====== Before expansion ======" << std::endl;
-						Printer2 printer(pEnv, std::cout, 0);
-						boost::apply_visitor(printer, record.constraint.get());
-						std::cout << std::endl;
-					}
-
-					{
-						std::cout << "====== After expansion ======" << std::endl;
-						Printer2 printer(pEnv, std::cout, 0);
-						auto expanded = InlineExpand(record.constraint.get(), pEnv);
-						boost::apply_visitor(printer, expanded);
-						std::cout << std::endl;
-
-						std::ofstream graphFile;
-						graphFile.open("constraint_CFG.dot");
-						//MakeControlFlowGraph(*pEnv, expanded, graphFile);
-						//MakeConstraintGraph(pEnv, expanded, graphFile);
-
-						ConstraintAppearance flattenAddresses;
-						for (const auto& appears : mergedVariableAppearances)
 						{
-							flattenAddresses.insert(appears.begin(), appears.end());
+							std::cout << "====== Before expansion ======" << std::endl;
+							Printer2 printer(pEnv, std::cout, 0);
+							boost::apply_visitor(printer, constraint);
+							std::cout << std::endl;
 						}
 
-						ConstraintGraph graph = ConstructConstraintGraph(pEnv, expanded);
-						graph.addVariableAddresses(*pEnv, flattenAddresses);
-						graph.outputGraphViz(graphFile, pEnv);
+						{
+							std::cout << "====== After expansion ======" << std::endl;
+							Printer2 printer(pEnv, std::cout, 0);
+							auto expanded = InlineExpand(constraint, pEnv);
+							boost::apply_visitor(printer, expanded);
+							std::cout << std::endl;
+
+							std::ofstream graphFile;
+							graphFile.open("constraint_CFG.dot");
+							
+							ConstraintAppearance flattenAddresses;
+							for (const auto& appears : mergedVariableAppearances)
+							{
+								flattenAddresses.insert(appears.begin(), appears.end());
+							}
+
+							ConstraintGraph graph = ConstructConstraintGraph(pEnv, expanded);
+							graph.addVariableAddresses(*pEnv, flattenAddresses);
+							graph.outputGraphViz(graphFile, pEnv);
+						}
+					};
+
+					if(!mergedUnitConstraints.empty())
+					{
+						Expr wholeConstraint = mergedUnitConstraints[0];
+						
+						for (int i = 1; i < mergedUnitConstraints.size(); ++i)
+						{
+							wholeConstraint = BinaryExpr(wholeConstraint, mergedUnitConstraints[i], BinaryOp::And);
+						}
+
+						dependencyGraphAnalysis(wholeConstraint);
 					}
 				}
 

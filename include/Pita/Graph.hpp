@@ -131,6 +131,19 @@ namespace cgl
 		std::vector<size_t> exprNodeIndices;
 	};
 
+	struct FunctionInfo
+	{
+		//Distance, Touch など制約に関わりそうな関数はtrue
+		//Printなど明らかに関係ないものはfalse
+		bool isImportantFunction;
+
+		//引数が図形を取るはずかどうか
+		enum ExpectedType {Shape, Num};
+		std::vector<ExpectedType> estimatedArgumentsTypes;
+
+		//
+	};
+
 	struct CFGNodeFunction
 	{
 		CFGNodeFunction() = default;

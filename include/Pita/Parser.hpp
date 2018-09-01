@@ -197,10 +197,9 @@ namespace cgl
 		qi::rule<IteratorT, KeyExpr(), Skipper> key_expr;
 		qi::rule<IteratorT, std::u32string(), Skipper> char_string;
 		qi::rule<IteratorT, Expr(), Skipper> general_expr, logic_expr, logic_term, logic_factor, compare_expr, arith_expr, basic_arith_expr, term, factor, pow_term, pow_term1;
-		qi::rule<IteratorT, Lines(), Skipper> expr_seq, statement;
+		qi::rule<IteratorT, Lines(), Skipper> expr_seq;
 		qi::rule<IteratorT, Lines(), Skipper> program;
 
-		qi::rule<IteratorT> s, s1;
 		qi::rule<IteratorT> distinct_keyword;
 		qi::rule<IteratorT, std::u32string(), Skipper> unchecked_identifier;
 		qi::rule<IteratorT, std::u32string(), Skipper> float_value;
@@ -216,15 +215,10 @@ namespace cgl
 			auto concatArguments = [](Arguments& a, const Arguments& b) { a.concat(b); };
 			auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
 
-			program = s >> -(expr_seq) >> s;
+			program = -(expr_seq);
 
-			expr_seq = statement[_val = _1] >> *(
-				+(lit('\n')) >> statement[Call(Lines::Concat, _val, _1)]
-				);
-
-			statement = general_expr[_val = Call(Lines::Make, _1)] >> *(
-				(s >> ',' >> s >> general_expr[Call(Lines::Append, _val, _1)])
-				| (lit('\n') >> general_expr[Call(Lines::Append, _val, _1)])
+			expr_seq = general_expr[_val = Call(Lines::Make, _1)] >> *(
+				',' >> general_expr[Call(Lines::Append, _val, _1)]
 				);
 
 			general_expr =
@@ -232,108 +226,103 @@ namespace cgl
 				| return_expr[_val = _1]
 				| logic_expr[_val = _1];
 
-			if_expr = lit("if") >> s >> general_expr[_val = Call(If::Make, _1)]
-				>> s >> lit("then") >> s >> general_expr[Call(If::SetThen, _val, _1)]
-				>> -(s >> lit("else") >> s >> general_expr[Call(If::SetElse, _val, _1)])
+			if_expr = lit("if") >> general_expr[_val = Call(If::Make, _1)]
+				>> lit("then") >> general_expr[Call(If::SetThen, _val, _1)]
+				>> -(lit("else") >> general_expr[Call(If::SetElse, _val, _1)])
 				;
 
-			for_expr = lit("for") >> s >> id[_val = Call(For::Make, _1)] >> s >> lit("in")
-				>> s >> general_expr[Call(For::SetRangeStart, _val, _1)] >> s >> lit(":")
-				>> s >> general_expr[Call(For::SetRangeEnd, _val, _1)] >> s >>
-				((lit("do") >> s >> general_expr[Call(For::SetDo, _val, _1, false)]) |
-				(lit("list") >> s >> general_expr[Call(For::SetDo, _val, _1, true)]));
+			for_expr = lit("for") >> id[_val = Call(For::Make, _1)] >> lit("in")
+				>> general_expr[Call(For::SetRangeStart, _val, _1)] >> lit(":")
+				>> general_expr[Call(For::SetRangeEnd, _val, _1)] >>
+				((lit("do") >> general_expr[Call(For::SetDo, _val, _1, false)]) |
+				(lit("list") >> general_expr[Call(For::SetDo, _val, _1, true)]));
 
-			//import_expr = lit("import") >> s >> '\"' >> char_string[_val = Call(Import::Make, _1)] >> '\"' >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
-			import_expr = lit("import") >> s >> char_string[_val = Call(Import::Make, _1)] >> -(s >> lit("as") >> s >> id[Call(Import::SetName, _val, _1)]);
+			import_expr = lit("import") >> char_string[_val = Call(Import::Make, _1)] >> -(lit("as") >> id[Call(Import::SetName, _val, _1)]);
 
-			return_expr = lit("return") >> s >> general_expr[_val = Call(Return::Make, _1)];
+			return_expr = lit("return") >> general_expr[_val = Call(Return::Make, _1)];
 
-			def_func = arguments[_val = _1] >> lit("->") >> s >> expr_seq[Call(applyFuncDef, _val, _1)];
+			def_func = arguments[_val = _1] >> lit("->") >> expr_seq[Call(applyFuncDef, _val, _1)];
 
-			constraints = lit("sat") >> '(' >> s >> statement[_val = Call(DeclSat::Make, _1)] >> s >> ')';
+			constraints = lit("sat") >> '(' >> expr_seq[_val = Call(DeclSat::Make, _1)] >> ')';
 
-			freeVals = lit("var") >> '(' >> s >> (
-					(lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)] | id[Call(DeclFree::AddAccessorDynamic, _val, Cast<Identifier, Accessor>())])) 
-					| (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
+			freeVals = lit("var") >> '(' >> (
+				(lit("@") >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)] | id[Call(DeclFree::AddAccessorDynamic, _val, Cast<Identifier, Accessor>())]))
+				| (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
 				) >>
-				-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)]) >> *(
-					s >> ", " >> s >> (
-							(lit("@") >> s >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)] | id[Call(DeclFree::AddAccessorDynamic, _val, Cast<Identifier, Accessor>())]))
-							| (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
+				-(lit("in") >> factor[Call(DeclFree::AddRange, _val, _1)]) >> *(
+					", " >> (
+					(lit("@") >> (accessor[Call(DeclFree::AddAccessorDynamic, _val, _1)] | id[Call(DeclFree::AddAccessorDynamic, _val, Cast<Identifier, Accessor>())]))
+						| (accessor[Call(DeclFree::AddAccessor, _val, _1)] | id[Call(DeclFree::AddAccessor, _val, Cast<Identifier, Accessor>())])
 						) >>
-					-(s >> lit("in") >> s >> factor[Call(DeclFree::AddRange, _val, _1)])
-					) >> s >> ')';
+					-(lit("in") >> factor[Call(DeclFree::AddRange, _val, _1)])
+					) >> ')';
 
-			arguments = -(id[_val = _1] >> *(s >> ',' >> s >> arguments[Call(concatArguments, _val, _1)]));
+			arguments = -(id[_val = _1] >> *(',' >> arguments[Call(concatArguments, _val, _1)]));
 
-			logic_expr = logic_term[_val = _1] >> *(s >> '|' >> s >> logic_term[_val = MakeBinaryExpr(BinaryOp::Or)]);
+			logic_expr = logic_term[_val = _1] >> *('|' >> logic_term[_val = MakeBinaryExpr(BinaryOp::Or)]);
 
-			logic_term = logic_factor[_val = _1] >> *(s >> '&' >> s >> logic_factor[_val = MakeBinaryExpr(BinaryOp::And)]);
+			logic_term = logic_factor[_val = _1] >> *('&' >> logic_factor[_val = MakeBinaryExpr(BinaryOp::And)]);
 
-			logic_factor = ('!' >> s >> compare_expr[_val = MakeUnaryExpr(UnaryOp::Not)])
+			logic_factor = ('!' >> compare_expr[_val = MakeUnaryExpr(UnaryOp::Not)])
 				| compare_expr[_val = _1]
 				;
 
 			compare_expr = arith_expr[_val = _1] >> *(
-				(s >> lit("==") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Equal)])
-				| (s >> lit("!=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::NotEqual)])
-				| (s >> lit("<") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessThan)])
-				| (s >> lit("<=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessEqual)])
-				| (s >> lit(">") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterThan)])
-				| (s >> lit(">=") >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterEqual)])
+				(lit("==") >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Equal)])
+				| (lit("!=") >> arith_expr[_val = MakeBinaryExpr(BinaryOp::NotEqual)])
+				| (lit("<") >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessThan)])
+				| (lit("<=") >> arith_expr[_val = MakeBinaryExpr(BinaryOp::LessEqual)])
+				| (lit(">") >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterThan)])
+				| (lit(">=") >> arith_expr[_val = MakeBinaryExpr(BinaryOp::GreaterEqual)])
 				)
 				;
 
 			//= ^ -> は右結合
 			arith_expr = (key_expr[_val = _1] | basic_arith_expr[_val = _1]) >> -(
-				(s >> '=' >> s >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)])
+				('=' >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)])
 				);
 
-			key_expr = id[_val = Call(KeyExpr::Make, _1)] >> s >> ':' >> s >> basic_arith_expr[Call(KeyExpr::SetExpr, _val, _1)];
+			key_expr = id[_val = Call(KeyExpr::Make, _1)] >> ':' >> basic_arith_expr[Call(KeyExpr::SetExpr, _val, _1)];
 			
 			basic_arith_expr = term[_val = _1] >>
 				*(
-				(s >> '+' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
-				(s >> '-' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]) |
-				(s >> '\\' >> s >> term[_val = MakeBinaryExpr(BinaryOp::SetDiff)]) |
-				(s >> '@' >> s >> term[_val = MakeBinaryExpr(BinaryOp::Concat)])
+				('+' >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
+					('-' >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]) |
+					('\\' >> term[_val = MakeBinaryExpr(BinaryOp::SetDiff)]) |
+					('@' >> term[_val = MakeBinaryExpr(BinaryOp::Concat)])
 					)
 				;
 
 			term = pow_term[_val = _1]
 				| (factor[_val = _1] >>
-					*((s >> '*' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Mul)]) |
-					(s >> '/' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Div)]))
+					*(('*' >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Mul)]) |
+					('/' >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Div)]))
 					)
 				;
 
 			//最低でも1つは受け取るようにしないと、単一のfactorを受理できてしまうのでMul,Divの方に行ってくれない
-			pow_term = factor[_val = _1] >> s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
-			pow_term1 = factor[_val = _1] >> -(s >> '^' >> s >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
+			pow_term = factor[_val = _1] >> '^' >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
+			pow_term1 = factor[_val = _1] >> -('^' >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
-			record_maker = encode::char_('{') >> s >
-				-( 
-					(record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >
-				    *(
-				      (s >> ',' >> s > (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-					| (+(encode::char_('\n')) >> (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
-					                        //^-ここだけはバックトラックを許さないと最後の改行を食べた時戻れなくなる
+			record_maker = encode::char_('{') >
+				-(
+				(record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]) >
+					*(
+						(',' > (record_keyexpr[Call(RecordConstractor::AppendKeyExpr, _val, _1)] | general_expr[Call(RecordConstractor::AppendExpr, _val, _1)]))
 					)
 				)
-				>> s > encode::char_('}');
+				> encode::char_('}');
 
-			//レコードの name:val の name と : の間に改行を許すべきか？ -> 許しても解析上恐らく問題はないが、意味があまりなさそう
-			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> encode::char_(':') >> s > general_expr[Call(KeyExpr::SetExpr, _val, _1)];
+			record_keyexpr = id[_val = Call(KeyExpr::Make, _1)] >> encode::char_(':') > general_expr[Call(KeyExpr::SetExpr, _val, _1)];
 
-			list_maker = encode::char_('[') >> s > 
+			list_maker = encode::char_('[') > 
 				-(
 					general_expr[_val = Call(ListConstractor::Make, _1)] >
 				    *(
-				      (s >> encode::char_(',') > s > general_expr[Call(ListConstractor::Append, _val, _1)])
-					| (+(encode::char_('\n')) >> general_expr[Call(ListConstractor::Append, _val, _1)])
+				      (encode::char_(',') > general_expr[Call(ListConstractor::Append, _val, _1)])
 					)
 				)
-				>> s > encode::char_(']');
+				> encode::char_(']');
 
 			/*
 			accessor = (id[_val = Call(Accessor::Make, _1)] >> +(access[Call(Accessor::Append, _val, _1)]))
@@ -352,20 +341,20 @@ namespace cgl
 				| recordAccess[_val = Cast<RecordAccess, Access>()]
 				| inheritAccess[_val = Cast<InheritAccess, Access>()];
 
-			recordAccess = encode::char_('.') >> s >> id[_val = Call(RecordAccess::Make, _1)];
+			recordAccess = encode::char_('.') >> id[_val = Call(RecordAccess::Make, _1)];
 
-			//listAccess = encode::char_('[') >> s >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> s >> encode::char_(']');
-			listAccess = encode::char_('[') >> s >> (encode::char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> s >> encode::char_(']');
+			//listAccess = encode::char_('[') >> general_expr[Call(ListAccess::SetIndex, _val, _1)] >> encode::char_(']');
+			listAccess = encode::char_('[') >> (encode::char_('*')[Call(ListAccess::SetIndexArbitrary, _val)] | general_expr[Call(ListAccess::SetIndex, _val, _1)]) >> encode::char_(']');
 
 			functionAccess = encode::char_('(')
-				>> -(s >> general_expr[Call(FunctionAccess::Append, _val, _1)])
-				>> *(s >> encode::char_(',') >> s >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> s >> encode::char_(')');
+				>> -(general_expr[Call(FunctionAccess::Append, _val, _1)])
+				>> *(encode::char_(',') >> general_expr[Call(FunctionAccess::Append, _val, _1)]) >> encode::char_(')');
 
 			inheritAccess = record_maker[_val = Call(InheritAccess::Make, _1)];
 
 			factor = 
 				  import_expr[_val = _1]
-				| ('(' >> s > expr_seq[_val = _1] > s > ')')
+				| ('(' > expr_seq[_val = _1] > ')')
 				|  char_string[_val = Call(BuildString, _1)]
 				//| lexeme['\"' > (*(encode::char_ - encode::char_('\"')))[_val = Call(BuildString, _1)] > '\"']
 				| constraints[_val = _1]
@@ -378,9 +367,9 @@ namespace cgl
 				| for_expr[_val = _1]
 				| list_maker[_val = _1]
 				| record_maker[_val = _1]
-				| ('+' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Plus)])
-				| ('-' >> s > factor[_val = MakeUnaryExpr(UnaryOp::Minus)])
-				| ('@' >> s > (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)]))
+				| ('+' > factor[_val = MakeUnaryExpr(UnaryOp::Plus)])
+				| ('-' > factor[_val = MakeUnaryExpr(UnaryOp::Minus)])
+				| ('@' > (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)]))
 				| float_value[_val = Call(LRValue::Float, _1)]
 				| int_[_val = Call(LRValue::Int, _1)]
 				| lit("true")[_val = Call(LRValue::Bool, true)]
@@ -396,8 +385,6 @@ namespace cgl
 			unchecked_identifier = lexeme[(encode::alpha | encode::char_('_')) >> *(encode::alnum | encode::char_('_'))];
 
 			float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9')];
-
-			s = *(encode::space);
 
 			if (isDebugMode)
 			{
@@ -433,7 +420,6 @@ namespace cgl
 				qi::on_error<qi::fail>(key_expr, errorInfo);
 				//qi::on_error<qi::fail>(char_string, errorInfo);
 				qi::on_error<qi::fail>(expr_seq, errorInfo);
-				qi::on_error<qi::fail>(statement, errorInfo);
 
 				auto setLocationInfo = annotate(_val, _1, _3);
 				//qi::on_success(general_expr, setLocationInfo);
@@ -467,12 +453,11 @@ namespace cgl
 				qi::on_success(key_expr, setLocationInfo);
 				//qi::on_success(char_string, setLocationInfo);
 				//qi::on_success(expr_seq, setLocationInfo);
-				//qi::on_success(statement, setLocationInfo);
 				//qi::on_success(program, setLocationInfo);
 
 				/*BOOST_SPIRIT_DEBUG_NODES(
-				(float_value)(unchecked_identifier)(distinct_keyword)(s)(s1)(program)
-				(expr_seq)(statement)(general_expr)(logic_expr)(logic_term)(logic_factor)(compare_expr)(arith_expr)(basic_arith_expr)(term)(factor)(pow_term)(pow_term1)
+				(float_value)(unchecked_identifier)(distinct_keyword)(program)
+				(expr_seq)(general_expr)(logic_expr)(logic_term)(logic_factor)(compare_expr)(arith_expr)(basic_arith_expr)(term)(factor)(pow_term)(pow_term1)
 				(char_string)(key_expr)(id)(arguments)(def_func)(return_expr)(if_expr)(for_expr)(import_expr)(list_maker)(record_inheritor)(record_maker)(record_keyexpr)
 				(access)(accessor)(listAccess)(recordAccess)(functionAccess)(freeVals)(constraints)
 				)*/

@@ -18,23 +18,6 @@
 #include <Pita/Vectorizer.hpp>
 #include <Pita/Printer.hpp>
 
-//#include <glog/logging.h>
-//#ifdef _DEBUG
-////#  pragma comment(lib, "Debug/gflags_static.lib")
-//#  pragma comment(lib, "Debug/glogd.lib")
-//#else
-////#  pragma comment(lib, "Release/gflags_static.lib")
-//#  pragma comment(lib, "Release/glog.lib")
-//#endif
-//#pragma comment(lib, "shlwapi.lib")
-
-
-//#ifdef _DEBUG
-//#  pragma comment(lib, "Debug/StackWalker.lib")
-//#else
-//#  pragma comment(lib, "Release/StackWalker.lib")
-//#endif
-
 #ifdef __has_include
 #  if __has_include(<Pita/PitaStd>)
 #    define CGL_HAS_STANDARD_FILE

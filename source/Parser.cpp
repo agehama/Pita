@@ -226,9 +226,23 @@ namespace cgl
 		void operator()(const DeclFree& node)const {}
 	};
 
+	inline std::vector<std::string> Split(const std::string& input, char delimiter)
+	{
+		std::istringstream stream(input);
+
+		std::string field;
+		std::vector<std::string> result;
+		while (std::getline(stream, field, delimiter)) {
+			result.push_back(field);
+		}
+		return result;
+	}
+
 	std::string EscapedSourceCode(const std::string& sourceCode)
 	{
 		std::stringstream escapedStr;
+
+		//コメントのエスケープ
 		{
 			const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
 			{
@@ -325,13 +339,102 @@ namespace cgl
 			}
 		}
 
+		//行末にカンマを挿入
+		{
+			const std::string postExpectingSymbols1("[({:=!?\"&|<>*/+-@");
+			const std::string prevExpectingSymbols1("])}:=!?\"&|<>*/");
+
+			const std::vector<std::string> postExpectingSymbols2({ "->","<=",">=","==","!=" });
+			const std::vector<std::string> prevExpectingSymbols2({ "->","<=",">=","==","!=" });
+
+			/*
+			const std::vector<std::string> postExpectingSymbols({ "[","(","{","->",":","=","!","?","\"","&","|","<","<=",">",">=","==","!=","*","/","+","-","@" });
+			const std::vector<std::string> prevExpectingSymbols({ "]",")","}","->",":","=","!","?","\"","&","|","<","<=",">",">=","==","!=","*","/" });
+			*/
+
+			auto lines = Split(escapedStr.str(), '\n');
+
+			//空行を飛ばした比較を行うため空行以外のインデックスを保存
+			std::vector<size_t> nonEmptyIndices;
+			for (size_t i = 0; i < lines.size(); ++i)
+			{
+				if (lines[i].find_first_not_of(" \t\r") != std::string::npos)
+				{
+					nonEmptyIndices.push_back(i);
+				}
+			}
+
+			std::set<size_t> addCommaLines;
+
+			for (size_t i = 0; i + 1 < nonEmptyIndices.size(); ++i)
+			{
+				const size_t prevIndex = nonEmptyIndices[i];
+				const size_t postIndex = nonEmptyIndices[i + 1];
+
+				const auto& prevLine = lines[prevIndex];
+				const auto& postLine = lines[postIndex];
+
+				const auto needComma = [&]()->bool
+				{
+					const size_t prevLastIndex = prevLine.find_last_not_of(" \t\r");
+					const char prevLastChar = prevLine[prevLastIndex];
+					if (postExpectingSymbols1.find(prevLastChar) != std::string::npos)
+					{
+						return false;
+					}
+					if (1 <= prevLastIndex)
+					{
+						const std::string lastTwoChars({ prevLine[prevLastIndex - 1], prevLastChar });
+						if (std::find(postExpectingSymbols2.begin(), postExpectingSymbols2.end(), lastTwoChars) != postExpectingSymbols2.end())
+						{
+							return false;
+						}
+					}
+
+					const size_t postFirstIndex = postLine.find_first_not_of(" \t\r");
+					const char postFirstChar = postLine[postFirstIndex];
+					if (prevExpectingSymbols1.find(postFirstChar) != std::string::npos)
+					{
+						return false;
+					}
+					if (postFirstIndex + 1 < postLine.size())
+					{
+						const std::string firstTwoChars({ postFirstChar, postLine[postFirstIndex + 1] });
+						if (std::find(prevExpectingSymbols2.begin(), prevExpectingSymbols2.end(), firstTwoChars) != prevExpectingSymbols2.end())
+						{
+							return false;
+						}
+					}
+
+					return true;
+				};
+
+				const bool comma = needComma();
+				if (comma)
+				{
+					addCommaLines.emplace(prevIndex);
+				}
+			}
+
+			escapedStr = std::stringstream();
+			for (size_t i = 0; i < lines.size(); ++i)
+			{
+				escapedStr << lines[i];
+				if (addCommaLines.find(i) != addCommaLines.end())
+				{
+					escapedStr << ',';
+				}
+				escapedStr << '\n';
+			}
+		}
+
 		//for debug
 		/*
-		std::cout << "Escaped str" << std::endl;
+		std::cout << "Escaped str:" << std::endl;
 		std::cout << "----------------------------------------------" << std::endl;
 		std::cout << escapedStr.str() << std::endl;
 		std::cout << "----------------------------------------------" << std::endl;
-		*/
+		//*/
 
 		return escapedStr.str();
 	}
@@ -365,7 +468,8 @@ namespace cgl
 
 		auto it = beginIt;
 		SpaceSkipper<IteratorT> skipper;
-		Parser<SpaceSkipperT> grammer(beginSource, endSource, filename);
+		//Parser<SpaceSkipperT> grammer(beginSource, endSource, filename);
+		Parser<LineSkipperT> grammer(beginSource, endSource, filename);
 		
 		const double parseBegin = GetSec();
 		if (!boost::spirit::qi::phrase_parse(it, endIt, grammer, skipper, lines))

@@ -542,7 +542,7 @@ namespace cgl
 			Eval evaluator(pContext);
 
 			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
-			LRValue headValue = boost::apply_visitor(evaluator, VersionReduced(accessor.head));
+			LRValue headValue = boost::apply_visitor(evaluator, std::move(VersionReduced(accessor.head)));
 			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
 
 			if (headValue.isLValue() && headValue.deref(*pContext))
@@ -612,7 +612,7 @@ namespace cgl
 					}
 
 					std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
-					Val value = pContext->expand(boost::apply_visitor(evaluator, VersionReduced(listAccessOpt.get().index)), accessor);
+					Val value = pContext->expand(boost::apply_visitor(evaluator, std::move(VersionReduced(listAccessOpt.get().index))), accessor);
 					std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
 
 					List& list = As<List>(objRef);
@@ -810,7 +810,7 @@ namespace cgl
 					std::vector<Address> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
-						const LRValue currentArgument = boost::apply_visitor(evaluator, VersionReduced(expr));
+						const LRValue currentArgument = boost::apply_visitor(evaluator, std::move(VersionReduced(expr)));
 						currentArgument.push_back(args, *pContext);
 					}
 

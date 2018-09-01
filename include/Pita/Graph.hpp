@@ -55,7 +55,7 @@ namespace cgl
 		ControlFlowGraph& graph;
 		size_t currentNodeIndex;
 
-		boost::optional<Expr> operator()(const Identifier& node) { return node; }
+		boost::optional<Expr> operator()(const Identifier& node) { return Expr(node); }
 
 		boost::optional<Expr> operator()(const LRValue& node);
 		boost::optional<Expr> operator()(const UnaryExpr& node);

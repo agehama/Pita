@@ -145,10 +145,10 @@ namespace cgl
 	{
 		if (node.isRValue())
 		{
-			return node;
+			return Expr(node);
 		}
 		//図形などの場合は評価される式を展開する
-		return node;
+		return Expr(node);
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const UnaryExpr& node)
@@ -159,7 +159,7 @@ namespace cgl
 			CGL_Error("エラー");
 		}
 
-		return UnaryExpr(expr.get(), node.op);
+		return Expr(UnaryExpr(expr.get(), node.op));
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const BinaryExpr& node)
@@ -171,7 +171,7 @@ namespace cgl
 			CGL_Error("エラー");
 		}
 
-		return BinaryExpr(expr1.get(), expr2.get(), node.op);
+		return Expr(BinaryExpr(expr1.get(), expr2.get(), node.op));
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const Lines& node)
@@ -196,7 +196,7 @@ namespace cgl
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const DefFunc& node)
 	{
 		//boost::apply_visitor(*this, node.expr);
-		return node;
+		return Expr(node);
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const If& node)
@@ -255,7 +255,7 @@ namespace cgl
 		}
 		else if (results.size() == 1)
 		{
-			return results.front();
+			return Expr(results.front());
 		}
 		else
 		{
@@ -267,7 +267,7 @@ namespace cgl
 			}
 			ss << results.back().toString() << ")";
 
-			return Identifier(ss.str());
+			return Expr(Identifier(ss.str()));
 		}
 	}
 
@@ -276,7 +276,7 @@ namespace cgl
 		/*boost::apply_visitor(*this, node.rangeStart);
 		boost::apply_visitor(*this, node.rangeEnd);
 		boost::apply_visitor(*this, node.doExpr);*/
-		return node;
+		return Expr(node);
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const ListConstractor& node)
@@ -285,13 +285,13 @@ namespace cgl
 		{
 		boost::apply_visitor(*this, expr);
 		}*/
-		return node;
+		return Expr(node);
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const KeyExpr& node)
 	{
 		//boost::apply_visitor(*this, node.expr);
-		return node;
+		return Expr(node);
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const RecordConstractor& node)
@@ -300,13 +300,12 @@ namespace cgl
 		{
 		boost::apply_visitor(*this, expr);
 		}*/
-		return node;
+		return Expr(node);
 	}
 
 	boost::optional<Expr> ControlFlowGraphMaker::operator()(const Accessor& node)
 	{
-		node;
-		return node;
+		return Expr(node);
 	}
 
 	void MakeControlFlowGraph(const Context& context, const Expr& constraintExpr, std::ostream& os)

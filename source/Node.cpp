@@ -13,6 +13,9 @@
 
 #include <Unicode.hpp>
 
+//#define USE_OPTIONAL_LIB
+
+#ifdef USE_OPTIONAL_LIB
 #define USE_NLOPT
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -154,6 +157,7 @@ struct LimboFitFunc {
 		return limbo::tools::make_vector(func(x));
 	}
 };
+#endif
 
 #include <Pita/Node.hpp>
 #include <Pita/Context.hpp>
@@ -1264,6 +1268,7 @@ namespace cgl
 					xs[i] = data[variable2Data[i]];
 				}
 			}*/
+#ifdef USE_OPTIONAL_LIB
 			else
 			{
 				std::cout << "Solve constraint by Limbo...\n";
@@ -1341,6 +1346,7 @@ namespace cgl
 					resultxs[i] = answer[i] * (rangeList[i].maximum - rangeList[i].minimum) + rangeList[i].minimum;
 				}
 			}
+#endif
 		}
 
 		return resultxs;

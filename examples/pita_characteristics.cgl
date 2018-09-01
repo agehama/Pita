@@ -96,6 +96,7 @@ main = {
         fill: baseColor
     }
 
+    /*
     sat( b.topLeft().x == BoundingBox(d).center.x )
     sat( Distance(bOut, d) == 20.0 )
 
@@ -105,6 +106,7 @@ main = {
     sat( Cmaes(f.pos), c.topLeft().x == BoundingBox(f).center.x )
     sat( Distance(cOut, f) == 20.0 )
     var(d.pos, e.pos, f.pos)
+    */
 }
 
 

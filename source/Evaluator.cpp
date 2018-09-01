@@ -2576,12 +2576,18 @@ namespace cgl
 				if (rangeExpr.freeRange)
 				{
 					//TODO:ここでrangeの型が妥当か判定すべき（図形かもしくはIntervalでなければはじく）
-					std::cout << "Has range\n";
+					if (isDebugMode)
+					{
+						std::cout << "Has range\n";
+					}
 					packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr.freeRange.get()), recordConsractor), *pContext));
 				}
 				else
 				{
-					std::cout << "Has not range\n";
+					if (isDebugMode)
+					{
+						std::cout << "Has not range\n";
+					}
 					packedRanges.push_back(0);
 				}
 			}
@@ -2981,6 +2987,8 @@ namespace cgl
 				}
 			}*/
 			auto recordVarAddresses = makeFreeVariableAddressesRange(pEnv, record.boundedFreeVariables, recordPackedRanges);
+
+			if (isDebugMode)
 			{
 				for (const auto& val : recordVarAddresses.first)
 				{
@@ -3016,6 +3024,8 @@ namespace cgl
 				mergedRegionVars.insert(mergedRegionVars.end(), recordVarAddresses.first.begin(), recordVarAddresses.first.end());
 				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
 			}
+
+			if (isDebugMode)
 			{
 				for (const OptimizeRegion& r : mergedOptimizeRegions)
 				{

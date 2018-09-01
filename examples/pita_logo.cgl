@@ -10,7 +10,7 @@ arc = (quality, beginAngle, endAngle -> Shape{
 width = 30
 
 text_p = Shape{
-    base_circle: (_ = Circle(100), _2 = _{scale: X2(500)}, (->_2))
+    base_circle: (->Circle{scale: X2(500)})
     arc_scope: (_ = arc(100, 30.0, -30.0), _2 = _{scale: X2(500)}, (->_2))
     fs: {func: []}
     add_value: (x -> fs.func = fs.func @ [(->x)])
@@ -23,7 +23,7 @@ text_p = Shape{
         p_ring: Shape{
             height = 130
             a = Square{scale: Vec2(150, height)}
-            b = (s = Circle(100), s{scale: X2(height), pos: Right(a)})
+            b = Circle{scale: X2(height), pos: Right(a)}
             c = a{scale.y = scale.y - width*2}
             d = b{scale = Sub(scale, X2(width*2))}
             frames: [b, d]
@@ -53,7 +53,7 @@ text_p = Shape{
 }
 
 text_i = Shape{
-    base_circle_i: (_ = Circle(1000), _2 = _{scale: X2(1000)}, (->_2))
+    base_circle_i: (->MakeCircle(1000){scale: X2(1000)})
     i_bar: Shape{
         canvas_w = 10000
         p_box = BoundingBox(text_p)
@@ -64,14 +64,14 @@ text_i = Shape{
 }
 
 text_t = Shape{
-    base_circle_t: (_ = Circle(100), _2 = _{scale: X2(300), pos: Vec2(1000, 0)}, (->_2))
+    base_circle_t: (->Circle{scale: X2(300), pos: Vec2(1000, 0)})
     fill: Rgb(200,200,200)
 }
 
 main = Shape{
     ss: [
         [
-            (s = Circle(100), s{scale: X2(300), pos: Vec2(600, 0), fill:Rgb(150,150,150)})
+            Circle{scale: X2(300), pos: Vec2(600, 0), fill:Rgb(150,150,150)}
             text_p
             text_i
             text_t

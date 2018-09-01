@@ -928,8 +928,6 @@ namespace cgl
 		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
 		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
 
-		CGL_Error("TODO:未対応");
-
 		auto factory = gg::GeometryFactory::create();
 
 		if (lhsPolygon.empty() || rhsPolygon.empty())

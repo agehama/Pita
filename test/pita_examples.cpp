@@ -59,17 +59,20 @@ std::vector<std::string> exampleFiles()
 	const std::vector<std::string> filenames({
 		"3rects",
 		"cross",
-		"skeleton",
 		"triforce",
 		"fib1",
 		"fib2",
 		"grid",
+		"constraint_dependency",
+		"koch_curve",
+		"koch_snowflake",
 		"rec_shape1",
 		"rec_shape2",
 		"rec_shape3",
-		"koch_curve",
-		"koch_snowflake",
-		"constraint_dependency"
+		"skeleton",
+		"pita_p3_",
+		"pita_characteristics",
+		"pita_logo"
 	});
 
 	return filenames;
@@ -145,6 +148,8 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 		{
 			std::cout << "-";
 		}
+
+		std::cout << "\n";
 	}
 
 	for (const auto& filename : filenames)

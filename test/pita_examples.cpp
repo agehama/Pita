@@ -123,14 +123,14 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 	names.insert(names.end(), filenames.begin(), filenames.end());
 
 	const auto longestNameIt = std::max_element(names.begin(), names.end(), [](const std::string& a, const std::string& b) {return a.length() < b.length(); });
-	const size_t longuestNameSize = longestNameIt->length();
+	const size_t longuestNameSize = longestNameIt->length() + 1;
 
 	{
 		std::stringstream ss;
 		for (size_t i = 0; i < 4; ++i)
 		{
 			ss << std::setiosflags(std::ios::fixed)
-				<< std::setprecision(3)
+				<< std::setprecision(6)
 				<< std::setw(longuestNameSize)
 				<< centered(names[i]);
 			if (i + 1 != 4)
@@ -150,10 +150,10 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 	for (const auto& filename : filenames)
 	{
 		std::cout << std::setiosflags(std::ios::fixed)
-			<< std::setprecision(3)
+			<< std::setprecision(6)
 			<< std::setw(longuestNameSize)
 			<< std::left
-			<< filename;
+			<< filename << "|";
 
 		auto it = profileTimes.find(filename);
 		if (it == profileTimes.end())
@@ -165,14 +165,16 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 		for (size_t i = 0; i < 3; ++i)
 		{
 			std::cout << std::setiosflags(std::ios::fixed)
-				<< std::setprecision(3)
+				<< std::setprecision(6)
 				<< std::setw(longuestNameSize)
-				<< std::left << times[i];
+				<< std::right << times[i];
 			if (i + 1 != 3)
 			{
 				std::cout << "|";
 			}
 		}
+
+		std::cout << "\n";
 	}
 }
 

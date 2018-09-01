@@ -2756,23 +2756,28 @@ namespace cgl
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
 
-			
-			CGL_DBG1("Expr: ");
-			printExpr2(constraint, pContext, std::cout);
-
-			CGL_DBG1("freeVariables: " + ToS(regionVars.size()));
-			for (const auto& val : regionVars)
+			if (isDebugMode)
 			{
-				CGL_DBG1(std::string("  Address(") + val.address.toString() + ")");
+				CGL_DBG1("Expr: ");
+				printExpr2(constraint, pContext, std::cout);
+
+				CGL_DBG1("freeVariables: " + ToS(regionVars.size()));
+				for (const auto& val : regionVars)
+				{
+					CGL_DBG1(std::string("  Address(") + val.address.toString() + ")");
+				}
 			}
 
 			SatVariableBinder binder(pContext, regionVars, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
 
-			CGL_DBG1("appearingList: " + ToS(appearingList.size()));
-			for (const auto& a : appearingList)
+			if (isDebugMode)
 			{
-				CGL_DBG1(std::string("  Address(") + a.toString() + ")");
+				CGL_DBG1("appearingList: " + ToS(appearingList.size()));
+				for (const auto& a : appearingList)
+				{
+					CGL_DBG1(std::string("  Address(") + a.toString() + ")");
+				}
 			}
 
 			return appearingList;

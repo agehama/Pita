@@ -19,6 +19,7 @@
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
+#include <type_traits>
 
 #include <boost/version.hpp>
 #define CGL_BOOST_MAJOR_VERSION (BOOST_VERSION / 100000)
@@ -86,8 +87,6 @@ namespace cgl
 			boost::u8_to_u32_iterator<std::string::const_iterator>(input.begin()),
 			boost::u8_to_u32_iterator<std::string::const_iterator>(input.end()));
 	}
-
-	//std::string UTF8ToString(const std::string& str);
 
 	template<class T1, class T2>
 	inline bool SameType(const T1& t1, const T2& t2)
@@ -167,7 +166,28 @@ namespace cgl
 	}
 #endif
 
-	//enum class UnaryOp
+	//https://stackoverflow.com/questions/37626566/get-boostvariants-type-index-with-boostmpl
+	template <typename T, typename ... Ts>
+	struct type_index;
+
+	template <typename T, typename ... Ts>
+	struct type_index<T, T, Ts ...>
+		: std::integral_constant<std::size_t, 0>
+	{};
+
+	template <typename T, typename U, typename ... Ts>
+	struct type_index<T, U, Ts ...>
+		: std::integral_constant<std::size_t, 1 + type_index<T, Ts...>::value>
+	{};
+
+	template <typename T, typename ... Ts>
+	struct variant_first_same_type_idx;
+
+	template <typename T, typename Head, typename ... Tail>
+	struct variant_first_same_type_idx<T, boost::variant<Head, Tail ... >>
+		: type_index<T, Head, Tail ...>
+	{};
+
 	enum UnaryOp
 	{
 		Not,
@@ -585,6 +605,12 @@ namespace cgl
 
 		boost::recursive_wrapper<Accessor>
 	>;
+
+	template<typename T>
+	inline constexpr int ExprIndex()
+	{
+		return variant_first_same_type_idx<T, Expr>::value;
+	}
 
 	bool IsEqualVal(const Val& value1, const Val& value2);
 	bool IsEqual(const Expr& value1, const Expr& value2);

@@ -6,55 +6,36 @@
 namespace cgl
 {
 	std::stack<filesystem::path> workingDirectories;
-	//std::set<filesystem::path> alreadyImportedFiles;
 
 	std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 
-	class GetInfo : public boost::static_visitor<LocationInfo&>
-	{
-	public:
-		GetInfo() = default;
-
-		LocationInfo& operator()(Lines& node) { return node; }
-		LocationInfo& operator()(BinaryExpr& node) { return node; }
-		LocationInfo& operator()(LRValue& node) { return node; }
-		LocationInfo& operator()(Identifier& node) { return node; }
-		LocationInfo& operator()(Import& node) { return node; }
-		LocationInfo& operator()(UnaryExpr& node) { return node; }
-		LocationInfo& operator()(Range& node) { return node; }
-		LocationInfo& operator()(DefFunc& node) { return node; }
-		LocationInfo& operator()(If& node) { return node; }
-		LocationInfo& operator()(For& node) { return node; }
-		LocationInfo& operator()(Return& node) { return node; }
-		LocationInfo& operator()(ListConstractor& node) { return node; }
-		LocationInfo& operator()(KeyExpr& node) { return node; }
-		LocationInfo& operator()(RecordConstractor& node) { return node; }
-		LocationInfo& operator()(Accessor& node) { return node; }
-		LocationInfo& operator()(DeclSat& node) { return node; }
-		LocationInfo& operator()(DeclFree& node) { return node; }
-	};
+	template<typename T>
+	using R = boost::recursive_wrapper<T>;
 
 	inline LocationInfo& GetLocInfo(Expr& expr)
 	{
-		//GetInfo getter;
-		//return boost::apply_visitor(getter, expr);
-		if(IsType<Lines>(expr)){return static_cast<LocationInfo&>(As<Lines>(expr));}
-		else if(IsType<BinaryExpr>(expr)){return static_cast<LocationInfo&>(As<BinaryExpr>(expr));}
-		else if(IsType<LRValue>(expr)){return static_cast<LocationInfo&>(As<LRValue>(expr));}
-		else if(IsType<Identifier>(expr)){return static_cast<LocationInfo&>(As<Identifier>(expr));}
-		else if(IsType<Import>(expr)){return static_cast<LocationInfo&>(As<Import>(expr));}
-		else if(IsType<UnaryExpr>(expr)){return static_cast<LocationInfo&>(As<UnaryExpr>(expr));}
-		else if(IsType<Range>(expr)){return static_cast<LocationInfo&>(As<Range>(expr));}
-		else if(IsType<DefFunc>(expr)){return static_cast<LocationInfo&>(As<DefFunc>(expr));}
-		else if(IsType<If>(expr)){return static_cast<LocationInfo&>(As<If>(expr));}
-		else if(IsType<For>(expr)){return static_cast<LocationInfo&>(As<For>(expr));}
-		else if(IsType<Return>(expr)){return static_cast<LocationInfo&>(As<Return>(expr));}
-		else if(IsType<ListConstractor>(expr)){return static_cast<LocationInfo&>(As<ListConstractor>(expr));}
-		else if(IsType<KeyExpr>(expr)){return static_cast<LocationInfo&>(As<KeyExpr>(expr));}
-		else if(IsType<RecordConstractor>(expr)){return static_cast<LocationInfo&>(As<RecordConstractor>(expr));}
-		else if(IsType<Accessor>(expr)){return static_cast<LocationInfo&>(As<Accessor>(expr));}
-		else if(IsType<DeclSat>(expr)){return static_cast<LocationInfo&>(As<DeclSat>(expr));}
-		else{return static_cast<LocationInfo&>(As<DeclFree>(expr));}
+		switch (expr.which())
+		{
+		case ExprIndex<R<LRValue>>() :           return static_cast<LocationInfo&>(As<LRValue>(expr));
+		case ExprIndex<Identifier>() :           return static_cast<LocationInfo&>(As<Identifier>(expr));
+		case ExprIndex<R<Import>>() :            return static_cast<LocationInfo&>(As<Import>(expr));
+		case ExprIndex<R<UnaryExpr>>() :         return static_cast<LocationInfo&>(As<UnaryExpr>(expr));
+		case ExprIndex<R<BinaryExpr>>() :        return static_cast<LocationInfo&>(As<BinaryExpr>(expr));
+		case ExprIndex<R<DefFunc>>() :           return static_cast<LocationInfo&>(As<DefFunc>(expr));
+		case ExprIndex<R<Range>>() :             return static_cast<LocationInfo&>(As<Range>(expr));
+		case ExprIndex<R<Lines>>() :             return static_cast<LocationInfo&>(As<Lines>(expr));
+		case ExprIndex<R<If>>() :                return static_cast<LocationInfo&>(As<If>(expr));
+		case ExprIndex<R<For>>() :               return static_cast<LocationInfo&>(As<For>(expr));
+		case ExprIndex<R<Return>>() :            return static_cast<LocationInfo&>(As<Return>(expr));
+		case ExprIndex<R<ListConstractor>>() :   return static_cast<LocationInfo&>(As<ListConstractor>(expr));
+		case ExprIndex<R<KeyExpr>>() :           return static_cast<LocationInfo&>(As<KeyExpr>(expr));
+		case ExprIndex<R<RecordConstractor>>() : return static_cast<LocationInfo&>(As<RecordConstractor>(expr));
+		case ExprIndex<R<DeclSat>>() :           return static_cast<LocationInfo&>(As<DeclSat>(expr));
+		case ExprIndex<R<DeclFree>>() :          return static_cast<LocationInfo&>(As<DeclFree>(expr));
+		case ExprIndex<R<Accessor>>() :          return static_cast<LocationInfo&>(As<Accessor>(expr));
+		default:
+			CGL_Error("エラー：対応する型が無い");
+		};
 	}
 
 	LocationInfo GetLocationInfo(IteratorT f, IteratorT l, SourceT first, SourceT last)
@@ -119,7 +100,6 @@ namespace cgl
 	//最初のパース時にimportされるpathとnameの組を登録しておき、
 	//パース直後(途中だとバックトラックが走る可能性があるためパースが終わってから)にそのソースがimportするソースのパースを再帰的に行う
 	//実行時には、あるpathとnameの組に紐付けられるパースツリーに対して一回のみevalが走り、その評価結果が返却される
-
 	class ParseImports : public boost::static_visitor<void>
 	{
 	public:

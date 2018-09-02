@@ -604,6 +604,9 @@ namespace cgl
 			const std::vector<std::string> postExpectingSymbols2({ "->","<=",">=","==","!=" });
 			const std::vector<std::string> prevExpectingSymbols2({ "->","<=",">=","==","!=" });
 
+			const std::vector<std::string> postExpectingSymbols4({ "then","else" });
+			const std::vector<std::string> prevExpectingSymbols4({ "then","else" });
+
 			/*
 			const std::vector<std::string> postExpectingSymbols({ "[","(","{","->",":","=","!","?","\"","&","|","<","<=",">",">=","==","!=","*","/","+","-","@" });
 			const std::vector<std::string> prevExpectingSymbols({ "]",")","}","->",":","=","!","?","\"","&","|","<","<=",">",">=","==","!=","*","/" });
@@ -646,6 +649,14 @@ namespace cgl
 						{
 							return false;
 						}
+						if (3 <= prevLastIndex)
+						{
+							const std::string lastFourChars({ prevLine[prevLastIndex - 3], prevLine[prevLastIndex - 2], prevLine[prevLastIndex - 1], prevLastChar });
+							if (std::find(postExpectingSymbols4.begin(), postExpectingSymbols4.end(), lastFourChars) != postExpectingSymbols4.end())
+							{
+								return false;
+							}
+						}
 					}
 
 					const size_t postFirstIndex = postLine.find_first_not_of(" \t\r");
@@ -660,6 +671,14 @@ namespace cgl
 						if (std::find(prevExpectingSymbols2.begin(), prevExpectingSymbols2.end(), firstTwoChars) != prevExpectingSymbols2.end())
 						{
 							return false;
+						}
+						if (postFirstIndex + 3 < postLine.size())
+						{
+							const std::string firstFourChars({ postFirstChar, postLine[postFirstIndex + 1], postLine[postFirstIndex + 2], postLine[postFirstIndex + 3] });
+							if (std::find(prevExpectingSymbols4.begin(), prevExpectingSymbols4.end(), firstFourChars) != prevExpectingSymbols4.end())
+							{
+								return false;
+							}
 						}
 					}
 

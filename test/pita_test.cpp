@@ -19,7 +19,7 @@ u8R"*(
 
 	a = 1
 	+ 2
-	Assert(a == 3, "comma separation(0)")
+	Assert(a == 1, "comma separation(0)")
 
 	Print("Passed")
 )

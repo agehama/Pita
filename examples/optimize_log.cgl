@@ -1,7 +1,6 @@
 {
-	size: 2
+	size: 1
 	labels: [
-		"pos.x"
-		"pos.y"
+		"bens.pos.x"
 	]
 	data: [

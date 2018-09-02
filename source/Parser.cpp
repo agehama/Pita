@@ -598,8 +598,12 @@ namespace cgl
 
 		//行末にカンマを挿入
 		{
-			const std::string postExpectingSymbols1("[({:=!?\"&|<>*/+-@");
-			const std::string prevExpectingSymbols1("])}:=!?\"&|<>*/");
+			const std::string postExpectingSymbols1("[({:=!?&|<>*/,+-@");
+			const std::string prevExpectingSymbols1("])}:=!?&|<>*/,");
+
+			//同じ記号で囲む場合は内側か外側かの判定を行う必要がある
+			const std::string postExpectingSymbols1Symmetric("\"");
+			const std::string prevExpectingSymbols1Symmetric("\"");
 
 			const std::vector<std::string> postExpectingSymbols2({ "->","<=",">=","==","!=" });
 			const std::vector<std::string> prevExpectingSymbols2({ "->","<=",">=","==","!=" });
@@ -634,6 +638,22 @@ namespace cgl
 				const auto& prevLine = lines[prevIndex];
 				const auto& postLine = lines[postIndex];
 
+				const auto countChars = [&](char ch, size_t lineIndex, size_t charIndex)->size_t
+				{
+					size_t count = 0;
+					for (size_t index = 0; index < lineIndex; ++index)
+					{
+						const auto& line = lines[index];
+						count += std::count(line.begin(), line.end(), ch);
+					}
+
+					const auto& line = lines[lineIndex];
+					count += std::count(line.begin(), line.begin() + charIndex, ch);
+					std::cout << "char count: " << count << "\n";
+
+					return count;
+				};
+
 				const auto needComma = [&]()->bool
 				{
 					const size_t prevLastIndex = prevLine.find_last_not_of(" \t\r");
@@ -641,6 +661,14 @@ namespace cgl
 					if (postExpectingSymbols1.find(prevLastChar) != std::string::npos)
 					{
 						return false;
+					}
+					const size_t prevLastSymmetricSymbolPos = postExpectingSymbols1Symmetric.find(prevLastChar);
+					if (prevLastSymmetricSymbolPos != std::string::npos)
+					{
+						if (countChars(postExpectingSymbols1Symmetric[prevLastSymmetricSymbolPos], prevIndex, prevLastIndex) % 2 == 0)
+						{
+							return false;
+						}
 					}
 					if (1 <= prevLastIndex)
 					{
@@ -664,6 +692,14 @@ namespace cgl
 					if (prevExpectingSymbols1.find(postFirstChar) != std::string::npos)
 					{
 						return false;
+					}
+					const size_t postFirstSymmetricSymbolPos = prevExpectingSymbols1Symmetric.find(postFirstChar);
+					if (postFirstSymmetricSymbolPos != std::string::npos)
+					{
+						if (countChars(prevExpectingSymbols1Symmetric[postFirstSymmetricSymbolPos], postIndex, postFirstIndex) % 2 == 1)
+						{
+							return false;
+						}
 					}
 					if (postFirstIndex + 1 < postLine.size())
 					{

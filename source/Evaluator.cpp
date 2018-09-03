@@ -496,7 +496,13 @@ namespace cgl
 			boost::apply_visitor(eval, evalExpr);
 			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
 
-			return ExprTransformer::operator()(node);
+			For result;
+			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
+			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
+			result.loopCounter = (IsVersioned(node.loopCounter) ? node.loopCounter : NewVersioned(node.loopCounter));
+			result.doExpr = boost::apply_visitor(*this, node.doExpr);
+			result.asList = node.asList;
+			return result.setLocation(node);
 		}
 
 		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
@@ -967,7 +973,9 @@ namespace cgl
 	{
 		auto contextClone = pContext->cloneContext();
 		std::unordered_map<std::string, size_t> identifierCounts;
-		InlineExpander expander(identifierCounts, pContext, {}, 0);
+
+		std::unordered_map<std::string, std::string> renameTable;
+		InlineExpander expander(identifierCounts, pContext, renameTable, 0);
 
 		return ExpandedEmptyLines(boost::apply_visitor(expander, expr));
 	}

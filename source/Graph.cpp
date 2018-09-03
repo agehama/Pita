@@ -366,7 +366,7 @@ namespace cgl
 
 	void ConstraintGraph::migrateNode(size_t beforeNode, size_t afterNode)
 	{
-		for(size_t i=0;i<m_edgeIndices.size();++i)
+		for (size_t i = 0; i < m_edgeIndices.size(); ++i)
 		{
 			if (i == beforeNode)
 			{
@@ -422,22 +422,28 @@ namespace cgl
 				os << "  node" << i << R"( [label = "{)";
 
 				std::stringstream ss;
-				if(IsType<LRValue>(opt.get().expr))
+				if(IsType<LRValue>(opt.get().expr), false)
 				{
 					Printer printer(pContext, ss);
 					boost::apply_visitor(printer, opt.get().expr);
 				}
 				else
 				{
-					Printer2 printer(nullptr, ss);
+					Printer2 printer(pContext, ss);
 					boost::apply_visitor(printer, opt.get().expr);
 				}
 				os << GraphvizEscaped(ss.str());
 			}
+			else if (auto opt = AsOpt<CFGNodeIf>(node))
+			{
+				os << "  node" << i << R"( [shape = diamond, label = "{)";
+				os << GraphvizEscaped("If");
+			}
 			else if (auto opt = AsOpt<CFGNodeVarAddress>(node))
 			{
 				os << "  node" << i << R"( [shape = doublecircle, color = "#FF0000", label = "{)";
-				os << GraphvizEscaped("Var: Address(" + opt.get().address.toString() + ")");
+				const auto name = pContext->makeLabel(opt.get().address);
+				os << GraphvizEscaped(name + ": Address(" + opt.get().address.toString() + ")");
 			}
 			else if (auto opt = AsOpt<CFGNodeRecordConstruction>(node))
 			{
@@ -447,7 +453,15 @@ namespace cgl
 			else if (auto opt = AsOpt<CFGNodeFunction>(node))
 			{
 				os << "  node" << i << R"( [shape = hexagon, label = "{)";
-				os << GraphvizEscaped("Function Caller");
+				if (opt.get().functionAddress)
+				{
+					const auto name = pContext->makeLabel(opt.get().functionAddress.get());
+					os << GraphvizEscaped(name + "()");
+				}
+				else
+				{
+					os << GraphvizEscaped("Call Function");
+				}
 			}
 			/*else if (auto opt = AsOpt<CFGNodeRecordBegin>(node))
 			{
@@ -466,7 +480,7 @@ namespace cgl
 			}
 			else if (auto opt = AsOpt<CFGNodeLogicalOp>(node))
 			{
-				os << "  node" << i << R"( [shape = diamond, label = "{)";
+				os << "  node" << i << R"( [shape = triangle, label = "{)";
 				os << GraphvizEscaped(opt.get().name());
 			}
 
@@ -541,12 +555,49 @@ namespace cgl
 		}
 	}
 
+	std::vector<size_t> ConstraintGraph::flowInEdgesTo(size_t nodeIndex)const
+	{
+		std::vector<size_t> flowInNodes;
+		for (size_t i = 0; i < m_edgeIndices.size(); ++i)
+		{
+			if (i == nodeIndex)
+			{
+				continue;
+			}
+
+			auto it = m_edgeIndices[i].find(nodeIndex);
+			if (it != m_edgeIndices[i].end())
+			{
+				flowInNodes.emplace_back(i);
+			}
+		}
+		return flowInNodes;
+	}
+
+	std::vector<size_t> ConstraintGraph::flowOutEdgesFrom(size_t nodeIndex)const
+	{
+		std::vector<size_t> flowOutNodes;
+		for (const auto& edge : m_edgeIndices[nodeIndex])
+		{
+			flowOutNodes.emplace_back(edge.first);
+		}
+		return flowOutNodes;
+	}
+
 	Identifier ConstraintGraph::NewVariable()
 	{
 		static size_t auxiliaryVariables = 0;
 		++auxiliaryVariables;
 		return Identifier(std::string("$") + ToS(auxiliaryVariables));
 	}
+
+	struct AdditionalInfo
+	{
+		size_t ifConditionExprIndex;
+		size_t ifJudgeIndex;
+		size_t ifThenIndex;
+		size_t ifElseIndex;
+	};
 
 	class ConstraintGraphMaker : public boost::static_visitor<size_t>
 	{
@@ -571,6 +622,8 @@ namespace cgl
 		//深さごとに独立
 		bool isRootConstraintNode;
 		bool isAtomicConstraintNode;
+
+		boost::optional<AdditionalInfo> additionalInfo;
 
 		size_t operator()(const Identifier& node);
 		size_t operator()(const LRValue& node);
@@ -678,6 +731,7 @@ namespace cgl
 		auto atomicConstraintOpt = convertOp(node.op);
 		if(isAtomicConstraintNode && atomicConstraintOpt)
 		{
+			std::cout << "isAtomicConstraintNode " << std::endl;
 			const size_t binaryOpIndex = graph.addNode();
 
 			const size_t lhsIndex = boost::apply_visitor(child, node.lhs);
@@ -702,33 +756,35 @@ namespace cgl
 			const auto& lhsNode = graph.node(lhsIndex);
 			const auto& rhsNode = graph.node(rhsIndex);
 
-			if (!IsType<CFGNodeBlock>(lhsNode) || !IsType<CFGNodeBlock>(rhsNode))
+			/*if (!IsType<CFGNodeBlock>(lhsNode) || !IsType<CFGNodeBlock>(rhsNode))
 			{
 				CGL_Error("エラー");
+			}*/
+
+			if (IsType<CFGNodeBlock>(lhsNode) && IsType<CFGNodeBlock>(rhsNode), false)
+			{
+				//子供の持っているエッジを全て親に張り替える
+				graph.migrateNode(lhsIndex, binaryOpIndex);
+				graph.migrateNode(rhsIndex, binaryOpIndex);
+
+				graph.node(lhsIndex) = CFGNodeNull();
+				graph.node(rhsIndex) = CFGNodeNull();
+				graph.node(binaryOpIndex) = CFGNodeBlock(node);
+
+				return binaryOpIndex;
 			}
+			else
+			{
+				graph.addEdge(lhsIndex, binaryOpIndex);
+				graph.addEdge(rhsIndex, binaryOpIndex);
+				graph.node(binaryOpIndex) = CFGNodeBlock(Identifier(BinaryOpToStr(node.op)));
 
-			/*
-			//子供の持っているエッジを全て親に張り替える
-			graph.migrateNode(lhsIndex, binaryOpIndex);
-			graph.migrateNode(rhsIndex, binaryOpIndex);
-
-			graph.node(lhsIndex) = CFGNodeNull();
-			graph.node(rhsIndex) = CFGNodeNull();
-			graph.node(binaryOpIndex) = CFGNodeBlock(node);
-
-			return binaryOpIndex;
-			//*/
-
-			//*
-			graph.addEdge(lhsIndex, binaryOpIndex);
-			graph.addEdge(rhsIndex, binaryOpIndex);
-			graph.node(binaryOpIndex) = CFGNodeBlock(Identifier(BinaryOpToStr(node.op)));
-
-			return binaryOpIndex;
-			//*/
+				return binaryOpIndex;
+			}
 		}
 	}
 
+#ifdef commentout
 	size_t ConstraintGraphMaker::operator()(const Lines& lines)
 	{
 		const Expr expr = ExpandedEmptyLines(lines);
@@ -772,6 +828,36 @@ namespace cgl
 			return graph.addNode(CFGNodeBlock(node));
 		}
 	}
+#endif
+
+	size_t ConstraintGraphMaker::operator()(const Lines& lines)
+	{
+		const Expr expr = ExpandedEmptyLines(lines);
+		if (!IsType<Lines>(expr))
+		{
+			return boost::apply_visitor(*this, expr);
+		}
+
+		const Lines& node = As<Lines>(expr);
+
+		size_t lastNodeIndex = currentNodeIndex;
+		if (!node.exprs.empty())
+		{
+			lastNodeIndex = boost::apply_visitor(*this, node.exprs.front());
+		}
+
+		for (size_t i = 1; i < node.exprs.size(); ++i)
+		{
+			auto& lastNode = graph.node(lastNodeIndex);
+			const size_t currentNodeIndex = boost::apply_visitor(*this, node.exprs[i]);
+			auto& currentNode = graph.node(currentNodeIndex);
+
+			graph.addEdge(lastNodeIndex, currentNodeIndex);
+			lastNodeIndex = currentNodeIndex;
+		}
+
+		return lastNodeIndex;
+	}
 
 	size_t ConstraintGraphMaker::operator()(const DefFunc& node)
 	{
@@ -780,80 +866,67 @@ namespace cgl
 
 	size_t ConstraintGraphMaker::operator()(const If& node)
 	{
-		return graph.addNode(CFGNodeBlock(node));
-		//if (auto expr = boost::apply_visitor(*this, node.cond_expr))
-		//{
-		//	graph.node(currentNodeIndex).add(expr.get());
-		//}
+		ConstraintGraphMaker child(context, graph, currentNodeIndex, false, false);
 
-		//const size_t nextNodeIndex = graph.addNode();
+		CFGNodeIf ifNode;
+		AdditionalInfo info;
 
-		//std::vector<Identifier> results;
-		//{
-		//	const size_t thenNodeIndex = graph.addNode();
-		//	graph.addEdge(currentNodeIndex, thenNodeIndex, true);
+		const size_t conditionNodeIndex = boost::apply_visitor(child, node.cond_expr);
+		const size_t ifNodeIndex = graph.addNode();
 
-		//	ControlFlowGraphMaker child(context, graph, thenNodeIndex);
-		//	if (auto thenResultExpr = boost::apply_visitor(child, node.then_expr))
-		//	{
-		//		results.push_back(ControlFlowGraph::NewVariable());
-		//		graph.node(thenNodeIndex).add(BinaryExpr(results.back(), thenResultExpr.get(), BinaryOp::Assign));
-		//	}
+		info.ifConditionExprIndex = conditionNodeIndex;
+		info.ifJudgeIndex = ifNodeIndex;
 
-		//	//then式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
-		//	graph.node(thenNodeIndex).add(LRValue(true));
-		//	graph.addEdge(thenNodeIndex, nextNodeIndex, true);
-		//}
+		graph.addEdge(conditionNodeIndex, ifNodeIndex);
 
-		//if (node.else_expr)
-		//{
-		//	const size_t elseNodeIndex = graph.addNode();
-		//	graph.addEdge(currentNodeIndex, elseNodeIndex, false);
+		const size_t thenNodeIndex = boost::apply_visitor(child, node.then_expr);
+		ifNode.yesIndex = thenNodeIndex;
+		info.ifThenIndex = thenNodeIndex;
+		graph.addEdge(ifNodeIndex, thenNodeIndex);
 
-		//	ControlFlowGraphMaker child(context, graph, elseNodeIndex);
-		//	if (auto elseResultExpr = boost::apply_visitor(child, node.else_expr.get()))
-		//	{
-		//		results.push_back(ControlFlowGraph::NewVariable());
-		//		graph.node(elseNodeIndex).add(BinaryExpr(results.back(), elseResultExpr.get(), BinaryOp::Assign));
-		//	}
+		const size_t elseNodeIndex = (node.else_expr
+			? boost::apply_visitor(child, node.else_expr.get())
+			: graph.addNode(CFGNodeNull())
+			);
+		ifNode.noIndex = elseNodeIndex;
+		info.ifElseIndex = elseNodeIndex;
+		graph.addEdge(ifNodeIndex, elseNodeIndex);
 
-		//	//else式が実行し終わったら自動的にif式の次のノードに処理が飛ぶようにする
-		//	graph.node(elseNodeIndex).add(LRValue(true));
-		//	graph.addEdge(elseNodeIndex, nextNodeIndex, true);
-		//}
-		//else
-		//{
-		//	//else式がない場合は、condが満たされないと自動で次のノードへ行く
-		//	graph.addEdge(currentNodeIndex, nextNodeIndex, false);
-		//}
+		graph.node(ifNodeIndex) = ifNode;
+		additionalInfo = info;
 
-		//currentNodeIndex = nextNodeIndex;
-
-		//if (results.empty())
-		//{
-		//	return boost::none;
-		//}
-		//else if (results.size() == 1)
-		//{
-		//	return results.front();
-		//}
-		//else
-		//{
-		//	std::stringstream ss;
-		//	ss << "Phi(";
-		//	for (size_t i = 0; i + 1 < results.size(); ++i)
-		//	{
-		//		ss << results[i].toString() << ", ";
-		//	}
-		//	ss << results.back().toString() << ")";
-
-		//	return Identifier(ss.str());
-		//}
+		return thenNodeIndex;
+		//return ifNodeIndex;
 	}
 
 	size_t ConstraintGraphMaker::operator()(const For& node)
 	{
-		return graph.addNode(CFGNodeBlock(node));
+		ConstraintGraphMaker child(context, graph, currentNodeIndex, false, false);
+
+		const Expr startExpr = BinaryExpr(node.loopCounter, node.rangeStart, BinaryOp::Assign);
+		const size_t startNodeIndex = boost::apply_visitor(child, startExpr);
+
+		If ifexpr;
+		ifexpr.cond_expr = BinaryExpr(node.loopCounter, node.rangeEnd, BinaryOp::LessEqual);
+		ifexpr.then_expr = node.doExpr;
+
+		const Expr expr = ifexpr;
+		boost::apply_visitor(child, expr);
+		const size_t conditionNodeIndex = child.additionalInfo.get().ifConditionExprIndex;
+		const size_t doNodeIndex = child.additionalInfo.get().ifThenIndex;
+		const size_t breakNodeIndex = child.additionalInfo.get().ifElseIndex;
+
+		additionalInfo = boost::none;
+
+		graph.addEdge(startNodeIndex, conditionNodeIndex);
+
+		Expr addExpr = BinaryExpr(node.loopCounter, BinaryExpr(node.loopCounter, LRValue(1), BinaryOp::Add), BinaryOp::Assign);
+		const size_t continuousNodeIndex = boost::apply_visitor(child, addExpr);
+
+		graph.addEdge(doNodeIndex, continuousNodeIndex);
+		graph.addEdge(continuousNodeIndex, conditionNodeIndex);
+
+		return breakNodeIndex;
 	}
 
 	size_t ConstraintGraphMaker::operator()(const ListConstractor& node)
@@ -918,11 +991,11 @@ namespace cgl
 			return headNodeIndex;
 		}
 
-		size_t prevControlNode = headNodeIndex;
+		size_t prevControlNodeIndex = headNodeIndex;
 
 		for (const auto& access : node.accesses)
 		{
-			if (auto opt = AsOpt<FunctionAccess>(access))
+			/*if (auto opt = AsOpt<FunctionAccess>(access))
 			{
 				const size_t callerNodeIndex = graph.addNode();
 				graph.addEdge(prevControlNode, callerNodeIndex);
@@ -938,10 +1011,41 @@ namespace cgl
 
 				graph.node(callerNodeIndex) = CFGNodeFunction(argumentIndices, prevControlNode);
 				prevControlNode = callerNodeIndex;
+			}*/
+			if (auto opt = AsOpt<FunctionAccess>(access))
+			{
+				const size_t callerNodeIndex = graph.addNode();
+				graph.addEdge(prevControlNodeIndex, callerNodeIndex);
+
+				std::vector<size_t> argumentIndices;
+				const auto& arguments = opt.get().actualArguments;
+				for (size_t argIndex = 0; argIndex < arguments.size(); ++argIndex)
+				{
+					const size_t currentArgumentIndex = boost::apply_visitor(*this, arguments[argIndex]);
+					graph.addEdge(currentArgumentIndex, callerNodeIndex);
+					argumentIndices.push_back(currentArgumentIndex);
+				}
+
+				CFGNodeFunction functionNode(argumentIndices, prevControlNodeIndex);
+				{
+					auto& prevControlNode = graph.node(prevControlNodeIndex);
+					if (IsType<CFGNodeBlock>(prevControlNode) && graph.flowInEdgesTo(prevControlNodeIndex).empty())
+					{
+						Eval evaluator(context.m_weakThis.lock());
+						LRValue lrvalue = boost::apply_visitor(evaluator, As<CFGNodeBlock>(prevControlNode).expr);
+						if (auto opt = lrvalue.deref(context))
+						{
+							functionNode.functionAddress = opt.get();
+						}
+					}
+				}
+
+				graph.node(callerNodeIndex) = functionNode;
+				prevControlNodeIndex = callerNodeIndex;
 			}
 		}
 
-		return prevControlNode;
+		return prevControlNodeIndex;
 	}
 
 	ConstraintGraph ConstructConstraintGraph(std::shared_ptr<Context> pContext, const Expr& constraintExpr)
@@ -955,19 +1059,7 @@ namespace cgl
 		boost::apply_visitor(printer, constraintExpr);
 
 		std::cout << "build graph:" << std::endl;
-
 		boost::apply_visitor(graphMaker, constraintExpr);
-		//if (auto resultExpr = boost::apply_visitor(graphMaker, constraintExpr))
-		//{
-		//	//graph.node(graphMaker.currentNodeIndex).add(resultExpr.get());
-		//}
-
-		/*std::cout << "output graphviz:" << std::endl;
-
-		
-		graph.outputGraphViz(os, pContext);
-
-		std::cout << "completed MakeControlFlowGraph:" << std::endl;*/
 
 		return graph;
 	}

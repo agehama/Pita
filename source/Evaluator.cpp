@@ -728,9 +728,9 @@ namespace cgl
 
 						for (const auto& expr : funcAccess.actualArguments)
 						{
-							std::cout << indent() << "Argument: \n";
+							/*std::cout << indent() << "Argument: \n";
 							boost::apply_visitor(printer, expr);
-							std::cout << std::endl;
+							std::cout << std::endl;*/
 							replacedArguments.push_back(boost::apply_visitor(child, expr));
 						}
 

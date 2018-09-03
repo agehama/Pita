@@ -7,6 +7,8 @@
 
 namespace cgl
 {
+	constexpr int maxShowListSize = 5;
+
 	std::string ValuePrinter::indent()const
 	{
 		const int tabSize = 4;
@@ -57,6 +59,12 @@ namespace cgl
 			const std::string header = std::string("Address(") + data[i].toString() + "): ";
 			const auto child = ValuePrinter(pEnv, os, m_indent + 1, header);
 			//os << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
+
+			if (maxShowListSize < i)
+			{
+				os << child.indent() << " ... " << std::endl;
+				break;
+			}
 
 			if (pEnv && data[i].isValid())
 			{
@@ -204,6 +212,12 @@ namespace cgl
 
 			const std::string lf = i + 1 == data.size() ? "" : delimiter();
 			
+			if (maxShowListSize < i)
+			{
+				os << child.indent() << " ... " << lf;
+				break;
+			}
+
 			if (pEnv && data[i].isValid())
 			{
 				//const Val evaluated = pEnv->expand(data[i]);
@@ -578,6 +592,11 @@ namespace cgl
 		int i = 0;
 		for (const auto& expr : listConstractor.data)
 		{
+			if (maxShowListSize < i)
+			{
+				os << indent() << "(" << i << "): ... " << std::endl;
+				break;
+			}
 			os << indent() << "(" << i << "): " << std::endl;
 			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 			++i;
@@ -954,8 +973,29 @@ namespace cgl
 
 	void Printer2::operator()(const For& forExpression)const
 	{
-		os << indent() << "For(" << footer();
+		std::stringstream ssBegin;
+		std::stringstream ssEnd;
 
+		{
+			const auto child = Printer2(pEnv, ssBegin, 0);
+			boost::apply_visitor(child, forExpression.rangeStart);
+		}
+		{
+			const auto child = Printer2(pEnv, ssEnd, 0);
+			boost::apply_visitor(child, forExpression.rangeEnd);
+		}
+
+		os << indent() << "for " <<
+			forExpression.loopCounter.name << " in " <<
+			ssBegin.str() << " : " <<
+			ssEnd.str() << (forExpression.asList ? " list" : " do") << "(" << footer();
+		
+		{
+			std::stringstream ss;
+			const auto child = Printer2(pEnv, ss, m_indent + 1);
+			boost::apply_visitor(child, forExpression.doExpr);
+			os << ss.str();
+		}
 		os << indent() << ")" << footer();
 	}
 
@@ -975,6 +1015,11 @@ namespace cgl
 		int i = 0;
 		for (const auto& expr : listConstractor.data)
 		{
+			if (maxShowListSize < i)
+			{
+				os << " ... ";
+				break;
+			}
 			//os << indent() << "(" << i << "): " << footer();
 			boost::apply_visitor(Printer2(pEnv, os, m_indent == 0 ? 0 : m_indent + 1), expr);
 			if (m_indent == 0 && i + 1 != listConstractor.data.size())

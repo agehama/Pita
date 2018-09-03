@@ -934,7 +934,14 @@ Library.
 		if (result.count("debug"))
 		{
 			isDebugMode = true;
+		}
+		if (result.count("block"))
+		{
+			isBlockingMode = true;
+		}
 
+		if(isDebugMode && isBlockingMode)
+		{
 #ifdef XCURSES
 			Xinitscr(argc, argv);
 #else
@@ -985,10 +992,7 @@ Library.
 			}*/
 		}
 
-		if (result.count("block"))
-		{
-			isBlockingMode = true;
-		}
+		
 
 		/*
 		if (result.count("seed"))

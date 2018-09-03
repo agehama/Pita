@@ -44,7 +44,8 @@ main = Shape{
         s[i].pos = Vec2(Random(-100,100),Random(-100,100))
     )
 
-    f = (a, b -> width=35, Area(BoundingBox(Intersect(Buffer(a,width), Buffer(b,width))))^2 )
+    //f = (a, b -> width=35, Area(BoundingBox(Intersect(Buffer(a,width), Buffer(b,width))))^2 )
+    f = (a, b -> width=35, Area(BoundingBox(Intersect(Buffer(a,width), Buffer(b,width)))) )
 
     sat( Cmaes(s),
         (sum = 0.0

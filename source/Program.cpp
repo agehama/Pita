@@ -391,7 +391,7 @@ namespace cgl
 					}
 				};
 
-				if (isDebugMode)
+				if (isDebugMode && isBlockingMode)
 				{
 					using namespace std::chrono_literals;
 

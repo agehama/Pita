@@ -82,6 +82,7 @@ namespace cgl
 	//struct CFGNodeVariable;
 	struct CFGNodeNull;
 	struct CFGNodeBlock;
+	struct CFGNodeIf;
 	struct CFGNodeFunction;
 	struct CFGNodeConstraint;
 	struct CFGNodeLogicalOp;
@@ -92,6 +93,7 @@ namespace cgl
 		CFGNodeNull,
 		CFGNodeVarAddress,
 		CFGNodeBlock,
+		CFGNodeIf,
 		CFGNodeRecordConstruction,
 		CFGNodeFunction,
 		CFGNodeConstraint,
@@ -121,6 +123,17 @@ namespace cgl
 		Expr expr;
 	};
 
+	struct CFGNodeIf
+	{
+		CFGNodeIf() = default;
+		CFGNodeIf(size_t yesIndex, size_t noIndex) :
+			yesIndex(yesIndex), noIndex(noIndex)
+		{}
+
+		size_t yesIndex;
+		size_t noIndex;
+	};
+
 	struct CFGNodeRecordConstruction
 	{
 		CFGNodeRecordConstruction() = default;
@@ -144,18 +157,43 @@ namespace cgl
 		//
 	};
 
+	//struct CFGNodeFunction
+	//{
+	//	CFGNodeFunction() = default;
+	//	CFGNodeFunction(const std::vector<size_t>& argumentNodeIndices, size_t calleeFunctionNodeIndex) :
+	//		argumentNodeIndices(argumentNodeIndices),
+	//		calleeFunctionNodeIndex(calleeFunctionNodeIndex)
+	//	{}
+
+	//	//個々の引数ノードから伸びるエッジと同一だが、
+	//	//エッジには引数の順序がないのでここで順序付けて保存しておく
+	//	std::vector<size_t> argumentNodeIndices;
+	//	size_t calleeFunctionNodeIndex;
+	//};
+
 	struct CFGNodeFunction
 	{
 		CFGNodeFunction() = default;
-		CFGNodeFunction(const std::vector<size_t>& argumentNodeIndices, size_t calleeFunctionNodeIndex) :
+		CFGNodeFunction(const std::vector<size_t>& argumentNodeIndices,
+			size_t calleeFunctionNodeIndex) :
 			argumentNodeIndices(argumentNodeIndices),
 			calleeFunctionNodeIndex(calleeFunctionNodeIndex)
+		{}
+		CFGNodeFunction(const std::vector<size_t>& argumentNodeIndices,
+			size_t calleeFunctionNodeIndex,
+			Address functionAddress) :
+			argumentNodeIndices(argumentNodeIndices),
+			calleeFunctionNodeIndex(calleeFunctionNodeIndex),
+			functionAddress(functionAddress)
 		{}
 
 		//個々の引数ノードから伸びるエッジと同一だが、
 		//エッジには引数の順序がないのでここで順序付けて保存しておく
 		std::vector<size_t> argumentNodeIndices;
 		size_t calleeFunctionNodeIndex;
+
+		//グラフ可視化時になるべく名前を表示したいため、すぐアドレスを取れる場合だけ持っておく
+		boost::optional<Address> functionAddress;
 	};
 
 	struct CFGNodeConstraint
@@ -239,9 +277,13 @@ namespace cgl
 
 		void addVariableAddresses(const Context& context, const std::unordered_set<Address>& vars);
 
+		std::vector<size_t> flowInEdgesTo(size_t nodeIndex)const;
+		std::vector<size_t> flowOutEdgesFrom(size_t nodeIndex)const;
+
 		static Identifier NewVariable();
 
 	private:
+
 		std::vector<ConstraintGraphNode> m_graphNodes;
 		std::vector<std::unordered_map<size_t, EdgeInfo>> m_edgeIndices;
 	};

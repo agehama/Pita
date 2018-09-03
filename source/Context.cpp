@@ -1317,8 +1317,8 @@ namespace cgl
 
 		localEnv().back().temporaryAddresses.push_back(address);
 
-		//const int thresholdGC = 20000;
-		const int thresholdGC = 300;
+		const int thresholdGC = 20000;
+		//const int thresholdGC = 5000;
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
 			garbageCollect();
@@ -2882,7 +2882,7 @@ namespace cgl
 
 	void Context::garbageCollect(bool force)
 	{
-		if (!force && !m_automaticGC)
+		if (!m_automaticGC)
 		{
 			return;
 		}
@@ -2902,12 +2902,12 @@ namespace cgl
 
 		{
 			std::unordered_set<Address> addressesDelta;
-			std::cout << "Whole Local Env Stack Size: " << m_localEnvStack.size() << std::endl;
+			//std::cout << "Whole Local Env Stack Size: " << m_localEnvStack.size() << std::endl;
 			for (const auto& env : m_localEnvStack)
 			{
 				int scopeCount = 0;
 
-				std::cout << "Current Scope Depth: " << env.size() << ", ";
+				//std::cout << "Current Scope Depth: " << env.size() << ", ";
 				for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
 				{
 					const int varCount = scopeIt->variables.size() + scopeIt->temporaryAddresses.size();
@@ -2928,10 +2928,10 @@ namespace cgl
 						}
 					}
 
-					std::cout << "var(" << varCount << "), ";
+					//std::cout << "var(" << varCount << "), ";
 				}
 
-				std::cout << "\n";
+				//std::cout << "\n";
 			}
 
 			GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);

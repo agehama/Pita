@@ -414,10 +414,23 @@ namespace cgl
 			if (IsType<ListAccess>(access))
 			{
 				const ListAccess& listAccess = As<ListAccess>(access);
-				
-				//++depth;
+
+				//この文で、識別子がローカル変数の場合varとは依存しないということは確かめられるが、
+				//ローカル変数なので、ここで評価してはいけないということは確かめられてない
 				isDeterministic = !boost::apply_visitor(*this, listAccess.index) && isDeterministic;
-				//--depth;
+
+				//TODO:本当は式をトラバースしてどれかの部分式にローカル変数を含むかどうか判定しなければならない
+				if (IsType<Identifier>(listAccess.index) && isLocalVariable(As<Identifier>(listAccess.index)))
+				{
+					isDeterministic = false;
+					//あるlistのindexがローカル変数に依存する時は、そのローカル変数の値は評価しないとわからない
+					//したがって、listから辿れるすべての要素はvarに依存しうるものとする。
+					return addSatRef(headAddress);
+				}
+				else
+				{
+					std::cout << "::" << __LINE__ << std::endl;
+				}
 
 				if (isDeterministic)
 				{
@@ -429,15 +442,23 @@ namespace cgl
 
 					const List& list = As<List>(objRef);
 
-					Val indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index), node);
+					try
+					{
+						Val indexValue = pEnv->expand(boost::apply_visitor(evaluator, listAccess.index), node);
 
-					if (auto indexOpt = AsOpt<int>(indexValue))
-					{
-						headAddress = list.get(indexOpt.get());
+						if (auto indexOpt = AsOpt<int>(indexValue))
+						{
+							headAddress = list.get(indexOpt.get());
+						}
+						else
+						{
+							CGL_Error("list[index] の index が int 型でない");
+						}
 					}
-					else
+					catch (std::exception& e)
 					{
-						CGL_Error("list[index] の index が int 型でない");
+						std::cout << e.what() << ": " << __LINE__ << std::endl;
+						throw;
 					}
 				}
 			}
@@ -501,21 +522,40 @@ namespace cgl
 					*/
 					//std::cout << getIndent() << typeid(node).name() << " -> actualArguments" << std::endl;
 					std::vector<Address> arguments;
-					for (const auto& expr : funcAccess.actualArguments)
-					{
-						const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
-						lrvalue.push_back(arguments, *pEnv);
-					}
-					isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
 
-					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
-					if (isDeterministic)
+					try
 					{
-						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
-						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
-						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
-						headAddress = pEnv->makeTemporaryValue(returnedValue);
+						for (const auto& expr : funcAccess.actualArguments)
+						{
+							const LRValue lrvalue = boost::apply_visitor(evaluator, expr);
+							lrvalue.push_back(arguments, *pEnv);
+						}
 					}
+					catch (std::exception& e)
+					{
+						std::cout << e.what() << ": " << __LINE__ << std::endl;
+					}
+
+					//TODO: ちゃんと直す
+					if (function.builtinFuncAddress)
+					{
+						bool orig = hasPlateausFunction;
+
+						isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
+
+						std::cout << "function.builtinFuncAddress: " << orig <<" -> " << hasPlateausFunction << std::endl;
+					}
+
+					//isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
+
+					////ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
+					//if (isDeterministic)
+					//{
+					//	//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
+					//	//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+					//	const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
+					//	headAddress = pEnv->makeTemporaryValue(returnedValue);
+					//}
 				}
 			}
 			else

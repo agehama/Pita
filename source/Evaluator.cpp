@@ -59,7 +59,13 @@ namespace cgl
 	Expr ExprTransformer::operator()(const For& node)
 	{
 		For result;
+
+		std::cout  << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+		Printer2 printer(nullptr, std::cout);
+		boost::apply_visitor(printer, node.rangeStart);
 		result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
+		std::cout  << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+		
 		result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
 		result.loopCounter = node.loopCounter;
 		result.doExpr = boost::apply_visitor(*this, node.doExpr);
@@ -482,7 +488,16 @@ namespace cgl
 			return result.setLocation(node);
 		}
 
-		Expr operator()(const For& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const For& node)override
+		{
+			Expr evalExpr = VersionReduced(BinaryExpr(node.loopCounter, node.rangeStart, BinaryOp::Assign));
+			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+			Eval eval(pContext);
+			boost::apply_visitor(eval, evalExpr);
+			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+			return ExprTransformer::operator()(node);
+		}
 
 		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
 
@@ -516,10 +531,6 @@ namespace cgl
 
 		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
 
-		//Accessorの評価について：
-		//List/Recordアクセスしかなければ、特に形は変更せずそのまま返す（依存性解析の前にあまりいじるべきではないため、できるだけ保守的に）
-		//Function/Inheritアクセスについては、インライン展開可能という仮定をおいており、展開した式を返す
-		//再帰的にやるつもりだったが、別に1パスで行けそう
 		Expr operator()(const Accessor& accessor)override
 		{
 			Accessor newAccessor;

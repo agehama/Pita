@@ -44,10 +44,12 @@ main = Shape{
     fill: Rgb(0, 0, 0)
 }
 
-main = Shape{
-    shapes: ["北海道", "山形県", "滋賀県", "石川県"] * a -> Text(a).
+Conj = Fold(a, b -> a & b.)
 
-    ! shapes * a -> Touch(a, shapes #Except a). |> Fold(a, b -> a & b.) !
+main = Shape{
+    shapes: ["北海道", "山形県", "滋賀県", "石川県"] [|>] \a -> Text(a).
+
+    ! shapes [|>] \a -> Touch(a, shapes #Except a). |> Conj !
 
     > Area(BoundingBox(shapes)) <
 

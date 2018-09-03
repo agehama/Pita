@@ -728,7 +728,8 @@ namespace cgl
 				}
 			}
 
-			escapedStr = std::stringstream();
+			escapedStr.str("");
+			escapedStr.clear(std::stringstream::goodbit);
 			for (size_t i = 0; i < lines.size(); ++i)
 			{
 				escapedStr << lines[i];

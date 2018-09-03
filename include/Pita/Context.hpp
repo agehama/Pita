@@ -359,7 +359,7 @@ namespace cgl
 		size_t m_lastGCValueSize = 0;
 
 		bool m_automaticExtendMode = true;
-		bool m_automaticGC = false;
+		bool m_automaticGC = true;
 
 		boost::optional<double> m_solveTimeLimit;
 

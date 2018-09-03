@@ -960,7 +960,7 @@ namespace cgl
 						}
 						pErodeGeometry = lhsPolygon.takeOut(s);
 					}
-					else if (pTemporaryGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
 						pErodeGeometry.reset();
 						break;

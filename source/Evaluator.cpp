@@ -3143,7 +3143,8 @@ namespace cgl
 				std::vector<ConstraintAppearance> mergedVariableAppearances = original.variableAppearances;
 				mergedVariableAppearances.insert(mergedVariableAppearances.end(), adderVariableAppearances.begin(), adderVariableAppearances.end());
 
-
+//#define useDependencyAnalysis
+#ifdef useDependencyAnalysis
 				if (isDebugMode && record.constraint)
 				{
 					const auto dependencyGraphAnalysis = [&](const Expr& constraint)
@@ -3189,6 +3190,7 @@ namespace cgl
 						dependencyGraphAnalysis(wholeConstraint);
 					}
 				}
+#endif
 
 				/*{
 					for (const Address address : wholeAddressesOriginal)

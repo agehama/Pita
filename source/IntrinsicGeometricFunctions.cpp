@@ -781,6 +781,595 @@ namespace cgl
 		}
 	}
 
+	double ShapeNear(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+		}
+
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
+
+		const double margin = 5.0;
+
+		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1)
+		{
+			CGL_Error("未対応の形状です");
+		}
+
+		const auto toEigen = [](const gg::Coordinate& p)
+		{
+			return EigenVec2(p.x, p.y);
+		};
+
+		const auto dist = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return sqrt((v1 - v0).dot(v1 - v0));
+		};
+
+		const auto distSq = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return (v1 - v0).dot(v1 - v0);
+		};
+
+		const auto calcHeightSq = [&](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1, const Eigen::Vector2d& crossPoint)
+		{
+			const auto rel0 = v1 - v0;
+			const auto rel0_n = rel0.normalized();
+			const auto rel1 = crossPoint - v0;
+			const auto foot = rel0_n * rel0_n.dot(rel1);
+			return distSq(foot, rel1);
+		};
+
+		const auto minimumSubLineLength = [&](const gg::LineString* l1, const gg::LineString* l2)
+		{
+			GeometryPtr crossPoint = ToUnique<GeometryDeleter>(l1->intersection(l2));
+			if (crossPoint->getGeometryTypeId() != gg::GEOS_POINT)
+			{
+				CGL_Error("不正な式です");
+			}
+
+			const gg::Point* point1 = dynamic_cast<const gg::Point*>(crossPoint.get());
+
+			const auto crossV = EigenVec2(point1->getX(), point1->getY());
+
+			double prevDistance1 = 0;
+			double postDistance1 = 0;
+			double prevDistance2 = 0;
+			double postDistance2 = 0;
+
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < l1->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(l1->getCoordinateN(i));
+					const auto v1 = toEigen(l1->getCoordinateN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance1 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance1 += dist(v0, crossV);
+							postDistance1 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance1 += dist(v0, v1);
+						}
+					}
+				}
+			}
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < l2->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(l2->getCoordinateN(i));
+					const auto v1 = toEigen(l2->getCoordinateN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance2 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance2 += dist(v0, crossV);
+							postDistance2 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance2 += dist(v0, v1);
+						}
+					}
+				}
+			}
+
+			std::vector<double> ds({ prevDistance1,postDistance1,prevDistance2,postDistance2 });
+			return *std::min_element(ds.begin(), ds.end());
+		};
+
+		const auto nearPointAndPoint = [](const gg::Geometry* point1, const gg::Geometry* point2)->double
+		{
+			return point1->distance(point2);
+		};
+
+		const auto nearPointAndLine = [](const gg::Geometry* point, const gg::Geometry* line)->double
+		{
+			return point->distance(line);
+		};
+
+		const auto nearPointAndPolygon = [&](const gg::Geometry* point, const gg::Geometry* polygon)->double
+		{
+			return std::max(polygon->distance(point) - margin, 0.0);
+		};
+
+		const auto nearLineAndLine = [&](const gg::Geometry* line1, const gg::Geometry* line2)->double
+		{
+			const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line1);
+			const gg::LineString* l2 = dynamic_cast<const gg::LineString*>(line2);
+			//交点を持たなければ距離を返す
+			if (!l1->intersects(l2))
+			{
+				return l1->distance(l2);
+			}
+			//交点を持っていれば、それぞれの線分を交点で切断したときの4本の部分線のうち、最も短い部分線の長さを返す
+			return minimumSubLineLength(l1, l2);
+		};
+
+		const auto nearLineAndPolygon = [](const gg::Geometry* line, const gg::Geometry* polygon)->double
+		{
+			try
+			{
+				const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line);
+				const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon);
+				//交点を持たなければ距離を返す
+				if (!l1->intersects(p2))
+				{
+					return l1->distance(p2);
+				}
+				gg::Geometry* result = l1->intersection(p2);
+				double resultLength = 0;
+				if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
+					resultLength = resultLine->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+				{
+					const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
+					resultLength = resultLineString->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_POINT)
+				{
+					resultLength = 0;
+				}
+				else
+				{
+					CGL_DBG1(result->getGeometryType());
+					CGL_Error("不正な式です");
+				}
+
+				delete result;
+				return resultLength;
+			}
+			catch (std::exception& e)
+			{
+				std::cout << "nearLineAndPolygon: " << e.what() << std::endl;
+				throw;
+			}
+		};
+
+		const auto nearPolygonAndPolygon = [&](const gg::Geometry* polygon1, const gg::Geometry* polygon2)->double
+		{
+			try
+			{
+				const gg::Polygon* p1 = dynamic_cast<const gg::Polygon*>(polygon1);
+				const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon2);
+
+				if (!p1->intersects(p2))
+				{
+					return std::max(p1->distance(p2) - margin, 0.0);
+				}
+				gg::Geometry* result = p1->intersection(p2);
+				double resultLength = 0;
+				if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
+					resultLength = resultLine->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+				{
+					const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
+					resultLength = resultLineString->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_POINT)
+				{
+					resultLength = 0;
+				}
+				else
+				{
+					CGL_DBG1(result->getGeometryType());
+					CGL_Error("不正な式です");
+				}
+
+				delete result;
+				return resultLength;
+			}
+			catch (std::exception& e)
+			{
+				std::cout << "nearLineAndPolygon: " << e.what() << std::endl;
+				throw;
+			}
+		};
+
+		enum GeoType { Point = 0, Line = 1, Polygon = 2 };
+		const auto getGeoType = [](const gg::Geometry* geometry)
+		{
+			switch (geometry->getGeometryTypeId())
+			{
+			case gg::GEOS_POINT: return Point;
+			case gg::GEOS_LINESTRING: return Line;
+			case gg::GEOS_POLYGON: return Polygon;
+			default:
+				CGL_Error("未対応の形状です");
+			}
+		};
+
+		struct TypeGeometry
+		{
+			GeoType type;
+			const gg::Geometry* geometry;
+			TypeGeometry(GeoType type, const gg::Geometry* geometry)
+				:type(type), geometry(geometry)
+			{}
+		};
+
+		const GeoType type1 = getGeoType(lhsPolygon.refer(0));
+		const GeoType type2 = getGeoType(rhsPolygon.refer(0));
+
+		const TypeGeometry smallerTypePoly = (type1 <= type2 ? TypeGeometry(type1, lhsPolygon.refer(0)) : TypeGeometry(type2, rhsPolygon.refer(0)));
+		const TypeGeometry largerTypePoly = (type1 <= type2 ? TypeGeometry(type2, rhsPolygon.refer(0)) : TypeGeometry(type1, lhsPolygon.refer(0)));
+
+		try
+		{
+			if (smallerTypePoly.type == GeoType::Point)
+			{
+				switch (largerTypePoly.type)
+				{
+				case GeoType::Point:
+					return nearPointAndPoint(smallerTypePoly.geometry, largerTypePoly.geometry);
+				case GeoType::Line:
+					return nearPointAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+				default:
+					return nearPointAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
+			}
+			else if (smallerTypePoly.type == GeoType::Line)
+			{
+				if (largerTypePoly.type == GeoType::Line)
+				{
+					return nearLineAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
+				else
+				{
+					return nearLineAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
+			}
+			else
+			{
+				return nearPolygonAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+		}
+		catch (std::exception& e)
+		{
+			std::cout << "Touch End: " << e.what() << std::endl;
+			throw;
+		}
+	}
+
+	double ShapeAvoid(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+		}
+
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
+
+		if (lhsPolygon.size() != 1 || rhsPolygon.size() != 1)
+		{
+			CGL_Error("未対応の形状です");
+		}
+
+		const auto toEigen = [](const gg::Coordinate& p)
+		{
+			return EigenVec2(p.x, p.y);
+		};
+
+		const auto dist = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return sqrt((v1 - v0).dot(v1 - v0));
+		};
+
+		const auto distSq = [](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1)
+		{
+			return (v1 - v0).dot(v1 - v0);
+		};
+
+		const auto calcHeightSq = [&](const Eigen::Vector2d& v0, const Eigen::Vector2d& v1, const Eigen::Vector2d& crossPoint)
+		{
+			const auto rel0 = v1 - v0;
+			const auto rel0_n = rel0.normalized();
+			const auto rel1 = crossPoint - v0;
+			const auto foot = rel0_n * rel0_n.dot(rel1);
+			return distSq(foot, rel1);
+		};
+
+		const auto minimumSubLineLength = [&](const gg::LineString* l1, const gg::LineString* l2)
+		{
+			GeometryPtr crossPoint = ToUnique<GeometryDeleter>(l1->intersection(l2));
+			if (crossPoint->getGeometryTypeId() != gg::GEOS_POINT)
+			{
+				CGL_Error("不正な式です");
+			}
+
+			const gg::Point* point1 = dynamic_cast<const gg::Point*>(crossPoint.get());
+
+			const auto crossV = EigenVec2(point1->getX(), point1->getY());
+
+			double prevDistance1 = 0;
+			double postDistance1 = 0;
+			double prevDistance2 = 0;
+			double postDistance2 = 0;
+
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < l1->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(l1->getCoordinateN(i));
+					const auto v1 = toEigen(l1->getCoordinateN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance1 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance1 += dist(v0, crossV);
+							postDistance1 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance1 += dist(v0, v1);
+						}
+					}
+				}
+			}
+			{
+				bool isPrevCrossPoint = true;
+				for (int i = 0; i + 1 < l2->getNumPoints(); ++i)
+				{
+					const auto v0 = toEigen(l2->getCoordinateN(i));
+					const auto v1 = toEigen(l2->getCoordinateN(i + 1));
+
+					if (!isPrevCrossPoint)
+					{
+						postDistance2 += dist(v0, v1);
+					}
+					else
+					{
+						if (calcHeightSq(v0, v1, crossV) < 1.e-4)
+						{
+							isPrevCrossPoint = false;
+							prevDistance2 += dist(v0, crossV);
+							postDistance2 += dist(crossV, v1);
+						}
+						else
+						{
+							prevDistance2 += dist(v0, v1);
+						}
+					}
+				}
+			}
+
+			std::vector<double> ds({ prevDistance1,postDistance1,prevDistance2,postDistance2 });
+			return *std::min_element(ds.begin(), ds.end());
+		};
+
+		const auto nearPointAndPoint = [](const gg::Geometry* point1, const gg::Geometry* point2)->double
+		{
+			return point1->distance(point2);
+		};
+
+		const auto nearPointAndLine = [](const gg::Geometry* point, const gg::Geometry* line)->double
+		{
+			return point->distance(line);
+		};
+
+		const auto nearPointAndPolygon = [](const gg::Geometry* point, const gg::Geometry* polygon)->double
+		{
+			CGL_Error("未対応の形状です");
+		};
+
+		const auto nearLineAndLine = [&](const gg::Geometry* line1, const gg::Geometry* line2)->double
+		{
+			const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line1);
+			const gg::LineString* l2 = dynamic_cast<const gg::LineString*>(line2);
+			//交点を持たなければ距離を返す
+			if (!l1->intersects(l2))
+			{
+				return l1->distance(l2);
+			}
+			//交点を持っていれば、それぞれの線分を交点で切断したときの4本の部分線のうち、最も短い部分線の長さを返す
+			return minimumSubLineLength(l1, l2);
+		};
+
+		const auto nearLineAndPolygon = [](const gg::Geometry* line, const gg::Geometry* polygon)->double
+		{
+			try
+			{
+				const gg::LineString* l1 = dynamic_cast<const gg::LineString*>(line);
+				const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon);
+				//交点を持たなければ距離を返す
+				if (!l1->intersects(p2))
+				{
+					return l1->distance(p2);
+				}
+				gg::Geometry* result = l1->intersection(p2);
+				double resultLength = 0;
+				if (result->getGeometryTypeId() == gg::GEOS_LINESTRING)
+				{
+					const gg::LineString* resultLine = dynamic_cast<const gg::LineString*>(result);
+					resultLength = resultLine->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+				{
+					const gg::MultiLineString* resultLineString = dynamic_cast<const gg::MultiLineString*>(result);
+					resultLength = resultLineString->getLength();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_POINT)
+				{
+					resultLength = 0;
+				}
+				else
+				{
+					CGL_DBG1(result->getGeometryType());
+					CGL_Error("不正な式です");
+				}
+
+				delete result;
+				return resultLength;
+			}
+			catch (std::exception& e)
+			{
+				std::cout << "nearLineAndPolygon: " << e.what() << std::endl;
+				throw;
+			}
+		};
+
+		const auto avoidPolygonAndPolygon = [](const gg::Geometry* polygon1, const gg::Geometry* polygon2)->double
+		{
+			try
+			{
+				const gg::Polygon* p1 = dynamic_cast<const gg::Polygon*>(polygon1);
+				const gg::Polygon* p2 = dynamic_cast<const gg::Polygon*>(polygon2);
+
+				const double margin = 5.0;
+
+				if (!p1->intersects(p2))
+				{
+					return 0.0;
+				}
+
+				gg::Geometry* result = p1->intersection(p2);
+				double cost = 0;
+				if (result->getGeometryTypeId() == gg::GEOS_POLYGON)
+				{
+					const gg::Polygon* resultPoly = dynamic_cast<const gg::Polygon*>(result);
+					cost = resultPoly->getArea();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_MULTIPOLYGON)
+				{
+					const gg::MultiPolygon* resultPoly = dynamic_cast<const gg::MultiPolygon*>(result);
+					cost = resultPoly->getArea();
+				}
+				else if (result->getGeometryTypeId() == gg::GEOS_POINT)
+				{
+					cost = 0;
+				}
+				else
+				{
+					CGL_DBG1(result->getGeometryType());
+					CGL_Error("不正な式です");
+				}
+
+				delete result;
+				return cost;
+			}
+			catch (std::exception& e)
+			{
+				std::cout << "nearLineAndPolygon: " << e.what() << std::endl;
+				throw;
+			}
+		};
+
+		enum GeoType { Point = 0, Line = 1, Polygon = 2 };
+		const auto getGeoType = [](const gg::Geometry* geometry)
+		{
+			switch (geometry->getGeometryTypeId())
+			{
+			case gg::GEOS_POINT: return Point;
+			case gg::GEOS_LINESTRING: return Line;
+			case gg::GEOS_POLYGON: return Polygon;
+			default:
+				CGL_Error("未対応の形状です");
+			}
+		};
+
+		struct TypeGeometry
+		{
+			GeoType type;
+			const gg::Geometry* geometry;
+			TypeGeometry(GeoType type, const gg::Geometry* geometry)
+				:type(type), geometry(geometry)
+			{}
+		};
+
+		const GeoType type1 = getGeoType(lhsPolygon.refer(0));
+		const GeoType type2 = getGeoType(rhsPolygon.refer(0));
+
+		const TypeGeometry smallerTypePoly = (type1 <= type2 ? TypeGeometry(type1, lhsPolygon.refer(0)) : TypeGeometry(type2, rhsPolygon.refer(0)));
+		const TypeGeometry largerTypePoly = (type1 <= type2 ? TypeGeometry(type2, rhsPolygon.refer(0)) : TypeGeometry(type1, lhsPolygon.refer(0)));
+
+		try
+		{
+			if (smallerTypePoly.type == GeoType::Point)
+			{
+				switch (largerTypePoly.type)
+				{
+				case GeoType::Point:
+					return nearPointAndPoint(smallerTypePoly.geometry, largerTypePoly.geometry);
+				case GeoType::Line:
+					return nearPointAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+				default:
+					return nearPointAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
+			}
+			else if (smallerTypePoly.type == GeoType::Line)
+			{
+				if (largerTypePoly.type == GeoType::Line)
+				{
+					return nearLineAndLine(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
+				else
+				{
+					return nearLineAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+				}
+			}
+			else
+			{
+				return avoidPolygonAndPolygon(smallerTypePoly.geometry, largerTypePoly.geometry);
+			}
+		}
+		catch (std::exception& e)
+		{
+			std::cout << "Touch End: " << e.what() << std::endl;
+			throw;
+		}
+	}
+
 	PackedRecord ShapeDiff(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
@@ -964,6 +1553,11 @@ namespace cgl
 					{
 						pErodeGeometry.reset();
 						break;
+					}
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_LINESTRING)
+					{
+						pErodeGeometry = std::move(pTemporaryGeometry);
+						continue;
 					}
 					else
 					{

@@ -1,0 +1,27 @@
+func = (px -> scale = 100.0, x = px/scale, x*Log(x)*CosRad(x)*scale)
+
+curvedArrow = Shape{
+    jitter = 30.0
+    points = for i in 0:30 list( x = 400.0*Random(0.0,1.0), Vec2(x, func(x)+Random(-jitter,jitter)) )
+    plots: for i in 0:Size(points)-1 list(Square{
+        pos: points[i]
+        scale: X2(5)
+        fill: Rgb(0,0,0)
+    })
+
+    p0: Vec2(0,0), p1: Vec2(10,0), p2: Vec2(20,0), p3: Vec2(30,0)
+    thickness: 10
+
+    divSize = 50
+    line: (->CubicBezier(p0, p1, p2, p3, divSize).line)
+    sat(
+        sum = 0.0
+        curve = CubicBezier(p0, p1, p2, p3, divSize)
+        for i in 0:Size(points)-1 do(
+            sum = sum + Distance(points[i], curve)^2
+        )
+        sum + Area(BoundingBox(curve))^0.75
+    )
+    var(p0, p1, p2, p3)
+    stroke: Rgb(0,0,0)
+}

@@ -6,7 +6,10 @@ main = Shape{
     var(width)
 }
 
+func = (px -> scale = 10.0, x = px/scale, x*Log(x)*Cos(x)*scale)
+
 curvedArrow = Shape{
+    line: for i in 0:30 list( x = 300.0*Random(0.0,1.0), Vec2(x, func(x)) )
     p0: Vec2(0, 100*Sin(0))
     p1: Vec2(100, 100*Sin(110))
     p2: Vec2(200, 100*Sin(220))

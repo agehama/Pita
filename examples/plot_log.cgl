@@ -1,3 +1,5 @@
+EnableGC(false)
+
 LerpColor = (a, b, t -> Rgb(a.r + (b.r - a.r)*t, a.g + (b.g - a.g)*t, a.b + (b.b - a.b)*t))
 UpperIndex = (list, t ->
     lowerIndex = 0
@@ -160,7 +162,9 @@ MakePlot = (graph, log_record, zMaskFunc, labelText -> Shape{
 
 main = Shape{
     //data = import "optimize_log_min.cgl"
-    data = import "optimize_log_full.cgl"
+    //data = import "optimize_log_full.cgl"
+    //data = import "optimize_log_debug.cgl"
+    data = import "optimize_log.cgl"
     graphBase = MakeGraphFrame(400, 400, data, 0, 1, 2, 3)
     plotSize = 5
     dz = 1.0/plotSize

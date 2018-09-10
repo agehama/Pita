@@ -1,0 +1,28 @@
+koch_template = (p, q ->
+    vby3 = (q - p) / 3.0
+    nby3 = SetLength(Vec2(q.y - p.y, p.x - q.x), 0.5*Sqrt(3.0)*Length(vby3))
+    ps = [p, p + vby3, (p + q)*0.5 + nby3, p + vby3*2, q]
+    for i in 0:Size(ps)-2 list( [ps[i], ps[i+1]] )
+)
+
+rec_curve = (f, depth, template, ps -> 
+    if depth == 0 then { line: ps }
+    else {
+        ss = template(ps[0], ps[1])
+        b: for i in 0:3 list(f(f, depth-1, template, ss[i]))
+    }
+)
+
+tree = Shape{
+    tri = Triangle{scale = {x: 10, y: 10}}
+    depth = 5
+    ps = [[tri.p0(), tri.p1()], [tri.p1(), tri.p2()], [tri.p2(), tri.p0()]]
+    a: Shape{
+        l: for i in 0:2 list(
+            rec_curve(rec_curve, depth, koch_template, ps[i])
+        )
+        scale = X2(70)
+    }
+    stroke: {r: 91, g: 155, b: 213}
+}
+

@@ -1740,6 +1740,26 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Log",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(arguments[0], info);
+			if (!IsNum(x))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return std::log(AsDouble(x));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"SinRad",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -2134,21 +2154,35 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			/*Printer printer(pEnv, std::cout, 0);
-			{
-				std::cout << "Touch lhs:\n";
-				Expr expr = LRValue(arguments[0]);
-				boost::apply_visitor(printer, expr);
-				std::cout << std::endl;
-			}
-			{
-				std::cout << "Touch rhs:\n";
-				Expr expr = LRValue(arguments[1]);
-				boost::apply_visitor(printer, expr);
-				std::cout << std::endl;
-			}*/
-
 			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *pEnv), Packed(pEnv->expand(arguments[1], info), *pEnv), pEnv);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Near",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return ShapeNear(Packed(pEnv->expand(arguments[0], info), *pEnv), Packed(pEnv->expand(arguments[1], info), *pEnv), pEnv);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Avoid",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return ShapeAvoid(Packed(pEnv->expand(arguments[0], info), *pEnv), Packed(pEnv->expand(arguments[1], info), *pEnv), pEnv);
 		},
 			false
 			);

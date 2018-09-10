@@ -39,6 +39,11 @@ namespace cgl
 		{
 			return -As<double>(lhs);
 		}
+		else if (IsVec2(lhs))
+		{
+			Eigen::Vector2d v = AsVec2(lhs, env);
+			return MakeRecord("x", -v.x(), "y", -v.y()).unpacked(env);
+		}
 
 		CGL_Error("不正な式です");
 		return 0;

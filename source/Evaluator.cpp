@@ -496,6 +496,7 @@ namespace cgl
 			boost::apply_visitor(eval, evalExpr);
 			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
 
+			//*
 			For result;
 			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
 			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
@@ -503,6 +504,35 @@ namespace cgl
 			result.doExpr = boost::apply_visitor(*this, node.doExpr);
 			result.asList = node.asList;
 			return result.setLocation(node);
+			//*/
+
+			/*
+			Expr startExpr = VersionReduced(node.rangeStart);
+			Expr endExpr = VersionReduced(node.rangeStart);
+
+			Eval eval(pContext);
+			const Val startVal = pContext->expand(boost::apply_visitor(eval, startExpr), LocationInfo());
+			const Val endVal = pContext->expand(boost::apply_visitor(eval, endExpr), LocationInfo());
+
+			if (IsType<int>(startVal) && IsType<int>(endVal))
+			{
+				for (int i = As<int>(startVal); i <= As<int>(endVal); ++i)
+				{
+					i;
+				}
+			}
+			else if (IsType<double>(startVal) && IsType<double>(endVal))
+			{
+			}
+			else
+			{
+				CGL_Error("ループカウンタが型が不正");
+			}
+
+			node.loopCounter;
+
+			node.doExpr;
+			//*/
 		}
 
 		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }

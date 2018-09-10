@@ -886,7 +886,8 @@ namespace cgl
 
 		const size_t elseNodeIndex = (node.else_expr
 			? boost::apply_visitor(child, node.else_expr.get())
-			: graph.addNode(CFGNodeNull())
+			//: graph.addNode(CFGNodeNull())
+			: graph.addNode(CFGNodeBlock(Identifier("break loop")))
 			);
 		ifNode.noIndex = elseNodeIndex;
 		info.ifElseIndex = elseNodeIndex;

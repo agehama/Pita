@@ -95,13 +95,14 @@ main = Shape{
         GlobalShape(Circle{scale: X2(radius), pos: circlePos}).polygon
     )}
     
-    //Print(makeTriangle1(a,b,c))
-    
-    //Print((bb=BoundingBox(makeTriangle1(a,b,c)), bb.max-bb.min))
-    //dd = BoundingBox(Triangle{scale: X2(100)})
-    
-    sat( Touch(Line(a, b), circle) & Touch(Line(c, b), circle) & Touch(Line(a, c), circle) )
-    var(circlePos in makeTriangle1(a,b,c), radius in [1.0, 100])
+    sat( Cmaes(radius),
+        Touch(Line(a, b), circle) & 
+        Touch(Line(c, b), circle) & 
+        Touch(Line(a, c), circle)
+    )
+    //var(circlePos in makeTriangle1(a,b,c), radius in [1.0, 200])
+    var(circlePos, radius)
+
     stroke: Rgb(0,0,0)
     fill: Rgb(255,255,255)
 }

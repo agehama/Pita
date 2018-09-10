@@ -2626,6 +2626,27 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"ConvexHull",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetConvexHull(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"GlobalShape",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

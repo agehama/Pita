@@ -2652,6 +2652,34 @@ namespace cgl
 		return resultRecord;
 	}
 
+	PackedRecord GetConvexHull(const PackedRecord& shape, std::shared_ptr<Context> pContext)
+	{
+		Geometries polygons(GeosFromRecordPacked(shape, pContext));
+
+		std::vector<gg::Coordinate> cs;
+		for (int s = 0; s < polygons.size(); ++s)
+		{
+			auto pCurrentGeometry = polygons.refer(s);
+
+			gg::CoordinateSequence* points = pCurrentGeometry->getCoordinates();
+			for (size_t i = 0; i < points->getSize(); ++i)
+			{
+				cs.emplace_back(points->getX(i), points->getY(i));
+			}
+			delete points;
+		}
+
+		auto factory = gg::GeometryFactory::create();
+		gg::MultiPoint* mp = factory->createMultiPoint(cs);
+
+		Geometries resultGeometries;
+		resultGeometries.push_back_raw(mp->convexHull());
+
+		delete mp;
+
+		return MakePolygonResult(GetPolygon(resultGeometries));
+	}
+
 	PackedRecord GetGlobalShape(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
 		try

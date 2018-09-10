@@ -41,7 +41,7 @@ gradationMap.add(dt*7, Rgb(120,0,146))
 gradationMap.add(dt*8, Rgb(43,0,118))
 gradationMap.add(dt*9, Rgb(0,0,0))
 
-MakeGraphFrame = (width, height, log_record, xIndex, yIndex, zIndex, costIndex -> Shape{
+MakeGraphFrame = (width, height, log_record, xIndex, yIndex, zIndex -> Shape{
     xLabel: log_record.labels[xIndex]
     yLabel: log_record.labels[yIndex]
     zLabel: log_record.labels[zIndex]
@@ -52,6 +52,8 @@ MakeGraphFrame = (width, height, log_record, xIndex, yIndex, zIndex, costIndex -
     maxY = log_record.data[0][yIndex]
     minZ = log_record.data[0][zIndex]
     maxZ = log_record.data[0][zIndex]
+
+    costIndex = Size(log_record.data[0])-1
     minCost = log_record.data[0][costIndex]
     maxCost = log_record.data[0][costIndex]
 
@@ -165,7 +167,7 @@ main = Shape{
     //data = import "optimize_log_full.cgl"
     //data = import "optimize_log_debug.cgl"
     data = import "optimize_log.cgl"
-    graphBase = MakeGraphFrame(400, 400, data, 0, 1, 2, 3)
+    graphBase = MakeGraphFrame(400, 400, data, 0, 1, 2)
     plotSize = 5
     dz = 1.0/plotSize
     dzToText = (z -> Fixed(graphBase.invMapZ(z), 3))

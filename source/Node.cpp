@@ -979,7 +979,7 @@ namespace cgl
 				}
 			}
 			CGL_DebugLog("End Record MakeMap");
-			if (hasPlateausFunction,false)
+			if (hasPlateausFunction/*,false*/)
 			{
 				std::cout << "Solve constraint by CMA-ES...\n";
 
@@ -1037,7 +1037,7 @@ namespace cgl
 
 				std::cout << "solved\n";
 			}
-			else if(false)
+			else if(true)
 			{
 				std::cout << "Solve constraint by BFGS...\n";
 
@@ -1157,7 +1157,7 @@ namespace cgl
 					//while (GetSec() - beginTime < 300.0)
 					//while (count < 20000)
 					//while (count < 6900)
-					while(count < 10000)
+					while(count < 20000)
 					{
 						cloneTime = 0.0;
 						cloneCount = 0;

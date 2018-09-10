@@ -3,9 +3,11 @@ Shape{
         Text("Apple")
         Text("Orange")
         Text("Lemon")
+        Text("Melon")
     ]
 
-    f = (a, b -> margin=10, Area(BoundingBox(Intersect(Buffer(a,margin), Buffer(b,margin)))) )
+    //f = (a, b -> margin=10, Area(BoundingBox(Intersect(ConvexHull(Buffer(a,margin)), ConvexHull(Buffer(b,margin))))) )
+    f = (a, b -> margin=10, Area(Intersect(ConvexHull(Buffer(a,margin)), ConvexHull(Buffer(b,margin)))) )
 
     sat(
         Cmaes(shapes),
@@ -19,7 +21,7 @@ Shape{
 
             sum = sum + f(shapes[i], others)
         )
-        sum + Area(BoundingBox(Shape{s:shapes}))
+        sum + Area(BoundingBox(Shape{s:shapes}))^0.75
     )
     var(shapes[*].pos in [0, 300])
 }

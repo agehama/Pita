@@ -52,6 +52,8 @@ namespace cgl
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape, std::shared_ptr<Context> pContext);
 
+	PackedRecord GetConvexHull(const PackedRecord& shape, std::shared_ptr<Context> pContext);
+
 	PackedRecord GetGlobalShape(const PackedRecord& shape, std::shared_ptr<Context> pContext);
 
 	PackedRecord GetTransformedShape(const PackedRecord& shape, const PackedRecord& pos, const PackedRecord& scale, double angle, std::shared_ptr<Context> pContext);

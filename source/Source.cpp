@@ -2,15 +2,17 @@
 #define _CRTDBG_MAP_ALLOC
 
 #pragma warning(disable:4996)
-#pragma comment(lib, "pdcurses.lib")
 
 #include <iostream>
 #include <fstream>
 
+#ifdef USE_CURSES
 #include <signal.h>
 #include <string.h>
 #include <curses.h>
 #include <stdlib.h>
+#pragma comment(lib, "pdcurses.lib")
+#endif
 
 #ifdef _MSC_VER
 #include <crtdbg.h> // for _CrtDumpMemoryLeaks
@@ -35,6 +37,7 @@ extern bool calculating;
 extern bool isDebugMode;
 extern bool isBlockingMode;
 
+#ifdef USE_CURSES
 /* Trap interrupt */
 void trap(int sig)
 {
@@ -44,6 +47,7 @@ void trap(int sig)
 		exit(0);
 	}
 }
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -940,6 +944,7 @@ Library.
 			isBlockingMode = true;
 		}
 
+#ifdef USE_CURSES
 		if(isDebugMode && isBlockingMode)
 		{
 #ifdef XCURSES
@@ -991,7 +996,7 @@ Library.
 				napms(100);
 			}*/
 		}
-
+#endif
 		
 
 		/*
@@ -1015,7 +1020,7 @@ Library.
 	}
 
 	//ofs.open("log.txt");
-
+	
 	calculating = true;
 	cgl::Program program;
 

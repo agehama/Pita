@@ -523,6 +523,7 @@ namespace cgl
 			}
 			else if (IsType<double>(startVal) && IsType<double>(endVal))
 			{
+				;
 			}
 			else
 			{
@@ -3143,7 +3144,7 @@ namespace cgl
 				std::vector<ConstraintAppearance> mergedVariableAppearances = original.variableAppearances;
 				mergedVariableAppearances.insert(mergedVariableAppearances.end(), adderVariableAppearances.begin(), adderVariableAppearances.end());
 
-//#define useDependencyAnalysis
+#define useDependencyAnalysis
 #ifdef useDependencyAnalysis
 				if (isDebugMode && record.constraint)
 				{

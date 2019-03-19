@@ -357,6 +357,7 @@ namespace cgl
 
 	Import::Import(const std::u32string& filePath)
 	{
+#ifdef USE_IMPORT
 		const std::string u8FilePath = Unicode::UTF32ToUTF8(filePath);
 		const auto path = cgl::filesystem::path(u8FilePath);
 
@@ -423,6 +424,9 @@ namespace cgl
 			CGL_Error("Parse failed.");
 		}*/
 		updateHash();
+#else
+		CGL_Error("Filesystem is disabled.");
+#endif
 	}
 
 	Import::Import(const std::u32string& path, const Identifier& name):
@@ -435,6 +439,7 @@ namespace cgl
 
 	LRValue Import::eval(std::shared_ptr<Context> pContext)const
 	{
+#ifdef USE_IMPORT
 		auto it = importedParseTrees.find(seed);
 		if (it == importedParseTrees.end() || !it->second)
 		{
@@ -523,6 +528,9 @@ namespace cgl
 		CGL_Error("ファイルのimportに失敗");
 
 		*/
+#else
+		CGL_Error("Import is disabled.");
+#endif
 	}
 
 	void Import::SetName(Import& node, const Identifier& name)

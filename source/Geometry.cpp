@@ -368,4 +368,16 @@ namespace cgl
 		}
 		std::cout << ")\n";
 	}
+
+	GeometryPtr MakeLine(const Eigen::Vector2d& p0, const Eigen::Vector2d& p1)
+	{
+		gg::CoordinateArraySequence pts;
+
+		pts.add(gg::Coordinate(p0.x(), p0.y()));
+		pts.add(gg::Coordinate(p1.x(), p1.y()));
+
+		auto factory = gg::GeometryFactory::create();
+
+		return ToUnique<GeometryDeleter>(factory->createLineString(pts));
+	}
 }

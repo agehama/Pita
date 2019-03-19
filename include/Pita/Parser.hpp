@@ -2,6 +2,7 @@
 #include <stack>
 #include <set>
 
+#ifdef USE_IMPORT
 //#ifdef __has_include
 //#  if __has_include(<filesystem>)
 //#    include <filesystem>
@@ -14,6 +15,7 @@
 //#endif
 
 #include <boost/filesystem.hpp>
+#endif
 
 //#define BOOST_SPIRIT_DEBUG
 #define BOOST_RESULT_OF_USE_DECLTYPE
@@ -33,6 +35,7 @@ extern bool isDebugMode;
 
 namespace cgl
 {
+#ifdef USE_IMPORT
 //#if defined(CGL_EXPERIMENTAL_FILESYSTEM) || defined(_MSC_VER)
 //	namespace filesystem = std::experimental::filesystem;
 //#else
@@ -45,6 +48,7 @@ namespace cgl
 	extern std::stack<filesystem::path> workingDirectories;
 
 	extern std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
+#endif
 
 	extern bool errorMessagePrinted;
 

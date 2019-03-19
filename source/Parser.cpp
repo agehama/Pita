@@ -5,9 +5,11 @@
 
 namespace cgl
 {
+#ifdef USE_IMPORT
 	std::stack<filesystem::path> workingDirectories;
 
 	std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
+#endif
 
 	Parser::Parser(SourceT first, SourceT last, const std::string& sourcePath) :
 		Parser::base_type(program),
@@ -173,6 +175,7 @@ namespace cgl
 			| ('-' > factor[_val = MakeUnaryExpr(UnaryOp::Minus)])
 			| ('@' > (accessor[_val = MakeUnaryExpr(UnaryOp::Dynamic)] | id[_val = MakeUnaryExpr(UnaryOp::Dynamic)]))
 			| float_value[_val = Call(LRValue::Float, _1)]
+			//| double_[_val = Call(LRValue::Double, _1)]
 			| int_[_val = Call(LRValue::Int, _1)]
 			| lit("true")[_val = Call(LRValue::Bool, true)]
 			| lit("false")[_val = Call(LRValue::Bool, false)]
@@ -186,7 +189,8 @@ namespace cgl
 		distinct_keyword = lexeme[keywords >> !(encode::alnum | '_')];
 		unchecked_identifier = lexeme[(encode::alpha | encode::char_('_')) >> *(encode::alnum | encode::char_('_'))];
 
-		float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9')];
+		//float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9')];
+		float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9') >> -(encode::char_('e') >> (encode::char_('+') | encode::char_('-')) >> +encode::char_('0', '9'))];
 
 		if (isDebugMode)
 		{
@@ -372,6 +376,7 @@ namespace cgl
 
 		void operator()(const Import& node)const
 		{
+#ifdef USE_IMPORT
 			if (importedParseTrees.find(node.getSeed()) != importedParseTrees.end())
 			{
 				return;
@@ -387,6 +392,9 @@ namespace cgl
 			{
 				CGL_Error("Parse failed.");
 			}
+#else
+			CGL_Error("Filesystem is disabled.");
+#endif
 		}
 
 		void operator()(const BinaryExpr& node)const
@@ -770,9 +778,11 @@ namespace cgl
 		std::cout << sourceCode << std::endl;
 		std::cout << "--------------------------------------------------" << std::endl;
 
+#ifdef USE_IMPORT
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();
 
 		workingDirectories.emplace(currentDirectory);
+#endif
 
 		SourceT beginSource(sourceCode.begin()), endSource(sourceCode.end());
 		IteratorT beginIt(beginSource), endIt(endSource);
@@ -790,10 +800,12 @@ namespace cgl
 			{
 				std::cout << "Syntax Error: parse failed\n";
 			}
+#ifdef USE_IMPORT
 			if (!workingDirectories.empty())
 			{
 				workingDirectories.pop();
 			}
+#endif
 			return boost::none;
 		}
 		const double parseSec = GetSec() - parseBegin;
@@ -805,10 +817,12 @@ namespace cgl
 			{
 				std::cout << "Syntax Error: ramains input:\n" << std::string(it.base().base(), sourceCode.cend()) << std::endl;
 			}
+#ifdef USE_IMPORT
 			if (!workingDirectories.empty())
 			{
 				workingDirectories.pop();
 			}
+#endif
 			return boost::none;
 		}
 
@@ -816,7 +830,9 @@ namespace cgl
 
 		boost::apply_visitor(ParseImports(), result);
 
+#ifdef USE_IMPORT
 		workingDirectories.pop();
+#endif
 		return result;
 	}
 
@@ -824,7 +840,9 @@ namespace cgl
 	{
 		std::string escapedSourceCode = EscapedSourceCode(originalSourceCode);
 
+#ifdef USE_IMPORT
 		workingDirectories.emplace(cgl::filesystem::current_path());
+#endif
 
 		SourceT beginSource(escapedSourceCode.begin()), endSource(escapedSourceCode.end());
 		IteratorT beginIt(beginSource), endIt(endSource);
@@ -841,10 +859,12 @@ namespace cgl
 			{
 				std::cout << "Syntax Error: parse failed\n";
 			}
+#ifdef USE_IMPORT
 			if (!workingDirectories.empty())
 			{
 				workingDirectories.pop();
 			}
+#endif
 			return boost::none;
 		}
 
@@ -854,10 +874,12 @@ namespace cgl
 			{
 				std::cout << "Syntax Error: ramains input:\n" << std::string(it.base().base(), escapedSourceCode.cend()) << std::endl;
 			}
+#ifdef USE_IMPORT
 			if (!workingDirectories.empty())
 			{
 				workingDirectories.pop();
 			}
+#endif
 			return boost::none;
 		}
 
@@ -865,7 +887,9 @@ namespace cgl
 
 		boost::apply_visitor(ParseImports(), result);
 
+#ifdef USE_IMPORT
 		workingDirectories.pop();
+#endif
 		return result;
 	}
 

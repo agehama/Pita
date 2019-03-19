@@ -298,6 +298,8 @@ namespace cgl
 		Mat3x3 mat;
 	};
 
+	GeometryPtr MakeLine(const Eigen::Vector2d& p0, const Eigen::Vector2d& p1);
+
 	//Compress to ShapeRecord
 	PackedRecord WritePathPacked(const Path& path);
 	//PackedRecord GetPolygonPacked(const gg::Polygon* poly);

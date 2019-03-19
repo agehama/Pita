@@ -47,9 +47,9 @@ main = Shape{
 Conj = Fold(a, b -> a & b.)
 
 main = Shape{
-    shapes: ["北海道", "山形県", "滋賀県", "石川県"] [|>] \a -> Text(a).
+    shapes: ["北海道", "山形県", "滋賀県", "石川県"] #Map \a -> Text(a).
 
-    ! shapes [|>] \a -> Touch(a, shapes #Except a). |> Conj !
+    ! shapes #Map \a -> Touch(a, shapes #Except a). #Fold Conj !
 
     > Area(BoundingBox(shapes)) <
 

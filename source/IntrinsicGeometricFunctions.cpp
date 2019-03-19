@@ -1392,41 +1392,6 @@ namespace cgl
 		}
 		else
 		{
-			/*Geometries resultGeometries;
-
-			for (int s = 0; s < lhsPolygon.size(); ++s)
-			{
-				gg::Geometry* erodeGeometry = lhsPolygon[s];
-
-				for (int d = 0; d < rhsPolygon.size(); ++d)
-				{
-					erodeGeometry = erodeGeometry->difference(rhsPolygon[d]);
-
-					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
-					{
-						lhsPolygon.erase(lhsPolygon.begin() + s);
-
-						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
-
-						for (int i = 0; i < polygons->getNumGeometries(); ++i)
-						{
-							lhsPolygon.insert(lhsPolygon.begin() + s, polygons->getGeometryN(i)->clone());
-						}
-
-						erodeGeometry = lhsPolygon[s];
-					}
-					else if(erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_POLYGON && 
-						erodeGeometry->getGeometryTypeId() != geos::geom::GEOS_GEOMETRYCOLLECTION)
-					{
-						CGL_Error(std::string("Diffの結果が予期せぬデータ形式: \"") + GetGeometryType(erodeGeometry) + "\"");
-					}
-				}
-
-				resultGeometries.push_back(erodeGeometry);
-			}
-
-			return MakePolygonResult(GetPolygon(resultGeometries));
-			*/
 			for (int s = 0; s < lhsPolygon.size();)
 			{
 				GeometryPtr pErodeGeometry(lhsPolygon.takeOut(s));
@@ -2289,8 +2254,6 @@ namespace cgl
 
 	PackedRecord BuildText(const CharString& str, double textHeight, const PackedRecord& packedPathRecord, const CharString& fontPath)
 	{
-		CGL_DBG1(ToS(textHeight));
-
 		Path path = packedPathRecord.values.empty() ? Path() : std::move(ReadPathPacked(packedPathRecord));
 
 		auto factory = gg::GeometryFactory::create();
@@ -2303,6 +2266,7 @@ namespace cgl
 		}
 		else
 		{
+#ifdef USE_IMPORT
 			const std::string u8FilePath = Unicode::UTF32ToUTF8(fontPath.toString());
 			const auto filepath = cgl::filesystem::path(u8FilePath);
 
@@ -2315,6 +2279,9 @@ namespace cgl
 			{
 				CGL_Error("Fontのパスは絶対パスで指定してください。");
 			}
+#else
+			CGL_Error("Filesystem is disabled.");
+#endif
 		}
 
 		std::u32string string = str.toString();
@@ -2353,9 +2320,6 @@ namespace cgl
 		}
 		else
 		{
-			CGL_DBG1("TextHeight: ");
-			CGL_DBG1(ToS(pFont->scaledHeight()));
-
 			double offsetVertical = 0;
 			for (size_t i = 0; i < string.size(); ++i)
 			{
@@ -2651,6 +2615,592 @@ namespace cgl
 
 		return resultRecord;
 	}
+
+#ifdef commentout
+	PackedRecord GetMargin(const PackedRecord& lhs, const PackedRecord& rhs, const PackedRecord& directionRecord, std::shared_ptr<Context> pContext)
+	{
+		//const Geometries polygons1(GeosFromRecordPacked(lhs, pContext));
+		//const Geometries polygons2(GeosFromRecordPacked(rhs, pContext));
+		const std::array<Geometries, 2> bothPolygons({ GeosFromRecordPacked(lhs, pContext), GeosFromRecordPacked(rhs, pContext) });
+
+		double dirx, diry;
+		std::tie(dirx, diry) = ReadVec2Packed(directionRecord);
+		const Eigen::Vector2d direction(dirx, diry);
+
+		const auto asEigen = [](const gg::Coordinate& p)
+		{
+			return Eigen::Vector2d(p.x, p.y);
+		};
+
+		struct VertexData
+		{
+			size_t geometryIndex;
+			size_t vertexIndex;
+			gg::Coordinate position;
+			Eigen::Vector2d normal;
+
+			VertexData() = default;
+			VertexData(size_t geometryIndex, size_t vertexIndex, const gg::Coordinate& position, const Eigen::Vector2d& normal) :
+				geometryIndex(geometryIndex),
+				vertexIndex(vertexIndex),
+				position(position),
+				normal(normal)
+			{}
+		};
+
+		struct PartialVertices
+		{
+			std::vector<VertexData> vs;
+			GeometryPtr pCollider;
+			bool isForwardDirected;
+
+			PartialVertices() = default;
+			PartialVertices(const VertexData& vertex) :vs({ vertex }) {}
+
+			void makeCollider(const Eigen::Vector2d& direction)
+			{
+				isForwardDirected = 0.0 < vs.front().normal.dot(direction);
+				pCollider.reset();
+				/*for ()
+				{
+
+				}*/
+
+			}
+		};
+
+		const auto isValidNormal = [&](const Eigen::Vector2d& normal)
+		{
+			return 1.e-2 < std::abs(direction.dot(normal));
+		};
+
+		using PartialVerticesList = std::vector<PartialVertices>;
+		const auto addVertex = [&](PartialVerticesList& partialVerticesList, const VertexData& vertex)
+		{
+			if (!isValidNormal(vertex.normal))
+			{
+				return;
+			}
+
+			if (partialVerticesList.empty())
+			{
+				partialVerticesList.push_back(PartialVertices(vertex));
+			}
+			else
+			{
+				//同符号：直前の頂点と同じ向きを向いている
+				if (0.0 < direction.dot(partialVerticesList.back().vs.back().normal) * direction.dot(vertex.normal))
+				{
+					partialVerticesList.back().vs.push_back(vertex);
+				}
+				//異符号：向きが逆になる
+				else
+				{
+					partialVerticesList.push_back(PartialVertices(vertex));
+				}
+			}
+		};
+
+		//同じ方向を向いているセグメントのリストを作る
+		std::array<PartialVerticesList, 2> bothVertices;
+		for (size_t shapeIndex = 0; shapeIndex < bothPolygons.size(); ++shapeIndex)
+		{
+			const auto& currentPolygons = bothPolygons[shapeIndex];
+			auto& vertices = bothVertices[shapeIndex];
+
+			for (size_t geometryIndex = 0; geometryIndex < currentPolygons.size(); ++geometryIndex)
+			{
+				const gg::Geometry* pCurrentGeometry = currentPolygons.refer(geometryIndex);
+				if (pCurrentGeometry->getGeometryTypeId() == gg::GEOS_POLYGON)
+				{
+					const gg::Polygon* pCurrentPolygon = dynamic_cast<const gg::Polygon*>(pCurrentGeometry);
+					const gg::LineString* pExteriorRing = pCurrentPolygon->getExteriorRing();
+
+					const auto getNormal = [](const gg::Coordinate& p0, const gg::Coordinate& p1, const gg::Coordinate& p2)->Eigen::Vector2d
+					{
+						const auto v0 = Eigen::Vector2d(p1.x - p0.x, p1.y - p0.y).normalized();
+						const auto v1 = Eigen::Vector2d(p2.x - p1.x, p2.y - p1.y).normalized();
+						const auto n0 = Eigen::Vector2d(-v0.y, v0.x);
+						const auto n1 = Eigen::Vector2d(-v1.y, v1.x);
+						return (n0 + n1).normalized();
+					};
+
+					{
+						const auto currentVertex = pExteriorRing->getCoordinateN(0);
+
+						//先頭と末尾は同じ点を指すので、末尾から2番目の点が先頭から見た直前の頂点となる
+						const auto normal = getNormal(
+							pExteriorRing->getCoordinateN(pExteriorRing->getNumPoints() - 2),
+							currentVertex,
+							pExteriorRing->getCoordinateN(1));
+
+						addVertex(vertices, VertexData(geometryIndex, 0, currentVertex, normal));
+					}
+
+					for (size_t vertexIndex = 1; vertexIndex < pExteriorRing->getNumPoints(); ++vertexIndex)
+					{
+						const auto currentVertex = pExteriorRing->getCoordinateN(vertexIndex);
+
+						const bool isEndVertex = vertexIndex + 1 == pExteriorRing->getNumPoints();
+						const Eigen::Vector2d normal = (isEndVertex
+							? getNormal(
+								pExteriorRing->getCoordinateN(vertexIndex - 1),
+								currentVertex,
+								pExteriorRing->getCoordinateN(1))
+							: getNormal(
+								pExteriorRing->getCoordinateN(vertexIndex - 1),
+								currentVertex,
+								pExteriorRing->getCoordinateN(vertexIndex + 1)));
+						
+						addVertex(vertices, VertexData(geometryIndex, vertexIndex, currentVertex, normal));
+					}
+				}
+			}
+		}
+
+		//交差判定用に折れ線のコライダを作る
+		for (size_t shapeIndex = 0; shapeIndex < bothPolygons.size(); ++shapeIndex)
+		{
+			auto& vertices = bothVertices[shapeIndex];
+
+			for (size_t partialIndex = 0; partialIndex < vertices.size(); ++partialIndex)
+			{
+				vertices[partialIndex].makeCollider(direction);
+			}
+		}
+
+		const auto getPointsFromLines = [&](const gg::Geometry* pGeometry)->Vector<Eigen::Vector2d>
+		{
+			if (pGeometry->getGeometryTypeId() == gg::GEOS_LINESTRING)
+			{
+				Vector<Eigen::Vector2d> result;
+
+				const gg::LineString* pLine = dynamic_cast<const gg::LineString*>(pGeometry);
+				for (size_t i = 0; i < pLine->getNumPoints(); ++i)
+				{
+					result.push_back(asEigen(pLine->getCoordinateN(i)));
+				}
+
+				return result;
+			}
+			else if (pGeometry->getGeometryTypeId() == gg::GEOS_MULTILINESTRING)
+			{
+				Vector<Eigen::Vector2d> result;
+
+				const gg::MultiLineString* pLines = dynamic_cast<const gg::MultiLineString*>(pGeometry);
+				for (size_t lineIndex = 0; lineIndex < pLines->getNumGeometries(); ++lineIndex)
+				{
+					const gg::LineString* pLine = dynamic_cast<const gg::LineString*>(pLines->getGeometryN(lineIndex));
+					for (size_t i = 0; i < pLine->getNumPoints(); ++i)
+					{
+						result.push_back(asEigen(pLine->getCoordinateN(i)));
+					}
+				}
+
+				return result;
+			}
+
+			return {};
+		};
+
+		const auto Sq = [](const Eigen::Vector2d& v)
+		{
+			return v.x()*v.x() + v.y()*v.y();
+		};
+
+		struct VertexInfo
+		{
+			VertexInfo() = default;
+			VertexInfo(size_t shapeIndex, size_t polygonIndex, size_t segmentIndex, size_t vertexIndex) :
+				shapeIndex(shapeIndex),
+				polygonIndex(polygonIndex),
+				segmentIndex(segmentIndex),
+				vertexIndex(vertexIndex)
+			{}
+
+			size_t shapeIndex;//LHS or RHS
+			size_t polygonIndex;
+			size_t segmentIndex;
+			size_t vertexIndex;
+		};
+		
+		struct PointInfo
+		{
+			PointInfo() = default;
+			PointInfo(size_t shapeIndex, size_t polygonIndex, size_t segmentIndex, double vertexIndex) :
+				shapeIndex(shapeIndex),
+				polygonIndex(polygonIndex),
+				segmentIndex(segmentIndex),
+				vertexIndex(vertexIndex)
+			{}
+
+			size_t shapeIndex;//LHS or RHS
+			size_t polygonIndex;
+			size_t segmentIndex;
+			double vertexIndex;
+		};
+
+		struct EnclosedRegions
+		{
+			struct Region
+			{
+				std::vector<size_t> directedSegment_VerticesInfo;
+				std::vector<size_t> antiDirectedSegment_VerticesInfo;
+			};
+
+			std::vector<Region> regions;
+		};
+
+		struct PartialRays
+		{
+			//流入レイ
+			struct EnteringRay
+			{
+				EnteringRay() = default;
+				EnteringRay(const VertexInfo& begin, double rayEndVertexIndex) :
+					begin(begin), rayEndVertexIndex(rayEndVertexIndex)
+				{}
+				double index()const { return rayEndVertexIndex; }
+				VertexInfo begin;
+				double rayEndVertexIndex;
+			};
+			//流出レイ
+			struct ExitingRay
+			{
+				ExitingRay() = default;
+				ExitingRay(const PointInfo& end, int rayBeginVertexIndex) :
+					end(end), rayBeginVertexIndex(rayBeginVertexIndex)
+				{}
+				double index()const { return rayBeginVertexIndex; }
+				PointInfo end;
+				int rayBeginVertexIndex;
+			};
+			void addEnteringRay(double endPointIndex, const VertexInfo& beginPoint)
+			{
+				rays.push_back(EnteringRay(beginPoint, endPointIndex));
+			}
+			void addExitingRay(int pointIndex, const PointInfo& endPoint)
+			{
+				rays.push_back(ExitingRay(endPoint, pointIndex));
+			}
+			void sortRays()
+			{
+				const auto getIndex = [](const boost::variant<EnteringRay, ExitingRay>& rayInfo)
+				{
+					if (IsType<EnteringRay>(rayInfo))
+					{
+						return As<EnteringRay>(rayInfo).index();
+					}
+					return As<ExitingRay>(rayInfo).index();
+				};
+				std::sort(rays.begin(), rays.end(), [&](const boost::variant<EnteringRay, ExitingRay>& a, const boost::variant<EnteringRay, ExitingRay>& b) {
+					return getIndex(a) < getIndex(b);
+				});
+			}
+			boost::optional<size_t> findRayByVertexIndex(double vertexIndex)const
+			{
+				for (size_t i = 0; i < rays.size(); ++i)
+				{
+					if (IsType<EnteringRay>(rays[i]))
+					{
+						if (As<EnteringRay>(rays[i]).rayEndVertexIndex == vertexIndex)
+						{
+							return i;
+						}
+					}
+				}
+				return boost::none;
+			}
+			boost::optional<size_t> findRayByVertexIndex(int vertexIndex)const
+			{
+				for (size_t i = 0; i < rays.size(); ++i)
+				{
+					if (IsType<ExitingRay>(rays[i]))
+					{
+						if (As<ExitingRay>(rays[i]).rayBeginVertexIndex == vertexIndex)
+						{
+							return i;
+						}
+					}
+				}
+				return boost::none;
+			}
+			bool isExitingRay(size_t index)const
+			{
+				return IsType<ExitingRay>(rays[index]);
+			}
+			bool isEnteringRay(size_t index)const
+			{
+				return IsType<EnteringRay>(rays[index]);
+			}
+			std::vector<boost::variant<EnteringRay, ExitingRay>> rays;
+		};
+		using PartialRaysList = std::vector<PartialRays>;
+		
+		
+		std::array<PartialRaysList, 2> bothRays;
+		for (size_t shapeIndex = 0; shapeIndex < bothPolygons.size(); ++shapeIndex)
+		{
+			const auto& vertices = bothVertices[shapeIndex];
+			auto& segments = bothRays[shapeIndex];
+			segments.resize(vertices.size());
+
+			/*for (size_t lineSegmentIndex = 0; lineSegmentIndex < vertices.size(); ++lineSegmentIndex)
+			{
+				vertices[lineSegmentIndex];
+				segments[lineSegmentIndex];
+			}*/
+		}
+
+		//
+		const auto getHeight = [](const gg::Coordinate& a, const gg::Coordinate& b)
+		{
+			return abs((a.x*b.y - b.x*a.y) / sqrt(a.x*a.x + a.y*a.y));
+		};
+
+		const auto getProgress = [](const gg::Coordinate& a, const gg::Coordinate& b)
+		{
+			return (a.x*b.x + a.y*b.y) / (a.x*a.x + a.y*a.y);
+		};
+
+		const auto getPointIndex = [&getHeight, &getProgress](const std::vector<VertexData>& vs, const Eigen::Vector2d& pos)
+		{
+			int minIndex = 0;
+			double minDistanceSq = DBL_MAX;
+			double minProgress = 0;
+			for (size_t i = 0; i + 1 < vs.size(); ++i)
+			{
+				const double currentDistance = getHeight(vs[i].position, vs[i + 1].position);
+				if (currentDistance < minDistanceSq)
+				{
+					minDistanceSq = currentDistance;
+					minIndex = i;
+					minProgress = getProgress(vs[i].position, vs[i + 1].position);
+				}
+			}
+			if (2 <= vs.size())
+			{
+				const double currentDistance = getHeight(vs.back().position, vs.front().position);
+				if (currentDistance < minDistanceSq)
+				{
+					minDistanceSq = currentDistance;
+					minIndex = vs.size() - 1;
+					minProgress = getProgress(vs.back().position, vs.front().position);
+				}
+			}
+
+			return minIndex + minProgress;
+		};
+
+		//それぞれのセグメントについて法線方向に飛ばしたレイとセグメントの交差判定を取り、
+		//交差したレイの情報を互いに保存する
+		std::unordered_map<unsigned, EnclosedRegions> enclosedRegions;
+		for (size_t shapeIndex = 0; shapeIndex < bothPolygons.size(); ++shapeIndex)
+		{
+			/*const auto& selfPolygons = bothPolygons[shapeIndex];
+			const auto& otherPolygons = bothPolygons[(shapeIndex + 1) % bothPolygons.size()];*/
+
+			const size_t otherShapeIndex = (shapeIndex + 1) % bothVertices.size();
+			const auto& selfVertices = bothVertices[shapeIndex];
+			const auto& otherVertices = bothVertices[otherShapeIndex];
+			auto& vertices = bothVertices[shapeIndex];
+			auto& rays = bothRays[shapeIndex];
+
+			for (size_t lineSegmentIndex = 0; lineSegmentIndex < vertices.size(); ++lineSegmentIndex)
+			{
+				PartialVertices& currentLine = vertices[lineSegmentIndex];
+				PartialRays& currentInfo = rays[lineSegmentIndex];
+				std::vector<VertexData>& currentVertices = currentLine.vs;
+				const bool currentSegmentDirection = currentLine.isForwardDirected;
+				const Eigen::Vector2d rayDirection = 0.0 < currentLine.isForwardDirected ? direction : -direction;
+
+				for (size_t partialPointIndex = 0; partialPointIndex < currentVertices.size(); ++partialPointIndex)
+				{
+					//const gg::Polygon* pCurrentSelfPolygon = dynamic_cast<const gg::Polygon*>(selfPolygons.refer(currentVertices[partialPointIndex].geometryIndex));
+					//const gg::LineString* pCurrentSelfRing = pCurrentSelfPolygon->getExteriorRing();
+					const Eigen::Vector2d rayBegin = asEigen(currentVertices[partialPointIndex].position);
+					const Eigen::Vector2d rayEnd = rayBegin + rayDirection * 1.e+6;
+
+					GeometryPtr rayLine = MakeLine(rayBegin, rayEnd);
+
+					const VertexInfo rayBeginInfo(shapeIndex, 0, lineSegmentIndex, partialPointIndex);
+
+					double self_minDistanceSq = 1.e+20;
+					size_t self_minDistanceIndex;
+					double self_minDistanceVertexIndex;
+					for (size_t targetLineSegmentIndex = 0; targetLineSegmentIndex < selfVertices.size(); ++targetLineSegmentIndex)
+					{
+						if (lineSegmentIndex == targetLineSegmentIndex ||
+							currentSegmentDirection == selfVertices[targetLineSegmentIndex].isForwardDirected)
+						{
+							continue;
+						}
+
+						GeometryPtr rayCast = ToUnique<GeometryDeleter>(rayLine->intersection(selfVertices[targetLineSegmentIndex].pCollider.get()));
+						for (const auto& p : getPointsFromLines(rayCast.get()))
+						{
+							const double currentDistanceSq = Sq(p - rayBegin);
+							if (currentDistanceSq < self_minDistanceSq)
+							{
+								self_minDistanceSq = currentDistanceSq;
+								self_minDistanceIndex = targetLineSegmentIndex;
+								self_minDistanceVertexIndex = getPointIndex(selfVertices[targetLineSegmentIndex].vs, p);
+							}
+						}
+					}
+
+					double other_minDistanceSq = 1.e+30;//self_minDistanceSq < other_minDistanceSq
+					Eigen::Vector2d other_minDistancePos(0, 0);
+					size_t other_minDistanceIndex;
+					double other_minDistanceVertexIndex;
+					for (size_t targetLineSegmentIndex = 0; targetLineSegmentIndex < otherVertices.size(); ++targetLineSegmentIndex)
+					{
+						if (currentSegmentDirection == otherVertices[targetLineSegmentIndex].isForwardDirected)
+						{
+							continue;
+						}
+
+						GeometryPtr rayCast = ToUnique<GeometryDeleter>(rayLine->intersection(otherVertices[targetLineSegmentIndex].pCollider.get()));
+						for (const auto& p : getPointsFromLines(rayCast.get()))
+						{
+							const double currentDistanceSq = Sq(p - rayBegin);
+							if (currentDistanceSq < other_minDistanceSq)
+							{
+								other_minDistanceSq = currentDistanceSq;
+								other_minDistancePos = p;
+								other_minDistanceIndex = targetLineSegmentIndex;
+
+								other_minDistanceVertexIndex = getPointIndex(otherVertices[targetLineSegmentIndex].vs, p);
+							}
+						}
+					}
+
+					if (other_minDistanceSq < self_minDistanceSq)
+					{
+						const PointInfo rayEndInfo(otherShapeIndex, 0, other_minDistanceIndex, other_minDistanceVertexIndex);
+						currentInfo.addExitingRay(partialPointIndex, rayEndInfo);
+
+						auto& otherRays = bothRays[otherShapeIndex];
+						PartialRays& otherInfo = otherRays[other_minDistanceIndex];
+						otherInfo.addEnteringRay(other_minDistanceVertexIndex, rayBeginInfo);
+						//const unsigned h1 = std::hash<size_t>{}(lineSegmentIndex);
+						//const unsigned h2 = std::hash<size_t>{}(other_minDistanceIndex);
+						//const unsigned combined = h1 ^ h2;//commutative
+						//
+						//if (enclosedRegions[combined].regions.empty())
+						//{
+						//	enclosedRegions[combined].regions.emplace_back();
+						//}
+						// -> と <- の2ケースのみ考慮すればよい
+						//
+					}
+					else
+					{
+						const PointInfo rayEndInfo(shapeIndex, 0, self_minDistanceIndex, self_minDistanceVertexIndex);
+						currentInfo.addExitingRay(partialPointIndex, rayEndInfo);
+
+						auto& otherRays = bothRays[shapeIndex];
+						PartialRays& otherInfo = otherRays[self_minDistanceIndex];
+						otherInfo.addEnteringRay(self_minDistanceVertexIndex, rayBeginInfo);
+					}
+				}
+			}
+		}
+
+		{
+			const size_t shapeIndex = 0;
+
+			const auto& selfVertices = bothVertices[shapeIndex];
+			auto& vertices = bothVertices[shapeIndex];
+			auto& rays = bothRays[shapeIndex];
+
+			for (size_t lineSegmentIndex = 0; lineSegmentIndex < vertices.size(); ++lineSegmentIndex)
+			{
+				PartialVertices& currentLine = vertices[lineSegmentIndex];
+				PartialRays& currentInfo = rays[lineSegmentIndex];
+				std::vector<VertexData>& currentVertices = currentLine.vs;
+				const bool currentSegmentDirection = currentLine.isForwardDirected;
+				const Eigen::Vector2d rayDirection = 0.0 < currentLine.isForwardDirected ? direction : -direction;
+
+				currentInfo.sortRays();
+
+				//rayについて
+				//両端はExitingRay
+				//連続するExitingRayは無視してよい
+				//EnteringRayで区切られた範囲の閉路を探す
+				std::vector<size_t> loopIndices;
+				if (currentInfo.isExitingRay(0))
+				{
+					loopIndices.push_back(0);
+				}
+				for (size_t rayIndex = 0; rayIndex < currentInfo.rays.size(); ++rayIndex)
+				{
+					if (currentInfo.isEnteringRay(rayIndex))
+					{
+						loopIndices.push_back(rayIndex);
+					}
+				}
+				if (currentInfo.isExitingRay(loopIndices.size() - 1))
+				{
+					loopIndices.push_back(loopIndices.size() - 1);
+				}
+
+				for (size_t loopIndex = 0; loopIndex + 1 < loopIndices.size(); ++loopIndex)
+				{
+					const size_t loopBeginIndex = loopIndices[loopIndex];
+					const size_t loopEndIndex = loopIndices[loopIndex + 1];
+
+					if (IsType<PartialRays::EnteringRay>(currentInfo.rays[loopBeginIndex]))
+					{
+						const PartialRays::EnteringRay& currentRay = As<PartialRays::EnteringRay>(currentInfo.rays[loopBeginIndex]);
+						const auto& beginInfo = currentRay.begin;
+
+						bothVertices[beginInfo.shapeIndex][beginInfo.segmentIndex].vs[beginInfo.vertexIndex];
+					}
+					else
+					{
+						const PartialRays::ExitingRay& currentRay = As<PartialRays::ExitingRay>(currentInfo.rays[loopBeginIndex]);
+						const auto& endInfo = currentRay.end;
+
+						const double currentEndIndex = endInfo.vertexIndex;
+
+						const int vertexIndexFloor = static_cast<int>(floor(endInfo.vertexIndex));
+						bothVertices[endInfo.shapeIndex][endInfo.segmentIndex].vs[vertexIndexFloor];
+
+						const int oppositeRayIndex = bothRays[endInfo.shapeIndex][endInfo.segmentIndex].findRayByVertexIndex(currentEndIndex).value();
+
+						//基準のセグメントについて頂点インデックスの昇順でレイを見ている
+						//したがって、基準セグメントの向かい側のセグメントで閉路を作る方向は、必ず頂点インデックスの降順になる
+						const int returnRayIndex = oppositeRayIndex - 1;
+
+						/*if (returnRayIndex < 0)
+						{
+							continue;
+						}*/
+
+
+						//帰ってくる
+						if (IsType<PartialRays::ExitingRay>(bothRays[endInfo.shapeIndex][endInfo.segmentIndex].rays[returnRayIndex]))
+						{
+							const auto& returnRay = As<PartialRays::ExitingRay>(bothRays[endInfo.shapeIndex][endInfo.segmentIndex].rays[returnRayIndex]);
+							returnRay.end;
+						}
+						//別ルートへ進む
+						else
+						{
+							const auto& moveRay = As<PartialRays::EnteringRay>(bothRays[endInfo.shapeIndex][endInfo.segmentIndex].rays[returnRayIndex]);
+							moveRay.begin.shapeIndex;
+							moveRay.begin.segmentIndex;
+							moveRay.begin.vertexIndex;
+						}
+						;
+					}
+				}
+
+			}
+		}
+	}
+#endif
 
 	PackedRecord GetConvexHull(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{

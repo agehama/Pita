@@ -1,0 +1,15 @@
+tree = Shape{
+    gen = (depth -> if depth < 10
+        then Shape{
+            node: Square{}
+            child1: rec(depth + 1){}
+            child2: rec(depth + 1){}
+            sat: ! Touch(node, child1) & Touch(node, child2) !
+            var: ? child1.pos, child1.angle, child2.pos, child2.angle ?
+        }
+        else Shape{ leaf: Square{} }
+    )
+    root: gen(0)
+    sat: ! AABB(self).height < Fold(Sum, Map(root.**.leaf, (s->AABB(s).width))) !
+    var: ? root.**.node.pos, root.**.node.angle ?
+}

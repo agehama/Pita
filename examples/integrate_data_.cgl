@@ -1,0 +1,113 @@
+EnableGC(false)
+
+intervals = import "pita_log_interval"
+velocities = import "pita_log_velocity"
+divisions = import "pita_log_divisionNum"
+
+param_area = import "pita_log_area"
+param_sumOfPerimeter = import "pita_log_sumOfPerimeter"
+param_averageOfAspectRatio = import "pita_log_averageOfAspectRatio"
+param_sumOfAspectRatio = import "pita_log_sumOfAspectRatio"
+param_averageOfDiagonalWidth = import "pita_log_averageOfDiagonalWidth"
+param_sumOfDiagonalWidth = import "pita_log_sumOfDiagonalWidth"
+
+param_ppTime = import "pita_log_pp_time"
+
+results = for i in 0:100 list({ case: i, hasV: false, hasI: false, hasArea: false, hasPPTime: false, division: 0 })
+
+for i in 0:Size(divisions)-1 do(
+    caseID = divisions[i][0]
+    value = divisions[i][1]
+    results[caseID] = results[caseID]{ division: value }
+)
+
+for i in 0:Size(velocities)-1 do(
+    caseID = velocities[i][0]
+    value = velocities[i][1]
+    results[caseID] = results[caseID]{ velocity: value, hasV: true }
+)
+
+for i in 0:Size(intervals)-1 do(
+    caseID = intervals[i][0]
+    value = intervals[i][1]
+    results[caseID] = results[caseID]{ interval: value, hasI: true}
+)
+
+
+for i in 0:Size(param_area)-1 do(
+    caseID = param_area[i][0]
+    value = param_area[i][1]
+    results[caseID] = results[caseID]{ area: value, hasArea: true }
+)
+
+//p1
+for i in 0:Size(param_sumOfPerimeter)-1 do(
+    caseID = param_sumOfPerimeter[i][0]
+    value = param_sumOfPerimeter[i][1]
+    results[caseID] = results[caseID]{ sumOfPerimeter: value }
+)
+//p2
+for i in 0:Size(param_averageOfAspectRatio)-1 do(
+    caseID = param_averageOfAspectRatio[i][0]
+    value = param_averageOfAspectRatio[i][1]
+    results[caseID] = results[caseID]{ averageOfAspectRatio: value }
+)
+//p3
+for i in 0:Size(param_sumOfAspectRatio)-1 do(
+    caseID = param_sumOfAspectRatio[i][0]
+    value = param_sumOfAspectRatio[i][1]
+    results[caseID] = results[caseID]{ sumOfAspectRatio: value }
+)
+//p4
+for i in 0:Size(param_averageOfDiagonalWidth)-1 do(
+    caseID = param_averageOfDiagonalWidth[i][0]
+    value = param_averageOfDiagonalWidth[i][1]
+    results[caseID] = results[caseID]{ averageOfDiagonalWidth: value }
+)
+//p5
+for i in 0:Size(param_sumOfDiagonalWidth)-1 do(
+    caseID = param_sumOfDiagonalWidth[i][0]
+    value = param_sumOfDiagonalWidth[i][1]
+    results[caseID] = results[caseID]{ sumOfDiagonalWidth: value }
+)
+
+for i in 0:Size(param_ppTime)-1 do(
+    caseID = param_ppTime[i][0]
+    value = param_ppTime[i][1]
+    results[caseID] = results[caseID]{ ppTime: value, hasPPTime: true }
+)
+
+
+
+Min = (a, b -> if a < b then a else b)
+
+plotData = {
+    size: 3
+    labels: [
+        "分割面積"
+        //"分割数"
+        //"PPの速度"
+        //"PPのt区間幅"
+        "(p5)斜め幅の総和"
+        //"(p4)斜め幅の平均"
+        //"(p3)縦横比の総和"
+        //"(p2)縦横比の平均"
+        //"(p1)周長の総和"
+        "区間幅"
+    ]
+    logAxis: [
+        true
+        true
+        false
+    ]
+    data: []
+    for i in 0:Size(results)-1 do(
+        //if results[i].hasV & results[i].hasI & results[i].hasArea /*& results[i].division==10*/
+        if results[i].hasI & results[i].hasArea & results[i].hasPPTime
+        then(
+            //Push(data, [results[i].area, results[i].division, results[i].interval])
+            //Push(data, [results[i].area, results[i].velocity, Min(0.1, results[i].interval)])
+            Push(data, [results[i].area, results[i].sumOfDiagonalWidth, Min(0.1, results[i].interval)])
+        )
+    )
+}

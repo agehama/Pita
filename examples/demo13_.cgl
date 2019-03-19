@@ -110,9 +110,9 @@ main = Shape{
         Touch(Line(c, b), circle) & 
         Touch(Line(a, c), circle)
     )
-    var(circlePos in makeTriangle1(a,b,c), radius in [1.0, 150])
-    //var(circlePos, radius)
+    //var(circlePos in makeTriangle(a,b,c), radius in [1.0, 150])
+    var(circlePos, radius)
 
     stroke: Rgb(0,0,0)
-    fill: Rgb(255,255,255)
+    fill: 0
 }

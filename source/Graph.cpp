@@ -900,6 +900,38 @@ namespace cgl
 		//return ifNodeIndex;
 	}
 
+	/*
+	size_t ConstraintGraphMaker::operator()(const For& node)
+	{
+		ConstraintGraphMaker child(context, graph, currentNodeIndex, false, false);
+
+		const Expr startExpr = BinaryExpr(node.loopCounter, node.rangeStart, BinaryOp::Assign);
+		const size_t startNodeIndex = boost::apply_visitor(child, startExpr);
+
+		If ifexpr;
+		ifexpr.cond_expr = BinaryExpr(node.loopCounter, node.rangeEnd, BinaryOp::LessEqual);
+		ifexpr.then_expr = node.doExpr;
+
+		const Expr expr = ifexpr;
+		boost::apply_visitor(child, expr);
+		const size_t conditionNodeIndex = child.additionalInfo.get().ifConditionExprIndex;
+		const size_t doNodeIndex = child.additionalInfo.get().ifThenIndex;
+		const size_t breakNodeIndex = child.additionalInfo.get().ifElseIndex;
+
+		additionalInfo = boost::none;
+
+		graph.addEdge(startNodeIndex, conditionNodeIndex);
+
+		Expr addExpr = BinaryExpr(node.loopCounter, BinaryExpr(node.loopCounter, LRValue(1), BinaryOp::Add), BinaryOp::Assign);
+		const size_t continuousNodeIndex = boost::apply_visitor(child, addExpr);
+
+		graph.addEdge(doNodeIndex, continuousNodeIndex);
+		graph.addEdge(continuousNodeIndex, conditionNodeIndex);
+
+		return breakNodeIndex;
+	}
+	*/
+
 	size_t ConstraintGraphMaker::operator()(const For& node)
 	{
 		ConstraintGraphMaker child(context, graph, currentNodeIndex, false, false);

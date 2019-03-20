@@ -447,7 +447,8 @@ textarea:focus, input[type="email"]:focus, input[type="number"]:focus, input[typ
     margin: 0;
 }
 body {
-    font-family: "fot-udkakugo-large-pr6n", "メイリオ", Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", sans-serif;
+    /*font-family: "fot-udkakugo-large-pr6n", "メイリオ", Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", sans-serif;*/
+    font-family: "ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro",Osaka, "メイリオ", Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", sans-serif;
     font-weight: 300;
     line-height: 1.6;
     font-size: 18px !important;
@@ -1130,6 +1131,60 @@ pre .copy-to-clipboard:hover {
 
 #searchResults {
     text-align: left;
+}
+
+#canvas {
+    background: #333;
+}
+#editorTest { 
+    float: left;
+    position: relative;
+    width: 50%;
+    height: 400px;
+    vertical-align: top;
+}
+/*
+.pitaBoxLeft{
+float: left;
+width: 50%;
+vertical-align: top;
+background-color: #aaa;
+}
+
+*/
+#pitaBoxRight{
+    position: relative;
+    float: right;
+    width: 50%;
+    height: 400px;
+    vertical-align: top;
+    /*background-color: #aaa;*/
+    background-color: #fff;
+    /* margin-left: 50px; -- optional, for aligning to your needs */
+    display: flex;
+    align-items: center;
+}
+#svg-1
+{
+  margin: 0 auto;
+  display: block;
+}
+#leftBar{
+    float: left;
+    vertical-align: top;
+    width: 50%;
+}
+#rightBar{
+    float: right;
+    vertical-align: top;
+    width: 50%;
+}
+@media screen and (max-width: 1300px) { /* whatever width you prefer */
+    #pitaBoxRight, #editorTest, #leftBar, #rightBar {
+        float: none;
+        width: 100%;
+        /* width: auto; -- may be helpful */  
+    }
 }
 
 /*# sourceMappingURL=theme.css.map */

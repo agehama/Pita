@@ -25,10 +25,9 @@ else if (typeof exports === 'object')
   exports["Module"] = Module;
 }
 
-var pita;
-
-var pitaModule = Module().then(function(instance){
-  pita = {
+var pitaModule = new Promise(function(resolve){
+  Module().then(function(instance){
+  var result = {
     inst: instance,
     run: function(str, isDebugMode) {
       var buffer = new Uint8Array(str.length);
@@ -36,14 +35,9 @@ var pitaModule = Module().then(function(instance){
         buffer[i] = str.charCodeAt(i);
       }
 
-      //console.log(instance._malloc);
-
       var pointer = instance._malloc(buffer.length);
       var offset = pointer;
       instance.HEAPU8.set(buffer, offset);
-
-      //console.log(str);
-      //console.log(buffer);
 
       var result;
       if(isDebugMode)
@@ -60,15 +54,12 @@ var pitaModule = Module().then(function(instance){
       var offset = instance.__Z16getPitaResultPtrv();
       var length = instance.__Z19getPitaResultLengthv();
       
-      //console.log(instance.HEAPU8[offset]);
       var buffer =  new Uint8Array(length);
       for(var i = 0; i < length; i++)
       {
         buffer[i] = instance.HEAPU8[offset + i];
       }
 
-      //var result = String.fromCharCode.apply(null, buffer);
-      //console.log(result);
       decoder = new TextDecoder("utf-8");
       var result = decoder.decode(buffer);
       return result;
@@ -77,4 +68,5 @@ var pitaModule = Module().then(function(instance){
       console.log(str);
     }
   };
-});
+  resolve(result);
+})});

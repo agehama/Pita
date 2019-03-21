@@ -13,20 +13,20 @@
     
     
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link href="/Pita/css/nucleus.css?1553080064" rel="stylesheet">
-    <link href="/Pita/css/font-awesome.min.css?1553080064" rel="stylesheet">
-    <link href="/Pita/css/hybrid.css?1553080064" rel="stylesheet">
-    <link href="/Pita/css/featherlight.min.css?1553080064" rel="stylesheet">
-    <link href="/Pita/css/perfect-scrollbar.min.css?1553080064" rel="stylesheet">
-    <link href="/Pita/css/auto-complete.css?1553080064" rel="stylesheet">
-    <link href="/Pita/css/theme.css?1553080064" rel="stylesheet">
-    <link href="/Pita/css/hugo-theme.css?1553080064" rel="stylesheet">
+    <link href="/Pita/css/nucleus.css?1553174597" rel="stylesheet">
+    <link href="/Pita/css/font-awesome.min.css?1553174597" rel="stylesheet">
+    <link href="/Pita/css/hybrid.css?1553174597" rel="stylesheet">
+    <link href="/Pita/css/featherlight.min.css?1553174597" rel="stylesheet">
+    <link href="/Pita/css/perfect-scrollbar.min.css?1553174597" rel="stylesheet">
+    <link href="/Pita/css/auto-complete.css?1553174597" rel="stylesheet">
+    <link href="/Pita/css/theme.css?1553174597" rel="stylesheet">
+    <link href="/Pita/css/hugo-theme.css?1553174597" rel="stylesheet">
     
-      <link href="/Pita/css/theme-blue.css?1553080064" rel="stylesheet">
+      <link href="/Pita/css/theme-blue.css?1553174597" rel="stylesheet">
     
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
 
-    <script src="/Pita/js/jquery-2.x.min.js?1553080064"></script>
+    <script src="/Pita/js/jquery-2.x.min.js?1553174597"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.3/ace.js" type="text/javascript" charset="utf-8"></script>
 
     <script src="https://use.typekit.net/agz1sns.js"></script>
@@ -92,14 +92,14 @@
     <span data-search-clear=""><i class="fa fa-close"></i></span>
 </div>
 
-<script type="text/javascript" src="/Pita/js/lunr.min.js?1553080064"></script>
-<script type="text/javascript" src="/Pita/js/auto-complete.js?1553080064"></script>
+<script type="text/javascript" src="/Pita/js/lunr.min.js?1553174597"></script>
+<script type="text/javascript" src="/Pita/js/auto-complete.js?1553174597"></script>
 <script type="text/javascript">
     
         var baseurl = "\/Pita\/ja";
     
 </script>
-<script type="text/javascript" src="/Pita/js/search.js?1553080064"></script>
+<script type="text/javascript" src="/Pita/js/search.js?1553174597"></script>
 
     
   </div>
@@ -505,20 +505,17 @@
 <h1 id="pita-a-design-language">Pita: a design language</h1>
 
 <p>Pita はベクターグラフィックスを制作するための新しいプログラミング言語です。
-Pita が提供する図形演算や制約処理といった機能を活用することで、座標計算の煩わしさを感じることなくプロシージャルデザインに取り組むことができます。</p>
+Pita の提供する宣言的な構文と図形演算などのモジュール化を支援する機能が座標計算の煩わしさから解放された直感的なプロシージャルデザインを可能にします。</p>
 
-<p><img src="https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/pita_examples.png?classes=shadow" alt="Pitaで記述した図の例" /></p>
+<p><img src="https://github.com/agehama/Pita/raw/master/docs/pita_doc/images/pita_examples.png" alt="Pitaで記述した図の例" /></p>
 
 <hr />
 
 <h2 id="pitaを動かしてみる">Pitaを動かしてみる</h2>
 
-<!-- <div target="_blank" class="btn btn-default">  -->
-
 <p><div class="w3-bar w3-blue-grey" id="leftBar">
     <div class="w3-dropdown-hover">
         <button class="w3-button w3-blue-grey" style="width:100%">Examples <i class="fas fa-caret-down"></i></button>
-        <!-- <div class="w3-dropdown-content w3-bar-block w3-border" style="right:0;"> -->
         <div style="z-index:1000;" class="w3-dropdown-content w3-bar-block w3-card-4">
         <a href="#" class="w3-bar-item w3-button" onclick="loadPita3rects(); return false">3rects.pita</a>
         <a href="#" class="w3-bar-item w3-button" onclick="loadPitafib(); return false">fib.pita</a>
@@ -544,8 +541,8 @@ Pita が提供する図形演算や制約処理といった機能を活用する
 <h3 id="1-シンプルな構文">1. シンプルな構文</h3>
 
 <p>Pita では作りたい図形が何を持っているかという要素を列挙するだけで図形の定義をすることができます。
-これは他の多くの手続き的プログラミング言語による作図よりも直感的で簡潔な記述になることでしょう。
-また、分岐やループなどの制御構文、レコードやリストなどのデータ構造、第一級関数などの汎用的な言語機能も備えているので、複雑な手続きが必要な図形であっても表現に困るということはありません。</p>
+これは他の多くの手続き的プログラミング言語による作図よりも直感的で簡潔な定義となることでしょう。
+また、分岐やループなどの制御構文、レコードやリストなどのデータ構造、第一級関数などの伝統的な言語機能も備えているので、複雑な手続きが必要な図形であっても表現に困るということはありません。</p>
 
 <h3 id="2-図形のモジュール化">2. 図形のモジュール化</h3>
 
@@ -561,12 +558,13 @@ Pita が提供する図形演算や制約処理といった機能を活用する
 <h4 id="他の特徴">他の特徴</h4>
 
 <ul>
-<li>Windows, MacOS, Linux, JavaScript のサポート</li>
+<li>Windows, macOS, Linux, JavaScript のサポート</li>
 <li>数値計算による高速な制約計算</li>
 <li>図形のブーリアン演算・自由変形</li>
 <li>フォント対応</li>
-<li>SVG出力対応</li>
-<li>MITライセンス</li>
+<li>Unicode 対応</li>
+<li>SVG 出力対応</li>
+<li>MIT ライセンス</li>
 </ul>
 	
   
@@ -798,20 +796,20 @@ Pita が提供する図形演算や制約処理といった機能を活用する
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="/Pita/js/clipboard.min.js?1553080064"></script>
-    <script src="/Pita/js/perfect-scrollbar.min.js?1553080064"></script>
-    <script src="/Pita/js/perfect-scrollbar.jquery.min.js?1553080064"></script>
-    <script src="/Pita/js/jquery.sticky.js?1553080064"></script>
-    <script src="/Pita/js/featherlight.min.js?1553080064"></script>
-    <script src="/Pita/js/html5shiv-printshiv.min.js?1553080064"></script>
-    <script src="/Pita/js/highlight.pack.js?1553080064"></script>
+    <script src="/Pita/js/clipboard.min.js?1553174597"></script>
+    <script src="/Pita/js/perfect-scrollbar.min.js?1553174597"></script>
+    <script src="/Pita/js/perfect-scrollbar.jquery.min.js?1553174597"></script>
+    <script src="/Pita/js/jquery.sticky.js?1553174597"></script>
+    <script src="/Pita/js/featherlight.min.js?1553174597"></script>
+    <script src="/Pita/js/html5shiv-printshiv.min.js?1553174597"></script>
+    <script src="/Pita/js/highlight.pack.js?1553174597"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="/Pita/js/modernizr.custom.71422.js?1553080064"></script>
-    <script src="/Pita/js/learn.js?1553080064"></script>
-    <script src="/Pita/js/hugo-learn.js?1553080064"></script>
+    <script src="/Pita/js/modernizr.custom.71422.js?1553174597"></script>
+    <script src="/Pita/js/learn.js?1553174597"></script>
+    <script src="/Pita/js/hugo-learn.js?1553174597"></script>
 
-    <script src="/Pita/js/pita/pita.js?1553080064"></script>
-    <script src="/Pita/js/pita/pita_api.js?1553080064"></script>
+    <script src="/Pita/js/pita/pita.js?1553174597"></script>
+    
 
     
     <script src="https://cdn.jsdelivr.net/npm/rgbcolor@^1/index.js"></script>
@@ -820,8 +818,8 @@ Pita が提供する図形演算や制約処理といった機能を活用する
     
     <script src="https://cdn.jsdelivr.net/npm/canvg/dist/browser/canvg.min.js"></script>
 
-    <link href="/Pita/mermaid/mermaid.css?1553080064" type="text/css" rel="stylesheet" />
-    <script src="/Pita/mermaid/mermaid.js?1553080064"></script>
+    <link href="/Pita/mermaid/mermaid.css?1553174597" type="text/css" rel="stylesheet" />
+    <script src="/Pita/mermaid/mermaid.js?1553174597"></script>
     <script>
         mermaid.initialize({ startOnLoad: true });
     </script>
@@ -868,14 +866,35 @@ Pita が提供する図形演算や制約処理といった機能を活用する
             var code = editor.getValue();
             
             
-            var svgResult = pitaCaller.run(code);
-            currentSVG = svgResult;
             var buttonHTML = "<button class=\"w3-bar-item w3-button w3-indigo\" style=\"position:absolute;right:0;bottom:0;z-index:1000;\" onclick=\"saveSVG(); return false\">Save SVG</button>";
-            var svgText = "<svg id=\"svg-1\"" + svgResult.substr(4);
-            console.log(svgText);
+
+            document.getElementById("pitaBoxRight").innerHTML = "<div style=\"position:absolute;left:0;top:0;\" class=\"w3-container\"><div class=\"w3-panel w3-pale-blue w3-leftbar w3-border-blue\"><p>Running...</p></div></div>";
             
-            
-            document.getElementById("pitaBoxRight").innerHTML = svgText + buttonHTML;
+
+            setTimeout(function() {
+                var svgResult = pita.run(code, true);
+                currentSVG = svgResult;
+                console.log(svgResult);
+
+                if(svgResult.startsWith("<svg"))
+                {
+                    var svgText = "<svg id=\"svg-1\"" + svgResult.substr(4);
+                    document.getElementById("pitaBoxRight").innerHTML = svgText + buttonHTML;
+                }
+                else
+                {
+                    if(svgResult == "")
+                    {
+                        var svgText = "<div style=\"position:absolute;left:0;top:0;\" class=\"w3-container\"><div class=\"w3-panel w3-pale-green w3-leftbar w3-border-green\"><p>Result is empty.</p></div></div>";
+                        document.getElementById("pitaBoxRight").innerHTML = svgText;
+                    }
+                    else
+                    {
+                        var svgText = "<div style=\"position:absolute;left:0;top:0;\" class=\"w3-container\"><div class=\"w3-panel w3-pale-red w3-leftbar w3-border-red\"><p>" + svgResult + "</p></div></div>";
+                        document.getElementById("pitaBoxRight").innerHTML = svgText;
+                    }
+                }
+            }, 20);
             
             
             return false;

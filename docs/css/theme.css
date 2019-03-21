@@ -1139,8 +1139,8 @@ pre .copy-to-clipboard:hover {
 #editorTest { 
     float: left;
     position: relative;
-    width: 50%;
-    height: 400px;
+    width: 60%;
+    height: 500px;
     vertical-align: top;
 }
 /*
@@ -1155,8 +1155,8 @@ background-color: #aaa;
 #pitaBoxRight{
     position: relative;
     float: right;
-    width: 50%;
-    height: 400px;
+    width: 40%;
+    height: 500px;
     vertical-align: top;
     /*background-color: #aaa;*/
     background-color: #fff;
@@ -1172,12 +1172,12 @@ background-color: #aaa;
 #leftBar{
     float: left;
     vertical-align: top;
-    width: 50%;
+    width: 60%;
 }
 #rightBar{
     float: right;
     vertical-align: top;
-    width: 50%;
+    width: 40%;
 }
 @media screen and (max-width: 1300px) { /* whatever width you prefer */
     #pitaBoxRight, #editorTest, #leftBar, #rightBar {

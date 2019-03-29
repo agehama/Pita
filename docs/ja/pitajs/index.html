@@ -9,7 +9,7 @@
 
     <link rel="shortcut icon" href="/Pita/images/favicon.png" type="image/x-icon" />
 <link rel="icon" href="/Pita/images/favicon.png" type="image/x-icon" />
-    <title>Categories :: Documentation for Pita</title>
+    <title>pita.js :: Documentation for Pita</title>
     
     
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -40,7 +40,7 @@
     </style>
     
   </head>
-  <body class="" data-url="/Pita/ja/categories/">
+  <body class="" data-url="/Pita/ja/pitajs/">
     <nav id="sidebar" class="">
 
 
@@ -138,8 +138,8 @@
   
     
     <li data-nav-id="/Pita/ja/pitajs/" title="pita.js" class="dd-item 
-        
-        
+        parent
+        active
         
         ">
       <a href="/Pita/ja/pitajs/">
@@ -460,20 +460,8 @@
                   
                     
                     
-                      <option id="ja" value="/Pita/ja/categories/" selected>Japanese</option>
+                      <option id="ja" value="/Pita/ja/pitajs/" selected>Japanese</option>
                     
-                  
-              
-          
-              
-              
-                  
-                    
-                    
-                      <option id="en" value="/Pita/en/categories/"></option>
-                    
-                  
-              
                   
               
           
@@ -527,7 +515,13 @@
                     
           
           
-            Categories
+            
+            
+          
+          
+            <a href='/Pita/ja/'>はじめに</a> > pita.js
+          
+         
           
            
                   </span>
@@ -535,7 +529,20 @@
                 
                     <div class="progress">
     <div class="wrapper">
-
+<nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li>
+<ul>
+<li><a href="#使い方">使い方</a></li>
+<li><a href="#pita-コードを描画する方法">Pita コードを描画する方法</a></li>
+<li><a href="#エラー処理">エラー処理</a></li>
+<li><a href="#cdnについて">CDNについて</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
     </div>
 </div>
 
@@ -547,12 +554,80 @@
         
         <div id="body-inner">
           
-            <h1>Categories</h1>
+            <h1>pita.js</h1>
           
 
         
 
 
+
+
+<hr />
+
+<h3 id="使い方">使い方</h3>
+
+<p>JavaScript から Pita を使用するには pita.js を HTML に追加して <code>pitaModule.then()</code> の中で <code>run()</code> メソッドを呼ぶだけです。
+<code>run()</code> メソッドの第一引数には Pita ソースコードを渡し、第二引数にはデバッグ用のフラグを渡します（true にするとエラーメッセージにエラー位置の情報を付加します）。</p>
+
+<pre><code>&lt;script src=&quot;https://cdn.jsdelivr.net/gh/agehama/Pita/docs/js/pita/pita.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+    pitaModule.then(function(pita){
+        pita.run(&quot;--- Pita Code Here ---&quot;, true);
+    });
+&lt;/script&gt;
+</code></pre>
+
+<h3 id="pita-コードを描画する方法">Pita コードを描画する方法</h3>
+
+<p>Pita の実行結果を HTML に反映するには単に返り値の SVG 画像で DOM エレメントを書き換えることで行えます。</p>
+
+<pre><code>&lt;script src=&quot;https://cdn.jsdelivr.net/gh/agehama/Pita/docs/js/pita/pita.js&quot;&gt;&lt;/script&gt;
+
+&lt;div id=&quot;svg1&quot;&gt;&lt;/div&gt;
+
+&lt;script&gt;
+    pitaModule.then(function(pita){
+        result = pita.run(&quot;Square{scale:X2(100)}&quot;, true);
+        document.getElementById(&quot;svg1&quot;).innerHTML = result;
+    });
+&lt;/script&gt;
+</code></pre>
+
+<h3 id="エラー処理">エラー処理</h3>
+
+<p><code>run()</code> メソッドの返り値は正常に終了すれば <code>&lt;svg&gt;</code> タグから始まる SVG 画像が、エラーにより終了すればエラーメッセージが返ってきます。実行が正常に終了したかを判定するには、実行結果が空もしくは <code>&lt;svg</code> で始まるかどうかを確認することで行えます。</p>
+
+<pre><code>&lt;script src=&quot;https://cdn.jsdelivr.net/gh/agehama/Pita/docs/js/pita/pita.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+    pitaModule.then(function(pita){
+        result = pita.run(&quot;Square{scale:X2(100)}&quot;, true);
+
+        if(result == &quot;&quot; || result.startsWith(&quot;&lt;svg&quot;))
+        {
+            console.log(&quot;result: &quot; + result);
+        }
+        else
+        {
+            console.log(&quot;error: &quot; + result);
+        }
+    });
+&lt;/script&gt;
+</code></pre>
+
+<h3 id="cdnについて">CDNについて</h3>
+
+<p>現在の GitHub の master で公開している pita.js は次の URL から参照することができます。</p>
+
+<pre><code>&lt;script src=&quot;https://cdn.jsdelivr.net/gh/agehama/Pita/docs/js/pita/pita.js&quot;&gt;&lt;/script&gt;
+</code></pre>
+
+<!--
+ただし jsDelivr のキャッシュ更新のタイミング次第ではこの URL の pita.js のバージョンは最新でない可能性があります。
+最新版を使いたい場合は以下の URL をお使いください。
+```
+<script src="https://cdn.jsdelivr.net/gh/agehama/Pita@efd422ee064509bdbc96cb21473daf012fa0b358/docs/js/pita/pita.js"></script>
+```
+-->
 
 
 <footer class=" footline" >
@@ -609,70 +684,6 @@
             
                 
                     
-                
-                
-
-                    
-                    
-                    
-
-                    
-            
-        
-                    
-                        
-            
-            
-                
-                    
-                
-                
-
-                    
-                    
-                        
-                    
-                    
-
-                    
-                        
-            
-            
-                
-                    
-                
-                
-
-                    
-                    
-                    
-
-                    
-            
-        
-                    
-            
-        
-                    
-                        
-            
-            
-                
-                    
-                
-                
-
-                    
-                    
-                        
-                    
-                    
-
-                    
-                        
-            
-            
-                
                     
                 
                 
@@ -690,16 +701,18 @@
             
                 
                     
+                        
+                        
+                    
                 
                 
 
                     
                     
+                        
+                    
                     
 
-                    
-            
-        
                     
                         
             
@@ -786,6 +799,72 @@
             
         
                     
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                        
+                    
+                    
+
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+                        
+            
+            
+                
+                    
+                
+                
+
+                    
+                    
+                    
+
+                    
+            
+        
+                    
+            
+        
+                    
             
         
         
@@ -793,8 +872,10 @@
 
 
         
+            <a class="nav nav-prev" href="/Pita/ja/start/" title="Windows / macOS / Linux"> <i class="fa fa-chevron-left"></i></a>
         
-            <a class="nav nav-next" href="/Pita/ja/start/" title="Windows / macOS / Linux" style="margin-right: 0px;"><i class="fa fa-chevron-right"></i></a>
+        
+            <a class="nav nav-next" href="/Pita/ja/tutorial/" title="チュートリアル" style="margin-right: 0px;"><i class="fa fa-chevron-right"></i></a>
         
     </div>
 

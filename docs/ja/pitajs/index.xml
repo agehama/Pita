@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>pita.js on Documentation for Pita</title>
+    <link>https://agehama.github.io/Pita/ja/pitajs/</link>
+    <description>Recent content in pita.js on Documentation for Pita</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>ja-JP</language>
+    <copyright>(c) 2018 agehama.</copyright>
+    
+	<atom:link href="https://agehama.github.io/Pita/ja/pitajs/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+  </channel>
+</rss>

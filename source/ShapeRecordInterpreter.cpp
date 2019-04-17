@@ -925,17 +925,30 @@ namespace cgl
 
 	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name, std::shared_ptr<Context> pContext)
 	{
-		auto boundingBoxOpt = IsType<PackedRecord>(value) ? boost::optional<BoundingRect>(BoundingRectRecordPacked(value, pContext)) : boost::none;
-		if (IsType<PackedRecord>(value) && boundingBoxOpt)
+		boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(value)
+			? boost::none
+			: boost::optional<PackedRecord>(MakeRecord(
+				"inner", value,
+				"pos", MakeRecord("x", 0, "y", 0),
+				"scale", MakeRecord("x", 1.0, "y", 1.0),
+				"angle", 0
+			));
+		
+		//auto boundingBoxOpt = IsType<PackedRecord>(value) ? boost::optional<BoundingRect>(BoundingRectRecordPacked(value, pContext)) : boost::none;
+		auto boundingBox = wrapped ? BoundingRectRecordPacked(wrapped.get(), pContext) : BoundingRectRecordPacked(value, pContext);
+		//if (IsType<PackedRecord>(value) && boundingBoxOpt)
+		if(!boundingBox.isEmpty())
 		{
 			os.exceptions(std::ostream::failbit | std::ostream::badbit);
 
-			const BoundingRect& rect = boundingBoxOpt.get();
+			//const BoundingRect& rect = boundingBoxOpt.get();
+			const BoundingRect& rect = boundingBox;
 			//const auto pos = rect.pos();
 			const auto widthXY = rect.width();
 			const auto center = rect.center();
 
-			const double margin = 5.0;
+			//const double margin = 5.0;
+			const double margin = 1.e-5;
 			//const double width = std::max(widthXY.x(), widthXY.y());
 			//const double halfWidth = width * 0.5;
 			const double width = widthXY.x() + margin;
@@ -946,7 +959,7 @@ namespace cgl
 			/*os << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height
 				<< R"(" viewport-fill="black" viewport-fill-opacity="0.1)"  << R"(">)" << "\n";*/
 			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height << R"(">)" << "\n";
-			GeosFromRecord2Packed(os, value, name, 0, pContext);
+			GeosFromRecord2Packed(os, wrapped ? wrapped.get() : value, name, 0, pContext);
 			os << "</svg>" << "\n";
 
 			return true;

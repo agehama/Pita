@@ -146,6 +146,10 @@ Screen = Square{
     scale: Vec2(2000, 2000)
 }
 
+Space = (space -> Square{
+    fill: 0
+    scale: X2(space)
+})
 
-
+EnableGC(true)
 GC()

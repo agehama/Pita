@@ -2626,7 +2626,7 @@ namespace cgl
 				if (rangeExpr.freeRange)
 				{
 					//TODO:ここでrangeの型が妥当か判定すべき（図形かもしくはIntervalでなければはじく）
-					if (isDebugMode)
+					if (isDebugMode, false)
 					{
 						std::cout << "Has range\n";
 					}
@@ -2634,7 +2634,7 @@ namespace cgl
 				}
 				else
 				{
-					if (isDebugMode)
+					if (isDebugMode, false)
 					{
 						std::cout << "Has not range\n";
 					}
@@ -2812,7 +2812,7 @@ namespace cgl
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
 
-			if (isDebugMode)
+			if (isDebugMode, false)
 			{
 				CGL_DBG1("Expr: ");
 				printExpr2(constraint, pContext, std::cout);
@@ -2827,7 +2827,7 @@ namespace cgl
 			SatVariableBinder binder(pContext, regionVars, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
 
-			if (isDebugMode)
+			if (isDebugMode, false)
 			{
 				CGL_DBG1("appearingList: " + ToS(appearingList.size()));
 				for (const auto& a : appearingList)
@@ -3038,7 +3038,7 @@ namespace cgl
 			}*/
 			auto recordVarAddresses = makeFreeVariableAddressesRange(pEnv, record.boundedFreeVariables, recordPackedRanges);
 
-			if (isDebugMode)
+			if (isDebugMode, false)
 			{
 				for (const auto& val : recordVarAddresses.first)
 				{
@@ -3075,7 +3075,7 @@ namespace cgl
 				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
 			}
 
-			if (isDebugMode)
+			if (isDebugMode, false)
 			{
 				for (const OptimizeRegion& r : mergedOptimizeRegions)
 				{
@@ -3146,7 +3146,7 @@ namespace cgl
 
 #define useDependencyAnalysis
 #ifdef useDependencyAnalysis
-				if (isDebugMode && record.constraint)
+				if (isDebugMode && record.constraint, false)
 				{
 					const auto dependencyGraphAnalysis = [&](const Expr& constraint)
 					{

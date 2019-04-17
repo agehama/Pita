@@ -753,9 +753,19 @@ std::string pitaInputString;
 std::string pitaResultString;
 
 EMSCRIPTEN_KEEPALIVE
+void executePitaWithDebug(char* ptr, unsigned int length)
+{
+	std::cout << "run(debug mode): " << std::string(ptr, ptr + length) << std::endl;
+	isDebugMode = true;
+	cgl::Program program;
+	pitaResultString = program.executeAsString(std::string(ptr, ptr + length));
+}
+
+EMSCRIPTEN_KEEPALIVE
 void executePita(char* ptr, unsigned int length)
 {
 	std::cout << "run: " << std::string(ptr, ptr + length) << std::endl;
+	isDebugMode = false;
 	cgl::Program program;
 	pitaResultString = program.executeAsString(std::string(ptr, ptr + length));
 }

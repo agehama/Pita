@@ -3601,6 +3601,421 @@ namespace cgl
 		return GetCenterLineDeformedShape(transformedShape, targetPath, pContext);
 	}
 
+	PackedList AlignH(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<double> currentLeftX;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentLeftX)
+			{
+				result.add(data.value);
+				currentLeftX = bb.maxPos().x();
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", currentLeftX.get() - bb.minPos().x(), "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentLeftX = currentLeftX.get() + bb.width().x();
+			}
+		}
+
+		return result;
+	}
+
+	struct Vec2
+	{
+		Vec2() = default;
+		Vec2(double x, double y) :x(x), y(y) {}
+		double x, y;
+	};
+
+	PackedList AlignHTop(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<Vec2> currentTopLeft;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentTopLeft)
+			{
+				result.add(data.value);
+				currentTopLeft = Vec2(bb.maxPos().x(), bb.minPos().y());
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", currentTopLeft.get().x - bb.minPos().x(), "y", currentTopLeft.get().y - bb.minPos().y()),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentTopLeft.get().x = currentTopLeft.get().x + bb.width().x();
+			}
+		}
+
+		return result;
+	}
+
+	PackedList AlignHBottom(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<Vec2> currentBottomLeft;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentBottomLeft)
+			{
+				result.add(data.value);
+				currentBottomLeft = Vec2(bb.maxPos().x(), bb.maxPos().y());
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", currentBottomLeft.get().x - bb.minPos().x(), "y", currentBottomLeft.get().y - bb.maxPos().y()),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentBottomLeft.get().x = currentBottomLeft.get().x + bb.width().x();
+			}
+		}
+
+		return result;
+	}
+
+	PackedList AlignHCenter(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<Vec2> currentCenterLeft;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentCenterLeft)
+			{
+				result.add(data.value);
+				currentCenterLeft = Vec2(bb.maxPos().x(), bb.center().y());
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", currentCenterLeft.get().x - bb.minPos().x(), "y", currentCenterLeft.get().y - bb.center().y()),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentCenterLeft.get().x = currentCenterLeft.get().x + bb.width().x();
+			}
+		}
+
+		return result;
+	}
+
+	PackedList AlignV(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<double> currentTopY;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentTopY)
+			{
+				result.add(data.value);
+				currentTopY = bb.maxPos().y();
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", currentTopY.get() - bb.minPos().y()),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentTopY = currentTopY.get() + bb.width().y();
+			}
+		}
+
+		return result;
+	}
+
+	PackedList AlignVLeft(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<Vec2> currentTopLeft;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentTopLeft)
+			{
+				result.add(data.value);
+				currentTopLeft = Vec2(bb.minPos().x(), bb.maxPos().y());
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", currentTopLeft.get().x - bb.minPos().x(), "y", currentTopLeft.get().y - bb.minPos().y()),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentTopLeft.get().y = currentTopLeft.get().y + bb.width().y();
+			}
+		}
+
+		return result;
+	}
+
+	PackedList AlignVRight(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<Vec2> currentTopRight;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentTopRight)
+			{
+				result.add(data.value);
+				currentTopRight = Vec2(bb.maxPos().x(), bb.maxPos().y());
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", currentTopRight.get().x - bb.maxPos().x(), "y", currentTopRight.get().y - bb.minPos().y()),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentTopRight.get().y = currentTopRight.get().y + bb.width().y();
+			}
+		}
+
+		return result;
+	}
+
+	PackedList AlignVCenter(const PackedList& shapes, std::shared_ptr<Context> pContext)
+	{
+		if (shapes.data.empty())
+		{
+			return shapes;
+		}
+
+		boost::optional<Vec2> currentTopCenter;
+		PackedList result;
+		for (const auto& data : shapes.data)
+		{
+			boost::optional<PackedRecord> wrapped = IsType<PackedRecord>(data.value)
+				? boost::none
+				: boost::optional<PackedRecord>(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+
+			const BoundingRect bb = BoundingRectRecordPacked(wrapped ? wrapped.get() : data.value, pContext);
+
+			if (bb.isEmpty())
+			{
+				result.add(data.value);
+			}
+			else if (!currentTopCenter)
+			{
+				result.add(data.value);
+				currentTopCenter = Vec2(bb.center().x(), bb.maxPos().y());
+			}
+			else
+			{
+				result.add(MakeRecord(
+					"inner", data.value,
+					"pos", MakeRecord("x", currentTopCenter.get().x - bb.center().x(), "y", currentTopCenter.get().y - bb.minPos().y()),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				));
+				currentTopCenter.get().y = currentTopCenter.get().y + bb.width().y();
+			}
+		}
+
+		return result;
+	}
+
+	std::vector<int> ReadIndices(const PackedList& alignIndices)
+	{
+		std::vector<int> indices;
+		for (const auto& data : alignIndices.data)
+		{
+			if (!IsType<int>(data.value))
+			{
+				CGL_Error("インデックスに整数以外の型が渡されました");
+			}
+			else
+			{
+				indices.push_back(As<int>(data.value));
+			}
+		}
+		return indices;
+	}
+
+	/*PackedList AlignHColumns(const PackedList& shapes, const PackedList& alignIndices, std::shared_ptr<Context> pContext)
+	{
+		const std::vector<int> indices = ReadIndices(alignIndices);
+		if (indices.empty())
+		{
+			return shapes;
+		}
+
+		const size_t regionSize = indices.size() + 1;
+	}
+
+	PackedList AlignVRows(const PackedList& shapes, const PackedList& alignIndices, std::shared_ptr<Context> pContext)
+	{
+		const std::vector<int> indices = ReadIndices(alignIndices);
+		if (indices.empty())
+		{
+			return shapes;
+		}
+
+		const size_t regionSize = indices.size() + 1;
+		std::vector<double> eachRegionMaxWidths(regionSize, 0.0);
+	}*/
+
 	PackedRecord ShapeDirectedPoint(const PackedRecord& shape, const Eigen::Vector2d& v, std::shared_ptr<Context> pContext)
 	{
 		double maxDot = -1.0;

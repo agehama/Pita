@@ -2437,6 +2437,174 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"AlignH",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignH(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignHTop",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignHTop(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignHBottom",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignHBottom(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignHCenter",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignHCenter(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignV",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignV(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignVLeft",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignVLeft(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignVRight",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignVRight(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignVCenter",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(arguments[0], info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignVCenter(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Left",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

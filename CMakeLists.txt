@@ -10,7 +10,6 @@ endif()
 
 project(Pita)
 
-#set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD 17)
 
 if(CMAKE_COMPILER_IS_GNUCC)
@@ -72,8 +71,6 @@ if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
-#find_package (glog 0.3.5 REQUIRED)
-
 set(EIGEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/external/Eigen" CACHE STRING "Eigen include directory" FORCE)
 
 include_directories(external/Eigen)
@@ -114,7 +111,7 @@ include_directories(external/stb)
 
 include_directories(include)
 
-add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Graph.cpp source/Evaluator.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/Geometry.cpp)
+add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Graph.cpp source/Evaluator.cpp source/ValueCloner.cpp source/ExprTransformer.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/Geometry.cpp)
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 elseif(USE_FILESYSTEM)

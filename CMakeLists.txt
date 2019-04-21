@@ -61,7 +61,7 @@ set(CGL_GEOS_TARGET_DIR "geos")
 set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 
 if(MSVC)
-  find_package(Boost 1.53.0)
+  find_package(Boost 1.53.0 REQUIRED)
 elseif(USE_FILESYSTEM)
   find_package(Boost 1.53.0 COMPONENTS system filesystem REQUIRED)
 else()

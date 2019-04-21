@@ -3,18 +3,20 @@
 #include <set>
 
 #ifdef USE_IMPORT
-//#ifdef __has_include
-//#  if __has_include(<filesystem>)
-//#    include <filesystem>
-//#  elif __has_include(<experimental/filesystem>)
-//#    include <experimental/filesystem>
-//#    define CGL_EXPERIMENTAL_FILESYSTEM
-//#  else
-//#    error "filesystem does not exists"
-//#  endif
-//#endif
-
-#include <boost/filesystem.hpp>
+#  ifdef USE_BOOST_LIB
+#    include <boost/filesystem.hpp>
+#  else
+#    ifdef __has_include
+#      if __has_include(<filesystem>)
+#        include <filesystem>
+#      elif __has_include(<experimental/filesystem>)
+#        include <experimental/filesystem>
+#        define CGL_EXPERIMENTAL_FILESYSTEM
+#      else
+#        error "filesystem does not exists"
+#      endif
+#    endif
+#  endif
 #endif
 
 //#define BOOST_SPIRIT_DEBUG
@@ -36,13 +38,15 @@ extern bool isDebugMode;
 namespace cgl
 {
 #ifdef USE_IMPORT
-//#if defined(CGL_EXPERIMENTAL_FILESYSTEM) || defined(_MSC_VER)
-//	namespace filesystem = std::experimental::filesystem;
-//#else
-//	namespace filesystem = std::filesystem;
-//#endif
-
+#  ifdef USE_BOOST_LIB
 	namespace filesystem = boost::filesystem;
+#  else
+#    if defined(CGL_EXPERIMENTAL_FILESYSTEM) || defined(_MSC_VER)
+	namespace filesystem = std::experimental::filesystem;
+#    else
+	namespace filesystem = std::filesystem;
+#    endif
+#  endif
 
 	//パース時のみ使用
 	extern std::stack<filesystem::path> workingDirectories;

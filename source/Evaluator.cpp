@@ -2104,69 +2104,10 @@ namespace cgl
 		CGL_DebugLog("Function Context:");
 		pEnv->printContext();
 
-		/*
-		まだ参照をスコープ間で共有できるようにしていないため、引数に与えられたオブジェクトは全て展開して渡す。
-		そして、引数の評価時点ではまだ関数の中に入っていないので、スコープを変える前に展開を行う。
-		*/
-
-		/*
-		12/14
-		全ての値はIDで管理するようにする。
-		そしてスコープが変わると、変数のマッピングは変わるが、値は共通なのでどちらからも参照できる。
-		*/
-		/*
-		std::vector<Address> expandedArguments(callFunc.actualArguments.size());
-		for (size_t i = 0; i < expandedArguments.size(); ++i)
-		{
-			expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
-		}
-
-		CGL_DebugLog("");
-
-		FuncVal funcVal;
-
-		if (auto opt = AsOpt<FuncVal>(callFunc.funcRef))
-		{
-			funcVal = opt.get();
-		}
-		else
-		{
-			const Address funcAddress = pEnv->findAddress(As<Identifier>(callFunc.funcRef));
-			if (funcAddress.isValid())
-			{
-				if (auto funcOpt = pEnv->expandOpt(funcAddress))
-				{
-					if (IsType<FuncVal>(funcOpt.get()))
-					{
-						funcVal = As<FuncVal>(funcOpt.get());
-					}
-					else
-					{
-						CGL_Error("指定された変数名に紐つけられた値が関数でない");
-					}
-				}
-				else
-				{
-					CGL_Error("ここは通らないはず");
-				}
-			}
-			else
-			{
-				CGL_Error("指定された変数名に値が紐つけられていない");
-			}
-		}
-		*/
-
-		/*if (funcVal.builtinFuncAddress)
-		{
-			return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.get(), expandedArguments));
-		}*/
 		if (funcVal.builtinFuncAddress)
 		{
 			return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.get(), arguments, info));
 		}
-
-		CGL_DebugLog("");
 
 		//if (funcVal.arguments.size() != callFunc.actualArguments.size())
 		if (funcVal.arguments.size() != arguments.size())
@@ -2183,12 +2124,8 @@ namespace cgl
 		//TODO: これは、意味論的に正しいのか一度考える必要がある
 		//とりあえず関数がスコープに依存することはなくなったので、単純に別のスコープに切り替えるだけで良い
 
-		CGL_DebugLog("");
-
 		//(2)関数の引数用にスコープを一つ追加する
 		pEnv->enterScope();
-
-		CGL_DebugLog("");
 
 		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 		{
@@ -2210,17 +2147,11 @@ namespace cgl
 			printVal(result, nullptr);
 		}
 
-		CGL_DebugLog("");
-
 		//(4)関数を抜ける時に、仮引数は全て解放される
 		pEnv->exitScope();
 
-		CGL_DebugLog("");
-
 		//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
 		pEnv->switchBackScope();
-
-		CGL_DebugLog("");
 
 		//評価結果がreturn式だった場合はreturnを外して中身を返す
 		//return以外のジャンプ命令は関数では効果を持たないのでそのまま上に返す
@@ -2256,11 +2187,8 @@ namespace cgl
 			CGL_DebugLog("Evaluate expression(" + std::to_string(i) + ")");
 			pEnv->printContext();
 
-			CGL_DebugLog("");
 			result = pEnv->expand(boost::apply_visitor(*this, expr), statement);
 			printVal(result, pEnv);
-
-			CGL_DebugLog("");
 
 			//TODO: 後で考える
 			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
@@ -2277,51 +2205,16 @@ namespace cgl
 			}
 			*/
 
-			CGL_DebugLog("");
 			//途中でジャンプ命令を読んだら即座に評価を終了する
 			if (IsType<Jump>(result))
 			{
-				CGL_DebugLog("");
 				break;
 			}
-
-			CGL_DebugLog("");
 
 			++i;
 		}
 
-		CGL_DebugLog("");
-
-		//この後すぐ解放されるので dereference しておく
-		bool deref = true;
-		/*
-		if (auto refOpt = AsOpt<ObjectReference>(result))
-		{
-			if (IsType<unsigned>(refOpt.get().headValue))
-			{
-				deref = false;
-			}
-		}
-		
-		if (deref)
-		{
-			result = pEnv->dereference(result);
-		}
-		*/
-
-		/*
-		if (auto refOpt = AsOpt<Address>(result))
-		{
-			//result = pEnv->dereference(refOpt.get());
-			//result = pEnv->expandRef(refOpt.get());
-			result = pEnv->expand(refOpt.get());
-		}
-		*/
-
-		CGL_DebugLog("");
-
 		pEnv->exitScope();
-		CGL_DebugLog("");
 		return LRValue(result);
 	}
 
@@ -2346,9 +2239,6 @@ namespace cgl
 			return RValue(result);
 		}
 
-		//else式が無いケースで cond = False であったら一応警告を出す
-		//std::cerr << "Warning(" << __LINE__ << ")\n";
-		CGL_WarnLog("else式が無いケースで cond = False であった");
 		return RValue(0);
 	}
 
@@ -2483,20 +2373,6 @@ namespace cgl
 	LRValue Eval::operator()(const KeyExpr& node)
 	{
 		UpdateCurrentLocation(node);
-		/*
-		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
-		Val rhs = pEnv->expand(rhs_, node);
-		if (pEnv->existsInCurrentScope(node.name))
-		{
-			CGL_ErrorNode(node, "宣言演算子\":\"による変数への値の再代入は行えません。代わりに代入演算子\"=\"を使用してください。");
-		}
-		else
-		{
-			pEnv->bindNewValue(node.name, rhs);
-		}
-
-		return RValue(rhs);
-		*/
 
 		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
 		Val rhs = pEnv->expand(rhs_, node);
@@ -2538,7 +2414,6 @@ namespace cgl
 
 		if (pEnv->temporaryRecord)
 		{
-			//pEnv->currentRecords.push(pEnv->temporaryRecord.get());
 			pEnv->currentRecords.push_back(pEnv->temporaryRecord.get());
 			pEnv->temporaryRecord = boost::none;
 		}
@@ -2556,27 +2431,7 @@ namespace cgl
 		
 		for (const auto& expr : recordConsractor.exprs)
 		{
-			/*
-			CGL_DebugLog("");
-			CGL_DebugLog("Evaluate: ");
-			Val value = pEnv->expand(boost::apply_visitor(*this, expr));
-			CGL_DebugLog("Result: ");
-			printVal(value, pEnv);
-
 			//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
-			if (auto keyValOpt = AsOpt<KeyValue>(value))
-			{
-				const auto keyVal = keyValOpt.get();
-				keyList.push_back(keyVal.name);
-
-				CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
-
-				pEnv->bindNewValue(keyVal.name, keyVal.value);
-
-				CGL_DebugLog("");
-			}
-			*/
-
 			if (IsType<KeyExpr>(expr))
 			{
 				keyList.push_back(As<KeyExpr>(expr).name);
@@ -2609,12 +2464,6 @@ namespace cgl
 		}
 		
 		pEnv->printContext();
-
-		/*for (const auto& satExpr : innerSatClosures)
-		{
-			record.problem.addConstraint(satExpr);
-		}
-		innerSatClosures.clear();*/
 
 		//各free変数の範囲をまとめたレコードを作成する
 		const auto makePackedRanges = [&](std::shared_ptr<Context> pContext, const std::vector<BoundedFreeVar>& freeVars)->std::vector<PackedVal>
@@ -3441,27 +3290,12 @@ namespace cgl
 			record.append(key, address);
 		}
 
-		/*if (record.type == RecordType::RecordTypePath)
-		{
-			GetPath(record, pEnv);
-		}
-		else if (record.type == RecordType::RecordTypeText)
-		{
-			GetText(record, pEnv);
-		}
-		else if (record.type == RecordType::RecordTypeShapePath)
-		{
-			GetText(record, pEnv);
-		}*/
-		
 		pEnv->printContext();
 
 		CGL_DebugLog("");
 
-		//pEnv->currentRecords.pop();
 		pEnv->currentRecords.pop_back();
 		
-		//pEnv->pop();
 		if (isNewScope)
 		{
 			pEnv->exitScope();

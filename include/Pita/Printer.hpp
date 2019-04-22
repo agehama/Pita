@@ -120,26 +120,6 @@ namespace cgl
 	inline void printVal(const Val& evaluated, std::shared_ptr<Context> pEnv, int indent = 0) {}
 #endif
 
-	class PrintSatExpr : public boost::static_visitor<void>
-	{
-	public:
-		PrintSatExpr(const std::vector<double>& data, std::ostream& os) :
-			data(data),
-			os(os)
-		{}
-
-		const std::vector<double>& data;
-		std::ostream& os;
-
-		void operator()(double node)const;
-
-		void operator()(const SatUnaryExpr& node)const;
-
-		void operator()(const SatBinaryExpr& node)const;
-
-		void operator()(const SatFunctionReference& node)const;
-	};
-
 	class Printer : public boost::static_visitor<void>
 	{
 	public:

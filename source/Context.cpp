@@ -515,7 +515,7 @@ namespace cgl
 
 		std::unordered_set<Address> referenceableAddresses;
 		OutputAddresses outputAddresses([&](Address address) {
-			const Val value = context.expand(address, LocationInfo());
+			const Val value = context.expand(LRValue(address), LocationInfo());
 			return IsType<int>(value) || IsType<double>(value);
 		}, result);
 
@@ -811,7 +811,7 @@ namespace cgl
 			{
 				const Address address = readBuffer()[i].first;
 
-				boost::optional<const Val&> objOpt = expandOpt(address);
+				boost::optional<const Val&> objOpt = expandOpt(LRValue(address));
 				if (!objOpt)
 				{
 					CGL_Error("参照エラー");
@@ -850,7 +850,7 @@ namespace cgl
 							const List& indices = indicesOpt.get();
 							for (const Address indexAddress : indices.data)
 							{
-								Val indexValue = expand(indexAddress, info);
+								Val indexValue = expand(LRValue(indexAddress), info);
 								if (auto indexOpt = AsOpt<int>(indexValue))
 								{
 									writeBuffer().emplace_back(list.get(indexOpt.get()), currentAttribute);
@@ -912,7 +912,7 @@ namespace cgl
 					std::vector<Address> args;
 					for (const auto& expr : funcAccess.actualArguments)
 					{
-						const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr), info);
+						const LRValue currentArgument(expand(boost::apply_visitor(evaluator, expr), info));
 						if (currentArgument.isLValue())
 						{
 							args.push_back(currentArgument.address(*this));
@@ -1000,7 +1000,7 @@ namespace cgl
 
 			for (const auto& access : accessor.accesses)
 			{
-				boost::optional<const Val&> objOpt = pEnv->expandOpt(address);
+				boost::optional<const Val&> objOpt = pEnv->expandOpt(LRValue(address));
 				if (!objOpt)
 				{
 					CGL_Error("参照エラー");
@@ -1241,7 +1241,7 @@ namespace cgl
 						}
 						else
 						{
-							address = list.get(index);
+							address = LRValue(list.get(index));
 						}
 					}
 					else
@@ -1272,7 +1272,7 @@ namespace cgl
 					}
 					else
 					{
-						address = it->second;
+						address = LRValue(it->second);
 					}
 				}
 				else
@@ -1356,7 +1356,7 @@ namespace cgl
 			}
 
 			//std::cout << "Address(" << arguments[0].toString() << "): ";
-			printVal2(pEnv->expand(arguments[0], info), pEnv, std::cout, 0);
+			printVal2(pEnv->expand(LRValue(arguments[0]), info), pEnv, std::cout, 0);
 			std::cout << std::endl;
 			return 0;
 		},
@@ -1372,7 +1372,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1424,7 +1424,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (auto opt = AsOpt<List>(value))
 			{
 				return static_cast<int>(opt.get().data.size());
@@ -1449,7 +1449,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsType<List>(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1471,14 +1471,14 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			LRValue address = arguments[0];
-			Val& listValue = pEnv->mutableExpand(address, info);
+			const LRValue address(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(LRValue(address), info);
 			if (!IsType<List>(listValue))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[1], info);
+			const Val& value = pEnv->expand(LRValue(arguments[1]), info);
 
 			List& original = As<List>(listValue);
 			original.data.push_back(pEnv->makeTemporaryValue(value));
@@ -1496,8 +1496,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			LRValue address = arguments[0];
-			Val& listValue = pEnv->mutableExpand(address, info);
+			const LRValue address(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(LRValue(address), info);
 			if (!IsType<List>(listValue))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1519,8 +1519,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			LRValue address = arguments[0];
-			Val& listValue = pEnv->mutableExpand(address, info);
+			const LRValue address(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(LRValue(address), info);
 			if (!IsType<List>(listValue))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1533,12 +1533,12 @@ namespace cgl
 				std::sort(original.data.begin(), original.data.end(), 
 					[&](const Address& a, const Address& b)->bool
 				{
-					return LessThanFunc(pEnv->expand(a, info), pEnv->expand(b, info), *pEnv);
+					return LessThanFunc(pEnv->expand(LRValue(a), info), pEnv->expand(LRValue(b), info), *pEnv);
 				});
 			}
 			else
 			{
-				const Val& value = pEnv->expand(arguments[1], info);
+				const Val& value = pEnv->expand(LRValue(arguments[1]), info);
 				if (!IsType<FuncVal>(value))
 				{
 					CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1583,7 +1583,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1603,7 +1603,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1623,7 +1623,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1643,8 +1643,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
-			const Val& y = pEnv->expand(arguments[1], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& y = pEnv->expand(LRValue(arguments[1]), info);
 			if (!IsNum(x) || !IsNum(y))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1668,7 +1668,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1688,7 +1688,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1708,7 +1708,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1728,7 +1728,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1748,7 +1748,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1768,7 +1768,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1788,7 +1788,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1808,8 +1808,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& v0 = expand(arguments[0], info);
-			const Val& v1 = expand(arguments[1], info);
+			const Val& v0 = expand(LRValue(arguments[0]), info);
+			const Val& v1 = expand(LRValue(arguments[1]), info);
 
 			if (!IsNum(v0) || !IsNum(v1))
 			{
@@ -1846,7 +1846,7 @@ namespace cgl
 			}
 			else
 			{
-				const Val& value = expand(arguments[0], info);
+				const Val& value = expand(LRValue(arguments[0]), info);
 				if (!IsType<int>(value))
 				{
 					CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1868,10 +1868,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& passesVal = pEnv->expand(arguments[0], info);
-			const Val& numVal = pEnv->expand(arguments[1], info);
+			const Val& passesVal = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& numVal = pEnv->expand(LRValue(arguments[1]), info);
 
-			auto obstaclesValOpt = arguments.size() == 3 ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
+			auto obstaclesValOpt = arguments.size() == 3 ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[2]), info)) : boost::none;
 
 			if (!IsType<List>(passesVal) || !IsType<int>(numVal))
 			{
@@ -1900,7 +1900,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1925,8 +1925,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			Val strVal = pEnv->expand(arguments[0], info);
-			Val digitsVal = pEnv->expand(arguments[1], info);
+			const Val strVal = pEnv->expand(LRValue(arguments[0]), info);
+			const Val digitsVal = pEnv->expand(LRValue(arguments[1]), info);
 
 			if (!IsNum(strVal))
 			{
@@ -1957,10 +1957,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			Val strVal = pEnv->expand(arguments[0], info);
-			auto heightOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
-			auto baseLineOpt = 3 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
-			auto fontNameOpt = 4 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[3], info)) : boost::none;
+			Val strVal = pEnv->expand(LRValue(arguments[0]), info);
+			const auto heightOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[1]), info)) : boost::none;
+			const auto baseLineOpt = 3 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[2]), info)) : boost::none;
+			const auto fontNameOpt = 4 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[3]), info)) : boost::none;
 
 			if (!IsType<CharString>(strVal))
 			{
@@ -2014,8 +2014,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
-			const Val& arg2 = pEnv->expand(arguments[1], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& arg2 = pEnv->expand(LRValue(arguments[1]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -2040,9 +2040,9 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
-			const Val& arg2 = pEnv->expand(arguments[1], info);
-			const Val& arg3 = pEnv->expand(arguments[2], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& arg2 = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& arg3 = pEnv->expand(LRValue(arguments[2]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -2067,10 +2067,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& func = pEnv->expand(arguments[0], info);
-			const Val& beginX = pEnv->expand(arguments[1], info);
-			const Val& endX = pEnv->expand(arguments[2], info);
-			const Val& numOfPoints = pEnv->expand(arguments[3], info);
+			const Val& func = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& beginX = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& endX = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& numOfPoints = pEnv->expand(LRValue(arguments[3]), info);
 
 			if (!IsType<FuncVal>(func) || !IsNum(beginX) || !IsNum(endX) || !IsType<int>(numOfPoints))
 			{
@@ -2091,7 +2091,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -2112,7 +2112,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -2133,7 +2133,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -2154,7 +2154,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeTouch(Packed(pEnv->expand(arguments[0], info), *pEnv), Packed(pEnv->expand(arguments[1], info), *pEnv), pEnv);
+			return ShapeTouch(Packed(pEnv->expand(LRValue(arguments[0]), info), *pEnv), Packed(pEnv->expand(LRValue(arguments[1]), info), *pEnv), pEnv);
 		},
 			false
 			);
@@ -2168,7 +2168,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeNear(Packed(pEnv->expand(arguments[0], info), *pEnv), Packed(pEnv->expand(arguments[1], info), *pEnv), pEnv);
+			return ShapeNear(Packed(pEnv->expand(LRValue(arguments[0]), info), *pEnv), Packed(pEnv->expand(LRValue(arguments[1]), info), *pEnv), pEnv);
 		},
 			false
 			);
@@ -2182,7 +2182,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeAvoid(Packed(pEnv->expand(arguments[0], info), *pEnv), Packed(pEnv->expand(arguments[1], info), *pEnv), pEnv);
+			return ShapeAvoid(Packed(pEnv->expand(LRValue(arguments[0]), info), *pEnv), Packed(pEnv->expand(LRValue(arguments[1]), info), *pEnv), pEnv);
 		},
 			false
 			);
@@ -2196,7 +2196,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeDiff(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -2210,7 +2210,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeUnion(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeUnion(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -2224,7 +2224,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeIntersect(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeIntersect(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -2238,7 +2238,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeSymDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeSymDiff(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -2252,7 +2252,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeBuffer(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeBuffer(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -2266,8 +2266,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
-			const Val& path = pEnv->expand(arguments[1], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& path = pEnv->expand(LRValue(arguments[1]), info);
 
 			if (!IsType<Record>(shape) || !IsType<Record>(path))
 			{
@@ -2288,10 +2288,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
-			const Val& path = pEnv->expand(arguments[1], info);
-			const Val& p0 = pEnv->expand(arguments[2], info);
-			const Val& p1 = pEnv->expand(arguments[3], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& path = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& p0 = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& p1 = pEnv->expand(LRValue(arguments[3]), info);
 
 			if (!IsType<Record>(shape) || !IsType<Record>(path) || !IsType<Record>(p0) || !IsType<Record>(p1))
 			{
@@ -2316,11 +2316,11 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& p0 = pEnv->expand(arguments[0], info);
-			const Val& n0 = pEnv->expand(arguments[1], info);
-			const Val& p1 = pEnv->expand(arguments[2], info);
-			const Val& n1 = pEnv->expand(arguments[3], info);
-			const Val& num = pEnv->expand(arguments[4], info);
+			const Val& p0 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& n0 = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& p1 = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& n1 = pEnv->expand(LRValue(arguments[3]), info);
+			const Val& num = pEnv->expand(LRValue(arguments[4]), info);
 
 			if (!IsType<Record>(p0) || !IsType<Record>(n0) || !IsType<Record>(p1) || !IsType<Record>(n1) || !IsType<int>(num))
 			{
@@ -2347,11 +2347,11 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& p0 = pEnv->expand(arguments[0], info);
-			const Val& p1 = pEnv->expand(arguments[1], info);
-			const Val& p2 = pEnv->expand(arguments[2], info);
-			const Val& p3 = pEnv->expand(arguments[3], info);
-			const Val& num = pEnv->expand(arguments[4], info);
+			const Val& p0 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& p1 = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& p2 = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& p3 = pEnv->expand(LRValue(arguments[3]), info);
+			const Val& num = pEnv->expand(LRValue(arguments[4]), info);
 
 			if (!IsType<Record>(p0) || !IsType<Record>(p1) || !IsType<Record>(p2) || !IsType<Record>(p3) || !IsType<int>(num))
 			{
@@ -2378,8 +2378,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
-			const Val& num = pEnv->expand(arguments[1], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& num = pEnv->expand(LRValue(arguments[1]), info);
 
 			if (!IsType<Record>(shape) || !IsType<int>(num))
 			{
@@ -2403,7 +2403,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeArea(Packed(pEnv->expand(arguments[0], info), *this), pEnv);
+			return ShapeArea(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), pEnv);
 		},
 			true
 			);
@@ -2417,7 +2417,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeDistance(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
+			return ShapeDistance(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv);
 		},
 			false
 			);
@@ -2431,7 +2431,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeClosestPoints(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv).unpacked(*this);
+			return ShapeClosestPoints(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -2445,7 +2445,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2466,7 +2466,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2487,7 +2487,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2508,7 +2508,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2529,7 +2529,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2550,7 +2550,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2571,7 +2571,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2592,7 +2592,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<List>(shape))
 			{
@@ -2613,7 +2613,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2634,7 +2634,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2655,7 +2655,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2676,7 +2676,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2697,7 +2697,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2718,7 +2718,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2739,7 +2739,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2760,7 +2760,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2781,7 +2781,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2802,7 +2802,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2823,7 +2823,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2844,10 +2844,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& pos = pEnv->expand(arguments[0], info);
-			const Val& scale = pEnv->expand(arguments[1], info);
-			const Val& angle = pEnv->expand(arguments[2], info);
-			const Val& shape = pEnv->expand(arguments[3], info);
+			const Val& pos = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& scale = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& angle = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& shape = pEnv->expand(LRValue(arguments[3]), info);
 
 			if (!IsType<Record>(shape) || !IsType<Record>(pos) || !IsType<Record>(scale) || !IsNum(angle))
 			{
@@ -2873,7 +2873,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2910,7 +2910,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			if (auto opt = AsOpt<bool>(pEnv->expand(arguments[0], info)))
+			if (auto opt = AsOpt<bool>(pEnv->expand(LRValue(arguments[0]), info)))
 			{
 				m_automaticGC = opt.get();
 			}
@@ -2932,7 +2932,7 @@ namespace cgl
 			{
 				std::stringstream ss;
 				ss << "Error() called: ";
-				printVal2(pEnv->expand(arguments[0], info), m_weakThis.lock(), ss);
+				printVal2(pEnv->expand(LRValue(arguments[0]), info), m_weakThis.lock(), ss);
 				CGL_ErrorNode(info, ss.str());
 			}
 
@@ -2952,7 +2952,7 @@ namespace cgl
 
 			if (arguments.size() == 1)
 			{
-				if (EqualFunc(pEnv->expand(arguments[0], info), true, *this))
+				if (EqualFunc(pEnv->expand(LRValue(arguments[0]), info), true, *this))
 				{
 					return 0;
 				}
@@ -2963,7 +2963,7 @@ namespace cgl
 			}
 			else
 			{
-				if (EqualFunc(pEnv->expand(arguments[0], info), true, *this))
+				if (EqualFunc(pEnv->expand(LRValue(arguments[0]), info), true, *this))
 				{
 					return 0;
 				}
@@ -2971,7 +2971,7 @@ namespace cgl
 				{
 					std::stringstream ss;
 					ss << "Assertion failed: ";
-					printVal2(pEnv->expand(arguments[1], info), m_weakThis.lock(), ss);
+					printVal2(pEnv->expand(LRValue(arguments[1]), info), m_weakThis.lock(), ss);
 					CGL_ErrorNode(info, ss.str());
 				}
 			}
@@ -3042,7 +3042,7 @@ namespace cgl
 
 				for (size_t i = startIndex; i < tail.size(); ++i)
 				{
-					boost::optional<const Val&> objOpt = expandOpt(address);
+					boost::optional<const Val&> objOpt = expandOpt(LRValue(address));
 					if (!objOpt)
 					{
 						CGL_Error("参照エラー");
@@ -3340,7 +3340,7 @@ namespace cgl
 
 				for (const auto& nameVal : scopeIt->variables)
 				{
-					if (auto opt = expandOpt(nameVal.second))
+					if (auto opt = expandOpt(LRValue(nameVal.second)))
 					{
 						ValueAccessorSearcher searcher(*this, address);
 						if (boost::apply_visitor(searcher, opt.get()))

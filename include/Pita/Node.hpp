@@ -198,20 +198,6 @@ namespace cgl
 		Dynamic
 	};
 
-	inline std::string UnaryOpToStr(UnaryOp op)
-	{
-		switch (op)
-		{
-		case UnaryOp::Not:     return "Not";
-		case UnaryOp::Plus:    return "Plus";
-		case UnaryOp::Minus:   return "Minus";
-		case UnaryOp::Dynamic: return "Dynamic";
-		}
-
-		return "UnknownUnaryOp";
-	}
-
-	//enum class BinaryOp
 	enum BinaryOp
 	{
 		And,
@@ -237,37 +223,8 @@ namespace cgl
 		SetDiff
 	};
 
-	inline std::string BinaryOpToStr(BinaryOp op)
-	{
-		switch (op)
-		{
-		case BinaryOp::And: return "And";
-		case BinaryOp::Or:  return "Or";
-
-		case BinaryOp::Equal:        return "Equal";
-		case BinaryOp::NotEqual:     return "NotEqual";
-		case BinaryOp::LessThan:     return "LessThan";
-		case BinaryOp::LessEqual:    return "LessEqual";
-		case BinaryOp::GreaterThan:  return "GreaterThan";
-		case BinaryOp::GreaterEqual: return "GreaterEqual";
-
-		case BinaryOp::Add: return "Add";
-		case BinaryOp::Sub: return "Sub";
-		case BinaryOp::Mul: return "Mul";
-		case BinaryOp::Div: return "Div";
-
-		case BinaryOp::Pow:    return "Pow";
-		case BinaryOp::Assign: return "Assign";
-
-		case BinaryOp::Concat: return "Concat";
-
-		case BinaryOp::SetDiff: return "SetDiff";
-		}
-
-		return "UnknownBinaryOp";
-	}
-
-	struct DefFunc;
+	std::string UnaryOpToStr(UnaryOp op);
+	std::string BinaryOpToStr(BinaryOp op);
 
 	struct Identifier : public LocationInfo
 	{
@@ -421,52 +378,6 @@ namespace std
 
 namespace cgl
 {
-	struct RValue;
-	struct LRValue;
-
-	class Context;
-
-	struct FuncVal;
-
-	struct UnaryExpr;
-	struct BinaryExpr;
-
-	struct Lines;
-
-	struct If;
-	struct For;
-
-	struct Return;
-
-	struct Range;
-
-	struct ListConstractor;
-	struct List;
-	struct PackedList;
-
-	struct ListAccess;
-
-	struct KeyExpr;
-	struct RecordConstractor;
-
-	struct Character;
-
-	struct KeyValue;
-	struct Record;
-	struct PackedRecord;
-
-	struct RecordAccess;
-	struct FunctionAccess;
-
-	struct Accessor;
-
-	struct DeclSat;
-	struct DeclFree;
-
-	struct Jump;
-
-	struct Import;
-
 	struct CharString
 	{
 	public:
@@ -511,6 +422,11 @@ namespace cgl
 		std::u32string str;
 	};
 
+	struct KeyValue;
+	struct Jump;
+	struct FuncVal;
+	struct Record;
+	struct List;
 	using Val = boost::variant<
 		CharString,
 		bool,
@@ -523,6 +439,8 @@ namespace cgl
 		boost::recursive_wrapper<List>
 	>;
 
+	struct PackedList;
+	struct PackedRecord;
 	using PackedVal = boost::variant<
 		bool,
 		int,
@@ -535,6 +453,7 @@ namespace cgl
 		boost::recursive_wrapper<Jump>
 	>;
 
+	class Context;
 	PackedVal Packed(const Val& value, const Context& context);
 	Val Unpacked(const PackedVal& packedValue, Context& context);
 
@@ -578,6 +497,22 @@ namespace cgl
 
 	Eigen::Vector2d AsVec2(const Val& value, const Context& context);
 
+	struct LRValue;
+	struct Import;
+	struct UnaryExpr;
+	struct BinaryExpr;
+	struct DefFunc;
+	struct Range;
+	struct Lines;
+	struct If;
+	struct For;
+	struct Return;
+	struct ListConstractor;
+	struct KeyExpr;
+	struct RecordConstractor;
+	struct DeclSat;
+	struct DeclFree;
+	struct Accessor;
 	using Expr = boost::variant<
 		boost::recursive_wrapper<LRValue>,
 		Identifier,
@@ -638,7 +573,7 @@ namespace cgl
 			: local(original)
 			, replaced(address)
 		{}*/
-		EitherReference(const boost::optional<Identifier>& original)
+		explicit EitherReference(const boost::optional<Identifier>& original)
 			: local(original)
 		{}
 
@@ -649,13 +584,7 @@ namespace cgl
 
 		bool localReferenciable(const Context& context)const;
 
-		std::string toString()const
-		{
-			std::stringstream ss;
-			ss << (local ? local.get().toString() : std::string("None"));
-			ss << " | " << "Address(" << replaced.toString() << ")";
-			return ss.str();
-		}
+		std::string toString()const;
 	};
 
 	struct RValue
@@ -663,15 +592,8 @@ namespace cgl
 		RValue() = default;
 		explicit RValue(const Val& value) :value(value) {}
 
-		bool operator==(const RValue& other)const
-		{
-			return IsEqualVal(value, other.value);
-		}
-
-		bool operator!=(const RValue& other)const
-		{
-			return !IsEqualVal(value, other.value);
-		}
+		bool operator==(const RValue& other)const { return IsEqualVal(value, other.value); }
+		bool operator!=(const RValue& other)const { return !IsEqualVal(value, other.value); }
 
 		Val value;
 	};
@@ -680,76 +602,40 @@ namespace cgl
 	{
 		LRValue() = default;
 
-		LRValue(const Val& value) :value(RValue(value)) {}
 		LRValue(const RValue& value) :value(value) {}
-		LRValue(Address value) :value(value) {}
-		LRValue(Reference value) :value(value) {}
-		LRValue(const EitherReference& value) :value(value) {}
+		explicit LRValue(const Val& value) :value(RValue(value)) {}
+		explicit LRValue(Address value) :value(value) {}
+		explicit LRValue(Reference value) :value(value) {}
+		explicit LRValue(const EitherReference& value) :value(value) {}
 
 		static LRValue Bool(bool a) { return LRValue(Val(a)); }
 		static LRValue Int(int a) { return LRValue(Val(a)); }
 		static LRValue Double(double a) { return LRValue(Val(a)); }
 		static LRValue Float(const std::u32string& str);
 
-		LRValue& setLocation(const LocationInfo& info)
-		{
-			locInfo_lineBegin = info.locInfo_lineBegin;
-			locInfo_lineEnd = info.locInfo_lineEnd;
-			locInfo_posBegin = info.locInfo_posBegin;
-			locInfo_posEnd = info.locInfo_posEnd;
-			return *this;
-		}
+		LRValue& setLocation(const LocationInfo& info);
 
-		bool isRValue()const
-		{
-			return IsType<RValue>(value);
-		}
+		bool isRValue()const { return IsType<RValue>(value); }
+		bool isLValue()const { return !isRValue(); }
 
-		bool isLValue()const
-		{
-			return !isRValue();
-		}
-
-		bool isAddress()const
-		{
-			return IsType<Address>(value);
-		}
-
-		bool isReference()const
-		{
-			return IsType<Reference>(value);
-		}
-
-		bool isEitherReference()const
-		{
-			return IsType<EitherReference>(value);
-		}
+		bool isAddress()const { return IsType<Address>(value); }
+		bool isReference()const { return IsType<Reference>(value); }
+		bool isEitherReference()const { return IsType<EitherReference>(value); }
 
 		bool isValid()const;
 
 		std::string toString()const;
 		std::string toString(Context& context)const;
 
-		Reference reference()const
-		{
-			return As<Reference>(value);
-		}
-
+		Reference reference()const { return As<Reference>(value); }
 		const EitherReference& eitherReference()const
 		{
 			const auto& result = As<EitherReference>(value);
 			return result;
 		}
 
-		const Val& evaluated()const
-		{
-			return As<RValue>(value).value;
-		}
-
-		Val& mutableVal()
-		{
-			return As<RValue>(value).value;
-		}
+		const Val& evaluated()const { return As<RValue>(value).value; }
+		Val& mutableVal() { return As<RValue>(value).value; }
 
 		template<class T>
 		void push_back(T& data, Context& context)const
@@ -772,15 +658,7 @@ namespace cgl
 			}
 		}
 
-		boost::optional<Address> deref(const Context& env)const
-		{
-			if (isRValue())
-			{
-				return boost::none;
-			}
-
-			return address(env);
-		}
+		boost::optional<Address> deref(const Context& env)const;
 
 		bool operator==(const LRValue& other)const
 		{
@@ -819,21 +697,6 @@ namespace cgl
 
 			Address makeTemporaryValue(Context& context)const;
 	};
-
-	struct OptimizationProblemSat;
-
-	struct SatUnaryExpr;
-	struct SatBinaryExpr;
-	struct SatLines;
-
-	struct SatFunctionReference;
-
-	using SatExpr = boost::variant<
-		double,
-		boost::recursive_wrapper<SatUnaryExpr>,
-		boost::recursive_wrapper<SatBinaryExpr>,
-		boost::recursive_wrapper<SatFunctionReference>
-	>;
 
 	struct Interval
 	{
@@ -1014,80 +877,6 @@ namespace cgl
 		}
 
 		double eval(std::shared_ptr<Context> pEnv, const LocationInfo& info);
-	};
-
-	struct SatUnaryExpr
-	{
-		SatExpr lhs;
-		UnaryOp op;
-
-		SatUnaryExpr() = default;
-
-		SatUnaryExpr(const SatExpr& lhs, UnaryOp op) :
-			lhs(lhs),
-			op(op)
-		{}
-	};
-
-	struct SatBinaryExpr
-	{
-		SatExpr lhs;
-		SatExpr rhs;
-		BinaryOp op;
-
-		SatBinaryExpr() = default;
-
-		SatBinaryExpr(const SatExpr& lhs, const SatExpr& rhs, BinaryOp op) :
-			lhs(lhs),
-			rhs(rhs),
-			op(op)
-		{}
-	};
-
-	struct SatLines
-	{
-		std::vector<SatExpr> exprs;
-
-		SatLines() = default;
-
-		SatLines(const SatExpr& expr) :
-			exprs({ expr })
-		{}
-
-		SatLines(const std::vector<SatExpr>& exprs_) :
-			exprs(exprs_)
-		{}
-
-		void add(const SatExpr& expr)
-		{
-			exprs.push_back(expr);
-		}
-
-		void concat(const SatLines& lines)
-		{
-			exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
-		}
-
-		SatLines& operator+=(const SatLines& lines)
-		{
-			exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
-			return *this;
-		}
-
-		size_t size()const
-		{
-			return exprs.size();
-		}
-
-		const SatExpr& operator[](size_t index)const
-		{
-			return exprs[index];
-		}
-
-		SatExpr& operator[](size_t index)
-		{
-			return exprs[index];
-		}
 	};
 
 	struct UnaryExpr : public LocationInfo
@@ -1993,166 +1782,6 @@ namespace cgl
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const DeclSat& node) { return os; }
-	};
-
-	struct SatFunctionReference
-	{
-		struct ListRef
-		{
-			int index;
-
-			ListRef() = default;
-			ListRef(int index) :index(index) {}
-
-			bool operator==(const ListRef& other)const
-			{
-				return index == other.index;
-			}
-
-			std::string asString()const
-			{
-				return std::string("[") + std::to_string(index) + "]";
-			}
-		};
-
-		struct RecordRef
-		{
-			std::string key;
-
-			RecordRef() = default;
-			RecordRef(const std::string& key) :key(key) {}
-
-			bool operator==(const RecordRef& other)const
-			{
-				return key == other.key;
-			}
-
-			std::string asString()const
-			{
-				return std::string(".") + key;
-			}
-		};
-
-		struct FunctionRef
-		{
-			std::vector<SatExpr> args;
-
-			FunctionRef() = default;
-			FunctionRef(const std::vector<SatExpr>& args) :args(args) {}
-
-			bool operator==(const FunctionRef& other)const
-			{
-				if (args.size() != other.args.size())
-				{
-					return false;
-				}
-
-				for (size_t i = 0; i < args.size(); ++i)
-				{
-					/*if (!IsEqual(args[i], other.args[i]))
-					{
-					return false;
-					}*/
-				}
-
-				return true;
-			}
-
-			std::string asString()const
-			{
-				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
-			}
-
-			void appendExpr(const SatExpr& value)
-			{
-				args.push_back(value);
-			}
-		};
-
-		using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
-
-		//using ObjectT = boost::variant<boost::recursive_wrapper<FuncVal>>;
-
-		//ObjectT headValue;
-
-		//std::string funcName;
-		Address headAddress; //funcName -> headAddress に変更
-
-		std::vector<Ref> references;
-
-		SatFunctionReference() = default;
-
-		SatFunctionReference(Address address)
-			:headAddress(address)
-		{}
-
-		void appendListRef(int index)
-		{
-			references.push_back(ListRef(index));
-		}
-
-		void appendRecordRef(const std::string& key)
-		{
-			references.push_back(RecordRef(key));
-		}
-
-		//void appendFunctionRef(const std::vector<Val>& args)
-		void appendFunctionRef(const FunctionRef& ref)
-		{
-			//references.push_back(FunctionRef(args));
-			references.push_back(ref);
-		}
-
-		bool operator==(const SatFunctionReference& other)const
-		{
-			//if (!(headValue == other.headValue))
-			/*if (!(funcName == other.funcName))
-			{
-			return false;
-			}*/
-			if (!(headAddress == other.headAddress))
-			{
-				return false;
-			}
-
-			if (references.size() != other.references.size())
-			{
-				return false;
-			}
-
-			for (size_t i = 0; i<references.size(); ++i)
-			{
-				if (!(references[i] == other.references[i]))
-				{
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		std::string asString()const
-		{
-			std::string str = "objName";
-
-			for (const auto& r : references)
-			{
-				if (auto opt = AsOpt<ListRef>(r))
-				{
-					str += opt.get().asString();
-				}
-				else if (auto opt = AsOpt<RecordRef>(r))
-				{
-					str += opt.get().asString();
-				}
-				else if (auto opt = AsOpt<FunctionRef>(r))
-				{
-					str += opt.get().asString();
-				}
-			}
-
-			return str;
-		}
 	};
 
 	struct DeclFree : public LocationInfo

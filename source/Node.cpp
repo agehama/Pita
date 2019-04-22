@@ -174,6 +174,49 @@ extern bool isDebugMode;
 
 namespace cgl
 {
+	std::string UnaryOpToStr(UnaryOp op)
+	{
+		switch (op)
+		{
+		case UnaryOp::Not:     return "Not";
+		case UnaryOp::Plus:    return "Plus";
+		case UnaryOp::Minus:   return "Minus";
+		case UnaryOp::Dynamic: return "Dynamic";
+		}
+
+		return "UnknownUnaryOp";
+	}
+
+	std::string BinaryOpToStr(BinaryOp op)
+	{
+		switch (op)
+		{
+		case BinaryOp::And: return "And";
+		case BinaryOp::Or:  return "Or";
+
+		case BinaryOp::Equal:        return "Equal";
+		case BinaryOp::NotEqual:     return "NotEqual";
+		case BinaryOp::LessThan:     return "LessThan";
+		case BinaryOp::LessEqual:    return "LessEqual";
+		case BinaryOp::GreaterThan:  return "GreaterThan";
+		case BinaryOp::GreaterEqual: return "GreaterEqual";
+
+		case BinaryOp::Add: return "Add";
+		case BinaryOp::Sub: return "Sub";
+		case BinaryOp::Mul: return "Mul";
+		case BinaryOp::Div: return "Div";
+
+		case BinaryOp::Pow:    return "Pow";
+		case BinaryOp::Assign: return "Assign";
+
+		case BinaryOp::Concat: return "Concat";
+
+		case BinaryOp::SetDiff: return "SetDiff";
+		}
+
+		return "UnknownBinaryOp";
+	}
+
 	bool IsVec2(const Val& value)
 	{
 		if (!IsType<Record>(value))
@@ -200,8 +243,8 @@ namespace cgl
 	{
 		const auto& values = As<Record>(value).values;
 
-		const Val xval = context.expand(values.find("x")->second, LocationInfo());
-		const Val yval = context.expand(values.find("y")->second, LocationInfo());
+		const Val xval = context.expand(LRValue(values.find("x")->second), LocationInfo());
+		const Val yval = context.expand(LRValue(values.find("y")->second), LocationInfo());
 
 		return Eigen::Vector2d(AsDouble(xval), AsDouble(yval));
 	}
@@ -224,9 +267,26 @@ namespace cgl
 		return local && context.existsInLocalScope(local.get());
 	}
 
+	std::string EitherReference::toString()const
+	{
+		std::stringstream ss;
+		ss << (local ? local.get().toString() : std::string("None"));
+		ss << " | " << "Address(" << replaced.toString() << ")";
+		return ss.str();
+	}
+
 	LRValue LRValue::Float(const std::u32string& str)
 	{
 		return LRValue(std::stod(Unicode::UTF32ToUTF8(str)));
+	}
+
+	LRValue& LRValue::setLocation(const LocationInfo& info)
+	{
+		locInfo_lineBegin = info.locInfo_lineBegin;
+		locInfo_lineEnd = info.locInfo_lineEnd;
+		locInfo_posBegin = info.locInfo_posBegin;
+		locInfo_posEnd = info.locInfo_posEnd;
+		return *this;
 	}
 
 	bool LRValue::isValid() const
@@ -234,6 +294,16 @@ namespace cgl
 		return IsType<Address>(value)
 			? As<Address>(value).isValid()
 			: true; //EitherReference/Reference/Val は常に有効であるものとする
+	}
+
+	boost::optional<Address> LRValue::deref(const Context& env)const
+	{
+		if (isRValue())
+		{
+			return boost::none;
+		}
+
+		return address(env);
 	}
 
 	std::string LRValue::toString() const
@@ -730,7 +800,7 @@ namespace cgl
 
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const auto opt = pEnv->expandOpt(refs[i]);
+			const auto opt = pEnv->expandOpt(LRValue(refs[i]));
 			if (!opt)
 			{
 				CGL_Error("参照エラー");
@@ -1503,7 +1573,7 @@ namespace cgl
 
 		for (const Address address : data)
 		{
-			const auto& opt = context.expandOpt(address);
+			const auto& opt = context.expandOpt(LRValue(address));
 			if (!opt)
 			{
 				std::stringstream ss;
@@ -1567,7 +1637,7 @@ namespace cgl
 
 		for (const auto& keyval : values)
 		{
-			const auto& opt = context.expandOpt(keyval.second);
+			const auto& opt = context.expandOpt(LRValue(keyval.second));
 			if (!opt)
 			{
 				std::stringstream ss;

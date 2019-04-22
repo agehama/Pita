@@ -404,7 +404,7 @@ namespace cgl
 			boost::optional<const Val&> objOpt;
 			if (isDeterministic)
 			{
-				objOpt = pEnv->expandOpt(headAddress);
+				objOpt = pEnv->expandOpt(LRValue(headAddress));
 				if (!objOpt)
 				{
 					CGL_Error("参照エラー");
@@ -606,8 +606,8 @@ namespace cgl
 		Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs), node);
 		switch (node.op)
 		{
-		case UnaryOp::Plus: return lhs;
-		case UnaryOp::Minus:  return MinusFunc(lhs, *pEnv);
+		case UnaryOp::Plus: return LRValue(lhs);
+		case UnaryOp::Minus:  return LRValue(MinusFunc(lhs, *pEnv));
 		}
 
 		CGL_ErrorNodeInternal(node, "不明な単項演算子です。");
@@ -635,25 +635,25 @@ namespace cgl
 
 			switch (node.op)
 			{
-			case BinaryOp::And: return AddFunc(lhs, rhs, *pEnv);
-			case BinaryOp::Or:  return MinFunc(lhs, rhs, *pEnv);
+			case BinaryOp::And: return LRValue(AddFunc(lhs, rhs, *pEnv));
+			case BinaryOp::Or:  return LRValue(MinFunc(lhs, rhs, *pEnv));
 
-			case BinaryOp::Equal:        return AbsFunc(SubFunc(lhs, rhs, *pEnv), *pEnv);
+			case BinaryOp::Equal:        return LRValue(AbsFunc(SubFunc(lhs, rhs, *pEnv), *pEnv));
 			case BinaryOp::NotEqual:     return EqualFunc(lhs, rhs, *pEnv) ? LRValue(true_cost) : LRValue(false_cost);
-			case BinaryOp::LessThan:     return MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::LessEqual:    return MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterThan:  return MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv);
-			case BinaryOp::GreaterEqual: return MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv);
+			case BinaryOp::LessThan:     return LRValue(MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv));
+			case BinaryOp::LessEqual:    return LRValue(MaxFunc(SubFunc(lhs, rhs, *pEnv), 0.0, *pEnv));
+			case BinaryOp::GreaterThan:  return LRValue(MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv));
+			case BinaryOp::GreaterEqual: return LRValue(MaxFunc(SubFunc(rhs, lhs, *pEnv), 0.0, *pEnv));
 
-			case BinaryOp::Add: return AddFunc(lhs, rhs, *pEnv);
-			case BinaryOp::Sub: return SubFunc(lhs, rhs, *pEnv);
-			case BinaryOp::Mul: return MulFunc(lhs, rhs, *pEnv);
-			case BinaryOp::Div: return DivFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Add: return LRValue(AddFunc(lhs, rhs, *pEnv));
+			case BinaryOp::Sub: return LRValue(SubFunc(lhs, rhs, *pEnv));
+			case BinaryOp::Mul: return LRValue(MulFunc(lhs, rhs, *pEnv));
+			case BinaryOp::Div: return LRValue(DivFunc(lhs, rhs, *pEnv));
 
-			case BinaryOp::Pow:    return PowFunc(lhs, rhs, *pEnv);
-			case BinaryOp::Concat: return ConcatFunc(lhs, rhs, *pEnv);
+			case BinaryOp::Pow:    return LRValue(PowFunc(lhs, rhs, *pEnv));
+			case BinaryOp::Concat: return LRValue(ConcatFunc(lhs, rhs, *pEnv));
 
-			case BinaryOp::SetDiff: return SetDiffFunc(lhs, rhs, *pEnv);
+			case BinaryOp::SetDiff: return LRValue(SetDiffFunc(lhs, rhs, *pEnv));
 			default:;
 			}
 		}
@@ -679,7 +679,7 @@ namespace cgl
 				pEnv->bindNewValue(identifier, rhs);
 			}
 
-			return rhs;
+			return LRValue(rhs);
 		}
 		else if (auto accessorOpt = AsOpt<Accessor>(node.lhs))
 		{
@@ -691,7 +691,7 @@ namespace cgl
 				{
 					//pEnv->assignToObject(address, rhs);
 					pEnv->assignToAccessor(accessorOpt.get(), LRValue(rhs), node);
-					return rhs;
+					return LRValue(rhs);
 				}
 				else
 				{

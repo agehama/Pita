@@ -69,7 +69,7 @@ namespace cgl
 			if (pEnv && data[i].isValid())
 			{
 				//const Val evaluated = pEnv->expand(data[i]);
-				if (auto opt = pEnv->expandOpt(data[i]))
+				if (auto opt = pEnv->expandOpt(LRValue(data[i])))
 				{
 					boost::apply_visitor(child, opt.get());
 				}
@@ -106,7 +106,7 @@ namespace cgl
 			if (pEnv && value.second.isValid())
 			{
 				//const Val evaluated = pEnv->expand(value.second);
-				if (auto opt = pEnv->expandOpt(value.second))
+				if (auto opt = pEnv->expandOpt(LRValue(value.second)))
 				{
 					boost::apply_visitor(child, opt.get());
 				}
@@ -221,7 +221,7 @@ namespace cgl
 			if (pEnv && data[i].isValid())
 			{
 				//const Val evaluated = pEnv->expand(data[i]);
-				if (auto opt = pEnv->expandOpt(data[i]))
+				if (auto opt = pEnv->expandOpt(LRValue(data[i])))
 				{
 					boost::apply_visitor(child, opt.get());
 					ss << lf;
@@ -263,7 +263,7 @@ namespace cgl
 			if (pEnv && value.second.isValid())
 			{
 				//const Val evaluated = pEnv->expand(value.second);
-				if (auto opt = pEnv->expandOpt(value.second))
+				if (auto opt = pEnv->expandOpt(LRValue(value.second)))
 				{
 					boost::apply_visitor(child, opt.get());
 					ss << lf;
@@ -314,65 +314,6 @@ namespace cgl
 	void ValuePrinter2::operator()(const Jump& node)const
 	{
 		os << indent() << "Jump(" << node.op << ")" << footer();
-	}
-
-	void PrintSatExpr::operator()(double node)const
-	{
-		//os << node;
-		//CGL_DebugLog(ToS(node));
-		os << node;
-	}
-
-	void PrintSatExpr::operator()(const SatUnaryExpr& node)const
-	{
-		switch (node.op)
-		{
-			//case UnaryOp::Not:   return lhs;
-		case UnaryOp::Minus:    os << "-( "; break;
-		case UnaryOp::Plus:     os << "+( "; break;
-		case UnaryOp::Dynamic:  os << "@( "; break;
-		}
-
-		boost::apply_visitor(*this, node.lhs);
-		os << " )";
-	}
-
-	void PrintSatExpr::operator()(const SatBinaryExpr& node)const
-	{
-		os << "( ";
-		boost::apply_visitor(*this, node.lhs);
-
-		switch (node.op)
-		{
-		case BinaryOp::And: os << " & "; break;
-
-		case BinaryOp::Or:  os << " | "; break;
-
-		case BinaryOp::Equal:        os << " == "; break;
-		case BinaryOp::NotEqual:     os << " != "; break;
-		case BinaryOp::LessThan:     os << " < "; break;
-		case BinaryOp::LessEqual:    os << " <= "; break;
-		case BinaryOp::GreaterThan:  os << " > "; break;
-		case BinaryOp::GreaterEqual: os << " >= "; break;
-
-		case BinaryOp::Add: os << " + "; break;
-		case BinaryOp::Sub: os << " - "; break;
-		case BinaryOp::Mul: os << " * "; break;
-		case BinaryOp::Div: os << " / "; break;
-
-		case BinaryOp::Pow: os << " ^ "; break;
-
-		case BinaryOp::Concat: os << " @ "; break;
-
-		case BinaryOp::SetDiff: os << " \\ "; break;
-		}
-
-		boost::apply_visitor(*this, node.rhs);
-		os << " )";
-	}
-
-	void PrintSatExpr::operator()(const SatFunctionReference& node)const
-	{
 	}
 
 	std::string Printer::indent()const

@@ -193,7 +193,7 @@ namespace cgl
 			else
 			{
 				double begin1T = GetSec();
-				const Val& substance = pEnv->expand(data[i], info);
+				const Val& substance = pEnv->expand(LRValue(data[i]), info);
 				double end1T = GetSec();
 
 				const Val clone = boost::apply_visitor(*this, substance);
@@ -228,7 +228,7 @@ namespace cgl
 			else
 			{
 				double begin1T = GetSec();
-				const Val& substance = pEnv->expand(value.second, info);
+				const Val& substance = pEnv->expand(LRValue(value.second), info);
 				double end1T = GetSec();
 
 				const Val clone = boost::apply_visitor(*this, substance);
@@ -284,7 +284,7 @@ namespace cgl
 		for (size_t i = 0; i < data.size(); ++i)
 		{
 			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
-			const Val& substance = pEnv->expand(data[i], info);
+			const Val& substance = pEnv->expand(LRValue(data[i]), info);
 			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(data[i], boost::apply_visitor(*this, substance));
 		}
 
@@ -296,7 +296,7 @@ namespace cgl
 		for (const auto& value : node.values)
 		{
 			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
-			const Val& substance = pEnv->expand(value.second, info);
+			const Val& substance = pEnv->expand(LRValue(value.second), info);
 			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(value.second, boost::apply_visitor(*this, substance));
 		}
 

@@ -981,7 +981,7 @@ namespace cgl
 			//とりあえず参照先のレコードのメンバはローカル変数とおく
 			if (isInnerRecord)
 			{
-				const Val& evaluated = pEnv->expand(address, node);
+				const Val& evaluated = pEnv->expand(LRValue(address), node);
 				if (auto opt = AsOpt<Record>(evaluated))
 				{
 					const Record& record = opt.get();
@@ -1396,7 +1396,7 @@ namespace cgl
 					if (ref.local)
 					{
 						Expr assignExpr = BinaryExpr(*ref.local, rhs_, BinaryOp::Assign);
-						return pEnv->expand(boost::apply_visitor(*this, assignExpr), node);
+						return LRValue(pEnv->expand(boost::apply_visitor(*this, assignExpr), node));
 					}
 					else
 					{
@@ -1462,7 +1462,7 @@ namespace cgl
 	LRValue Eval::operator()(const DefFunc& defFunc)
 	{
 		UpdateCurrentLocation(defFunc);
-		return pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr);
+		return LRValue(pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr));
 	}
 
 	LRValue Eval::callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& arguments)
@@ -2725,7 +2725,7 @@ namespace cgl
 
 		pEnv->exitScope();
 
-		return pEnv->makeTemporaryValue(recordValue);
+		return LRValue(pEnv->makeTemporaryValue(recordValue));
 	}
 
 	LRValue Eval::operator()(const DeclSat& node)

@@ -26,12 +26,11 @@
 #define CGL_BOOST_MINOR_VERSION (BOOST_VERSION / 100 % 1000)
 
 #include <boost/fusion/include/vector.hpp>
-
 #include <boost/variant.hpp>
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
-
 #include <boost/regex/pending/unicode_iterator.hpp>
+#include <boost/functional/hash.hpp>
 
 #include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
@@ -226,6 +225,9 @@ namespace cgl
 	std::string UnaryOpToStr(UnaryOp op);
 	std::string BinaryOpToStr(BinaryOp op);
 
+	using ScopeIndex = unsigned;
+	using ScopeAddress = std::deque<ScopeIndex>;
+
 	struct Identifier : public LocationInfo
 	{
 	public:
@@ -266,7 +268,18 @@ namespace cgl
 			return name;
 		}
 
-		friend std::ostream& operator<<(std::ostream& os, const Identifier& node) { return os; }
+		bool isDeferredCall()const;
+		Identifier asDeferredCall(const ScopeAddress& identifierScopeInfo)const;
+
+		bool isMakeClosure()const;
+		Identifier asMakeClosure(const ScopeAddress& identifierScopeInfo)const;
+
+		std::pair<ScopeAddress, Identifier> decomposed()const;
+
+		/*friend std::ostream& operator<<(std::ostream& os, const Identifier& node)
+		{
+			return os;
+		}*/
 
 	//private:
 		std::string name;
@@ -374,6 +387,16 @@ namespace std
 			return hash<size_t>()(static_cast<size_t>(reference.referenceID));
 		}
 	};
+
+	template <>
+	struct hash<cgl::Identifier>
+	{
+	public:
+		size_t operator()(const cgl::Identifier& identifier)const
+		{
+			return hash<std::string>()(static_cast<std::string>(identifier));
+		}
+	};
 }
 
 namespace cgl
@@ -429,31 +452,34 @@ namespace cgl
 	struct List;
 	using Val = boost::variant<
 		CharString,
-		bool,
 		int,
+		bool,
 		double,
 		boost::recursive_wrapper<KeyValue>,
-		boost::recursive_wrapper<Jump>,
-		boost::recursive_wrapper<FuncVal>,
+		boost::recursive_wrapper<List>,
 		boost::recursive_wrapper<Record>,
-		boost::recursive_wrapper<List>
+		boost::recursive_wrapper<FuncVal>,
+		boost::recursive_wrapper<Jump>
 	>;
 
 	struct PackedList;
 	struct PackedRecord;
 	using PackedVal = boost::variant<
-		bool,
-		int,
-		double,
 		CharString,
-		boost::recursive_wrapper<PackedList>,
+		int,
+		bool,
+		double,
 		boost::recursive_wrapper<KeyValue>,
+		boost::recursive_wrapper<PackedList>,
 		boost::recursive_wrapper<PackedRecord>,
 		boost::recursive_wrapper<FuncVal>,
 		boost::recursive_wrapper<Jump>
 	>;
 
 	class Context;
+	size_t GetHash(const Val& val, const Context& context);
+	size_t GetHash(const PackedVal& val);
+	
 	PackedVal Packed(const Val& value, const Context& context);
 	Val Unpacked(const PackedVal& packedValue, Context& context);
 
@@ -608,8 +634,8 @@ namespace cgl
 		explicit LRValue(Reference value) :value(value) {}
 		explicit LRValue(const EitherReference& value) :value(value) {}
 
-		static LRValue Bool(bool a) { return LRValue(Val(a)); }
-		static LRValue Int(int a) { return LRValue(Val(a)); }
+		static LRValue Bool(bool a);
+		static LRValue Int(int a);
 		static LRValue Double(double a) { return LRValue(Val(a)); }
 		static LRValue Float(const std::u32string& str);
 
@@ -1230,6 +1256,43 @@ namespace cgl
 		friend std::ostream& operator<<(std::ostream& os, const DefFunc& node) { return os; }
 	};
 
+	// 遅延呼び出しされる識別子の管理に必要
+	struct DefFuncWithScopeInfo
+	{
+		DefFuncWithScopeInfo() = default;
+		DefFuncWithScopeInfo(const ScopeAddress& scopeInfo)
+			: scopeInfo(scopeInfo)
+		{}
+		DefFuncWithScopeInfo(const DefFunc& generalDef, const ScopeAddress& scopeInfo)
+			: generalDef(generalDef)
+			, scopeInfo(scopeInfo)
+		{}
+		DefFuncWithScopeInfo(const DefFunc& specialDef, int recDepth, const ScopeAddress& scopeInfo)
+			: specialDefs({ {recDepth, specialDef} })
+			, scopeInfo(scopeInfo)
+		{}
+
+		void setGeneralDef(const DefFunc& defFunc)
+		{
+			generalDef = defFunc;
+		}
+		void setSpecialDef(const DefFunc& defFunc, int recDepth)
+		{
+			specialDefs[recDepth] = defFunc;
+		}
+
+		DefFunc generalDef;
+		std::unordered_map<int, DefFunc> specialDefs;
+		ScopeAddress scopeInfo;
+
+	private:
+		friend class Eval;
+		int callDepth = 0;
+		//std::unordered_map<RecMemoInfo, Address> memo;
+		std::unordered_map<size_t, Address> memo;
+	};
+	using DeferredIdentifiers = std::unordered_map<Identifier, std::vector<DefFuncWithScopeInfo>>;
+
 	struct If : public LocationInfo
 	{
 		Expr cond_expr;
@@ -1512,7 +1575,6 @@ namespace cgl
 		Val unpacked(Context& context)const;
 
 	private:
-
 		template<typename Head>
 		void addsImpl(const Head& head)
 		{
@@ -1751,6 +1813,20 @@ namespace cgl
 		}
 	};
 
+	struct PackedKeyValue
+	{
+		Identifier name;
+		PackedVal value;
+		Address address;
+
+		PackedKeyValue() = default;
+
+		PackedKeyValue(const Identifier& name, const PackedVal& value) :
+			name(name),
+			value(value)
+		{}
+	};
+	
 	struct DeclSat : public LocationInfo
 	{
 		Expr expr;
@@ -1786,8 +1862,6 @@ namespace cgl
 
 	struct DeclFree : public LocationInfo
 	{
-		/*std::vector<Expr> accessors;
-		std::vector<Expr> ranges;*/
 		struct DeclVar
 		{
 			Expr accessor;

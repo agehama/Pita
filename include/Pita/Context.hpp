@@ -324,6 +324,11 @@ namespace cgl
 		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
 		boost::optional<Record&> temporaryRecord;
 
+		std::set<std::string> getVisibleIdentifiers()const;
+
+		boost::optional<DefFuncWithScopeInfo&> getDeferredFunction(const Identifier& deferredIdentifier);
+		boost::optional<const DefFuncWithScopeInfo&> getDeferredFunction(const Identifier& deferredIdentifier)const;
+
 	private:
 		void initialize();
 
@@ -350,9 +355,13 @@ namespace cgl
 		std::unordered_map<Reference, DeepReference> m_refAddressMap;
 		std::unordered_multimap<Address, Reference> m_addressRefMap;
 
+		DeferredIdentifiers deferredIdentifiers;
+
 		Values<Val> m_values;
 
 		std::vector<LocalContext> m_localEnvStack;
+
+		int m_recDepth = -1;
 
 		unsigned m_referenceID = 0;
 

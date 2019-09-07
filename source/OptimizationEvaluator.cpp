@@ -598,6 +598,7 @@ namespace cgl
 
 	LRValue EvalSatExpr::operator()(const UnaryExpr& node)
 	{
+		CGL_DBG;
 		if (node.op == UnaryOp::Not)
 		{
 			CGL_ErrorNode(node, "TODO: sat宣言中のnot演算子は未対応です。");
@@ -611,18 +612,22 @@ namespace cgl
 		}
 
 		CGL_ErrorNodeInternal(node, "不明な単項演算子です。");
+
 		return LRValue(0);
 	}
 
 	LRValue EvalSatExpr::operator()(const BinaryExpr& node)
 	{
+		CGL_DBG;
 		const double true_cost = 0.0;
 		const double false_cost = 10000.0;
 
 		Val rhs = pEnv->expand(boost::apply_visitor(*this, node.rhs), node);
 		if (node.op != BinaryOp::Assign)
 		{
+			CGL_DBG;
 			Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs), node);
+			CGL_DBG;
 
 			if (IsType<bool>(rhs))
 			{
@@ -633,6 +638,7 @@ namespace cgl
 				lhs = As<bool>(lhs) ? true_cost : false_cost;
 			}
 
+			CGL_DBG;
 			switch (node.op)
 			{
 			case BinaryOp::And: return LRValue(AddFunc(lhs, rhs, *pEnv));
@@ -663,6 +669,7 @@ namespace cgl
 		}
 		else if (auto valOpt = AsOpt<Identifier>(node.lhs))
 		{
+			CGL_DBG;
 			const Identifier& identifier = valOpt.get();
 
 			const Address address = pEnv->findAddress(identifier);
@@ -679,16 +686,20 @@ namespace cgl
 				pEnv->bindNewValue(identifier, rhs);
 			}
 
+			CGL_DBG;
 			return LRValue(rhs);
 		}
 		else if (auto accessorOpt = AsOpt<Accessor>(node.lhs))
 		{
+			CGL_DBG;
 			Eval evaluator(pEnv);
 			const LRValue lhs = boost::apply_visitor(evaluator, node.lhs);
+			CGL_DBG;
 			if (lhs.isLValue())
 			{
 				if (lhs.isValid())
 				{
+					CGL_DBG;
 					//pEnv->assignToObject(address, rhs);
 					pEnv->assignToAccessor(accessorOpt.get(), LRValue(rhs), node);
 					return LRValue(rhs);
@@ -703,6 +714,7 @@ namespace cgl
 				CGL_Error("アクセッサの評価結果が無効な値です。");
 			}
 		}
+		CGL_DBG;
 
 		CGL_ErrorNodeInternal(node, "不明な二項演算子です。");
 		return LRValue(0);
@@ -710,7 +722,9 @@ namespace cgl
 
 	LRValue EvalSatExpr::operator()(const KeyExpr& node)
 	{
+		CGL_DBG;
 		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
+		CGL_DBG;
 		Val rhs = pEnv->expand(rhs_, node);
 		if (pEnv->existsInCurrentScope(node.name))
 		{
@@ -721,6 +735,7 @@ namespace cgl
 			pEnv->bindNewValue(node.name, rhs);
 		}
 
+		CGL_DBG;
 		return RValue(rhs);
 	}
 }

@@ -165,24 +165,70 @@ namespace cgl
 
 		boost::optional<double> expandFreeOpt(Address address)const;
 
-		LRValue operator()(const LRValue& node)override { return Eval::operator()(node); }
-		LRValue operator()(const Identifier& node)override { return Eval::operator()(node); }
-		LRValue operator()(const Import& node)override { return Eval::operator()(node); }
+		/*LRValue operator()(const LRValue& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const Identifier& node)override { std::cerr << "Identifier\"" << node.toString() << "\"" << std::endl; return Eval::operator()(node); }
+		LRValue operator()(const Import& node)override { CGL_DBG; return Eval::operator()(node); }
 		LRValue operator()(const UnaryExpr& node)override;
 		LRValue operator()(const BinaryExpr& node)override;
-		LRValue operator()(const DefFunc& node)override { return Eval::operator()(node); }
-		LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)override { return Eval::callFunction(info, funcVal, expandedArguments); }
-		LRValue inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder)override { return Eval::inheritRecord(info, original, adder); }
-		LRValue operator()(const Range& node)override { return Eval::operator()(node); }
-		LRValue operator()(const Lines& node)override { return Eval::operator()(node); }
-		LRValue operator()(const If& node)override { return Eval::operator()(node); }
-		LRValue operator()(const For& node)override { return Eval::operator()(node); }
-		LRValue operator()(const Return& node)override { return Eval::operator()(node); }
-		LRValue operator()(const ListConstractor& node)override { return Eval::operator()(node); }
+		LRValue operator()(const DefFunc& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)override
+		{ CGL_DBG; return Eval::callFunction(info, funcVal, expandedArguments); }
+		LRValue inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder)override
+		{ CGL_DBG; return Eval::inheritRecord(info, original, adder); }
+		LRValue operator()(const Range& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const Lines& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const If& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const For& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const Return& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const ListConstractor& node)override { CGL_DBG; return Eval::operator()(node); }
 		LRValue operator()(const KeyExpr& node)override;
-		LRValue operator()(const RecordConstractor& node)override { return Eval::operator()(node); }
-		LRValue operator()(const DeclSat& node)override { return Eval::operator()(node); }
-		LRValue operator()(const DeclFree& node)override { return Eval::operator()(node); }
-		LRValue operator()(const Accessor& node)override { return Eval::operator()(node); }
+		LRValue operator()(const RecordConstractor& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const DeclSat& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const DeclFree& node)override { CGL_DBG; return Eval::operator()(node); }
+		LRValue operator()(const Accessor& node)override { CGL_DBG; return Eval::operator()(node); }*/
+
+		LRValue operator()(const LRValue& node)override {
+			CGL_DBG; 
+			auto result = Eval::operator()(node); CGL_DBG; return result;
+		}
+		LRValue operator()(const Identifier& node)override { std::cerr << "Identifier\"" << node.toString() << "\"" << std::endl; return Eval::operator()(node); }
+		LRValue operator()(const Import& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const UnaryExpr& node)override;
+		LRValue operator()(const BinaryExpr& node)override;
+		LRValue operator()(const DefFunc& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)override
+		{
+			CGL_DBG;
+			auto result = Eval::callFunction(info, funcVal, expandedArguments);
+			CGL_DBG; return result;
+		}
+		LRValue inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder)override
+		{
+			CGL_DBG;
+			auto result = Eval::inheritRecord(info, original, adder); CGL_DBG; return result;
+		}
+		LRValue operator()(const Range& node)override { CGL_DBG;
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const Lines& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const If& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const For& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const Return& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const ListConstractor& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const KeyExpr& node)override;
+		LRValue operator()(const RecordConstractor& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const DeclSat& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const DeclFree& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
+		LRValue operator()(const Accessor& node)override { CGL_DBG; 
+		auto result = Eval::operator()(node); CGL_DBG; return result; }
 	};
 }

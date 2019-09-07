@@ -304,7 +304,6 @@ namespace cgl
 #ifdef CGL_HAS_STANDARD_FILE
 	Program::Program() :
 		pEnv(Context::Make()),
-		evaluator(pEnv),
 		isInitialized(true)
 	{
 		std::cout << "load PitaStd ..." << std::endl;
@@ -328,7 +327,6 @@ namespace cgl
 #else
 	Program::Program() :
 		pEnv(Context::Make()),
-		evaluator(pEnv),
 		isInitialized(false)
 	{}
 #endif
@@ -378,7 +376,7 @@ namespace cgl
 						//_set_se_translator(TranslateInternalException);
 
 						const double executeBegin = GetSec();
-						const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
+						const LRValue lrvalue = ExecuteProgramWithRec(exprOpt.get(), pEnv);
 						profileTime.executeSec = GetSec() - executeBegin;
 
 						evaluated = pEnv->expand(lrvalue, LocationInfo());
@@ -492,7 +490,7 @@ namespace cgl
 				}
 
 				if (logOutput) std::cerr << "execute ..." << std::endl;
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
+				const LRValue lrvalue = ExecuteProgramWithRec(exprOpt.get(), pEnv);
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
 				if (logOutput)
 				{
@@ -555,7 +553,7 @@ namespace cgl
 		{
 			if (auto exprOpt = ParseFromSourceCode(source))
 			{
-				const LRValue lrvalue = boost::apply_visitor(evaluator, exprOpt.get());
+				const LRValue lrvalue = ExecuteProgramWithRec(exprOpt.get(), pEnv);
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
 		
 				std::stringstream ss;
@@ -593,7 +591,7 @@ namespace cgl
 			isInitialized = true;
 		}
 		evaluated = boost::none;
-		evaluator = Eval(pEnv);
+		//evaluator = Eval(pEnv);
 		succeeded = false;
 	}
 
@@ -648,7 +646,7 @@ namespace cgl
 		{
 			std::cerr << "Parse \"" << input_filename << "\" ..." << std::endl;
 		}
-
+		
 		try
 		{
 			if (auto exprOpt = Parse1(input_filename))
@@ -656,7 +654,7 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
-					printExpr(exprOpt.get(), pEnv, std::cerr);
+					//printExpr(exprOpt.get(), pEnv, std::cerr);
 				}
 
 				if (logOutput) std::cerr << "execute ..." << std::endl;
@@ -664,13 +662,16 @@ namespace cgl
 				const Expr expr = exprOpt.get();
 				if (IsType<Lines>(expr))
 				{
+					printExpr(expr, pEnv, std::cerr);
+
 					const Lines& lines = As<Lines>(expr);
 					pEnv->enterScope();
 
 					Val result;
 					for (const auto& expr : lines.exprs)
 					{
-						result = pEnv->expand(boost::apply_visitor(evaluator, expr), lines);
+						result = pEnv->expand(ExecuteProgramWithRec(expr, pEnv), lines);
+						//result = pEnv->expand(ExecuteProgram(expr, pEnv), lines);
 
 						if (IsType<Jump>(result))
 						{

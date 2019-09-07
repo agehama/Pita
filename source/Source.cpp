@@ -33,6 +33,9 @@ static void MEM_Init() {}
 #include <Pita/Program.hpp>
 #include <Pita/Parser.hpp>
 
+#include <Pita/Node.hpp>
+#include <Pita/Printer.hpp>
+
 extern bool calculating;
 extern bool isDebugMode;
 extern bool isBlockingMode;
@@ -1020,7 +1023,7 @@ Library.
 	}
 
 	//ofs.open("log.txt");
-	
+
 	calculating = true;
 	cgl::Program program;
 

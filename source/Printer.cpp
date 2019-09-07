@@ -1002,14 +1002,14 @@ namespace cgl
 
 	void Printer2::operator()(const DeclSat& node)const
 	{
-		os << indent() << "DeclSat(" << footer();
+		os << indent() << "sat(" << footer();
 		boost::apply_visitor(Printer2(pEnv, os, m_indent + 1), node.expr);
 		os << indent() << ")" << footer();
 	}
 
 	void Printer2::operator()(const DeclFree& node)const
 	{
-		os << indent() << "DeclFree(" << footer();
+		os << indent() << "var(" << footer();
 		for (const auto& varRange : node.accessors)
 		{
 			Expr expr = varRange.accessor;

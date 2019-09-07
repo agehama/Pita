@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include <boost/functional/hash.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <cppoptlib/meta.h>
 #include <cppoptlib/problem.h>
@@ -262,6 +263,78 @@ namespace cgl
 		return Identifier(Unicode::UTF32ToUTF8(name_));
 	}
 
+	bool Identifier::isDeferredCall()const
+	{
+		return boost::starts_with(name, "#DeferredCall");
+	}
+
+	Identifier Identifier::asDeferredCall(const ScopeAddress& identifierScopeInfo)const
+	{
+		if (isDeferredCall())
+		{
+			return *this;
+		}
+
+		std::string head("#DeferredCall(");
+		for (unsigned scopeIndex : identifierScopeInfo)
+		{
+			head += std::to_string(scopeIndex) + ",";
+		}
+		head += ")";
+		
+		return Identifier(head + name);
+	}
+
+	bool Identifier::isMakeClosure()const
+	{
+		return boost::starts_with(name, "#MakeClosure");
+	}
+
+	Identifier Identifier::asMakeClosure(const ScopeAddress& identifierScopeInfo)const
+	{
+		if (isMakeClosure())
+		{
+			return *this;
+		}
+
+		std::string head("#MakeClosure(");
+		for (unsigned scopeIndex : identifierScopeInfo)
+		{
+			head += std::to_string(scopeIndex) + ",";
+		}
+		head += ")";
+
+		return Identifier(head + name);
+	}
+
+	std::pair<ScopeAddress, Identifier> Identifier::decomposed()const
+	{
+		if (!isDeferredCall() && !isMakeClosure())
+		{
+			return { {},*this };
+		}
+
+		const size_t tagEndIndex = name.find_first_of(')');
+
+		ScopeAddress scopeAddress;
+		{
+			const std::string scopeIndices(name.begin() + name.find_first_of('(') + 1, name.begin() + tagEndIndex);
+			size_t currentPos = 0;
+			size_t nextPos = scopeIndices.find_first_of(',', currentPos);
+			while (nextPos != std::string::npos)
+			{
+				const std::string currentStr(scopeIndices.begin() + currentPos, scopeIndices.begin() + nextPos);
+				const int scopeIndex = std::stoi(currentStr);
+				scopeAddress.push_back(scopeIndex);
+				currentPos = nextPos + 1;
+				nextPos = scopeIndices.find_first_of(',', currentPos);
+			}
+		}
+
+		const Identifier rawIdentifier(std::string(name.begin() + tagEndIndex + 1, name.end()));
+		return { scopeAddress,rawIdentifier };
+	}
+
 	bool EitherReference::localReferenciable(const Context& context)const
 	{
 		return local && context.existsInLocalScope(local.get());
@@ -273,6 +346,16 @@ namespace cgl
 		ss << (local ? local.get().toString() : std::string("None"));
 		ss << " | " << "Address(" << replaced.toString() << ")";
 		return ss.str();
+	}
+
+	LRValue LRValue::Bool(bool a)
+	{
+		return LRValue(Val(a));
+	}
+	
+	LRValue LRValue::Int(int a)
+	{
+		return LRValue(Val(a));
 	}
 
 	LRValue LRValue::Float(const std::u32string& str)
@@ -516,26 +599,34 @@ namespace cgl
 			CGL_Error("ファイルのimportに失敗");
 		}
 
+		//ただのインポート
+		//Import(filename)
 		if (!importName.empty())
 		{
 			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(it->second.get()), BinaryOp::Assign);
 			printExpr(importParseTree, pContext, std::cout);
-			Eval evaluator(pContext);
-			return boost::apply_visitor(evaluator, importParseTree);
+			//Eval evaluator(pContext);
+			//return boost::apply_visitor(evaluator, importParseTree);
+			return ExecuteProgramWithRec(importParseTree, pContext);
 		}
 
-		if (IsType<Lines>(it->second.get()))
+		if (false)
 		{
-			Eval evaluator(pContext);
-
-			LRValue result;
-			const auto& lines = As<Lines>(it->second.get());
-			for (const auto& expr : lines.exprs)
+			//修飾子付きインポート
+			//Import(filename) as name
+			if (IsType<Lines>(it->second.get()))
 			{
-				result = boost::apply_visitor(evaluator, expr);
-			}
+				Eval evaluator(pContext);
 
-			return result;
+				LRValue result;
+				const auto& lines = As<Lines>(it->second.get());
+				for (const auto& expr : lines.exprs)
+				{
+					result = boost::apply_visitor(evaluator, expr);
+				}
+
+				return result;
+			}
 		}
 
 		CGL_Error("ファイルのimportに失敗");
@@ -827,6 +918,9 @@ namespace cgl
 
 	std::vector<double> OptimizationProblemSat::solve(std::shared_ptr<Context> pEnv, const LocationInfo& info, const Record currentRecord, const std::vector<Identifier>& currentKeyList)
 	{
+		std::cerr << "OptimizationProblemSat::solve : " << std::endl;
+		printExpr2(expr.get(), pEnv, std::cerr);		
+
 		constructConstraint(pEnv);
 		CGL_DBG1(std::string("Current constraint freeVariablesSize: ") + ToS(freeVariableRefs.size()));
 
@@ -1076,7 +1170,9 @@ namespace cgl
 					}
 
 					pEnv->switchFrontScope();
+					pEnv->enterScope();
 					double result = eval(pEnv, info);
+					pEnv->exitScope();
 					pEnv->switchBackScope();
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
@@ -1120,21 +1216,29 @@ namespace cgl
 				std::cout << "Solve constraint by BFGS...\n";
 
 				ConstraintProblem constraintProblem;
+				CGL_DBG;
 				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
 				{
+					CGL_DBG;
 					for (int i = 0; i < v.size(); ++i)
 					{
 						update(variable2Data[i], v[i]);
 					}
 
+					CGL_DBG;
 					for (const auto& keyval : invRefs)
 					{
 						pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
 					}
 
+					CGL_DBG;
 					pEnv->switchFrontScope();
+					pEnv->enterScope();
 					double result = eval(pEnv, info);
+					pEnv->exitScope();
 					pEnv->switchBackScope();
+
+					CGL_DBG;
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
 					//std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
@@ -1182,6 +1286,7 @@ namespace cgl
 					double result;
 
 					pEnv->switchFrontScope();
+					pEnv->enterScope();
 					try
 					{
 						result = eval(pEnv, info);
@@ -1191,6 +1296,7 @@ namespace cgl
 						std::cout << "Eval: " << e.what() << std::endl;
 						throw;
 					}
+					pEnv->exitScope();
 					pEnv->switchBackScope();
 
 					if (isDebugMode)
@@ -1319,7 +1425,9 @@ namespace cgl
 					}
 
 					pEnv->switchFrontScope();
+					pEnv->enterScope();
 					double result = eval(pEnv, info);
+					pEnv->exitScope();
 					pEnv->switchBackScope();
 
 					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
@@ -1368,6 +1476,7 @@ namespace cgl
 					double result;
 
 					pEnv->switchFrontScope();
+					pEnv->enterScope();
 					try
 					{
 						result = eval(pEnv, info);
@@ -1377,6 +1486,7 @@ namespace cgl
 						std::cout << "Eval: " << e.what() << std::endl;
 						throw;
 					}
+					pEnv->exitScope();
 					pEnv->switchBackScope();
 
 					//limbo maximizes target function
@@ -1469,9 +1579,12 @@ namespace cgl
 			printExpr(expr.get());
 		}*/
 		
+		CGL_DBG;
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
+		CGL_DBG;
 		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.get()), info);
-		
+		CGL_DBG;
+
 		if (IsType<double>(evaluated))
 		{
 			return As<double>(evaluated);
@@ -1480,8 +1593,65 @@ namespace cgl
 		{
 			return As<int>(evaluated);
 		}
+		
+		CGL_DBG;
 
 		CGL_Error("sat式の評価結果が不正");
+	}
+
+	//値同士が等しいかを知りたいのでAddressはハッシュには含めない
+	class ValueHasher : public boost::static_visitor<size_t>
+	{
+	public:
+		ValueHasher() = default;
+
+		size_t operator()(bool node)const { return std::hash<bool>()(node); }
+		size_t operator()(int node)const { return std::hash<int>()(node); }
+		size_t operator()(double node)const { return std::hash<double>()(node); }
+		size_t operator()(const CharString& node)const { return std::hash<std::u32string>()(node.toString()); }
+		size_t operator()(const PackedList& node)const
+		{
+			size_t result = 0;
+			for (const auto& val : node.data)
+			{
+				boost::hash_combine(result, boost::apply_visitor(*this, val.value));
+			}
+			return result;
+		}
+		size_t operator()(const KeyValue& node)const
+		{
+			return 0;
+		}
+		size_t operator()(const PackedRecord& node)const
+		{
+			size_t result = 0;
+			for (const auto& keyval : node.values)
+			{
+				boost::hash_combine(result, std::hash<std::string>()(keyval.first));
+				boost::hash_combine(result, boost::apply_visitor(*this, keyval.second.value));
+			}
+			return result;
+		}
+		size_t operator()(const FuncVal& node)const
+		{
+			return 0;
+		}
+		size_t operator()(const Jump& node)const
+		{
+			return 0;
+		}
+	};
+
+	size_t GetHash(const PackedVal& val)
+	{
+		ValueHasher hasher;
+		return boost::apply_visitor(hasher, val);
+	}
+
+	size_t GetHash(const Val& val, const Context& context)
+	{
+		const PackedVal& packed = Packed(val, context);
+		return GetHash(packed);
 	}
 
 	//中身のアドレスを全て一つの値にまとめる

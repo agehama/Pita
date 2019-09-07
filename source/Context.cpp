@@ -542,8 +542,7 @@ namespace cgl
 			functionArguments.insert(arg);
 		}
 
-		ClosureMaker maker(pEnv, functionArguments);
-		const Expr closedFuncExpr = boost::apply_visitor(maker, expr);
+		const Expr closedFuncExpr = AsClosure(*pEnv, expr);
 
 		FuncVal funcVal(arguments, closedFuncExpr);
 		return makeTemporaryValue(funcVal);
@@ -1340,6 +1339,150 @@ namespace cgl
 		}
 
 		return Address::Null();
+	}
+
+	std::set<std::string> Context::getVisibleIdentifiers()const
+	{
+		std::set<std::string> result;
+		for (const auto& env : m_localEnvStack)
+		{
+			for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
+			{
+				for (const auto& nameVal : scopeIt->variables)
+				{
+					result.insert(nameVal.first);
+				}
+			}
+		}
+		return result;
+	}
+
+	boost::optional<DefFuncWithScopeInfo&> Context::getDeferredFunction(const Identifier& deferredIdentifier)
+	{
+		if (!deferredIdentifier.isDeferredCall() && !deferredIdentifier.isMakeClosure())
+		{
+			//std::cerr << "End   getDeferredFunction(0)" << std::endl;
+			return boost::none;
+		}
+
+		auto [callerScopeInfo, rawIdentifier] = deferredIdentifier.decomposed();
+		
+		/*std::cerr << "deferredIdentifiers: " << deferredIdentifiers.size() << std::endl;
+		for (const auto& keyval : deferredIdentifiers)
+		{
+			std::cerr << "key: " << static_cast<std::string>(keyval.first) << std::endl;
+		}*/
+
+		// 呼び出しと一致する識別子の検索
+		auto it = deferredIdentifiers.find(rawIdentifier);
+		if (it == deferredIdentifiers.end() || it->second.empty())
+		{
+			//std::cerr << "End   getDeferredFunction(1) \"" << static_cast<std::string>(rawIdentifier) <<"\""<< std::endl;
+			return boost::none;
+		}
+		
+		// 呼び出しと一致するインデックス配列の検索
+		std::vector<DefFuncWithScopeInfo>& scopeInfos = it->second;
+		int maxMatchCount = -1;
+		int maxMatchCountIndex = -1;
+		
+		for (size_t functionIndex = 0; functionIndex < scopeInfos.size(); ++functionIndex)
+		{
+			const DefFuncWithScopeInfo& currentFuncInfo = scopeInfos[functionIndex];
+			const auto& funcScopeInfo = currentFuncInfo.scopeInfo;
+
+			// 呼び出し側より深いスコープで定義された遅延識別子が呼ばれることはない
+			if (callerScopeInfo.size() < funcScopeInfo.size())
+			{
+				continue;
+			}
+
+			// 呼び出しの必要条件：関数側のスコープが呼び出し側のスコープを包含している
+			// <=> 関数側のスコープインデックス配列が呼び出し側のスコープインデックス配列に包含されている
+			bool matched = true;
+			for (size_t i = 0; i < funcScopeInfo.size(); ++i)
+			{
+				if (funcScopeInfo[i] != callerScopeInfo[i])
+				{
+					matched = false;
+				}
+			}
+
+			// 呼び出し可能な遅延識別子の中ではより深いスコープで定義されたものが優先される
+			if (matched && maxMatchCount < static_cast<int>(funcScopeInfo.size()))
+			{
+				maxMatchCount = static_cast<int>(funcScopeInfo.size());
+				maxMatchCountIndex = static_cast<int>(functionIndex);
+			}
+		}
+
+		if (maxMatchCountIndex == -1)
+		{
+			//std::cerr << "End   getDeferredFunction(2)" << std::endl;
+			return boost::none;
+		}
+
+		//std::cerr << "End   getDeferredFunction(3)" << std::endl;
+		return scopeInfos[maxMatchCountIndex];
+	}
+
+	boost::optional<const DefFuncWithScopeInfo&> Context::getDeferredFunction(const Identifier& deferredIdentifier)const
+	{
+		if (!deferredIdentifier.isDeferredCall() && !deferredIdentifier.isMakeClosure())
+		{
+			return boost::none;
+		}
+
+		auto [callerScopeInfo, rawIdentifier] = deferredIdentifier.decomposed();
+
+		// 呼び出しと一致する識別子の検索
+		auto it = deferredIdentifiers.find(rawIdentifier);
+		if (it == deferredIdentifiers.end() || it->second.empty())
+		{
+			return boost::none;
+		}
+
+		// 呼び出しと一致するインデックス配列の検索
+		const std::vector<DefFuncWithScopeInfo>& scopeInfos = it->second;
+		int maxMatchCount = -1;
+		int maxMatchCountIndex = -1;
+
+		for (size_t functionIndex = 0; functionIndex < scopeInfos.size(); ++functionIndex)
+		{
+			const DefFuncWithScopeInfo& currentFuncInfo = scopeInfos[functionIndex];
+			const auto& funcScopeInfo = currentFuncInfo.scopeInfo;
+
+			// 呼び出し側より深いスコープで定義された遅延識別子が呼ばれることはない
+			if (callerScopeInfo.size() < funcScopeInfo.size())
+			{
+				continue;
+			}
+
+			// 呼び出しの必要条件：関数側のスコープが呼び出し側のスコープを包含している
+			// <=> 関数側のスコープインデックス配列が呼び出し側のスコープインデックス配列に包含されている
+			bool matched = true;
+			for (size_t i = 0; i < funcScopeInfo.size(); ++i)
+			{
+				if (funcScopeInfo[i] != callerScopeInfo[i])
+				{
+					matched = false;
+				}
+			}
+
+			// 呼び出し可能な遅延識別子の中ではより深いスコープで定義されたものが優先される
+			if (matched && maxMatchCount < static_cast<int>(funcScopeInfo.size()))
+			{
+				maxMatchCount = static_cast<int>(funcScopeInfo.size());
+				maxMatchCountIndex = static_cast<int>(functionIndex);
+			}
+		}
+
+		if (maxMatchCountIndex == -1)
+		{
+			return boost::none;
+		}
+
+		return scopeInfos[maxMatchCountIndex];
 	}
 
 	void Context::initialize()

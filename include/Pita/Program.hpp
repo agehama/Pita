@@ -72,7 +72,7 @@ namespace cgl
 	private:
 		ProfileResult profileTime;
 		std::shared_ptr<Context> pEnv;
-		Eval evaluator;
+		//Eval evaluator;
 		boost::optional<Val> evaluated;
 		bool succeeded;
 		bool isInitialized;

@@ -40,51 +40,7 @@ namespace cgl
 
 	Val Clone(std::shared_ptr<Context> pEnv, const Val& value, const LocationInfo& info);
 
-	//関数式を構成する識別子が関数内部で閉じているものか、外側のスコープに依存しているものかを調べ
-	//外側のスコープを参照する識別子をアドレスに置き換えた式を返す
-	class ClosureMaker : public boost::static_visitor<Expr>
-	{
-	public:
-		//関数内部で閉じているローカル変数
-		std::set<std::string> localVariables;
-
-		std::shared_ptr<Context> pEnv;
-
-		//レコード継承の構文を扱うために必要
-		bool isInnerRecord;
-
-		//内側の未評価式における参照変数の展開を防ぐために必要
-		bool isInnerClosure;
-
-		ClosureMaker(std::shared_ptr<Context> pEnv, const std::set<std::string>& functionArguments, bool isInnerRecord = false, bool isInnerClosure = false) :
-			pEnv(pEnv),
-			localVariables(functionArguments),
-			isInnerRecord(isInnerRecord),
-			isInnerClosure(isInnerClosure)
-		{}
-
-		ClosureMaker& addLocalVariable(const std::string& name);
-
-		bool isLocalVariable(const std::string& name)const;
-
-		Expr operator()(const LRValue& node) { return node; }
-		Expr operator()(const Identifier& node);
-		Expr operator()(const Import& node) { return node; }
-		Expr operator()(const UnaryExpr& node);
-		Expr operator()(const BinaryExpr& node);
-		Expr operator()(const Range& node);
-		Expr operator()(const Lines& node);
-		Expr operator()(const DefFunc& node);
-		Expr operator()(const If& node);
-		Expr operator()(const For& node);
-		Expr operator()(const Return& node);
-		Expr operator()(const ListConstractor& node);
-		Expr operator()(const KeyExpr& node);
-		Expr operator()(const RecordConstractor& node);
-		Expr operator()(const Accessor& node);
-		Expr operator()(const DeclSat& node);
-		Expr operator()(const DeclFree& node);
-	};
+	Expr AsClosure(Context& context, const Expr& expr);
 
 	class Eval : public boost::static_visitor<LRValue>
 	{
@@ -115,7 +71,13 @@ namespace cgl
 		std::shared_ptr<Context> pEnv;
 	};
 
-	boost::optional<const Val&> evalExpr(const Expr& expr);
+	//プログラム実行（再帰非対応）
+	//boost::optional<const Val&> evalExpr(const Expr& expr);
+	LRValue ExecuteProgram(const Expr& expr, std::shared_ptr<Context> pContext);
+
+	//プログラム実行（再帰対応）
+	//boost::optional<const Val&> ExecuteProgramWithRec(const Expr& expr, std::shared_ptr<Context> pContext = nullptr);
+	LRValue ExecuteProgramWithRec(const Expr& expr, std::shared_ptr<Context> pContext);
 
 	bool IsEqualVal(const Val& value1, const Val& value2);
 

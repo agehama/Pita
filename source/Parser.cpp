@@ -186,8 +186,8 @@ namespace cgl
 		//char_string = lexeme[*(encode::char_ - encode::char_('\"'))];
 		char_string = lexeme['\"' > *(encode::char_ - encode::char_('\"')) > '\"'];
 
-		distinct_keyword = lexeme[keywords >> !(encode::alnum | '_')];
-		unchecked_identifier = lexeme[(encode::alpha | encode::char_('_')) >> *(encode::alnum | encode::char_('_'))];
+		distinct_keyword = lexeme[keywords >> !(encode::alnum | '_' | '#')];
+		unchecked_identifier = lexeme[(encode::alpha | encode::char_('_')) >> *(encode::alnum | encode::char_('_') | encode::char_('#'))];
 
 		//float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9')];
 		float_value = lexeme[+encode::char_('0', '9') >> encode::char_('.') >> +encode::char_('0', '9') >> -(encode::char_('e') >> (encode::char_('+') | encode::char_('-')) >> +encode::char_('0', '9'))];
@@ -604,6 +604,21 @@ namespace cgl
 			}
 		}
 
+		{
+			std::string input = escapedStr.str();
+
+			size_t index = 0;
+			while (index = input.find("\\_", index), index != std::string::npos)
+			{
+				input[index + 0] = '#';
+				input[index + 1] = '#';
+				index = index + 2;
+			}
+
+			escapedStr.str(input);
+			escapedStr.clear(std::stringstream::goodbit);
+		}
+
 		//s––‚ÉƒJƒ“ƒ}‚ğ‘}“ü
 		{
 			const std::string postExpectingSymbols1("[({:=!?&|<>*/,+-@");
@@ -762,6 +777,8 @@ namespace cgl
 
 	boost::optional<Expr> Parse1(const std::string& filename)
 	{
+		std::cout << "current directory: \"" << filesystem::current_path().string() << "\"" << std::endl;
+
 		std::cout << "parse \"" << filename << "\" ..." << std::endl;
 
 		std::ifstream ifs(filename);

@@ -53,13 +53,7 @@ namespace cgl
 	Expr ExprTransformer::operator()(const For& node)
 	{
 		For result;
-
-		std::cout  << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
-		Printer2 printer(nullptr, std::cout);
-		boost::apply_visitor(printer, node.rangeStart);
 		result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
-		std::cout  << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
-		
 		result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
 		result.loopCounter = node.loopCounter;
 		result.doExpr = boost::apply_visitor(*this, node.doExpr);

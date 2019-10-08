@@ -15,33 +15,12 @@ namespace cgl
 	{
 	public:
 		using ValueList = std::unordered_map<Address, ValueType>;
-		//using ValueList = std::map<Address, ValueType>;
 
 		Values() = default;
 
 		Address add(const ValueType& value)
 		{
-			/*if (printAddressInsertion)
-			{
-				std::cout << "Insert Begin" << std::endl;
-			}*/
-			/*try
-			{
-				m_values.insert({ newAddress(), value });
-			}
-			catch (std::exception& e)
-			{
-				std::cout << "Values::add: " << e.what() << std::endl;
-				throw;
-			}*/
-
 			m_values.emplace(newAddress(), value);
-
-			/*if (printAddressInsertion)
-			{
-				std::cout << "Insert End" << std::endl;
-			}*/
-
 			return Address(m_ID);
 		}
 
@@ -352,6 +331,10 @@ namespace cgl
 		Values<BuiltInFunction> m_functions;
 		std::unordered_map<Address, std::string> m_plateausFunctions;
 
+		//TODO: ローカルスコープに常にグローバル関数のリストは入れておくようにする
+		//遅延呼び出し式の中でグローバル関数を呼び出せるように保存
+		std::unordered_map<std::string, Address> m_globalFunctions;
+
 		std::unordered_map<Reference, DeepReference> m_refAddressMap;
 		std::unordered_multimap<Address, Reference> m_addressRefMap;
 
@@ -362,6 +345,7 @@ namespace cgl
 		std::vector<LocalContext> m_localEnvStack;
 
 		int m_recDepth = -1;
+		int m_MaxRecDepth = 100;
 
 		unsigned m_referenceID = 0;
 
@@ -423,6 +407,7 @@ namespace cereal
 		ar(context.m_referenceID);
 		ar(context.m_lastGCValueSize);
 		ar(context.m_automaticExtendMode);
+		ar(context.m_globalFunctions);
 		//ar(context.m_automaticGC);
 
 		//std::uniform_real_distribution<double> m_dist;

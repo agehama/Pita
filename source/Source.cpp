@@ -35,10 +35,12 @@ static void MEM_Init() {}
 
 #include <Pita/Node.hpp>
 #include <Pita/Printer.hpp>
+#include <Pita/TreeLogger.hpp>
 
 extern bool calculating;
 extern bool isDebugMode;
 extern bool isBlockingMode;
+extern bool isContextFreeMode;
 
 #ifdef USE_CURSES
 /* Trap interrupt */
@@ -70,8 +72,10 @@ int main(int argc, char* argv[])
 			("o,output", "Output file path (if unspecified, result is printed to standard output)", cxxopts::value<std::string>())
 			("d,debug", "Enable debug mode")
 			("b,block", "Enable blocking mode")
-			("help", "Show help")
+			("h,help", "Show help")
 			("licence", "Show licence")
+			("logHTML", "Output log.html")
+			("contextFree", "Enable Context Free Mode(experimental)")
 			//("seed", "Random seed (if unspecified, seed is generated non-deterministically)", cxxopts::value<int>(), "N")
 			//("constraint-timeout", "Set timeout seconds of each constraint solving", cxxopts::value<int>(), "N")
 			;
@@ -938,6 +942,7 @@ Library.
 
 		isDebugMode = false;
 		isBlockingMode = false;
+		isContextFreeMode = false;
 		if (result.count("debug"))
 		{
 			isDebugMode = true;
@@ -945,6 +950,15 @@ Library.
 		if (result.count("block"))
 		{
 			isBlockingMode = true;
+		}
+		if (result.count("contextFree"))
+		{
+			isContextFreeMode = true;
+		}
+
+		if (result.count("logHTML"))
+		{
+			cgl::TreeLogger::instance().logStart("log.html");
 		}
 
 #ifdef USE_CURSES
@@ -1028,6 +1042,7 @@ Library.
 	cgl::Program program;
 
 	program.execute1(input_file, output_file, !isDebugMode);
+
 	/*
 	isDebugMode = true;
 	const bool flag = program.preEvaluate(input_file, output_file);

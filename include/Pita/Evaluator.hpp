@@ -40,8 +40,6 @@ namespace cgl
 
 	Val Clone(std::shared_ptr<Context> pEnv, const Val& value, const LocationInfo& info);
 
-	Expr AsClosure(Context& context, const Expr& expr);
-
 	class Eval : public boost::static_visitor<LRValue>
 	{
 	public:

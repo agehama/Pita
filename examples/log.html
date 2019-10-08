@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+
+html {
+  height: 100%;
+}
+body {
+  margin: 0;
+  height: 100%;
+}
+.ps__rail-y {
+  opacity: 1.0!important;
+  width: 15px!important;
+  background-size:100% 100% !important;
+}
+.ps__thumb-y {
+  width: 10px!important;
+}
+details {
+  background: #FFF;
+  margin: 7px 0;
+  padding: 0 0 1px 0;
+  border: solid #00a8ff;
+  border-width: 0px 0px 1px 2px;
+}
+summary {
+  background: #00a8ff;
+  color: #FFF;
+  font-weight: bold;
+  padding: 3px;
+  margin: 0 0px 5px -2px;
+}
+.bottomButton {
+  position: fixed;
+  z-index: 99;
+  font-size: 18px;
+  border: none;
+  outline: none;
+  background-color: #333;
+  color: #f2f2f2;
+  cursor: pointer;
+  padding: 15px;
+}
+.bottomButton:hover {
+  background: #ddd;
+  color: black;
+}
+#expandButton {
+  bottom: 20px;
+  right: 30px;
+}
+#closeButton {
+  bottom: 72px;
+  right: 30px;
+}</style>
+</head>
+<body>
+<button onclick="openAll()" class="bottomButton" id="expandButton">Expand all</button>
+<button onclick="closeAll()" class="bottomButton" id="closeButton">Close all</button>
+<div class="article">
+<details><summary>Eval::operator()(const&ensp;Lines&amp;&ensp;statement)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<p>isMakeClosure</p>
+<p>getDeferredFunction</p>
+<details><summary>ClosureMaker::operator()(const&ensp;RecordConstractor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<p>specialDef&ensp;replaced&ensp;closure:&ensp;</p>
+<p>{}<br>
+</p>
+<p>arguments:&ensp;</p>
+<p>x</p>
+</div>
+</details>
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<p>isMakeClosure</p>
+<p>getDeferredFunction</p>
+<p>original:&ensp;</p>
+<p>PrintExpr(<br>
+RecordConstractor[L0:0-L0:0](<br>
+(0):&ensp;<br>
+&ensp;&ensp;&ensp;&ensp;KeyExpr[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;b<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](#DeferredCall(0,0,)adder)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Add[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Int(1)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;{<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](Print)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;}<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+)<br>
+)&ensp;<br>
+</p>
+<p>arguments:&ensp;</p>
+<p>x</p>
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;RecordConstractor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;KeyExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;Accessor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<p>adder&ensp;is&ensp;currently&ensp;undefined&ensp;value</p>
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;BinaryExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;RecordConstractor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;Accessor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<p>Print&ensp;is&ensp;evaluated&ensp;value(direct&ensp;call)</p>
+<details><summary>DynamicDeferredIdentifierSearcher::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+<p>replaced:&ensp;</p>
+<p>{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+</p>
+<p>arguments:&ensp;</p>
+<p>x</p>
+<details><summary>ClosureMaker::operator()(const&ensp;RecordConstractor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>ClosureMaker::operator()(const&ensp;KeyExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>ClosureMaker::operator()(const&ensp;Accessor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>ClosureMaker::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<details><summary>ClosureMaker::operator()(const&ensp;BinaryExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>ClosureMaker::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<details><summary>ClosureMaker::operator()(const&ensp;RecordConstractor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>ClosureMaker::operator()(const&ensp;Accessor&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>ClosureMaker::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<details><summary>ClosureMaker::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+<p>hasDeferredCall&ensp;-&gt;&ensp;replaced&ensp;closure:&ensp;</p>
+<p>{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+</p>
+<p>arguments:&ensp;</p>
+<p>x</p>
+</div>
+</details>
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](#DeferredCall(0,)adder)<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Int(0)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+)<br>
+)&ensp;<br>
+</p>
+<p>deferred&ensp;call&ensp;func&ensp;&quot;#DeferredCall(0,)adder&quot;</p>
+<p>generalDef:&ensp;(x&ensp;-&gt;&ensp;<br>
+{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+)<br>
+</p>
+<p>funcAccess.actualArguments:&ensp;1</p>
+<p>args:&ensp;1</p>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;KeyExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](#DeferredCall(0,0,)adder)<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Add[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Int(1)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;{<br>
+&ensp;&ensp;&ensp;&ensp;Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;}<br>
+)<br>
+)&ensp;<br>
+</p>
+<p>deferred&ensp;call&ensp;func&ensp;&quot;#DeferredCall(0,0,)adder&quot;</p>
+<p>generalDef:&ensp;(x&ensp;-&gt;&ensp;<br>
+{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+)<br>
+</p>
+<p>funcAccess.actualArguments:&ensp;1</p>
+<details><summary>Eval::operator()(const&ensp;BinaryExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>args:&ensp;1</p>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;KeyExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](#DeferredCall(0,0,)adder)<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Add[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Int(1)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;{<br>
+&ensp;&ensp;&ensp;&ensp;Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;}<br>
+)<br>
+)&ensp;<br>
+</p>
+<p>deferred&ensp;call&ensp;func&ensp;&quot;#DeferredCall(0,0,)adder&quot;</p>
+<p>generalDef:&ensp;(x&ensp;-&gt;&ensp;<br>
+{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+)<br>
+</p>
+<p>funcAccess.actualArguments:&ensp;1</p>
+<details><summary>Eval::operator()(const&ensp;BinaryExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>args:&ensp;1</p>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;KeyExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](#DeferredCall(0,0,)adder)<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Add[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Int(1)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;{<br>
+&ensp;&ensp;&ensp;&ensp;Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;}<br>
+)<br>
+)&ensp;<br>
+</p>
+<p>deferred&ensp;call&ensp;func&ensp;&quot;#DeferredCall(0,0,)adder&quot;</p>
+<p>generalDef:&ensp;(x&ensp;-&gt;&ensp;<br>
+{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+)<br>
+</p>
+<p>funcAccess.actualArguments:&ensp;1</p>
+<details><summary>Eval::operator()(const&ensp;BinaryExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>args:&ensp;1</p>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;KeyExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](#DeferredCall(0,0,)adder)<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Add[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Int(1)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;{<br>
+&ensp;&ensp;&ensp;&ensp;Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;}<br>
+)<br>
+)&ensp;<br>
+</p>
+<p>deferred&ensp;call&ensp;func&ensp;&quot;#DeferredCall(0,0,)adder&quot;</p>
+<p>generalDef:&ensp;(x&ensp;-&gt;&ensp;<br>
+{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+)<br>
+</p>
+<p>funcAccess.actualArguments:&ensp;1</p>
+<details><summary>Eval::operator()(const&ensp;BinaryExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>args:&ensp;1</p>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;KeyExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](#DeferredCall(0,0,)adder)<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Add[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Int(1)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;{<br>
+&ensp;&ensp;&ensp;&ensp;Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+&ensp;&ensp;&ensp;&ensp;}<br>
+)<br>
+)&ensp;<br>
+</p>
+<p>deferred&ensp;call&ensp;func&ensp;&quot;#DeferredCall(0,0,)adder&quot;</p>
+<p>generalDef:&ensp;(x&ensp;-&gt;&ensp;<br>
+{b:&ensp;#DeferredCall(0,0,)adder(x&ensp;+&ensp;1){(Print|1)(x)}}<br>
+)<br>
+</p>
+<p>funcAccess.actualArguments:&ensp;1</p>
+<details><summary>Eval::operator()(const&ensp;BinaryExpr&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>args:&ensp;1</p>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+<details><summary>Eval::inheritRecord(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;Record&amp;&ensp;original,&ensp;const&ensp;RecordConstractor&amp;&ensp;adder)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;(Print|1)(x)<br>
+</p>
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+)<br>
+)&ensp;<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+<details><summary>Eval::inheritRecord(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;Record&amp;&ensp;original,&ensp;const&ensp;RecordConstractor&amp;&ensp;adder)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;(Print|1)(x)<br>
+</p>
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+)<br>
+)&ensp;<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+<details><summary>Eval::inheritRecord(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;Record&amp;&ensp;original,&ensp;const&ensp;RecordConstractor&amp;&ensp;adder)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;(Print|1)(x)<br>
+</p>
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+)<br>
+)&ensp;<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+<details><summary>Eval::inheritRecord(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;Record&amp;&ensp;original,&ensp;const&ensp;RecordConstractor&amp;&ensp;adder)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;(Print|1)(x)<br>
+</p>
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+)<br>
+)&ensp;<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+<details><summary>Eval::inheritRecord(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;Record&amp;&ensp;original,&ensp;const&ensp;RecordConstractor&amp;&ensp;adder)</summary>
+<div style="padding-left:1em">
+<details><summary>Eval::operator()(const&ensp;RecordConstractor&amp;&ensp;recordConsractor)</summary>
+<div style="padding-left:1em">
+<p>Record&ensp;Expressions&ensp;Evaluation</p>
+<p>&ensp;&ensp;eval&ensp;expr:&ensp;(Print|1)(x)<br>
+</p>
+<details><summary>cgl::Eval::operator&ensp;()[L0:0-L0:0]</summary>
+<div style="padding-left:1em">
+<p>Accessor&ensp;:<br>
+PrintExpr(<br>
+Accessor[L0:0-L0:0](<br>
+&ensp;&ensp;&ensp;&ensp;Reference[L0:0-L0:0](EitherReference(Print&ensp;|&ensp;Address(1)))<br>
+&ensp;&ensp;&ensp;&ensp;(<br>
+&ensp;&ensp;&ensp;&ensp;Identifier[L0:0-L0:0](x)<br>
+&ensp;&ensp;&ensp;&ensp;)<br>
+)<br>
+)&ensp;<br>
+</p>
+<details><summary>Eval::operator()(const&ensp;Identifier&amp;&ensp;node)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+<details><summary>Eval::callFunction(const&ensp;LocationInfo&amp;&ensp;info,&ensp;const&ensp;FuncVal&amp;&ensp;funcVal,&ensp;const&ensp;std::vector&lt;Address&gt;&amp;&ensp;arguments)</summary>
+<div style="padding-left:1em">
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+<p>Record&ensp;Expressions&ensp;Evaluation&ensp;-&ensp;End</p>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+</details>
+</div>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.perfect-scrollbar/1.4.0/css/perfect-scrollbar.min.css"/>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery.perfect-scrollbar/1.4.0/perfect-scrollbar.min.js"></script>
+<script type="text/javascript">
+
+const offscreen = document.createElement('canvas');
+offscreen.width = 10;
+offscreen.height = 1000;
+const offscreenContext = offscreen.getContext('2d');
+offscreenContext.fillRect(0, 0, 1000, 250);
+var container = document.querySelector('.article');
+var markerHeight = '1%';
+var staticStyle = document.createElement('style');
+container.appendChild(staticStyle);
+var dynamicStyle = document.createElement('style');
+container.appendChild(dynamicStyle);
+var scrollbarElement = document.getElementById('output-area');
+var ps;
+//webHydLa
+if(scrollbarElement)
+{
+  ps = new PerfectScrollbar('#output-area',{minScrollbarLength: 20});
+}
+//native HyLaGI output
+else
+{
+  staticSheet = staticStyle.sheet;
+  staticSheet.insertRule('.article {order: 1; flex: 1; width: 100%; height: 100%; position: relative; overflow-y: scroll; overflow-x: visible; display: block;}', 0);
+  ps = new PerfectScrollbar('.article',{minScrollbarLength: 20});
+}
+var dynamicSheet = dynamicStyle.sheet;
+const colors = ["rgb(255,255,255)","rgb(248,231,76)","rgb(248,191,40)","rgb(240,136,35)","rgb(231,89,30)","rgb(209,38,98)","rgb(173,0,142)","rgb(120,0,146)","rgb(43,0,118)","rgb(0,0,0)"];
+var currentRuleIndex = null;
+function updateScrollMarker(markers)
+{
+  offscreenContext.fillStyle = "rgb(255,255,255)";
+  offscreenContext.fillRect(0, 0, offscreen.width, offscreen.height);
+  for(var i = 0; i < markers.length; i++)
+  {
+    currentMarker = markers[i];
+    
+    offscreenContext.fillStyle = colors[Math.floor(currentMarker.time*colors.length)];
+    offscreenContext.fillRect(0, currentMarker.pos*offscreen.height-2, offscreen.width, 5);
+  }
+  if(currentRuleIndex != null)
+  {
+    dynamicSheet.deleteRule(currentRuleIndex);
+  }
+  styleText = '.ps__rail-y { background: url(\"' + offscreen.toDataURL() + '\"); }';
+  currentRuleIndex = dynamicSheet.insertRule(styleText, 0);
+}
+timers = document.getElementsByClassName('timer');
+var scrollOffset;
+var scrollHeight;
+var innerAutoProcess = false;
+function reloadMakers() {
+  if(innerAutoProcess)
+  {
+    return;
+  }
+  if(scrollbarElement)
+  {
+    scrollOffset = scrollbarElement.scrollTop;
+    scrollHeight = scrollbarElement.scrollHeight;
+  }
+  else
+  {
+    scrollOffset = container.scrollTop;
+    scrollHeight = container.scrollHeight;
+  }
+  ps.update();
+  threshold = 1.0;
+  var markerDictionary = {}
+  function getElementPos(element)
+  {
+    var posProgress = (element.getBoundingClientRect().top + scrollOffset) / scrollHeight;
+    return (posProgress).toFixed(3);
+  }
+  for(var i = 0; i < timers.length; i++)
+  {
+    currentTime = Number(timers[i].innerText);
+    if(threshold < currentTime)
+    {
+      threshold = currentTime;
+    }
+    var timerPosElem = $(timers[i]);
+    var currentDetails = $(timers[i]).closest('details');
+    var varOutermostClosedDetails = null;
+    while(true)
+    {
+      if(!currentDetails.attr('open'))
+      {
+        varOutermostClosedDetails = currentDetails;
+      }
+      parent = currentDetails.parent().closest('details');
+      if(parent.length == 0)
+      {
+        break;
+      }
+      currentDetails = parent;
+    }
+    var posElement = varOutermostClosedDetails ? varOutermostClosedDetails.get(0) : timerPosElem.get(0);
+    key = getElementPos(posElement);
+    if(key in markerDictionary)
+    {
+      markerDictionary[key] += currentTime;
+    }
+    else
+    {
+      markerDictionary[key] = currentTime;
+    }
+  }
+  console.log("threshold: ", threshold);
+  markers = [];
+  for (var key in markerDictionary)
+  {
+    //[0, 1)
+    colorRate = Math.min(markerDictionary[key], threshold - 1) / threshold;
+    markers.push({pos:key, time:colorRate});
+  }
+  markers.sort(function(a, b){
+    return a.time - b.time;
+  });
+  updateScrollMarker(markers);
+}
+function openAll() {
+  var x = document.getElementsByTagName("details");
+  for (var i = 0; i < x.length; i++) {
+    x[i].setAttribute("open", "true");
+  }
+  innerAutoProcess = false;
+  reloadMakers();
+  innerAutoProcess = true;
+  setTimeout(function(){ innerAutoProcess = false; }, 1000);
+}
+function closeAll() {
+  var x = document.getElementsByTagName("details");
+  for (var i = 0; i < x.length; i++) {
+    x[i].removeAttribute("open");
+  }
+  innerAutoProcess = false;
+  reloadMakers();
+  innerAutoProcess = true;
+  setTimeout(function(){ innerAutoProcess = false; }, 1000);
+}
+</script>
+</body>
+</html>

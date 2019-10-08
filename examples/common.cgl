@@ -22,6 +22,8 @@ Moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
 Vec2 = (x, y -> {x: x, y: y})
 X2 = (v -> {x: v, y: v})
 
+Angle = (r, theta -> {x: r*Cos(theta), y: r*Sin(theta)})
+
 Add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
 Sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
 

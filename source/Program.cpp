@@ -30,6 +30,7 @@ bool calculating;
 int constraintViolationCount;
 bool isDebugMode;
 bool isBlockingMode;
+bool isContextFreeMode;
 bool isInConstraint = false;
 
 bool printAddressInsertion = false;
@@ -75,7 +76,7 @@ namespace cgl
 			}
 		}
 	}
-
+	
 	void ExecuteAndDraw(const std::function<void()>& executeFunc)
 	{
 		const int windowWidth = COLS;
@@ -359,14 +360,14 @@ namespace cgl
 			if (auto exprOpt = Parse1(filepath))
 			{
 				profileTime.parseSec = GetSec() - parseBegin;
-
+				
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
 					//printExpr2(exprOpt.get(), pEnv, std::cerr);
 					printExpr(exprOpt.get(), pEnv, std::cerr);
 				}
-
+				
 				const auto executeAndOutputSVG = [&]()->void
 				{
 					try
@@ -688,6 +689,21 @@ namespace cgl
 					{
 						cereal::JSONOutputArchive ar(ss, cereal::JSONOutputArchive::Options::NoIndent());
 						Context& context = *pEnv;
+						{
+							context.m_globalFunctions.clear();
+
+							for (const auto& env : context.m_localEnvStack)
+							{
+								for (auto scopeIt = env.begin(); scopeIt != env.end(); ++scopeIt)
+								{
+									for (const auto& var : scopeIt->variables)
+									{
+										context.m_globalFunctions.insert(var);
+									}
+								}
+							}
+						}
+
 						ar(context);
 					}
 

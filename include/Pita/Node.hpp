@@ -65,27 +65,12 @@
 #include <Eigen/Core>
 
 #include "Error.hpp"
+#include "Util.hpp"
 
 namespace cgl
 {
-	const double pi = 3.1415926535;
-	const double deg2rad = pi / 180.0;
-	const double rad2deg = 180.0 / pi;
-
 	template<class T>
 	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
-
-	inline std::string AsUtf8(const std::u32string& input) {
-		return std::string(
-			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.begin()),
-			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.end()));
-	}
-
-	inline std::u32string AsUtf32(const std::string& input) {
-		return std::u32string(
-			boost::u8_to_u32_iterator<std::string::const_iterator>(input.begin()),
-			boost::u8_to_u32_iterator<std::string::const_iterator>(input.end()));
-	}
 
 	template<class T1, class T2>
 	inline bool SameType(const T1& t1, const T2& t2)
@@ -273,7 +258,8 @@ namespace cgl
 
 		bool isMakeClosure()const;
 		Identifier asMakeClosure(const ScopeAddress& identifierScopeInfo)const;
-
+		
+		//rawIdentifierの形式：再帰深度の情報は除去しないため##の付いた形で返る
 		std::pair<ScopeAddress, Identifier> decomposed()const;
 
 		/*friend std::ostream& operator<<(std::ostream& os, const Identifier& node)

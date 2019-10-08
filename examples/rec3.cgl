@@ -1,27 +1,10 @@
-//import "common.cgl"
-
 EnableGC(false)
 
-/*
-a = Shape{
-    a: Square{}
-    scale: X2(100)
-}
-*/
-
-Print(Shape{
-    a: Square{scale: X2(100)}
-    b: Shape{scale: X2(0.5), pos: Vec2(100, 0), angle: 30}
-})
-/*
-
-//A\_10 = Square{scale: X2(100)}
-A\_10 = {}
+A\_10 = Square{scale: X2(100)}
 
 A = Shape{
     a: Square{scale: X2(100)}
-    b: A{scale: X2(0.5), pos: Vec2(100, 0), angle: 30}
+    b: A{scale: X2(0.9), pos: Vec2(100, 0), angle: 30}
 }
 
 A{}
-*/

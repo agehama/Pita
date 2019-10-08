@@ -116,3 +116,5 @@ main = Shape{
     stroke: Rgb(0,0,0)
     fill: 0
 }
+
+main

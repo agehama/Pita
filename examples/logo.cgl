@@ -10,7 +10,7 @@ tri = Shape{
 
 pita = Shape{
     //text: (Text("Pita")){scale: X2(2.0)}
-    text: (a = Text("Pita"), a{scale: X2(2.0)})
+    text: (a = Text("Pita"), Buffer(a{scale: X2(3.3)}, -1.5))
     rect = BoundingBox(text)
     rect2 = Square{polygon=rect.polygon}
 }

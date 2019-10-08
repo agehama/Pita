@@ -1,0 +1,9 @@
+EnableGC(false)
+
+x\_4 = 1
+y\_4 = 1
+
+x = y + 1
+y = x * 2
+
+Print(x)

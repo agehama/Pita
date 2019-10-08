@@ -1,0 +1,18 @@
+unitSize = 500.0
+
+crossRect = (r,g,b -> Shape{
+    rate = 1.0/3.0
+    c = 60
+    s: for x in -1:1 list(
+        for y in -1:1 list(
+            if x != 0 | y != 0
+            then crossRect(r+c*(1-x),g+c*(1-y),b){
+                pos: Vec2(x, y)*unitSize*rate/**0.75*/
+                scale: X2(rate)/*, angle: 45*/}
+        )
+    )
+})
+
+crossRect\_3 = (r,g,b -> Shape{s:Square{scale: X2(unitSize), fill: Rgb(r,g,b)}})
+
+crossRect(0,0,200)

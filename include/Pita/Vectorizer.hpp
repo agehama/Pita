@@ -145,7 +145,8 @@ namespace cgl
 		std::string toString()const
 		{
 			std::stringstream ss;
-			ss << "rgb(" << r << ", " << g << ", " << b << ")";
+			const auto clamp = [](int x) {return std::max(std::min(x, 255), 0); };
+			ss << "rgb(" << clamp(r) << ", " << clamp(g) << ", " << clamp(b) << ")";
 			return ss.str();
 		}
 	};

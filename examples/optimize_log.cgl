@@ -1,0 +1,8 @@
+{
+	size: 3
+	labels: [
+		".p.x"
+		".p.y"
+		".r"
+	]
+	data: [

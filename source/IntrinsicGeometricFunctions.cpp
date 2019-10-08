@@ -652,7 +652,7 @@ namespace cgl
 
 		const auto touchPointAndPolygon = [](const gg::Geometry* point, const gg::Geometry* polygon)->double
 		{
-			CGL_Error("未対応の形状です");
+			return point->distance(polygon);
 		};
 
 		const auto touchLineAndLine = [&](const gg::Geometry* line1, const gg::Geometry* line2)->double

@@ -1180,16 +1180,12 @@ namespace cgl
 					return result;
 				};
 
-				CGL_DBG;
-
 				std::vector<double> x0(freeVariableRefs.size());
 				for (int i = 0; i < x0.size(); ++i)
 				{
 					x0[i] = data[variable2Data[i]];
 					CGL_DebugLog(ToS(i) + " : " + ToS(x0[i]));
 				}
-
-				CGL_DBG;
 
 				const double sigma = 0.1;
 
@@ -1203,11 +1199,8 @@ namespace cgl
 					cmaparams.set_current_time(GetSec());
 				}
 
-				CGL_DBG;
 				libcmaes::CMASolutions cmasols = libcmaes::cmaes<>(func, cmaparams);
-				CGL_DBG;
 				resultxs = cmasols.best_candidate().get_x();
-				CGL_DBG;
 
 				std::cout << "solved\n";
 			}
@@ -1216,33 +1209,27 @@ namespace cgl
 				std::cout << "Solve constraint by BFGS...\n";
 
 				ConstraintProblem constraintProblem;
-				CGL_DBG;
 				constraintProblem.evaluator = [&](const ConstraintProblem::TVector& v)->double
 				{
-					CGL_DBG;
 					for (int i = 0; i < v.size(); ++i)
 					{
 						update(variable2Data[i], v[i]);
 					}
 
-					CGL_DBG;
 					for (const auto& keyval : invRefs)
 					{
 						pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(keyval.first, data[keyval.second]);
 					}
 
-					CGL_DBG;
 					pEnv->switchFrontScope();
 					pEnv->enterScope();
 					double result = eval(pEnv, info);
 					pEnv->exitScope();
 					pEnv->switchBackScope();
 
-					CGL_DBG;
-
-					CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
+					//CGL_DebugLog(std::string("cost: ") + ToS(result, 17));
 					//std::cout << std::string("cost: ") << ToS(result, 17) << "\n";
-					return result;
+					return result*result;
 				};
 				constraintProblem.originalRecord = currentRecord;
 				constraintProblem.keyList = currentKeyList;
@@ -1579,11 +1566,8 @@ namespace cgl
 			printExpr(expr.get());
 		}*/
 		
-		CGL_DBG;
 		EvalSatExpr evaluator(pEnv, data, refs, invRefs);
-		CGL_DBG;
 		const Val evaluated = pEnv->expand(boost::apply_visitor(evaluator, expr.get()), info);
-		CGL_DBG;
 
 		if (IsType<double>(evaluated))
 		{
@@ -1594,8 +1578,6 @@ namespace cgl
 			return As<int>(evaluated);
 		}
 		
-		CGL_DBG;
-
 		CGL_Error("sat式の評価結果が不正");
 	}
 

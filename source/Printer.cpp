@@ -207,8 +207,10 @@ namespace cgl
 		const auto& data = node.data;
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const std::string header = std::string("Address(") + data[i].toString() + "): ";
-			const auto child = ValuePrinter2(pEnv, ss, 0, header);
+			//const std::string header = std::string("Address(") + data[i].toString() + "): ";
+			//const auto child = ValuePrinter2(pEnv, ss, 0, header);
+
+			const auto child = ValuePrinter2(pEnv, ss, 0, "");
 
 			const std::string lf = i + 1 == data.size() ? "" : delimiter();
 			
@@ -254,7 +256,8 @@ namespace cgl
 		int i = 0;
 		for (const auto& value : node.values)
 		{
-			const std::string header = value.first + std::string("(") + value.second.toString() + "): ";
+			//const std::string header = value.first + std::string("(") + value.second.toString() + "): ";
+			const std::string header = value.first + ": ";
 
 			const auto child = ValuePrinter2(pEnv, ss, 0, header);
 
@@ -657,9 +660,12 @@ namespace cgl
 
 		if (node.isLValue())
 		{
-			if (node.isEitherReference() && node.eitherReference().local)
+			if (node.isEitherReference())
 			{
-				os << node.eitherReference().local.get().toString() << footer();
+				auto local = node.eitherReference().local;
+				const std::string name = local ? local.get().toString() : "None";
+
+				os << "(" << name << "|" << node.eitherReference().replaced.toString() << ")" << footer();
 			}
 			else
 			{

@@ -1,0 +1,7 @@
+adder\_5 = (x->{})
+
+adder = (x->{
+    b: adder(x+1){Print(x)}
+})
+
+adder(0)

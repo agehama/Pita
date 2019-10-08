@@ -8,6 +8,7 @@
 #include <Pita/IntrinsicGeometricFunctions.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/BinaryEvaluator.hpp>
+#include <Pita/ClosureMaker.hpp>
 
 namespace cgl
 {
@@ -542,6 +543,7 @@ namespace cgl
 			functionArguments.insert(arg);
 		}
 
+		//TODO: ここの引数にfunctionArgumentsが入っていないのは正しい？
 		const Expr closedFuncExpr = AsClosure(*pEnv, expr);
 
 		FuncVal funcVal(arguments, closedFuncExpr);
@@ -559,6 +561,7 @@ namespace cgl
 		}
 
 		bindValueID(name, address1);
+		m_globalFunctions[name] = address1;
 
 		if (isPlateausFunction)
 		{
@@ -1338,6 +1341,15 @@ namespace cgl
 			}
 		}
 
+		{
+			auto variableIt = m_globalFunctions.find(name);
+			if (variableIt != m_globalFunctions.end())
+			{
+				return variableIt->second;
+			}
+		}
+
+
 		return Address::Null();
 	}
 
@@ -1372,6 +1384,13 @@ namespace cgl
 		{
 			std::cerr << "key: " << static_cast<std::string>(keyval.first) << std::endl;
 		}*/
+
+		const auto name = rawIdentifier.toString();
+		const size_t recDepthIndex = name.find("##");
+		if (recDepthIndex != std::string::npos)
+		{
+			rawIdentifier = Identifier(std::string(name.begin(), name.begin() + recDepthIndex));
+		}
 
 		// 呼び出しと一致する識別子の検索
 		auto it = deferredIdentifiers.find(rawIdentifier);

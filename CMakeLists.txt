@@ -18,11 +18,6 @@ else()
   message("CMAKE_COMPILER_IS_GNUCC False")
 endif()
 
-option(USE_FILESYSTEM "Use filesystem" ON)
-if(USE_FILESYSTEM)
-  add_definitions(-DUSE_IMPORT)
-endif()
-
 set(Boost_USE_STATIC_LIBS ON)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
@@ -69,6 +64,14 @@ endif()
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
+option(USE_FILESYSTEM "Use filesystem" ON)
+if(USE_FILESYSTEM)
+  add_definitions(-DUSE_IMPORT)
+  if(NOT MSVC AND Boost_FOUND)
+    add_definitions(-DUSE_BOOST_LIB)
+  endif()
 endif()
 
 set(EIGEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/external/Eigen" CACHE STRING "Eigen include directory" FORCE)

@@ -2685,7 +2685,7 @@ namespace cgl
 				if (auto defFuncOpt = pEnv->getDeferredFunction(head))
 				{
 					DefFuncWithScopeInfo& recFunc = defFuncOpt.get();
-					std::reference_wrapper<const DefFunc> defFunc = std::ref(recFunc.generalDef);
+					std::reference_wrapper<const DefFunc> defFunc = std::cref(recFunc.generalDef);
 
 					{
 						std::stringstream ss;
@@ -2724,11 +2724,10 @@ namespace cgl
 								auto specialDefIt = recFunc.specialDefs.find(pEnv->m_recDepth);
 								if (specialDefIt != recFunc.specialDefs.end())
 								{
-									defFunc = std::ref(specialDefIt->second);
+									defFunc = std::cref(specialDefIt->second);
 								}
 
 								const FuncVal function(defFunc.get().arguments, defFunc.get().expr);
-
 
 								scopeLog.write("args: " + std::to_string(args.size()));
 								const Val returnedValue = pEnv->expand(callFunction(accessor, function, args), accessor);

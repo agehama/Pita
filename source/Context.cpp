@@ -1633,8 +1633,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const LRValue address(arguments[0]);
-			Val& listValue = pEnv->mutableExpand(LRValue(address), info);
+			LRValue arg0(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(arg0, info);
 			if (!IsType<List>(listValue))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1658,8 +1658,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const LRValue address(arguments[0]);
-			Val& listValue = pEnv->mutableExpand(LRValue(address), info);
+			LRValue arg0(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(arg0, info);
 			if (!IsType<List>(listValue))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1681,8 +1681,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const LRValue address(arguments[0]);
-			Val& listValue = pEnv->mutableExpand(LRValue(address), info);
+			LRValue arg0(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(arg0, info);
 			if (!IsType<List>(listValue))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");

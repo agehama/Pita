@@ -246,4 +246,31 @@ namespace cgl
 	inline void printExpr(const Expr& expr) {}
 #endif
 
+	inline std::string exprVal(const Expr& expr, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printExpr(expr, pEnv, ss);
+		return ss.str();
+	}
+
+	inline std::string exprStr2(const Expr& expr, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printExpr2(expr, pEnv, ss);
+		return ss.str();
+	}
+
+	inline std::string valStr(const Val& val, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printVal(val, pEnv, ss);
+		return ss.str();
+	}
+
+	inline std::string valStr2(const Val& val, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printVal2(val, pEnv, ss);
+		return ss.str();
+	}
 }

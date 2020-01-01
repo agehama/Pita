@@ -1,3 +1,5 @@
+EnableGC(true)
+
 kite = Shape{
     polygon: [
         {x: 0, y: 0}, {x: 20, y: -20}, {x: 80, y: 0}, {x: 20, y: +20}
@@ -20,8 +22,8 @@ skeleton = (num -> Shape{
     end:   (->Transform(@pos, @scale, @angle, ss[num-1].end()))
 })
 
-//skeletonA = skeleton(7)
-skeletonA = skeleton(5)
+skeletonA = skeleton(7)
+//skeletonA = skeleton(5)
 
 main = skeletonA{
     Print(Triangle{})

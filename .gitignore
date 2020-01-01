@@ -33,4 +33,5 @@
 
 # Output files
 *.svg
+log.html
 Makefile

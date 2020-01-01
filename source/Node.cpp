@@ -514,6 +514,8 @@ namespace cgl
 		const std::string u8FilePath = Unicode::UTF32ToUTF8(filePath);
 		const auto path = cgl::filesystem::path(u8FilePath);
 
+		CGL_DBG1(std::string("import path: \"") + u8FilePath + "\"");
+
 		std::string sourceCode;
 
 		if (path.is_absolute())
@@ -546,7 +548,7 @@ namespace cgl
 			const auto currentFilePath = currentDirectory / path;
 			const std::string pathStr = filesystem::canonical(currentFilePath).string();
 
-			//CGL_DBG1(pathStr);
+			CGL_DBG1(std::string("canonical path: \"") + pathStr + "\"");
 
 			importPath = pathStr;
 			/*if (alreadyImportedFiles.find(filesystem::canonical(currentFilePath)) != alreadyImportedFiles.end())
@@ -585,7 +587,6 @@ namespace cgl
 	Import::Import(const std::u32string& path, const Identifier& name):
 		Import(path)
 	{
-		//name = importName;
 		importName = name;
 		updateHash();
 	}
@@ -599,96 +600,21 @@ namespace cgl
 			CGL_Error("ファイルのimportに失敗");
 		}
 
-		//ただのインポート
-		//Import(filename)
-		if (!importName.empty())
+		//通常のインポート
+		//import filename
+		if (importName.empty())
+		{
+			return ExecuteProgramWithRec(it->second.get(), pContext);
+		}
+		//修飾付きインポート
+		//import filename as name
+		//トップレベルの代入式をレコードの要素に包んで評価する
+		else
 		{
 			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(it->second.get()), BinaryOp::Assign);
-			printExpr(importParseTree, pContext, std::cout);
-			//Eval evaluator(pContext);
-			//return boost::apply_visitor(evaluator, importParseTree);
+			//printExpr(importParseTree, pContext, std::cout);
 			return ExecuteProgramWithRec(importParseTree, pContext);
 		}
-
-		if (false)
-		{
-			//修飾子付きインポート
-			//Import(filename) as name
-			if (IsType<Lines>(it->second.get()))
-			{
-				Eval evaluator(pContext);
-
-				LRValue result;
-				const auto& lines = As<Lines>(it->second.get());
-				for (const auto& expr : lines.exprs)
-				{
-					result = boost::apply_visitor(evaluator, expr);
-				}
-
-				return result;
-			}
-		}
-
-		CGL_Error("ファイルのimportに失敗");
-
-		/*
-		if(!originalParseTree)
-		{
-			//CGL_Error("ファイルのimportに失敗");
-			return RValue(0);
-		}
-
-		if (name)
-		{
-			const Expr importParseTree = BinaryExpr(name.get(), ToImportForm(originalParseTree.get()), BinaryOp::Assign);
-			printExpr(importParseTree, pContext, std::cout);
-			Eval evaluator(pContext);
-			return boost::apply_visitor(evaluator, importParseTree);
-		}
-
-		if (IsType<Lines>(originalParseTree.get()))
-		{
-			Eval evaluator(pContext);
-
-			LRValue result;
-			const auto& lines = As<Lines>(originalParseTree.get());
-			for (const auto& expr : lines.exprs)
-			{
-				result = boost::apply_visitor(evaluator, expr);
-			}
-
-			return result;
-		}
-		//if (name)
-		//{
-
-		//}
-
-		//if (IsType<Lines>(originalParseTree.get()))
-		//{
-		//	Eval evaluator(pContext);
-
-		//	LRValue result;
-		//	const auto& lines = As<Lines>(originalParseTree.get());
-		//	for (const auto& expr : lines.exprs)
-		//	{
-		//		//std::cout << "====================================================================================" << std::endl;
-		//		//printExpr(expr, pContext, std::cout);
-		//		result = boost::apply_visitor(evaluator, expr);
-		//		//pContext->printContext(std::cout);
-		//		//std::cout << "------------------------------------------------------------------------------------" << std::endl;
-		//	}
-
-		//	//std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-		//	//pContext->printContext(std::cout);
-
-		//	//printVal(pContext->expand(result), pContext, std::cout);
-		//	return result;
-		//}
-
-		CGL_Error("ファイルのimportに失敗");
-
-		*/
 #else
 		CGL_Error("Import is disabled.");
 #endif

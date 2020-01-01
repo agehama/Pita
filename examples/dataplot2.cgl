@@ -164,6 +164,7 @@ MakePlot = (graph, log_record, zMaskFunc, labelText -> Shape{
 
 main = Shape{
     data = import "optimize_log_min.cgl"
+    Print(data)
     //data = import "optimize_log_full.cgl"
     //data = import "optimize_log_debug.cgl"
     //data = import "optimize_log.cgl"

@@ -1140,6 +1140,9 @@ namespace cgl
 	{
 		auto scopeLog = ScopeLog("Eval::operator()(const BinaryExpr& node)");
 
+		scopeLog.write("lhs: " + exprStr2(node.lhs, pEnv));
+		scopeLog.write("op: " + BinaryOpToStr(node.op));
+
 		UpdateCurrentLocation(node);
 
 		const LRValue rhs_ = boost::apply_visitor(*this, node.rhs);
@@ -1622,11 +1625,7 @@ namespace cgl
 				keyList.push_back(As<KeyExpr>(expr).name);
 			}
 
-			{
-				std::stringstream ss;
-				printExpr2(expr, pEnv, ss);
-				scopeLog.write("  eval expr: " + ss.str());
-			}
+			scopeLog.write("  eval expr: " + exprStr2(expr, pEnv));
 			Val value = pEnv->expand(boost::apply_visitor(*this, expr), recordConsractor);
 
 			//valueは今は右辺値のみになっている
@@ -1852,7 +1851,7 @@ namespace cgl
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
 
-			if (isDebugMode, false)
+			if (isDebugMode/*, false*/)
 			{
 				CGL_DBG1("Expr: ");
 				printExpr2(constraint, pContext, std::cout);
@@ -1867,7 +1866,7 @@ namespace cgl
 			SatVariableBinder binder(pContext, regionVars, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
 
-			if (isDebugMode, false)
+			if (isDebugMode/*, false*/)
 			{
 				CGL_DBG1("appearingList: " + ToS(appearingList.size()));
 				for (const auto& a : appearingList)
@@ -2145,6 +2144,8 @@ namespace cgl
 			//分解された単位制約
 			const std::vector<Expr> adderUnitConstraints = record.constraint ? separateUnitConstraints(record.constraint.get()) : std::vector<Expr>();
 
+			scopeLog.write("  collect each constraint depending variables");
+			std::cout << "  collect each constraint depending variables" << std::endl;
 			//単位制約ごとの依存するfree変数の集合
 			std::vector<ConstraintAppearance> adderVariableAppearances;
 			for (const auto& constraint : adderUnitConstraints)
@@ -2160,7 +2161,8 @@ namespace cgl
 				std::cout << ss.str() << "\n\n";*/
 			}
 
-			std::cout << "1 mergedRegionVars.size(): " << mergedRegionVars.size() << std::endl;
+			scopeLog.write("  mergedRegionVars.size(): " + ToS(mergedRegionVars.size()));
+			std::cout << "  mergedRegionVars.size(): " << mergedRegionVars.size() << std::endl;
 
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
@@ -2498,6 +2500,14 @@ namespace cgl
 		if (isNewScope)
 		{
 			pEnv->exitScope();
+		}
+
+		{
+			scopeLog.write("RecordConstractor result: ");
+			for (const auto& keyval : record.values)
+			{
+				scopeLog.write("    " + keyval.first + ": " + exprStr2(LRValue(keyval.second), pEnv));
+			}
 		}
 
 		const Address address = pEnv->makeTemporaryValue(record);

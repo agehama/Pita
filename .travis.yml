@@ -7,8 +7,8 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-5
-      env: COMPILER=g++-5 BOOST_VERSION=default BOOST_BUILD=true
+            - g++-7
+      env: COMPILER=g++-7 BOOST_VERSION=default BOOST_BUILD=true
 
     #- compiler: clang
     #  addons:

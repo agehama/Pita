@@ -1,4 +1,4 @@
-EnableGC(false)
+EnableGC(true)
 
 x\_4 = 1
 y\_4 = 1

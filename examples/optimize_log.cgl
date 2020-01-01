@@ -1,8 +1,7 @@
 {
-	size: 3
+	size: 2
 	labels: [
-		".p.x"
-		".p.y"
-		".r"
+		"pos.x"
+		"pos.y"
 	]
 	data: [

@@ -41,7 +41,7 @@ namespace cgl
 #  ifdef USE_BOOST_LIB
 	namespace filesystem = boost::filesystem;
 #  else
-#    if defined(CGL_EXPERIMENTAL_FILESYSTEM) || defined(_MSC_VER)
+#    if defined(CGL_EXPERIMENTAL_FILESYSTEM) || (defined(_MSC_VER) && _MSC_VER <= 1900)
 	namespace filesystem = std::experimental::filesystem;
 #    else
 	namespace filesystem = std::filesystem;

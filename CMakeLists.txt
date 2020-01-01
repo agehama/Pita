@@ -12,12 +12,6 @@ project(Pita)
 
 set(CMAKE_CXX_STANDARD 17)
 
-if(CMAKE_COMPILER_IS_GNUCC)
-  message("CMAKE_COMPILER_IS_GNUCC True")
-else()
-  message("CMAKE_COMPILER_IS_GNUCC False")
-endif()
-
 set(Boost_USE_STATIC_LIBS ON)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
@@ -55,7 +49,8 @@ set(CGL_GEOS_TARGET_DIR "geos")
 set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 
 if(MSVC)
-  find_package(Boost 1.53.0 REQUIRED)
+  message("MSVC Boost 1.53.0 REQUIRED")
+  find_package(Boost 1.53.0)
 elseif(USE_FILESYSTEM)
   find_package(Boost 1.53.0 COMPONENTS system filesystem REQUIRED)
 else()

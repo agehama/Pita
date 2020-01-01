@@ -5,6 +5,7 @@
 #include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/Printer.hpp>
+#include <Pita/TreeLogger.hpp>
 
 namespace cgl
 {
@@ -84,7 +85,7 @@ namespace cgl
 
 			if (!address.isValid())
 			{
-				CGL_Error("識別子が定義されていません");
+				CGL_ErrorNode(node, "識別子が定義されていません");
 			}
 
 			//free変数にあった場合は制約用の参照値を追加する
@@ -106,7 +107,7 @@ namespace cgl
 		Address address = pEnv->findAddress(node);
 		if (!address.isValid())
 		{
-			CGL_Error("識別子\"" + static_cast<std::string>(node) + "\"が定義されていません");
+			CGL_ErrorNode(node, "識別子\"" + static_cast<std::string>(node) + "\"が定義されていません");
 			return false;
 		}
 
@@ -181,17 +182,17 @@ namespace cgl
 					}
 					else
 					{
-						CGL_Error("指定された変数名に紐つけられた値が関数でない");
+						CGL_ErrorNode(node, "指定された変数名に紐つけられた値が関数でない");
 					}
 				}
 				else
 				{
-					CGL_Error("ここは通らないはず");
+					CGL_ErrorNode(node, "ここは通らないはず");
 				}
 			}
 			else
 			{
-				CGL_Error("指定された変数名に値が紐つけられていない");
+				CGL_ErrorNode(node, "指定された変数名に値が紐つけられていない");
 			}
 		}*/
 
@@ -224,7 +225,7 @@ namespace cgl
 
 		if (funcVal.arguments.size() != expandedArguments.size())
 		{
-			CGL_Error("仮引数の数と実引数の数が合っていない");
+			CGL_ErrorNode(info, "仮引数の数と実引数の数が合っていない");
 		}
 
 		pEnv->switchFrontScope();
@@ -342,6 +343,8 @@ namespace cgl
 
 	bool SatVariableBinder::operator()(const Accessor& node)
 	{
+		auto scopeLog = ScopeLog("SatVariableBinder::operator()(const Accessor& node)");
+
 		//std::cout << getIndent() << typeid(node).name() << std::endl;
 
 		/*CGL_DebugLog("SatVariableBinder::operator()(const Accessor& node)");
@@ -360,6 +363,8 @@ namespace cgl
 		//headがsat式中のローカル変数
 		if (auto headOpt = AsOpt<Identifier>(head))
 		{
+			scopeLog.write("head is Identifier");
+
 			if (isLocalVariable(headOpt.get()))
 			{
 				return false;
@@ -368,7 +373,7 @@ namespace cgl
 			Address address = pEnv->findAddress(headOpt.get());
 			if (!address.isValid())
 			{
-				CGL_Error(std::string("識別子\"") + static_cast<std::string>(headOpt.get()) + "\"が定義されていません");
+				CGL_ErrorNode(node, std::string("識別子\"") + static_cast<std::string>(headOpt.get()) + "\"が定義されていません");
 			}
 
 			//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。
@@ -379,10 +384,12 @@ namespace cgl
 		//headがアドレス値
 		else if (IsType<LRValue>(head))
 		{
+			scopeLog.write("head is LRValue");
+
 			const LRValue& headAddressValue = As<LRValue>(head);
 			if (headAddressValue.isRValue())
 			{
-				CGL_Error("sat式中のアクセッサの先頭部が不正な値です");
+				CGL_ErrorNode(node, "sat式中のアクセッサの先頭部が不正な値です: " + exprStr2(head, pEnv));
 			}
 
 			headAddress = headAddressValue.deref(*pEnv).get();
@@ -390,12 +397,15 @@ namespace cgl
 		//それ以外であれば、headはその場で作られるローカル変数とみなす
 		else
 		{
-			//CGL_Error("sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
+			scopeLog.write("head is else");
+			//CGL_ErrorNode(node, "sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
 			//isDeterministic = !boost::apply_visitor(*this, head);
 			isDeterministic = false;
 		}
 
 		Eval evaluator(pEnv);
+
+		scopeLog.write(exprStr2(node, pEnv));
 
 		Accessor result;
 
@@ -407,12 +417,14 @@ namespace cgl
 				objOpt = pEnv->expandOpt(LRValue(headAddress));
 				if (!objOpt)
 				{
-					CGL_Error("参照エラー");
+					CGL_ErrorNode(node, "参照エラー: " + exprStr2(LRValue(headAddress), pEnv));
 				}
 			}
 
 			if (IsType<ListAccess>(access))
 			{
+				scopeLog.write("  ->ListAccess");
+
 				const ListAccess& listAccess = As<ListAccess>(access);
 
 				//この文で、識別子がローカル変数の場合varとは依存しないということは確かめられるが、
@@ -429,7 +441,7 @@ namespace cgl
 				}
 				else
 				{
-					std::cout << "::" << __LINE__ << std::endl;
+					CGL_DBG;
 				}
 
 				if (isDeterministic)
@@ -437,7 +449,7 @@ namespace cgl
 					const Val& objRef = objOpt.get();
 					if (!IsType<List>(objRef))
 					{
-						CGL_Error("オブジェクトがリストでない");
+						CGL_ErrorNode(node, "オブジェクトがリストでない: " + valStr2(objRef, pEnv));
 					}
 
 					const List& list = As<List>(objRef);
@@ -452,18 +464,20 @@ namespace cgl
 						}
 						else
 						{
-							CGL_Error("list[index] の index が int 型でない");
+							CGL_ErrorNode(node, "list[index] の index が int 型でない: " + valStr2(indexValue, pEnv));
 						}
 					}
 					catch (std::exception& e)
 					{
-						std::cout << e.what() << ": " << __LINE__ << std::endl;
+						CGL_DBG;
 						throw;
 					}
 				}
 			}
 			else if (IsType<RecordAccess>(access))
 			{
+				scopeLog.write("  ->RecordAccess");
+
 				const RecordAccess& recordAccess = As<RecordAccess>(access);
 
 				if (isDeterministic)
@@ -471,14 +485,15 @@ namespace cgl
 					const Val& objRef = objOpt.get();
 					if (!IsType<Record>(objRef))
 					{
-						CGL_Error("オブジェクトがレコードでない");
+						//TODO: Case04
+						CGL_ErrorNode(node, "オブジェクトがレコードでない: " + valStr(objRef, pEnv));
 					}
 					
 					const Record& record = As<Record>(objRef);
 					auto it = record.values.find(recordAccess.name);
 					if (it == record.values.end())
 					{
-						CGL_Error("指定された識別子がレコード中に存在しない");
+						CGL_ErrorNode(node, "指定された識別子 \"" + recordAccess.name.toString() + "\" がレコード " + valStr2(record, pEnv) + " 中に存在しない");
 					}
 
 					headAddress = it->second;
@@ -486,6 +501,8 @@ namespace cgl
 			}
 			else if (IsType<FunctionAccess>(access))
 			{
+				scopeLog.write("  ->FunctionAccess");
+
 				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
 
 				if (isDeterministic)
@@ -498,14 +515,14 @@ namespace cgl
 						//--depth;
 					}
 
-					//呼ばれる関数の実体はその引数には依存しないため、ここでisDeterministicがfalseになっても問題ない
+					//呼ばれる関数の実体はその引数には依存しないため、ここでisDeterministicがfalseになっても評価を続けて問題ない
 
 					//std::cout << getIndent() << typeid(node).name() << " -> objOpt.get()" << std::endl;
 					//Case4以降への対応は関数の中身を見に行く必要がある
 					const Val& objRef = objOpt.get();
 					if (!IsType<FuncVal>(objRef))
 					{
-						CGL_Error("オブジェクトが関数でない");
+						CGL_ErrorNode(node, "オブジェクトが関数でない: " + valStr2(objRef, pEnv));
 					}
 					const FuncVal& function = As<FuncVal>(objRef);
 
@@ -521,6 +538,7 @@ namespace cgl
 					isDeterministic = !boost::apply_visitor(*this, caller) && isDeterministic;
 					*/
 					//std::cout << getIndent() << typeid(node).name() << " -> actualArguments" << std::endl;
+
 					std::vector<Address> arguments;
 
 					try
@@ -533,7 +551,8 @@ namespace cgl
 					}
 					catch (std::exception& e)
 					{
-						std::cout << e.what() << ": " << __LINE__ << std::endl;
+						CGL_DBG;
+						throw;
 					}
 
 					//TODO: ちゃんと直す
@@ -543,7 +562,7 @@ namespace cgl
 
 						isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
 
-						std::cout << "function.builtinFuncAddress: " << orig <<" -> " << hasPlateausFunction << std::endl;
+						CGL_DBG1("function.builtinFuncAddress: " + ToS(orig) + " -> " + ToS(hasPlateausFunction));
 					}
 
 					//isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
@@ -560,6 +579,8 @@ namespace cgl
 			}
 			else
 			{
+			scopeLog.write("  ->InheritAccess");
+
 				const InheritAccess& inheritAccess = As<InheritAccess>(access);
 				{
 					bool searchResult = false;
@@ -600,7 +621,7 @@ namespace cgl
 	{
 		if (node.op == UnaryOp::Not)
 		{
-			CGL_ErrorNode(node, "TODO: sat宣言中のnot演算子は未対応です。");
+			CGL_ErrorNode(node, "TODO: sat宣言中のnot演算子は未対応です。: " + exprStr2(node, pEnv));
 		}
 
 		Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs), node);
@@ -610,9 +631,7 @@ namespace cgl
 		case UnaryOp::Minus:  return LRValue(MinusFunc(lhs, *pEnv));
 		}
 
-		CGL_ErrorNodeInternal(node, "不明な単項演算子です。");
-
-		return LRValue(0);
+		CGL_ErrorNodeInternal(node, "不明な単項演算子です。: " + exprStr2(node, pEnv));
 	}
 
 	LRValue EvalSatExpr::operator()(const BinaryExpr& node)
@@ -660,7 +679,7 @@ namespace cgl
 		}
 		else if (auto valOpt = AsOpt<LRValue>(node.lhs))
 		{
-			CGL_ErrorNode(node, "一時オブジェクトへの代入はできません。");
+			CGL_ErrorNode(node, "一時オブジェクトへの代入はできません。: " + exprStr2(node, pEnv));
 		}
 		else if (auto valOpt = AsOpt<Identifier>(node.lhs))
 		{
@@ -696,17 +715,16 @@ namespace cgl
 				}
 				else
 				{
-					CGL_ErrorNode(node, "アクセッサの評価結果が無効なアドレス値です。");
+					CGL_ErrorNode(node, "アクセッサの評価結果が無効なアドレス値です。: " + exprStr2(node, pEnv));
 				}
 			}
 			else
 			{
-				CGL_Error("アクセッサの評価結果が無効な値です。");
+				CGL_ErrorNode(node, "アクセッサの評価結果が無効な値です。: " + exprStr2(node, pEnv));
 			}
 		}
 
-		CGL_ErrorNodeInternal(node, "不明な二項演算子です。");
-		return LRValue(0);
+		CGL_ErrorNodeInternal(node, "不明な二項演算子です。: " + exprStr2(node, pEnv));
 	}
 
 	LRValue EvalSatExpr::operator()(const KeyExpr& node)
@@ -715,7 +733,7 @@ namespace cgl
 		Val rhs = pEnv->expand(rhs_, node);
 		if (pEnv->existsInCurrentScope(node.name))
 		{
-			CGL_ErrorNode(node, "制約式中では変数への再代入は行えません。");
+			CGL_ErrorNode(node, "制約式中では変数への再代入は行えません。: " + exprStr2(node, pEnv));
 		}
 		else
 		{

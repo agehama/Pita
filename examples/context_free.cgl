@@ -1,4 +1,4 @@
-EnableGC(false)
+EnableGC(true)
 
 x = y + 1
 y = z * 3 + x

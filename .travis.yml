@@ -128,4 +128,4 @@ script:
   - cmake .. ${CMAKE_OPTIONS}
   #- cmake -DCMAKE_CXX_COMPILER=$COMPILER .. 
   - make -j4
-  - travis_wait 50 ctest -R pita_easy -V
+  - travis_wait 999 ctest -R pita_easy -V

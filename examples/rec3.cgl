@@ -1,5 +1,3 @@
-EnableGC(false)
-
 A\_10 = Square{scale: X2(100)}
 
 A = Shape{

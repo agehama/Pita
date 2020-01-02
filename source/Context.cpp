@@ -3277,7 +3277,7 @@ namespace cgl
 		//printContext(std::cout);
 
 		//printContext(std::cout);
-		CGL_DBG1("GC begin");
+		//CGL_DBG1("GC begin");
 		std::unordered_set<Address> referenceableAddresses;
 
 		const auto isReachable = [&](const Address address)
@@ -3359,7 +3359,7 @@ namespace cgl
 
 		const size_t postGC = m_values.size();
 
-		CGL_DBG1("GC end");
+		//CGL_DBG1("GC end");
 
 		++count;
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";

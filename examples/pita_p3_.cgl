@@ -1,3 +1,5 @@
+EnableGC(true)
+
 baseColor = Rgb(245, 245, 245)
 mainColor = Rgb(49, 187, 222)
 accentColor = Rgb(68, 84, 106)

@@ -1,5 +1,3 @@
-EnableGC(false)
-
 LerpColor = (a, b, t -> Rgb(a.r + (b.r - a.r)*t, a.g + (b.g - a.g)*t, a.b + (b.b - a.b)*t))
 UpperIndex = (list, t ->
     lowerIndex = 0

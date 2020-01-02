@@ -41,6 +41,7 @@ extern bool calculating;
 extern bool isDebugMode;
 extern bool isBlockingMode;
 extern bool isContextFreeMode;
+extern bool isDumpParseTree;
 
 #ifdef USE_CURSES
 /* Trap interrupt */
@@ -76,6 +77,8 @@ int main(int argc, char* argv[])
 			("licence", "Show licence")
 			("logHTML", "Output log.html")
 			("contextFree", "Enable Context Free Mode(experimental)")
+			("preEvaluation", "Output eval result as JSON format (for PitaStd generation)")
+			("dumpParseTree", "Dump parse tree")
 			//("seed", "Random seed (if unspecified, seed is generated non-deterministically)", cxxopts::value<int>(), "N")
 			//("constraint-timeout", "Set timeout seconds of each constraint solving", cxxopts::value<int>(), "N")
 			;
@@ -955,6 +958,10 @@ Library.
 		{
 			isContextFreeMode = true;
 		}
+		if (result.count("dumpParseTree"))
+		{
+			isDumpParseTree = true;
+		}
 
 		if (result.count("logHTML"))
 		{
@@ -1029,30 +1036,33 @@ Library.
 			std::cout << "TODO: Set timeout\n" << std::endl;
 		}
 		*/
+
+		//ofs.open("log.txt");
+
+		calculating = true;
+		cgl::Program program;
+
+		if (result.count("preEvaluation"))
+		{
+			isDebugMode = true;
+			const bool flag = program.preEvaluate(input_file, output_file);
+			std::cout << std::boolalpha << "Result: " << flag << std::endl;
+		}
+		else
+		{
+			program.execute1(input_file, output_file, !isDebugMode);
+		}
+
+		/*if (isDebugMode)
+		{
+			endwin();
+		}*/
 	}
 	catch (const cxxopts::OptionException& e)
 	{
 		std::cerr << "Error parsing options: " << e.what() << std::endl;
 		exit(1);
 	}
-
-	//ofs.open("log.txt");
-
-	calculating = true;
-	cgl::Program program;
-
-	program.execute1(input_file, output_file, !isDebugMode);
-
-	/*
-	isDebugMode = true;
-	const bool flag = program.preEvaluate(input_file, output_file);
-	std::cout << std::boolalpha << "Result: " << flag << std::endl;
-	//*/
-
-	/*if (isDebugMode)
-	{
-		endwin();
-	}*/
 
 	return 0;
 }

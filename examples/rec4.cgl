@@ -1,5 +1,3 @@
-EnableGC(false)
-
 A\_2 = {}
 B\_2 = {}
 

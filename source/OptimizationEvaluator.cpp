@@ -161,42 +161,7 @@ namespace cgl
 	
 	bool SatVariableBinder::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info)
 	{
-		//std::cout << getIndent() << typeid(funcVal).name() << std::endl;
-
-		/*FuncVal funcVal;
-
-		if (auto opt = AsOpt<FuncVal>(node.funcRef))
-		{
-			funcVal = opt.get();
-		}
-		else
-		{
-			const Address funcAddress = pEnv->findAddress(As<Identifier>(node.funcRef));
-			if (funcAddress.isValid())
-			{
-				if (auto funcOpt = pEnv->expandOpt(funcAddress))
-				{
-					if (IsType<FuncVal>(funcOpt.get()))
-					{
-						funcVal = As<FuncVal>(funcOpt.get());
-					}
-					else
-					{
-						CGL_ErrorNode(node, "指定された変数名に紐つけられた値が関数でない");
-					}
-				}
-				else
-				{
-					CGL_ErrorNode(node, "ここは通らないはず");
-				}
-			}
-			else
-			{
-				CGL_ErrorNode(node, "指定された変数名に値が紐つけられていない");
-			}
-		}*/
-
-		//組み込み関数の場合は関数定義の中身と照らし合わせるという事ができないため、とりあえず引数から辿れる要素を全て指定する
+		//組み込み関数の場合は関数定義の中身と照らし合わせるという事ができない(する必要もない)ため、とりあえず引数から辿れる要素だけ全て見に行く
 		if (funcVal.builtinFuncAddress)
 		{
 			bool result = false;
@@ -209,7 +174,7 @@ namespace cgl
 				}
 			}
 
-			//もし組み込み関数の引数に変数が指定されていた場合は不連続関数かどうかを保存し、これによって最適化手法を切り替えられるようにしておく
+			//もし組み込み関数の引数に変数が指定されていた場合は不連続関数かどうかを保存し、これに応じて最適化手法を切り替えられるようにしておく
 			if (result)
 			{
 				hasPlateausFunction = pEnv->isPlateausBuiltInFunction(funcVal.builtinFuncAddress.get()) || hasPlateausFunction;
@@ -527,18 +492,6 @@ namespace cgl
 					const FuncVal& function = As<FuncVal>(objRef);
 
 					//Case4,6への対応
-					/*
-					std::vector<Val> arguments;
-					for (const auto& expr : funcAccess.actualArguments)
-					{
-					//ここでexpandして大丈夫なのか？
-					arguments.push_back(pEnv->expand(boost::apply_visitor(evaluator, expr)));
-					}
-					Expr caller = FunctionCaller(function, arguments);
-					isDeterministic = !boost::apply_visitor(*this, caller) && isDeterministic;
-					*/
-					//std::cout << getIndent() << typeid(node).name() << " -> actualArguments" << std::endl;
-
 					std::vector<Address> arguments;
 
 					try
@@ -555,31 +508,25 @@ namespace cgl
 						throw;
 					}
 
-					//TODO: ちゃんと直す
-					if (function.builtinFuncAddress)
 					{
 						bool orig = hasPlateausFunction;
-
 						isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
-
-						CGL_DBG1("function.builtinFuncAddress: " + ToS(orig) + " -> " + ToS(hasPlateausFunction));
+						//CGL_DBG1("function.builtinFuncAddress: " + ToS(orig) + " -> " + ToS(hasPlateausFunction));
 					}
 
-					//isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
-
-					////ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
-					//if (isDeterministic)
-					//{
-					//	//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
-					//	//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
-					//	const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
-					//	headAddress = pEnv->makeTemporaryValue(returnedValue);
-					//}
+					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
+					if (isDeterministic)
+					{
+						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
+						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
+						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
+						headAddress = pEnv->makeTemporaryValue(returnedValue);
+					}
 				}
 			}
 			else
 			{
-			scopeLog.write("  ->InheritAccess");
+				scopeLog.write("  ->InheritAccess");
 
 				const InheritAccess& inheritAccess = As<InheritAccess>(access);
 				{

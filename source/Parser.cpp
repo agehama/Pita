@@ -3,6 +3,8 @@
 #include <Pita/Parser.hpp>
 #include <Pita/Printer.hpp>
 
+extern bool isDumpParseTree;
+
 namespace cgl
 {
 #ifdef USE_IMPORT
@@ -790,10 +792,13 @@ namespace cgl
 		std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 		std::string sourceCode = EscapedSourceCode(original);
 
-		std::cout << "escaped SourceCode:\n";
-		std::cout << "--------------------------------------------------"<< std::endl;
-		std::cout << sourceCode << std::endl;
-		std::cout << "--------------------------------------------------" << std::endl;
+		if (isDumpParseTree)
+		{
+			std::cout << "escaped SourceCode:\n";
+			std::cout << "--------------------------------------------------" << std::endl;
+			std::cout << sourceCode << std::endl;
+			std::cout << "--------------------------------------------------" << std::endl;
+		}
 
 #ifdef USE_IMPORT
 		const auto currentDirectory = cgl::filesystem::absolute(cgl::filesystem::path(filename)).parent_path();

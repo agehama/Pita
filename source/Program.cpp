@@ -32,6 +32,7 @@ bool isDebugMode;
 bool isBlockingMode;
 bool isContextFreeMode;
 bool isInConstraint = false;
+bool isDumpParseTree = false;
 
 bool printAddressInsertion = false;
 double cloneTime = 0.0;
@@ -364,8 +365,11 @@ namespace cgl
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
-					//printExpr2(exprOpt.get(), pEnv, std::cerr);
-					printExpr(exprOpt.get(), pEnv, std::cerr);
+					if (isDumpParseTree)
+					{
+						//printExpr2(exprOpt.get(), pEnv, std::cerr);
+						printExpr(exprOpt.get(), pEnv, std::cerr);
+					}
 				}
 				
 				const auto executeAndOutputSVG = [&]()->void

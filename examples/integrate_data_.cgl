@@ -1,5 +1,3 @@
-EnableGC(false)
-
 intervals = import "pita_log_interval"
 velocities = import "pita_log_velocity"
 divisions = import "pita_log_divisionNum"

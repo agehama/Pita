@@ -98,17 +98,15 @@ main = {
         fill: baseColor
     }
 
-    /*
     sat( b.topLeft().x == BoundingBox(d).center.x )
     sat( Distance(bOut, d) == 20.0 )
 
     sat( a.topLeft().x == BoundingBox(e).center.x )
     sat( Distance(aOut, e) == 20.0 )
 
-    sat( Cmaes(f.pos), c.topLeft().x == BoundingBox(f).center.x )
+    sat( Cmaes(f.pos) & c.topLeft().x == BoundingBox(f).center.x )
     sat( Distance(cOut, f) == 20.0 )
     var(d.pos, e.pos, f.pos)
-    */
 }
 
 

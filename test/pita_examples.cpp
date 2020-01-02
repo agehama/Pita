@@ -227,7 +227,6 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		std::cout << "time: " << time * 0.001 << "[sec]\n";
 
 		BOOST_CHECK(program.isSucceeded());
-		BOOST_CHECK_EQUAL(constraintViolationCount, 0);
 	}
 
 	PrintResults(filenames, profileTimes);

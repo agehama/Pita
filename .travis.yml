@@ -119,7 +119,6 @@ install:
     fi
 
 script:
-  - travis_wait 30 script.sh
   - cd ~/build/agehama
   - ls -la
   - cd Pita
@@ -129,4 +128,4 @@ script:
   - cmake .. ${CMAKE_OPTIONS}
   #- cmake -DCMAKE_CXX_COMPILER=$COMPILER .. 
   - make -j4
-  - ctest -V
+  - travis_wait 50 ctest -V

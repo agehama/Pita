@@ -78,50 +78,8 @@ std::vector<std::string> exampleFiles()
 	return filenames;
 }
 
-BOOST_AUTO_TEST_SUITE(cgl)
-
-BOOST_AUTO_TEST_CASE(test_examples_strict)
+void PrintResults(const std::vector<std::string>& filenames, const std::unordered_map<std::string, cgl::ProfileResult>& profileTimes)
 {
-	const auto filenames = exampleFiles();
-
-	std::unordered_map<std::string, ProfileResult> profileTimes;
-	for (const auto& filename : filenames)
-	{
-		constraintViolationCount = 0;
-
-		std::cout << "----------------------------------------------\n";
-		std::cout << "run \"" << filename << "\" ...\n";
-
-		//std::ifstream ifs(directory + filename + ".cgl");
-		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-
-		std::string sourcePath(directory + filename + ".cgl");
-
-		auto start = std::chrono::system_clock::now();
-
-		Program program;
-		try
-		{
-			//program.execute1(sourceCode, filename + ".svg", false);
-			program.execute1(sourcePath, filename + ".svg", false);
-			profileTimes[filename] = program.profileResult();
-		}
-		catch(const std::exception& e)
-		{
-			std::cout << "error: " << e.what() << "\n";
-			BOOST_CHECK(false);
-			continue;
-		}
-		
-		auto end = std::chrono::system_clock::now();
-
-		const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
-		std::cout << "time: " << time*0.001 << "[sec]\n";
-
-		BOOST_CHECK(program.isSucceeded());
-		BOOST_CHECK_EQUAL(constraintViolationCount, 0);
-	}
-
 	std::vector<std::string> names({ "", "parse time","execute time","output time" });
 	names.insert(names.end(), filenames.begin(), filenames.end());
 
@@ -183,11 +141,17 @@ BOOST_AUTO_TEST_CASE(test_examples_strict)
 	}
 }
 
-/*
-BOOST_AUTO_TEST_CASE(test_examples_easy)
+BOOST_AUTO_TEST_SUITE(cgl)
+
+BOOST_AUTO_TEST_CASE(test_examples_strict)
 {
-	for (const auto& filename : exampleFiles())
+	const auto filenames = exampleFiles();
+
+	std::unordered_map<std::string, ProfileResult> profileTimes;
+	for (const auto& filename : filenames)
 	{
+		constraintViolationCount = 0;
+
 		std::cout << "----------------------------------------------\n";
 		std::cout << "run \"" << filename << "\" ...\n";
 
@@ -201,11 +165,11 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		Program program;
 		try
 		{
-			//program.run(sourceCode, false);
 			//program.execute1(sourceCode, filename + ".svg", false);
 			program.execute1(sourcePath, filename + ".svg", false);
+			profileTimes[filename] = program.profileResult();
 		}
-		catch (const std::exception& e)
+		catch(const std::exception& e)
 		{
 			std::cout << "error: " << e.what() << "\n";
 			BOOST_CHECK(false);
@@ -218,8 +182,55 @@ BOOST_AUTO_TEST_CASE(test_examples_easy)
 		std::cout << "time: " << time*0.001 << "[sec]\n";
 
 		BOOST_CHECK(program.isSucceeded());
+		BOOST_CHECK_EQUAL(constraintViolationCount, 0);
 	}
+
+	PrintResults(filenames, profileTimes);
 }
-*/
+
+BOOST_AUTO_TEST_CASE(test_examples_easy)
+{
+	const auto filenames = exampleFiles();
+
+	std::unordered_map<std::string, ProfileResult> profileTimes;
+	for (const auto& filename : filenames)
+	{
+		constraintViolationCount = 0;
+
+		std::cout << "----------------------------------------------\n";
+		std::cout << "run \"" << filename << "\" ...\n";
+
+		//std::ifstream ifs(directory + filename + ".cgl");
+		//std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+		std::string sourcePath(directory + filename + ".cgl");
+
+		auto start = std::chrono::system_clock::now();
+
+		Program program;
+		try
+		{
+			//program.execute1(sourceCode, filename + ".svg", false);
+			program.execute1(sourcePath, filename + ".svg", false);
+			profileTimes[filename] = program.profileResult();
+		}
+		catch (const std::exception & e)
+		{
+			std::cout << "error: " << e.what() << "\n";
+			BOOST_CHECK(false);
+			continue;
+		}
+
+		auto end = std::chrono::system_clock::now();
+
+		const double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+		std::cout << "time: " << time * 0.001 << "[sec]\n";
+
+		BOOST_CHECK(program.isSucceeded());
+		BOOST_CHECK_EQUAL(constraintViolationCount, 0);
+	}
+
+	PrintResults(filenames, profileTimes);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

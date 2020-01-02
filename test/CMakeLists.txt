@@ -28,9 +28,9 @@ add_test(
 )
 set_tests_properties(pita_strict PROPERTIES LABELS pita)
 
-#add_test(
-#	NAME pita_easy
-#	COMMAND $<TARGET_FILE:pita_examples> --run_test=cgl/test_examples_easy
-#	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/examples
-#)
-#set_tests_properties(pita_easy PROPERTIES LABELS pita)
+add_test(
+	NAME pita_easy
+	COMMAND $<TARGET_FILE:pita_examples> --run_test=cgl/test_examples_easy
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/examples
+)
+set_tests_properties(pita_easy PROPERTIES LABELS pita)

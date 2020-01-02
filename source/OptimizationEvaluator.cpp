@@ -404,10 +404,6 @@ namespace cgl
 					//したがって、listから辿れるすべての要素はvarに依存しうるものとする。
 					return addSatRef(headAddress);
 				}
-				else
-				{
-					CGL_DBG;
-				}
 
 				if (isDeterministic)
 				{

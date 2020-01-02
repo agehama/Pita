@@ -20,7 +20,7 @@ matrix:
     #  env: COMPILER=clang++-4.0 BOOST_VERSION=default BOOST_BUILD=true
 
     - os: osx
-      osx_image: xcode9.1
+      osx_image: xcode11.3
       env: BOOST_VERSION=default BOOST_BUILD=true
 
 before_install:
@@ -119,6 +119,7 @@ install:
     fi
 
 script:
+  - travis_wait 30 script.sh
   - cd ~/build/agehama
   - ls -la
   - cd Pita

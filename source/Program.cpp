@@ -362,7 +362,8 @@ namespace cgl
 			{
 				profileTime.parseSec = GetSec() - parseBegin;
 
-				const auto& [expr, editPosition] = exprPosOpt.get();
+				const auto& expr = exprPosOpt.get().first;
+				const auto& editPosition = exprPosOpt.get().second;
 				
 				if (logOutput)
 				{

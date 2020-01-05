@@ -10,8 +10,30 @@ namespace cgl
 #ifdef USE_IMPORT
 	std::stack<filesystem::path> workingDirectories;
 
-	std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
+	std::unordered_map<size_t, boost::optional<std::pair<Expr, OriginalPos>>> importedParseTrees;
 #endif
+
+	inline auto MakeUnaryExpr(UnaryOp op)
+	{
+		return boost::phoenix::bind([](const auto& e, UnaryOp op) {return UnaryExpr(e, op); }, boost::spirit::_1, op);
+	}
+
+	inline auto MakeBinaryExpr(BinaryOp op)
+	{
+		return boost::phoenix::bind([&](const auto& lhs, const auto& rhs, BinaryOp op) {return BinaryExpr(lhs, rhs, op); }, boost::spirit::_val, boost::spirit::_1, op);
+	}
+
+	template <class F, class... Args>
+	inline auto Call(F func, Args... args)
+	{
+		return boost::phoenix::bind(func, args...);
+	}
+
+	template<class FromT, class ToT>
+	inline auto Cast()
+	{
+		return boost::phoenix::bind([&](const FromT& a) {return static_cast<ToT>(a); }, boost::spirit::_1);
+	}
 
 	Parser::Parser(SourceT first, SourceT last, const std::string& sourcePath) :
 		Parser::base_type(program),
@@ -83,7 +105,7 @@ namespace cgl
 			)
 			;
 
-		//= ^ -> �͉E����
+		//= ^ -> は右結合
 		arith_expr = (key_expr[_val = _1] | basic_arith_expr[_val = _1]) >> -(
 			('=' >> arith_expr[_val = MakeBinaryExpr(BinaryOp::Assign)])
 			);
@@ -106,7 +128,7 @@ namespace cgl
 				)
 			;
 
-		//�Œ�ł�1�͎󂯎��悤�ɂ��Ȃ��ƁA�P���factor���󗝂ł��Ă��܂��̂�Mul,Div�̕��ɍs���Ă���Ȃ�
+		//最低でも1つは受け取るようにしないと、単一のfactorを受理できてしまうのでMul,Divの方に行ってくれない
 		pow_term = factor[_val = _1] >> '^' >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)];
 		pow_term1 = factor[_val = _1] >> -('^' >> pow_term1[_val = MakeBinaryExpr(BinaryOp::Pow)]);
 
@@ -297,7 +319,7 @@ namespace cgl
 		case ExprIndex<R<DeclFree>>() :          return static_cast<LocationInfo&>(As<DeclFree>(expr));
 		case ExprIndex<R<Accessor>>() :          return static_cast<LocationInfo&>(As<Accessor>(expr));
 		default:
-			CGL_Error("�G���[�F�Ή�����^������");
+			CGL_Error("エラー：対応する型が無い");
 		};
 	}
 
@@ -356,13 +378,15 @@ namespace cgl
 		const LocationInfo li = GetLocationInfo(f, l, first, last);
 
 		std::cout << std::string("Error") + li.getInfo() + ": expecting " + what << std::endl;
-		PrintErrorPos(sourcePath, li);
+		
+		//TODO: ここで OriginalPos を取れないのを直す
+		PrintErrorPos(sourcePath, li, OriginalPos());
 	}
 
-	//import�t�@�C����path��name�̑g�ŊǗ�����
-	//�ŏ��̃p�[�X����import�����path��name�̑g��o�^���Ă����A
-	//�p�[�X����(�r�����ƃo�b�N�g���b�N������\�������邽�߃p�[�X���I����Ă���)�ɂ��̃\�[�X��import����\�[�X�̃p�[�X���ċA�I�ɍs��
-	//���s���ɂ́A����path��name�̑g�ɕR�t������p�[�X�c���[�ɑ΂��Ĉ��̂�eval������A���̕]�����ʂ��ԋp�����
+	//importファイルはpathとnameの組で管理する
+	//最初のパース時にimportされるpathとnameの組を登録しておき、
+	//パース直後(途中だとバックトラックが走る可能性があるためパースが終わってから)にそのソースがimportするソースのパースを再帰的に行う
+	//実行時には、あるpathとnameの組に紐付けられるパースツリーに対して一回のみevalが走り、その評価結果が返却される
 	class ParseImports : public boost::static_visitor<void>
 	{
 	public:
@@ -388,7 +412,7 @@ namespace cgl
 
 			if (auto opt = Parse1(path))
 			{
-				importedParseTrees[node.getSeed()] = opt;
+				importedParseTrees[node.getSeed()] = opt.get();
 			}
 			else
 			{
@@ -484,7 +508,7 @@ namespace cgl
 					const Expr adder = opt.get().adder;
 					boost::apply_visitor(*this, adder);
 				}
-				//RecordAccess�͓��Ɍ���ׂ����̂͂Ȃ�
+				//RecordAccessは特に見るべきものはない
 				//else if (auto opt = AsOpt<RecordAccess>(access)){}
 			}
 		}
@@ -505,22 +529,30 @@ namespace cgl
 		return result;
 	}
 
-	std::string EscapedSourceCode(const std::string& sourceCode)
+	std::pair<std::string, OriginalPos> EscapedSourceCode(const std::string& sourceCode)
 	{
-		std::stringstream escapedStr;
-
-		//�R�����g�̃G�X�P�[�v
+		const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
 		{
-			const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
+			const auto nextIt = it + 1;
+			if (nextIt != itEnd)
 			{
-				const auto nextIt = it + 1;
-				if (nextIt != itEnd)
-				{
-					return *nextIt;
-				}
-				return boost::none;
-			};
+				return *nextIt;
+			}
+			return boost::none;
+		};
 
+		const auto nextCharIs = [&](std::uint32_t c, std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->bool
+		{
+			if (auto opt = nextCharOpt(it, itEnd))
+			{
+				return opt.get() == c;
+			}
+			return false;
+		};
+
+		std::stringstream escapedStr;
+		//コメントのエスケープ
+		{
 			const auto utf32str = AsUtf32(sourceCode);
 
 			bool inLineComment = false;
@@ -531,7 +563,7 @@ namespace cgl
 				bool skipNext = false;
 				if (1 <= scopeCommentDepth)
 				{
-					//�G���[�ʒu�𐳂����ߑ����邽�߁A�R�����g���ł����s�͂����ƏE���K�v������
+					//エラー位置を正しく捕捉するため、コメント内でも改行はちゃんと拾う必要がある
 					if (*it == '\n')
 					{
 						currentChar << '\n';
@@ -606,6 +638,132 @@ namespace cgl
 			}
 		}
 
+		OriginalPos positionEditHistory;
+
+		//文字列補間の変換
+		{
+			std::stringstream currentStr;
+
+			const auto utf32str = AsUtf32(escapedStr.str());
+
+			bool isInSourceCode = true;
+
+			//現在の {} の深さ
+			//文字列補間中 } で閉じるためには深さを見て判定する必要がある
+			// $ がある深さのみ true になる
+			std::deque<int> dollarStack;
+			dollarStack.push_back(false);
+
+			int lineCount = 0;
+			int posCount = 0;
+			for (auto it = utf32str.begin(); it != utf32str.end(); ++it)
+			{
+				//ソースコード中の処理
+				if (isInSourceCode)
+				{
+					//文字列補間中で最も外側の {} の中にいる
+					const bool isOutermostInterpolationBrace = 2 <= dollarStack.size() && dollarStack[dollarStack.size() - 2];
+
+					//$"{ }" の中にいて、現在の文字が最も外側の } である時、ソースコードから抜けて文字列に戻る
+					if (isOutermostInterpolationBrace && *it == '}')
+					{
+						isInSourceCode = false;
+						//1文字削除して3文字挿入するので2文字分の挿入がある
+						currentStr << ")+\"";
+						positionEditHistory.addCommand(lineCount, OriginalPos::CommandInserted(posCount, 2));
+						posCount += 2;
+					}
+					//次が通常文字列
+					else if (*it == '\"')
+					{
+						isInSourceCode = false;
+						currentStr << AsUtf8(std::u32string(it, it + 1));
+					}
+					//次が文字列補間
+					else if (*it == '$' && nextCharIs('\"', it, utf32str.end()))
+					{
+						isInSourceCode = false;
+						dollarStack.back() = true;
+						currentStr << '\"';
+						//1文字飛ばす
+						++it;
+						positionEditHistory.addCommand(lineCount, OriginalPos::CommandDeleted(posCount, 1));
+						//本来はここで$を削除したので --posCount する必要があるが、
+						//++it により次の1文字がスキップ(つまり次の ++posCount が呼ばれない)ため結果的にキャンセルされる
+					}
+					else
+					{
+						currentStr << AsUtf8(std::u32string(it, it + 1));
+					}
+
+					//TODO: {} の対応が取れない時にも適切にプリプロセス時のエラーメッセージを出すべき
+					if (*it == '{')
+					{
+						dollarStack.push_back(false);
+					}
+					else if (*it == '}')
+					{
+						dollarStack.pop_back();
+					}
+				}
+				//文字列中の処理
+				else
+				{
+					//文字列補間中
+					const bool isInterpolationString = dollarStack.back();
+
+					//次がソースコード
+					if (isInterpolationString && *it == '{')
+					{
+						isInSourceCode = true;
+						currentStr << "\"+(";
+						positionEditHistory.addCommand(lineCount, OriginalPos::CommandInserted(posCount, 2));
+						posCount += 2;
+						dollarStack.push_back(false);
+					}
+					//文字列を抜ける
+					else if (*it == '\"')
+					{
+						isInSourceCode = true;
+						currentStr << AsUtf8(std::u32string(it, it + 1));
+					}
+					// \{ をエスケープする
+					// (isInterpolationString を付けると \{\{ に対応できない。別に通常文字列で \{ をエスケープしても特に問題ない)
+					else if (*it == '\\' && nextCharIs('{', it, utf32str.end()))
+					{
+						currentStr << '{';
+						++it;
+						positionEditHistory.addCommand(lineCount, OriginalPos::CommandDeleted(posCount, 1));
+					}
+					else if (*it == '\\' && nextCharIs('}', it, utf32str.end()))
+					{
+						currentStr << '}';
+						++it;
+						positionEditHistory.addCommand(lineCount, OriginalPos::CommandDeleted(posCount, 1));
+					}
+					else
+					{
+						currentStr << AsUtf8(std::u32string(it, it + 1));
+					}
+				}
+
+				//共通処理
+				if (*it == '\n')
+				{
+					++lineCount;
+					posCount = 0;
+				}
+				else
+				{
+					++posCount;
+				}
+			}
+
+			escapedStr.str(currentStr.str());
+			escapedStr.clear(std::stringstream::goodbit);
+		}
+
+		//再帰深度付きの識別子の置き換え(ContextFreeモード用)
 		{
 			std::string input = escapedStr.str();
 
@@ -621,12 +779,12 @@ namespace cgl
 			escapedStr.clear(std::stringstream::goodbit);
 		}
 
-		//�s���ɃJ���}��}��
+		//行末にカンマを挿入
 		{
 			const std::string postExpectingSymbols1("[({:=!?&|<>*/,+-@");
 			const std::string prevExpectingSymbols1("])}:=!?&|<>*/,");
 
-			//�����L���ň͂ޏꍇ�͓������O�����̔�����s���K�v������
+			//同じ記号で囲む場合は内側か外側かの判定を行う必要がある
 			const std::string postExpectingSymbols1Symmetric("\"");
 			const std::string prevExpectingSymbols1Symmetric("\"");
 
@@ -643,7 +801,7 @@ namespace cgl
 
 			auto lines = Split(escapedStr.str(), '\n');
 
-			//��s���΂�����r���s�����ߋ�s�ȊO�̃C���f�b�N�X��ۑ�
+			//空行を飛ばした比較を行うため空行以外のインデックスを保存
 			std::vector<size_t> nonEmptyIndices;
 			for (size_t i = 0; i < lines.size(); ++i)
 			{
@@ -674,7 +832,7 @@ namespace cgl
 
 					const auto& line = lines[lineIndex];
 					count += std::count(line.begin(), line.begin() + charIndex, ch);
-					std::cout << "char count: " << count << "\n";
+					//std::cout << "char count: " << count << "\n";
 
 					return count;
 				};
@@ -767,17 +925,69 @@ namespace cgl
 		}
 
 		//for debug
-		/*
+		//*
 		std::cout << "Escaped str:" << std::endl;
 		std::cout << "----------------------------------------------" << std::endl;
 		std::cout << escapedStr.str() << std::endl;
 		std::cout << "----------------------------------------------" << std::endl;
 		//*/
 
-		return escapedStr.str();
+		return { escapedStr.str(), positionEditHistory };
 	}
 
-	boost::optional<Expr> Parse1(const std::string& filename)
+	void OriginalPos::addCommand(int linePos, const EditCommand& command)
+	{
+		commandLines[linePos].push_back(command);
+	}
+
+	int OriginalPos::originalCharPos(int linePos, int charPos)const
+	{
+		auto lineIt = commandLines.find(linePos);
+		if (lineIt == commandLines.end())
+		{
+			return charPos;
+		}
+
+		const auto& commands = lineIt->second;
+		int currentPos = 0;
+		int originalPos = 0;
+		int tempIgnoreLength = 0;
+
+		//常に tempIgnoreLength <= currentLength は成り立つという前提で考える
+		//(挿入された文字列の中でさらに挿入がある場合 tempIgnoreLength の方が大きくなるがそのケースは現状考慮しない)
+		for (const auto& command : commands)
+		{
+			if (charPos < command.pos)
+			{
+				const int currentLength = charPos - currentPos;
+				return originalPos + (currentLength - tempIgnoreLength);
+			}
+
+			const int currentLength = command.pos - currentPos;
+			currentPos = command.pos;
+			originalPos += (currentLength - tempIgnoreLength);
+			tempIgnoreLength = 0;
+
+			switch (command.type)
+			{
+			//元の文字列には無い文字列挿入があった
+			case CommandType::Inserted:
+				//これ以降 tempIgnoreLength 文字分の進みをキャンセルする
+				tempIgnoreLength += command.length;
+				break;
+			//元の文字列の削除があった
+			case CommandType::Deleted:
+				originalPos += command.length;
+				break;
+			default: break;
+			}
+		}
+
+		const int currentLength = charPos - currentPos;
+		return originalPos + (currentLength - tempIgnoreLength);
+	}
+
+	boost::optional<std::pair<Expr, OriginalPos>> Parse1(const std::string& filename)
 	{
 		std::cout << "current directory: \"" << filesystem::current_path().string() << "\"" << std::endl;
 
@@ -790,7 +1000,7 @@ namespace cgl
 		}
 
 		std::string original((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-		std::string sourceCode = EscapedSourceCode(original);
+		auto [sourceCode, editPosition] = EscapedSourceCode(original);
 
 		if (isDumpParseTree)
 		{
@@ -855,12 +1065,12 @@ namespace cgl
 #ifdef USE_IMPORT
 		workingDirectories.pop();
 #endif
-		return result;
+		return std::pair<Expr, OriginalPos>{ result, editPosition };
 	}
 
-	boost::optional<Expr> ParseFromSourceCode(const std::string& originalSourceCode)
+	boost::optional<std::pair<Expr, OriginalPos>> ParseFromSourceCode(const std::string& originalSourceCode)
 	{
-		std::string escapedSourceCode = EscapedSourceCode(originalSourceCode);
+		const auto [escapedSourceCode, editPosition] = EscapedSourceCode(originalSourceCode);
 
 #ifdef USE_IMPORT
 		workingDirectories.emplace(cgl::filesystem::current_path());
@@ -912,10 +1122,10 @@ namespace cgl
 #ifdef USE_IMPORT
 		workingDirectories.pop();
 #endif
-		return result;
+		return std::pair<Expr, OriginalPos>{ result, editPosition };
 	}
 
-	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo)
+	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo, const OriginalPos& editPosition)
 	{
 		std::cerr << "--------------------------------------------------------------------------------" << std::endl;
 
@@ -959,11 +1169,14 @@ namespace cgl
 				std::cout << getLine(l + 1) << line << std::endl;
 				if (errorLineBegin <= l && l <= errorLineEnd)
 				{
-					const int startX = (l == errorLineBegin ? std::max(static_cast<int>(locationInfo.locInfo_posBegin) - 1, 0) : 0);
-					const int endX = (l == errorLineEnd ? std::max(static_cast<int>(locationInfo.locInfo_posEnd) - 1, 0) : static_cast<int>(line.size()));
+					const int startX = (l == errorLineBegin ? static_cast<int>(locationInfo.locInfo_posBegin) : 0);
+					const int endX = (l == errorLineEnd ? static_cast<int>(locationInfo.locInfo_posEnd) : static_cast<int>(line.size()));
+
+					const int originalStartX = editPosition.originalCharPos(l, startX);
+					const int originalEndX = editPosition.originalCharPos(l, endX);
 
 					std::string str(line.size(), ' ');
-					str.replace(startX, endX - startX, endX - startX, '^');
+					str.replace(originalStartX, originalEndX - originalStartX, originalEndX - originalStartX, '^');
 
 					std::cout << "     |" << str << std::endl;
 				}
@@ -977,7 +1190,7 @@ namespace cgl
 		}
 	}
 
-	void PrintErrorPos(const std::string& inputFilepath, const LocationInfo& locationInfo)
+	void PrintErrorPos(const std::string& inputFilepath, const LocationInfo& locationInfo, const OriginalPos& editPosition)
 	{
 		std::ifstream ifs(inputFilepath);
 		if (!ifs.is_open())
@@ -987,6 +1200,6 @@ namespace cgl
 
 		const std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
-		PrintErrorPosSource(sourceCode, locationInfo);
+		PrintErrorPosSource(sourceCode, locationInfo, editPosition);
 	}
 }

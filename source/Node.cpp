@@ -600,18 +600,20 @@ namespace cgl
 			CGL_Error("ファイルのimportに失敗");
 		}
 
+		const auto& [expr, editPosition] = it->second.get();
+
 		//通常のインポート
 		//import filename
 		if (importName.empty())
 		{
-			return ExecuteProgramWithRec(it->second.get(), pContext);
+			return ExecuteProgramWithRec(expr, pContext);
 		}
 		//修飾付きインポート
 		//import filename as name
 		//トップレベルの代入式をレコードの要素に包んで評価する
 		else
 		{
-			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(it->second.get()), BinaryOp::Assign);
+			const Expr importParseTree = BinaryExpr(Identifier(importName), ToImportForm(expr), BinaryOp::Assign);
 			//printExpr(importParseTree, pContext, std::cout);
 			return ExecuteProgramWithRec(importParseTree, pContext);
 		}

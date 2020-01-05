@@ -37,6 +37,50 @@ extern bool isDebugMode;
 
 namespace cgl
 {
+	//パース時に得られる文字位置は、プリプロセス処理でテキスト変換を通した後のものなので正確ではない
+	//OriginalPosGetter にプリプロセスで行う文字列の削除と挿入を記録しておきパース後の文字位置からソースコード上の正しい文字位置を復元できるようにする
+	class OriginalPos
+	{
+	public:
+		enum class CommandType
+		{
+			Inserted,
+			Deleted
+		};
+
+		struct EditCommand
+		{
+			EditCommand() = default;
+			EditCommand(CommandType type, int pos, int length) :
+				type(type),
+				pos(pos),
+				length(length)
+			{}
+			CommandType type;
+			int pos; //コマンドの開始位置
+			int length; //文字の長さ
+		};
+
+		static EditCommand CommandInserted(int pos, int length)
+		{
+			return EditCommand(CommandType::Inserted, pos, length);
+		}
+
+		static EditCommand CommandDeleted(int pos, int length)
+		{
+			return EditCommand(CommandType::Deleted, pos, length);
+		}
+
+		void addCommand(int linePos, const EditCommand& command);
+		int originalCharPos(int linePos, int charPos)const;
+
+	private:
+		template<class T>
+		using Lines = std::map<int, T>;
+
+		Lines<std::vector<EditCommand>> commandLines;
+	};
+
 #ifdef USE_IMPORT
 #  ifdef USE_BOOST_LIB
 	namespace filesystem = boost::filesystem;
@@ -51,32 +95,10 @@ namespace cgl
 	//パース時のみ使用
 	extern std::stack<filesystem::path> workingDirectories;
 
-	extern std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
+	extern std::unordered_map<size_t, boost::optional<std::pair<Expr, OriginalPos>>> importedParseTrees;
 #endif
 
 	extern bool errorMessagePrinted;
-
-	inline auto MakeUnaryExpr(UnaryOp op)
-	{
-		return boost::phoenix::bind([](const auto & e, UnaryOp op) {return UnaryExpr(e, op); }, boost::spirit::_1, op);
-	}
-
-	inline auto MakeBinaryExpr(BinaryOp op)
-	{
-		return boost::phoenix::bind([&](const auto& lhs, const auto& rhs, BinaryOp op) {return BinaryExpr(lhs, rhs, op); }, boost::spirit::_val, boost::spirit::_1, op);
-	}
-
-	template <class F, class... Args>
-	inline auto Call(F func, Args... args)
-	{
-		return boost::phoenix::bind(func, args...);
-	}
-
-	template<class FromT, class ToT>
-	inline auto Cast()
-	{
-		return boost::phoenix::bind([&](const FromT& a) {return static_cast<ToT>(a); }, boost::spirit::_1);
-	}
 
 	using namespace boost::spirit;
 
@@ -219,8 +241,8 @@ namespace cgl
 		boost::phoenix::function<ErrorHandler> errorHandler;
 	};
 
-	boost::optional<Expr> Parse1(const std::string& filepath);
-	boost::optional<Expr> ParseFromSourceCode(const std::string& sourceCode);
-	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo);
-	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo);
+	boost::optional<std::pair<Expr, OriginalPos>> Parse1(const std::string& filepath);
+	boost::optional<std::pair<Expr, OriginalPos>> ParseFromSourceCode(const std::string& sourceCode);
+	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo, const OriginalPos& editPosition);
+	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo, const OriginalPos& editPosition);
 }

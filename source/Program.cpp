@@ -358,17 +358,19 @@ namespace cgl
 			profileTime.outputSec = 0;
 
 			const double parseBegin = GetSec();
-			if (auto exprOpt = Parse1(filepath))
+			if (auto exprPosOpt = Parse1(filepath))
 			{
 				profileTime.parseSec = GetSec() - parseBegin;
+
+				const auto& [expr, editPosition] = exprPosOpt.get();
 				
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
 					if (isDumpParseTree)
 					{
-						//printExpr2(exprOpt.get(), pEnv, std::cerr);
-						printExpr(exprOpt.get(), pEnv, std::cerr);
+						//printExpr2(expr, pEnv, std::cerr);
+						printExpr(expr, pEnv, std::cerr);
 					}
 				}
 				
@@ -381,7 +383,7 @@ namespace cgl
 						//_set_se_translator(TranslateInternalException);
 
 						const double executeBegin = GetSec();
-						const LRValue lrvalue = ExecuteProgramWithRec(exprOpt.get(), pEnv);
+						const LRValue lrvalue = ExecuteProgramWithRec(expr, pEnv);
 						profileTime.executeSec = GetSec() - executeBegin;
 
 						evaluated = pEnv->expand(lrvalue, LocationInfo());
@@ -425,7 +427,7 @@ namespace cgl
 							std::cerr << e.what() << std::endl;
 							if (e.hasInfo)
 							{
-								PrintErrorPos(filepath, e.info);
+								PrintErrorPos(filepath, e.info, editPosition);
 							}
 							else
 							{
@@ -456,14 +458,15 @@ namespace cgl
 			if (!errorMessagePrinted)
 			{
 				std::cerr << e.what() << std::endl;
-				if (e.hasInfo)
+				std::cerr << "Exception does not has any location info." << std::endl;
+				/*if (e.hasInfo)
 				{
-					PrintErrorPos(filepath, e.info);
+					PrintErrorPos(filepath, e.info, editPosition);
 				}
 				else
 				{
 					std::cerr << "Exception does not has any location info." << std::endl;
-				}
+				}*/
 			}
 
 			succeeded = false;
@@ -485,17 +488,19 @@ namespace cgl
 
 		try
 		{
-			if (auto exprOpt = ParseFromSourceCode(source))
+			if (auto exprPosOpt = ParseFromSourceCode(source))
 			{
+				const auto& [expr, editPosition] = exprPosOpt.get();
+
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
-					//printExpr2(exprOpt.get(), pEnv, std::cerr);
-					printExpr(exprOpt.get(), pEnv, std::cerr);
+					//printExpr2(expr, pEnv, std::cerr);
+					printExpr(expr, pEnv, std::cerr);
 				}
 
 				if (logOutput) std::cerr << "execute ..." << std::endl;
-				const LRValue lrvalue = ExecuteProgramWithRec(exprOpt.get(), pEnv);
+				const LRValue lrvalue = ExecuteProgramWithRec(expr, pEnv);
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
 				if (logOutput)
 				{
@@ -524,14 +529,15 @@ namespace cgl
 			if (!errorMessagePrinted)
 			{
 				std::cerr << e.what() << std::endl;
-				if (e.hasInfo)
+				std::cerr << "Exception does not has any location info." << std::endl;
+				/*if (e.hasInfo)
 				{
-					PrintErrorPosSource(source, e.info);
+					PrintErrorPosSource(source, e.info, editPosition);
 				}
 				else
 				{
 					std::cerr << "Exception does not has any location info." << std::endl;
-				}
+				}*/
 			}
 
 			succeeded = false;
@@ -556,9 +562,11 @@ namespace cgl
 
 		try
 		{
-			if (auto exprOpt = ParseFromSourceCode(source))
+			if (auto exprPosOpt = ParseFromSourceCode(source))
 			{
-				const LRValue lrvalue = ExecuteProgramWithRec(exprOpt.get(), pEnv);
+				const auto& [expr, editPosition] = exprPosOpt.get();
+
+				const LRValue lrvalue = ExecuteProgramWithRec(expr, pEnv);
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
 		
 				std::stringstream ss;
@@ -654,8 +662,10 @@ namespace cgl
 		
 		try
 		{
-			if (auto exprOpt = Parse1(input_filename))
+			if (auto exprPosOpt = Parse1(input_filename))
 			{
+				const auto& [expr, editPosition] = exprPosOpt.get();
+
 				if (logOutput)
 				{
 					std::cerr << "parse succeeded" << std::endl;
@@ -664,7 +674,6 @@ namespace cgl
 
 				if (logOutput) std::cerr << "execute ..." << std::endl;
 
-				const Expr expr = exprOpt.get();
 				if (IsType<Lines>(expr))
 				{
 					printExpr(expr, pEnv, std::cerr);
@@ -748,14 +757,15 @@ namespace cgl
 			if (!errorMessagePrinted)
 			{
 				std::cerr << e.what() << std::endl;
-				if (e.hasInfo)
+				std::cerr << "Exception does not has any location info." << std::endl;
+				/*if (e.hasInfo)
 				{
-					PrintErrorPos(input_filename, e.info);
+					PrintErrorPos(input_filename, e.info, editPosition);
 				}
 				else
 				{
 					std::cerr << "Exception does not has any location info." << std::endl;
-				}
+				}*/
 			}
 		}
 		catch (const std::exception& other)

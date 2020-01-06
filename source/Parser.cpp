@@ -2,6 +2,7 @@
 
 #include <Pita/Parser.hpp>
 #include <Pita/Printer.hpp>
+#include <Pita/ExprTransformer.hpp>
 
 extern bool isDumpParseTree;
 
@@ -530,6 +531,50 @@ namespace cgl
 		return result;
 	}
 
+	//パース時に得られる文字位置は、プリプロセス処理でテキスト変換を通した後のものなので正確ではない
+	//OriginalPosGetter にプリプロセスで行う文字列の削除と挿入を記録しておきパース後の文字位置からソースコード上の正しい文字位置を復元できるようにする
+	class OriginalPos
+	{
+	public:
+		enum class CommandType
+		{
+			Inserted,
+			Deleted
+		};
+
+		struct EditCommand
+		{
+			EditCommand() = default;
+			EditCommand(CommandType type, int pos, int length) :
+				type(type),
+				pos(pos),
+				length(length)
+			{}
+			CommandType type;
+			int pos; //コマンドの開始位置
+			int length; //文字の長さ
+		};
+
+		static EditCommand CommandInserted(int pos, int length)
+		{
+			return EditCommand(CommandType::Inserted, pos, length);
+		}
+
+		static EditCommand CommandDeleted(int pos, int length)
+		{
+			return EditCommand(CommandType::Deleted, pos, length);
+		}
+
+		void addCommand(int linePos, const EditCommand& command);
+		int originalCharPos(int linePos, int charPos)const;
+
+	private:
+		template<class T>
+		using Lines = std::map<int, T>;
+
+		Lines<std::vector<EditCommand>> commandLines;
+	};
+
 	/*
 	TODO: 文字列補間の中でのコメントに対応する(文字列補間の処理の中にコメント処理も含めるべき)
 	*/
@@ -1002,7 +1047,7 @@ namespace cgl
 
 	//LocationInfoRestorer:
 	//プリプロセス後の構文木のLocationInfoをプリプロセス前のものに戻す
-	class LocationInfoRestorer : public boost::static_visitor<Expr>
+	class LocationInfoRestorer : public ExprTransformer
 	{
 	public:
 		const OriginalPos& editPosition;
@@ -1011,197 +1056,23 @@ namespace cgl
 			editPosition(editPosition)
 		{}
 
-		Expr operator()(const LRValue& node) { Expr node_ = node; ConvertCharPos(node_, editPosition); return node_; }
-		Expr operator()(const Identifier& node) { Expr node_ = node; ConvertCharPos(node_, editPosition); return node_; }
-		Expr operator()(const Import& node) { Expr node_ = node; ConvertCharPos(node_, editPosition); return node_; }
-		Expr operator()(const UnaryExpr& node)
-		{
-			Expr node_ = UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op).setLocation(node);
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const BinaryExpr& node)
-		{
-			Expr node_ = BinaryExpr(
-				boost::apply_visitor(*this, node.lhs),
-				boost::apply_visitor(*this, node.rhs),
-				node.op).setLocation(node);
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const Range& node)
-		{
-			Expr node_ = Range(
-				boost::apply_visitor(*this, node.lhs),
-				boost::apply_visitor(*this, node.rhs)).setLocation(node);
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const Lines& node)
-		{
-			Lines result;
-			for (size_t i = 0; i < node.size(); ++i)
-			{
-				result.add(boost::apply_visitor(*this, node.exprs[i]));
-			}
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const DefFunc& node)
-		{
-			Expr node_ = DefFunc(node.arguments, boost::apply_visitor(*this, node.expr)).setLocation(node);
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const If& node)
-		{
-			If result(boost::apply_visitor(*this, node.cond_expr));
-			result.then_expr = boost::apply_visitor(*this, node.then_expr);
-			if (node.else_expr)
-			{
-				result.else_expr = boost::apply_visitor(*this, node.else_expr.get());
-			}
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const For& node)
-		{
-			For result;
-			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
-			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
-			result.loopCounter = node.loopCounter;
-			result.doExpr = boost::apply_visitor(*this, node.doExpr);
-			result.asList = node.asList;
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const Return& node)
-		{
-			Expr node_ = Return(boost::apply_visitor(*this, node.expr)).setLocation(node);
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const ListConstractor& node)
-		{
-			ListConstractor result;
-			for (const auto& expr : node.data)
-			{
-				result.data.push_back(boost::apply_visitor(*this, expr));
-			}
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const KeyExpr& node)
-		{
-			KeyExpr result(node.name);
-			result.expr = boost::apply_visitor(*this, node.expr);
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const RecordConstractor& node)
-		{
-			RecordConstractor result;
-			for (const auto& expr : node.exprs)
-			{
-				result.exprs.push_back(boost::apply_visitor(*this, expr));
-			}
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const Accessor& node)
-		{
-			Accessor result;
-			result.head = boost::apply_visitor(*this, node.head);
-
-			for (const auto& access : node.accesses)
-			{
-				if (auto listAccess = AsOpt<ListAccess>(access))
-				{
-					ListAccess newListAccess(boost::apply_visitor(*this, listAccess.get().index));
-					newListAccess.isArbitrary = listAccess.get().isArbitrary;
-					result.add(newListAccess);
-				}
-				else if (auto recordAccess = AsOpt<RecordAccess>(access))
-				{
-					result.add(recordAccess.get());
-				}
-				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
-				{
-					FunctionAccess access;
-					for (const auto& argument : functionAccess.get().actualArguments)
-					{
-						access.add(boost::apply_visitor(*this, argument));
-					}
-					result.add(access);
-				}
-				else if (auto inheritAccess = AsOpt<InheritAccess>(access))
-				{
-					Expr originalAdder = inheritAccess.get().adder;
-					Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
-					if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
-					{
-						InheritAccess newInheritAccess(opt.get());
-						result.add(newInheritAccess);
-					}
-					else
-					{
-						CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
-					}
-				}
-				else
-				{
-					CGL_Error("aaa");
-				}
-			}
-
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const DeclSat& node)
-		{
-			Expr node_ = DeclSat(boost::apply_visitor(*this, node.expr)).setLocation(node);
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
-		Expr operator()(const DeclFree& node)
-		{
-			DeclFree result;
-			for (const auto& freeVar : node.accessors)
-			{
-				Expr expr = freeVar.accessor;
-				result.addAccessor(boost::apply_visitor(*this, expr));
-				if (freeVar.range)
-				{
-					result.addRange(boost::apply_visitor(*this, freeVar.range.get()));
-				}
-			}
-			result.setLocation(node);
-
-			Expr node_ = result;
-			ConvertCharPos(node_, editPosition);
-			return node_;
-		}
+		Expr operator()(const LRValue& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Identifier& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Import& node)				override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const UnaryExpr& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const BinaryExpr& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Range& node)				override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Lines& node)				override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const DefFunc& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const If& node)					override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const For& node)				override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Return& node)				override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const ListConstractor& node)	override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const KeyExpr& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const RecordConstractor& node)	override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Accessor& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const DeclSat& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const DeclFree& node)			override { Expr node_ = ExprTransformer::operator()(node); ConvertCharPos(node_, editPosition); return node_; }
 	};
 
 	Expr RestoreLocationInfo(const Expr& expr, const OriginalPos& editPosition)

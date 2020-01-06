@@ -37,50 +37,6 @@ extern bool isDebugMode;
 
 namespace cgl
 {
-	//パース時に得られる文字位置は、プリプロセス処理でテキスト変換を通した後のものなので正確ではない
-	//OriginalPosGetter にプリプロセスで行う文字列の削除と挿入を記録しておきパース後の文字位置からソースコード上の正しい文字位置を復元できるようにする
-	class OriginalPos
-	{
-	public:
-		enum class CommandType
-		{
-			Inserted,
-			Deleted
-		};
-
-		struct EditCommand
-		{
-			EditCommand() = default;
-			EditCommand(CommandType type, int pos, int length) :
-				type(type),
-				pos(pos),
-				length(length)
-			{}
-			CommandType type;
-			int pos; //コマンドの開始位置
-			int length; //文字の長さ
-		};
-
-		static EditCommand CommandInserted(int pos, int length)
-		{
-			return EditCommand(CommandType::Inserted, pos, length);
-		}
-
-		static EditCommand CommandDeleted(int pos, int length)
-		{
-			return EditCommand(CommandType::Deleted, pos, length);
-		}
-
-		void addCommand(int linePos, const EditCommand& command);
-		int originalCharPos(int linePos, int charPos)const;
-
-	private:
-		template<class T>
-		using Lines = std::map<int, T>;
-
-		Lines<std::vector<EditCommand>> commandLines;
-	};
-
 #ifdef USE_IMPORT
 #  ifdef USE_BOOST_LIB
 	namespace filesystem = boost::filesystem;

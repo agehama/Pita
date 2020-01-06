@@ -95,7 +95,7 @@ namespace cgl
 	//パース時のみ使用
 	extern std::stack<filesystem::path> workingDirectories;
 
-	extern std::unordered_map<size_t, boost::optional<std::pair<Expr, OriginalPos>>> importedParseTrees;
+	extern std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 #endif
 
 	extern bool errorMessagePrinted;
@@ -241,8 +241,8 @@ namespace cgl
 		boost::phoenix::function<ErrorHandler> errorHandler;
 	};
 
-	boost::optional<std::pair<Expr, OriginalPos>> Parse1(const std::string& filepath);
-	boost::optional<std::pair<Expr, OriginalPos>> ParseFromSourceCode(const std::string& sourceCode);
-	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo, const OriginalPos& editPosition);
-	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo, const OriginalPos& editPosition);
+	boost::optional<Expr> Parse1(const std::string& filepath);
+	boost::optional<Expr> ParseFromSourceCode(const std::string& sourceCode);
+	void PrintErrorPos(const std::string& input_filepath, const LocationInfo& locationInfo);
+	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo);
 }

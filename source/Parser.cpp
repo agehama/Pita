@@ -10,7 +10,7 @@ namespace cgl
 #ifdef USE_IMPORT
 	std::stack<filesystem::path> workingDirectories;
 
-	std::unordered_map<size_t, boost::optional<std::pair<Expr, OriginalPos>>> importedParseTrees;
+	std::unordered_map<size_t, boost::optional<Expr>> importedParseTrees;
 #endif
 
 	inline auto MakeUnaryExpr(UnaryOp op)
@@ -379,8 +379,9 @@ namespace cgl
 
 		std::cout << std::string("Error") + li.getInfo() + ": expecting " + what << std::endl;
 		
-		//TODO: ここで OriginalPos を取れないのを直す
-		PrintErrorPos(sourcePath, li, OriginalPos());
+		//TODO: ここで PrintErrorPos をするとプリプロセス後の LocationInfo を使って元のソースコードにマーカー付けようとするため文字数が合わず例外が出る可能性がある
+		//      ErrorHandler に何とかして OriginalPos を渡せればここで LocationInfo を変換するだけでよい
+		PrintErrorPos(sourcePath, li);
 	}
 
 	//importファイルはpathとnameの組で管理する
@@ -529,6 +530,9 @@ namespace cgl
 		return result;
 	}
 
+	/*
+	TODO: 文字列補間の中でのコメントに対応する(文字列補間の処理の中にコメント処理も含めるべき)
+	*/
 	std::pair<std::string, OriginalPos> EscapedSourceCode(const std::string& sourceCode)
 	{
 		const auto nextCharOpt = [](std::u32string::const_iterator it, std::u32string::const_iterator itEnd)->boost::optional<std::uint32_t>
@@ -987,7 +991,226 @@ namespace cgl
 		return originalPos + (currentLength - tempIgnoreLength);
 	}
 
-	boost::optional<std::pair<Expr, OriginalPos>> Parse1(const std::string& filename)
+	void ConvertCharPos(Expr& expr, const OriginalPos& editPosition)
+	{
+		LocationInfo& info = GetLocInfo(expr);
+		const int errorLineBegin = static_cast<int>(info.locInfo_lineBegin) - 1;
+		const int errorLineEnd = static_cast<int>(info.locInfo_lineEnd) - 1;
+		info.locInfo_posBegin = editPosition.originalCharPos(errorLineBegin, info.locInfo_posBegin);
+		info.locInfo_posEnd = editPosition.originalCharPos(errorLineEnd, info.locInfo_posEnd);
+	}
+
+	//LocationInfoRestorer:
+	//プリプロセス後の構文木のLocationInfoをプリプロセス前のものに戻す
+	class LocationInfoRestorer : public boost::static_visitor<Expr>
+	{
+	public:
+		const OriginalPos& editPosition;
+
+		LocationInfoRestorer(const OriginalPos& editPosition) :
+			editPosition(editPosition)
+		{}
+
+		Expr operator()(const LRValue& node) { Expr node_ = node; ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Identifier& node) { Expr node_ = node; ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const Import& node) { Expr node_ = node; ConvertCharPos(node_, editPosition); return node_; }
+		Expr operator()(const UnaryExpr& node)
+		{
+			Expr node_ = UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op).setLocation(node);
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const BinaryExpr& node)
+		{
+			Expr node_ = BinaryExpr(
+				boost::apply_visitor(*this, node.lhs),
+				boost::apply_visitor(*this, node.rhs),
+				node.op).setLocation(node);
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const Range& node)
+		{
+			Expr node_ = Range(
+				boost::apply_visitor(*this, node.lhs),
+				boost::apply_visitor(*this, node.rhs)).setLocation(node);
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const Lines& node)
+		{
+			Lines result;
+			for (size_t i = 0; i < node.size(); ++i)
+			{
+				result.add(boost::apply_visitor(*this, node.exprs[i]));
+			}
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const DefFunc& node)
+		{
+			Expr node_ = DefFunc(node.arguments, boost::apply_visitor(*this, node.expr)).setLocation(node);
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const If& node)
+		{
+			If result(boost::apply_visitor(*this, node.cond_expr));
+			result.then_expr = boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				result.else_expr = boost::apply_visitor(*this, node.else_expr.get());
+			}
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const For& node)
+		{
+			For result;
+			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
+			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
+			result.loopCounter = node.loopCounter;
+			result.doExpr = boost::apply_visitor(*this, node.doExpr);
+			result.asList = node.asList;
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const Return& node)
+		{
+			Expr node_ = Return(boost::apply_visitor(*this, node.expr)).setLocation(node);
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const ListConstractor& node)
+		{
+			ListConstractor result;
+			for (const auto& expr : node.data)
+			{
+				result.data.push_back(boost::apply_visitor(*this, expr));
+			}
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const KeyExpr& node)
+		{
+			KeyExpr result(node.name);
+			result.expr = boost::apply_visitor(*this, node.expr);
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const RecordConstractor& node)
+		{
+			RecordConstractor result;
+			for (const auto& expr : node.exprs)
+			{
+				result.exprs.push_back(boost::apply_visitor(*this, expr));
+			}
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const Accessor& node)
+		{
+			Accessor result;
+			result.head = boost::apply_visitor(*this, node.head);
+
+			for (const auto& access : node.accesses)
+			{
+				if (auto listAccess = AsOpt<ListAccess>(access))
+				{
+					ListAccess newListAccess(boost::apply_visitor(*this, listAccess.get().index));
+					newListAccess.isArbitrary = listAccess.get().isArbitrary;
+					result.add(newListAccess);
+				}
+				else if (auto recordAccess = AsOpt<RecordAccess>(access))
+				{
+					result.add(recordAccess.get());
+				}
+				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
+				{
+					FunctionAccess access;
+					for (const auto& argument : functionAccess.get().actualArguments)
+					{
+						access.add(boost::apply_visitor(*this, argument));
+					}
+					result.add(access);
+				}
+				else if (auto inheritAccess = AsOpt<InheritAccess>(access))
+				{
+					Expr originalAdder = inheritAccess.get().adder;
+					Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
+					if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
+					{
+						InheritAccess newInheritAccess(opt.get());
+						result.add(newInheritAccess);
+					}
+					else
+					{
+						CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
+					}
+				}
+				else
+				{
+					CGL_Error("aaa");
+				}
+			}
+
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const DeclSat& node)
+		{
+			Expr node_ = DeclSat(boost::apply_visitor(*this, node.expr)).setLocation(node);
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+		Expr operator()(const DeclFree& node)
+		{
+			DeclFree result;
+			for (const auto& freeVar : node.accessors)
+			{
+				Expr expr = freeVar.accessor;
+				result.addAccessor(boost::apply_visitor(*this, expr));
+				if (freeVar.range)
+				{
+					result.addRange(boost::apply_visitor(*this, freeVar.range.get()));
+				}
+			}
+			result.setLocation(node);
+
+			Expr node_ = result;
+			ConvertCharPos(node_, editPosition);
+			return node_;
+		}
+	};
+
+	Expr RestoreLocationInfo(const Expr& expr, const OriginalPos& editPosition)
+	{
+		LocationInfoRestorer restorer(editPosition);
+		return boost::apply_visitor(restorer, expr);
+	}
+
+	boost::optional<Expr> Parse1(const std::string& filename)
 	{
 		std::cout << "current directory: \"" << filesystem::current_path().string() << "\"" << std::endl;
 
@@ -1062,13 +1285,16 @@ namespace cgl
 
 		boost::apply_visitor(ParseImports(), result);
 
+		result = RestoreLocationInfo(result, editPosition);
+
 #ifdef USE_IMPORT
 		workingDirectories.pop();
 #endif
-		return std::pair<Expr, OriginalPos>{ result, editPosition };
+
+		return result;
 	}
 
-	boost::optional<std::pair<Expr, OriginalPos>> ParseFromSourceCode(const std::string& originalSourceCode)
+	boost::optional<Expr> ParseFromSourceCode(const std::string& originalSourceCode)
 	{
 		const auto [escapedSourceCode, editPosition] = EscapedSourceCode(originalSourceCode);
 
@@ -1119,13 +1345,16 @@ namespace cgl
 
 		boost::apply_visitor(ParseImports(), result);
 
+		result = RestoreLocationInfo(result, editPosition);
+
 #ifdef USE_IMPORT
 		workingDirectories.pop();
 #endif
-		return std::pair<Expr, OriginalPos>{ result, editPosition };
+
+		return result;
 	}
 
-	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo, const OriginalPos& editPosition)
+	void PrintErrorPosSource(const std::string& sourceCode, const LocationInfo& locationInfo)
 	{
 		std::cerr << "--------------------------------------------------------------------------------" << std::endl;
 
@@ -1172,11 +1401,8 @@ namespace cgl
 					const int startX = (l == errorLineBegin ? static_cast<int>(locationInfo.locInfo_posBegin) : 0);
 					const int endX = (l == errorLineEnd ? static_cast<int>(locationInfo.locInfo_posEnd) : static_cast<int>(line.size()));
 
-					const int originalStartX = editPosition.originalCharPos(l, startX);
-					const int originalEndX = editPosition.originalCharPos(l, endX);
-
 					std::string str(line.size(), ' ');
-					str.replace(originalStartX, originalEndX - originalStartX, originalEndX - originalStartX, '^');
+					str.replace(startX, endX - startX, endX - startX, '^');
 
 					std::cout << "     |" << str << std::endl;
 				}
@@ -1190,7 +1416,7 @@ namespace cgl
 		}
 	}
 
-	void PrintErrorPos(const std::string& inputFilepath, const LocationInfo& locationInfo, const OriginalPos& editPosition)
+	void PrintErrorPos(const std::string& inputFilepath, const LocationInfo& locationInfo)
 	{
 		std::ifstream ifs(inputFilepath);
 		if (!ifs.is_open())
@@ -1200,6 +1426,6 @@ namespace cgl
 
 		const std::string sourceCode((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
-		PrintErrorPosSource(sourceCode, locationInfo, editPosition);
+		PrintErrorPosSource(sourceCode, locationInfo);
 	}
 }

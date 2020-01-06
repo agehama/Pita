@@ -600,7 +600,7 @@ namespace cgl
 			CGL_Error("ファイルのimportに失敗");
 		}
 
-		const auto& [expr, editPosition] = it->second.get();
+		const auto& expr = it->second.get();
 
 		//通常のインポート
 		//import filename

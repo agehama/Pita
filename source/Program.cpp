@@ -358,12 +358,11 @@ namespace cgl
 			profileTime.outputSec = 0;
 
 			const double parseBegin = GetSec();
-			if (auto exprPosOpt = Parse1(filepath))
+			if (auto exprOpt = Parse1(filepath))
 			{
 				profileTime.parseSec = GetSec() - parseBegin;
 
-				const auto& expr = exprPosOpt.get().first;
-				const auto& editPosition = exprPosOpt.get().second;
+				const auto& expr = exprOpt.get();
 				
 				if (logOutput)
 				{
@@ -428,7 +427,7 @@ namespace cgl
 							std::cerr << e.what() << std::endl;
 							if (e.hasInfo)
 							{
-								PrintErrorPos(filepath, e.info, editPosition);
+								PrintErrorPos(filepath, e.info);
 							}
 							else
 							{
@@ -459,15 +458,14 @@ namespace cgl
 			if (!errorMessagePrinted)
 			{
 				std::cerr << e.what() << std::endl;
-				std::cerr << "Exception does not has any location info." << std::endl;
-				/*if (e.hasInfo)
+				if (e.hasInfo)
 				{
-					PrintErrorPos(filepath, e.info, editPosition);
+					PrintErrorPos(filepath, e.info);
 				}
 				else
 				{
 					std::cerr << "Exception does not has any location info." << std::endl;
-				}*/
+				}
 			}
 
 			succeeded = false;
@@ -489,9 +487,9 @@ namespace cgl
 
 		try
 		{
-			if (auto exprPosOpt = ParseFromSourceCode(source))
+			if (auto exprOpt = ParseFromSourceCode(source))
 			{
-				const auto& [expr, editPosition] = exprPosOpt.get();
+				const auto& expr = exprOpt.get();
 
 				if (logOutput)
 				{
@@ -530,15 +528,14 @@ namespace cgl
 			if (!errorMessagePrinted)
 			{
 				std::cerr << e.what() << std::endl;
-				std::cerr << "Exception does not has any location info." << std::endl;
-				/*if (e.hasInfo)
+				if (e.hasInfo)
 				{
-					PrintErrorPosSource(source, e.info, editPosition);
+					PrintErrorPosSource(source, e.info);
 				}
 				else
 				{
 					std::cerr << "Exception does not has any location info." << std::endl;
-				}*/
+				}
 			}
 
 			succeeded = false;
@@ -563,9 +560,9 @@ namespace cgl
 
 		try
 		{
-			if (auto exprPosOpt = ParseFromSourceCode(source))
+			if (auto exprOpt = ParseFromSourceCode(source))
 			{
-				const auto& [expr, editPosition] = exprPosOpt.get();
+				const auto& expr = exprOpt.get();
 
 				const LRValue lrvalue = ExecuteProgramWithRec(expr, pEnv);
 				evaluated = pEnv->expand(lrvalue, LocationInfo());
@@ -663,9 +660,9 @@ namespace cgl
 		
 		try
 		{
-			if (auto exprPosOpt = Parse1(input_filename))
+			if (auto exprOpt = Parse1(input_filename))
 			{
-				const auto& [expr, editPosition] = exprPosOpt.get();
+				const auto& expr = exprOpt.get();
 
 				if (logOutput)
 				{
@@ -758,15 +755,14 @@ namespace cgl
 			if (!errorMessagePrinted)
 			{
 				std::cerr << e.what() << std::endl;
-				std::cerr << "Exception does not has any location info." << std::endl;
-				/*if (e.hasInfo)
+				if (e.hasInfo)
 				{
-					PrintErrorPos(input_filename, e.info, editPosition);
+					PrintErrorPos(input_filename, e.info);
 				}
 				else
 				{
 					std::cerr << "Exception does not has any location info." << std::endl;
-				}*/
+				}
 			}
 		}
 		catch (const std::exception& other)

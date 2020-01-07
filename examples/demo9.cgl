@@ -1,0 +1,36 @@
+main = Shape
+{
+    circles: {
+        cs: 5 of (->Circle(100){pos: RandomIn(Square{scale:X2(500)}), scale:25})
+        sat( BinaryEach(cs, (a,b->NotIntersect(a,b)) ) )
+        var(cs[*].pos)
+    }.cs
+
+    arrows: []
+    for i in 0:Size(circles)-2 do(
+        for j in i:Size(circles)-1 do(
+            Push(arrows, [circles[i], circles[j]])
+        )
+    )
+
+    arrowHeights: Size(arrows) of (->0)
+    
+    polygon: (->
+        for i in 0:Size(arrows)-1 list(
+            a = arrows[i][0]
+            b = arrows[i][1]
+            center = (a.pos + b.pos)/2
+            path = Path([a.pos, b.pos])
+            Deform(
+                Arrow{},
+                PathMap(path, (pos, norm ->
+                    distance = Length(center - pos)
+                    pos + norm * (distance / maxLength) * arrowHeights[i]
+                ))
+            ).polygon
+        )
+    )
+
+    sat( NotIntersect(polygon, circles) )
+    var(arrowHeights)
+}

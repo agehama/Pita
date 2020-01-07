@@ -1,0 +1,43 @@
+inscribedCircle = (p1, p2, p3 -> Shape{
+    radius: 10
+    center: Vec2(0, 0)
+    polygon: (->
+        GlobalShape(Circle{scale: radius, pos: center}).polygon
+    )
+    sat(Touch(polygon, Line(p1, p2)) & Touch(polygon, Line(p2, p3)) & Touch(polygon, Line(p3, p1)))
+    var(radius, center)
+})
+
+perpendicular = (dir->Shape{
+    begin: Vec2(0, 0)
+    length: 1
+    line: (->[begin, begin + dir*length])
+    end: (->begin + dir*length)
+    var(length)
+})
+
+getPerpendicular = (p0, p1, center ->
+    perpendicular(Normal([p0, p1])){
+        begin = circle.center
+        sat(Contact(line, [p0, p1]))
+    }
+)
+
+main = Shape{
+    a = Vec2(0,0)
+    b = Vec2(30,-5)
+    c = Vec2(10,50)
+    circle: innerCenterCircle(a, b, c)
+
+    i = circle.center
+    
+    lines: [
+        getPerpendicular(a, b, i)
+        getPerpendicular(b, c, i)
+        getPerpendicular(c, a, i)
+    ]
+
+    d = lines[0].end()
+    e = lines[1].end()
+    f = lines[2].end()
+}

@@ -1,0 +1,5 @@
+Square{
+    Print(left().x)
+    sat(left().x == 0)
+    var(pos.x)
+}

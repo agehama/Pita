@@ -8,13 +8,12 @@ Constraint geometry processing language.
 ### Requirements
 - Boost 1.57
 - CMake 3.1
-- C++ compiler that supports C++14
+- C++ compiler that supports C++17
 
 ### Build
 
     git clone --recursive https://github.com/agehama/Pita.git
-    mkdir build
-    cd build
+    mkdir build ; cd !$
     cmake ../Pita
     make -j
 

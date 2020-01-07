@@ -1,0 +1,27 @@
+Shape{
+    shapes: [
+        Text("Apple")
+        Text("Orange")
+        Text("Lemon")
+        Text("Melon")
+    ]
+
+    //f = (a, b -> margin=10, Area(BoundingBox(Intersect(ConvexHull(Buffer(a,margin)), ConvexHull(Buffer(b,margin))))) )
+    f = (a, b -> margin=10, Area(Intersect(ConvexHull(Buffer(a,margin)), ConvexHull(Buffer(b,margin)))) )
+
+    sat(
+        Cmaes(shapes),
+        sum = 0.0
+        for i in 0:Size(shapes)-1 do(
+            others = []
+            for j in 0:Size(shapes)-2 do(
+                index = Mod(i+1+j, Size(shapes))
+                Push(others, shapes[index])
+            )
+
+            sum = sum + f(shapes[i], others)
+        )
+        sum + Area(BoundingBox(Shape{s:shapes}))^0.75
+    )
+    var(shapes[*].pos in [0, 300])
+}

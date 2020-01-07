@@ -9,6 +9,23 @@ namespace cgl
 {
 	void UpdateCurrentLocation(const LocationInfo& info);
 
+	struct ProfileResult
+	{
+		double parseSec;
+		double executeSec;
+		double outputSec;
+
+		double operator[](size_t i)const
+		{
+			return i == 0 ? parseSec : (i == 1 ? executeSec : outputSec);
+		}
+
+		ProfileResult() = default;
+		ProfileResult(double parseSec, double executeSec, double outputSec) :
+			parseSec(parseSec), executeSec(executeSec), outputSec(outputSec)
+		{}
+	};
+
 	class Program
 	{
 	public:
@@ -20,6 +37,7 @@ namespace cgl
 
 		void execute1(const std::string& input_filename, const std::string& output_filename, bool logOutput = true);
 		void executeInline(const std::string& source, bool logOutput = true);
+		std::string executeAsString(const std::string& source);
 		//void run(const std::string& program, bool logOutput = true);
 
 		void clearState();
@@ -46,9 +64,15 @@ namespace cgl
 
 		bool preEvaluate(const std::string& input_filename, const std::string& output_filename, bool logOutput = true);
 
+		const ProfileResult& profileResult()const
+		{
+			return profileTime;
+		}
+
 	private:
+		ProfileResult profileTime;
 		std::shared_ptr<Context> pEnv;
-		Eval evaluator;
+		//Eval evaluator;
 		boost::optional<Val> evaluated;
 		bool succeeded;
 		bool isInitialized;

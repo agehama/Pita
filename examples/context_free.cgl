@@ -1,0 +1,7 @@
+EnableGC(true)
+
+x = y + 1
+y = z * 3 + x
+z = 5
+
+Print(x)

@@ -1,0 +1,14 @@
+innerCircle = (p1,p2,p3 -> Shape{
+    radius: 10
+    center: Vec2(0, 0)
+    polygon: (->
+        GlobalShape(Circle(10){scale: radius, pos: center}).polygon
+    )
+    sat(Contact(polygon, [p1, p2]) & Contact(polygon, [p2, p3]))
+    var(center)
+})
+
+main = Shape{
+    circle1: innerCircle(Vec2(0,0), Vec2(30,-5), Vec2(10,50))
+    circle2: circle1{radius: 50}
+}

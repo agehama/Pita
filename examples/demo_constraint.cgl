@@ -1,0 +1,15 @@
+/*answer = {
+    x: 0.0, y: 0.0
+    sat(x == -y + 3)
+    sat(2*x + 5*y == 9)
+    var(x, y)
+}
+*/
+
+answer = {
+    x: 0.0
+    sat(5*x^2 - 11*x == -6)
+    var(x)
+}
+
+Print(answer)

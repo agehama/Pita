@@ -1,0 +1,103 @@
+EnableGC(false)
+
+
+MakeGraphFrame = (width, height, data_list -> Shape{
+    xLabel: "p"
+    yLabel: "q"
+    zLabel: "解軌道"
+
+    minX = -3.2
+    maxX = 3.2
+    minY = -3.2
+    maxY = 3.2
+    
+    costIndex = Size(data_list[0])-1
+    minCost = data_list[0][costIndex]
+    maxCost = data_list[0][costIndex]
+
+    for i in 1:Size(data_list)-1 do(
+        if(data_list[i][costIndex] < minCost)then(minCost = data_list[i][costIndex])
+        if(maxCost < data_list[i][costIndex])then(maxCost = data_list[i][costIndex])
+    )
+
+    rangeX = maxX - minX
+    rangeY = maxY - minY
+    margin = 20
+    width_ = width - margin*2
+    height_ = height - margin*2
+
+    map: (p -> Vec2(width_*(p.x - minX)/rangeX-width_*0.5, height_*(p.y - minY)/rangeY-height_*0.5) )
+
+    frame: Shape{
+        frameRect: Square{
+            scale: Vec2(width, height)
+            //fill: Rgb(255,255,255)
+            fill: 0
+            stroke: Rgb(0,0,0)
+        }
+        center: (->globalPos(BoundingBox(frameRect).center))
+        numOfAxes = 5
+        axesX: for i in 0:numOfAxes list(
+            t = 1.0*i/numOfAxes
+            currentInput = minX + rangeX*t
+            x = map(Vec2(currentInput, 0)).x
+            basePos = Vec2(x, -height*0.5)
+            Shape{
+                tick: Square{
+                    scale: Vec2(1, 5)
+                    pos: Vec2(x, 0)
+                    sat(Contact(top(), basePos))
+                    var(pos.y)
+                }
+                number: Text(Fixed(currentInput, 5), 20)
+                sat(Contact(Bottom(Buffer(BoundingBox(number), 5)), basePos))
+                var(number.pos)
+            }
+        )
+        axesY: for i in 0:numOfAxes list(
+            t = 1.0*i/numOfAxes
+            currentInput = minY + rangeY*t
+            y = map(Vec2(0, currentInput)).y
+            basePos = Vec2(width*0.5, y)
+            Shape{
+                tick: Square{
+                    scale: Vec2(5, 1)
+                    pos: Vec2(0, y)
+                    sat(Contact(right(), basePos))
+                    var(pos.x)
+                }
+                number: Text(Fixed(currentInput, 5), 20)
+                sat(Contact(Left(Buffer(BoundingBox(number), 5)), basePos))
+                var(number.pos)
+            }
+        )
+        labels: Shape{
+            labelDistanceX = 30
+            labelDistanceY = 50
+            xl: Text(xLabel, 60)
+            //yl: Text(yLabel, 40){angle: 90}
+            yl: Text(yLabel, 60)
+            sat( Contact(Bottom(BoundingBox(xl)), Top(frameRect) + Vec2(0, -labelDistanceX)) )
+            sat( Contact(Left(BoundingBox(yl)), Right(frameRect) + Vec2(labelDistanceY, 0)) )
+            var(xl.pos, yl.pos)
+        }
+    }
+    center: (->globalPos(frame.center()))
+})
+
+result = Shape{
+    frame: MakeGraphFrame(400, 400)
+    rects: for i in 0:Size(data)-1 list(
+        xs = data[i]
+        x_min = xs[0]
+        x_max = xs[1]
+        y_min = xs[2]
+        y_max = xs[3]
+        //Shape{polygon: [Vec2(x_min, y_min), Vec2(x_max, y_min), Vec2(x_max, y_max), Vec2(x_min, y_max)]}
+        Shape{
+            polygon: [frame.map(Vec2(x_min, y_min)), frame.map(Vec2(x_max, y_min)), frame.map(Vec2(x_max, y_max)), frame.map(Vec2(x_min, y_max))]
+            //fill: Rgb(216, 170, 255)
+            fill: Rgb(170, 106, 225)
+        }
+    )
+}

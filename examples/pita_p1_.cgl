@@ -1,0 +1,23 @@
+gear = (gearNum -> Shape{
+    outerCircle = Circle{scale: X2(100)}
+    innerCircle = Circle{scale: X2(50)}
+    gearShape = Hexagon{scale: Vec2(10,25)}
+    delta = 0.5 / gearNum
+    gears = for i in 1:gearNum list(
+        Print(ShapeOuterPath(outerCircle).line[0])
+        DeformShapeByPath2(gearShape, 
+            SubPath(ShapeOuterPath(outerCircle), delta*(i*2), delta*(i*2+1.2)),
+            gearShape.p(3), gearShape.p(0))
+    )
+    gear: Shape{s: Diff(Union(outerCircle, gears), innerCircle)}
+})
+
+main = Shape{
+    a: gear(7)
+    b: a{pos: Vec2(100,100)}
+    c: a{pos: Vec2(200,300)}
+    fill: Rgb(68, 84, 106)
+    sat( Area(Intersect(a, b))^2 + Area(Intersect(b, c))^2 +
+         Area(BoundingBox({s:[a,b]}))*0.01 + Area(BoundingBox({s:[b,c]}))*0.01 )
+    var(b.pos, c.pos)
+}

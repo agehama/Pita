@@ -7,6 +7,8 @@
 
 namespace cgl
 {
+	constexpr int maxShowListSize = 5;
+
 	std::string ValuePrinter::indent()const
 	{
 		const int tabSize = 4;
@@ -58,10 +60,16 @@ namespace cgl
 			const auto child = ValuePrinter(pEnv, os, m_indent + 1, header);
 			//os << child.indent() << "Address(" << data[i].toString() << ")" << std::endl;
 
+			if (maxShowListSize < i)
+			{
+				os << child.indent() << " ... " << std::endl;
+				break;
+			}
+
 			if (pEnv && data[i].isValid())
 			{
 				//const Val evaluated = pEnv->expand(data[i]);
-				if (auto opt = pEnv->expandOpt(data[i]))
+				if (auto opt = pEnv->expandOpt(LRValue(data[i])))
 				{
 					boost::apply_visitor(child, opt.get());
 				}
@@ -98,7 +106,7 @@ namespace cgl
 			if (pEnv && value.second.isValid())
 			{
 				//const Val evaluated = pEnv->expand(value.second);
-				if (auto opt = pEnv->expandOpt(value.second))
+				if (auto opt = pEnv->expandOpt(LRValue(value.second)))
 				{
 					boost::apply_visitor(child, opt.get());
 				}
@@ -189,7 +197,7 @@ namespace cgl
 
 	void ValuePrinter2::operator()(const CharString& node)const
 	{
-		os << indent() << "String(" << Unicode::UTF32ToUTF8(node.toString()) << ")" << footer();
+		os << indent() << "\"" << Unicode::UTF32ToUTF8(node.toString()) << "\"" << footer();
 		//os << indent() << "String(" << UTF8ToString(Unicode::UTF32ToUTF8(node.toString())) << ")" << footer();
 	}
 
@@ -199,15 +207,23 @@ namespace cgl
 		const auto& data = node.data;
 		for (size_t i = 0; i < data.size(); ++i)
 		{
-			const std::string header = std::string("Address(") + data[i].toString() + "): ";
-			const auto child = ValuePrinter2(pEnv, ss, 0, header);
+			//const std::string header = std::string("Address(") + data[i].toString() + "): ";
+			//const auto child = ValuePrinter2(pEnv, ss, 0, header);
+
+			const auto child = ValuePrinter2(pEnv, ss, 0, "");
 
 			const std::string lf = i + 1 == data.size() ? "" : delimiter();
 			
+			if (maxShowListSize < i)
+			{
+				os << child.indent() << " ... " << lf;
+				break;
+			}
+
 			if (pEnv && data[i].isValid())
 			{
 				//const Val evaluated = pEnv->expand(data[i]);
-				if (auto opt = pEnv->expandOpt(data[i]))
+				if (auto opt = pEnv->expandOpt(LRValue(data[i])))
 				{
 					boost::apply_visitor(child, opt.get());
 					ss << lf;
@@ -240,7 +256,8 @@ namespace cgl
 		int i = 0;
 		for (const auto& value : node.values)
 		{
-			const std::string header = value.first + std::string("(") + value.second.toString() + "): ";
+			//const std::string header = value.first + std::string("(") + value.second.toString() + "): ";
+			const std::string header = value.first + ": ";
 
 			const auto child = ValuePrinter2(pEnv, ss, 0, header);
 
@@ -249,7 +266,7 @@ namespace cgl
 			if (pEnv && value.second.isValid())
 			{
 				//const Val evaluated = pEnv->expand(value.second);
-				if (auto opt = pEnv->expandOpt(value.second))
+				if (auto opt = pEnv->expandOpt(LRValue(value.second)))
 				{
 					boost::apply_visitor(child, opt.get());
 					ss << lf;
@@ -302,65 +319,6 @@ namespace cgl
 		os << indent() << "Jump(" << node.op << ")" << footer();
 	}
 
-	void PrintSatExpr::operator()(double node)const
-	{
-		//os << node;
-		//CGL_DebugLog(ToS(node));
-		os << node;
-	}
-
-	void PrintSatExpr::operator()(const SatUnaryExpr& node)const
-	{
-		switch (node.op)
-		{
-			//case UnaryOp::Not:   return lhs;
-		case UnaryOp::Minus:    os << "-( "; break;
-		case UnaryOp::Plus:     os << "+( "; break;
-		case UnaryOp::Dynamic:  os << "@( "; break;
-		}
-
-		boost::apply_visitor(*this, node.lhs);
-		os << " )";
-	}
-
-	void PrintSatExpr::operator()(const SatBinaryExpr& node)const
-	{
-		os << "( ";
-		boost::apply_visitor(*this, node.lhs);
-
-		switch (node.op)
-		{
-		case BinaryOp::And: os << " & "; break;
-
-		case BinaryOp::Or:  os << " | "; break;
-
-		case BinaryOp::Equal:        os << " == "; break;
-		case BinaryOp::NotEqual:     os << " != "; break;
-		case BinaryOp::LessThan:     os << " < "; break;
-		case BinaryOp::LessEqual:    os << " <= "; break;
-		case BinaryOp::GreaterThan:  os << " > "; break;
-		case BinaryOp::GreaterEqual: os << " >= "; break;
-
-		case BinaryOp::Add: os << " + "; break;
-		case BinaryOp::Sub: os << " - "; break;
-		case BinaryOp::Mul: os << " * "; break;
-		case BinaryOp::Div: os << " / "; break;
-
-		case BinaryOp::Pow: os << " ^ "; break;
-
-		case BinaryOp::Concat: os << " @ "; break;
-
-		case BinaryOp::SetDiff: os << " \\ "; break;
-		}
-
-		boost::apply_visitor(*this, node.rhs);
-		os << " )";
-	}
-
-	void PrintSatExpr::operator()(const SatFunctionReference& node)const
-	{
-	}
-
 	std::string Printer::indent()const
 	{
 		const int tabSize = 4;
@@ -380,35 +338,31 @@ namespace cgl
 			{
 				if (pEnv)
 				{
-					os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.address(*pEnv).toString() << ")" << std::endl;
+					auto opt = pEnv->expandOpt(node);
+					os << indent() << node.toString() << ": " << (opt ? "val" : "none") << std::endl;
+					if (opt)
+					{
+						printVal(opt.get(), pEnv, os, m_indent);
+					}
 				}
 				else
 				{
-					os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
+					os << indent() << node.toString() << std::endl;
 				}
 			}
 			else
 			{
-				if (pEnv)
+				/*if (pEnv)
 				{
 					os << indent() << "Reference" << static_cast<LocationInfo>(node).getInfo() << "(";
 					pEnv->printReference(node.reference(), os);
 					os << ")" << std::endl;
 				}
-				else
+				else*/
 				{
 					os << indent() << "Reference" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
 				}
 			}
-			//os << indent() << node.toString() << std::endl;
-			/*if (pEnv)
-			{
-				os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.address(*pEnv).toString() << ")" << std::endl;
-			}
-			else
-			{
-				os << indent() << "Address" << static_cast<LocationInfo>(node).getInfo() << "(" << node.toString() << ")" << std::endl;
-			}*/
 		}
 		else
 		{
@@ -582,6 +536,11 @@ namespace cgl
 		int i = 0;
 		for (const auto& expr : listConstractor.data)
 		{
+			if (maxShowListSize < i)
+			{
+				os << indent() << "(" << i << "): ... " << std::endl;
+				break;
+			}
 			os << indent() << "(" << i << "): " << std::endl;
 			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 			++i;
@@ -614,18 +573,6 @@ namespace cgl
 		os << indent() << ")" << std::endl;
 	}
 
-	void Printer::operator()(const RecordInheritor& record)const
-	{
-		os << indent() << "RecordInheritor" << record.getInfo() << "(" << std::endl;
-
-		const auto child = Printer(pEnv, os, m_indent + 1);
-		Expr expr = record.adder;
-		boost::apply_visitor(child, record.original);
-		boost::apply_visitor(child, expr);
-
-		os << indent() << ")" << std::endl;
-	}
-
 	void Printer::operator()(const DeclSat& node)const
 	{
 		os << indent() << "DeclSat" << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
@@ -636,9 +583,9 @@ namespace cgl
 	void Printer::operator()(const DeclFree& node)const
 	{
 		os << indent() << "DeclFree" << static_cast<LocationInfo>(node).getInfo() << "(" << std::endl;
-		for (const auto& accessor : node.accessors)
+		for (const auto& varRange : node.accessors)
 		{
-			Expr expr = accessor;
+			Expr expr = varRange.accessor;
 			boost::apply_visitor(Printer(pEnv, os, m_indent + 1), expr);
 		}
 		os << indent() << ")" << std::endl;
@@ -671,6 +618,15 @@ namespace cgl
 				}
 				os << child.indent() << ")" << std::endl;
 			}
+			else if (auto opt = AsOpt<InheritAccess>(access))
+			{
+				os << child.indent() << "{" << std::endl;
+				for (const auto& arg : opt.get().adder.exprs)
+				{
+					boost::apply_visitor(child, arg);
+				}
+				os << child.indent() << "}" << std::endl;
+			}
 		}
 		os << indent() << ")" << std::endl;
 	}
@@ -700,17 +656,20 @@ namespace cgl
 
 	void Printer2::operator()(const LRValue& node)const
 	{
+		/*os << indent();*/
+
 		if (node.isLValue())
 		{
-			if (pEnv)
+			if (node.isEitherReference())
 			{
-				//os << indent() << "Address(" << node.address(*pEnv).toString() << ")" << footer();
-				os << "Address(" << node.address(*pEnv).toString() << ")" << footer();
+				auto local = node.eitherReference().local;
+				const std::string name = local ? local.get().toString() : "None";
+
+				os << "(" << name << "|" << node.eitherReference().replaced.toString() << ")" << footer();
 			}
 			else
 			{
-				//os << indent() << "Address(" << node.toString() << ")" << footer();
-				os << "Address(" << node.toString() << ")" << footer();
+				os << node.toString() << footer();
 			}
 		}
 		else
@@ -725,7 +684,7 @@ namespace cgl
 	void Printer2::operator()(const Identifier& node)const
 	{
 		//os << indent() << "Identifier(" << static_cast<std::string>(node) << ")" << footer();
-		os << static_cast<std::string>(node);
+		os /*<< indent()*/ << static_cast<std::string>(node);
 	}
 
 	void Printer2::operator()(const Import& node)const
@@ -875,10 +834,11 @@ namespace cgl
 		{
 			std::stringstream ss;
 			boost::apply_visitor(Printer2(pEnv, ss, 0), statement.exprs.front());
-			os << indent() << ss.str() << footer();
+			os << indent() << "(" << ss.str() << ")" << footer();
 		}
 		else
 		{
+			os << indent() << "(" << footer();
 			for (const auto& expr : statement.exprs)
 			{
 				/*os << indent() << "(" << i << "): " << footer();
@@ -887,6 +847,7 @@ namespace cgl
 				//boost::apply_visitor(*this, expr);
 				boost::apply_visitor(Printer2(pEnv, os, m_indent + 1), expr);
 			}
+			os << indent() << ")" << footer();
 		}
 
 		//os << indent() << "Statement end" << footer();
@@ -959,8 +920,29 @@ namespace cgl
 
 	void Printer2::operator()(const For& forExpression)const
 	{
-		os << indent() << "For(" << footer();
+		std::stringstream ssBegin;
+		std::stringstream ssEnd;
 
+		{
+			const auto child = Printer2(pEnv, ssBegin, 0);
+			boost::apply_visitor(child, forExpression.rangeStart);
+		}
+		{
+			const auto child = Printer2(pEnv, ssEnd, 0);
+			boost::apply_visitor(child, forExpression.rangeEnd);
+		}
+
+		os << indent() << "for " <<
+			forExpression.loopCounter.name << " in " <<
+			ssBegin.str() << " : " <<
+			ssEnd.str() << (forExpression.asList ? " list" : " do") << "(" << footer();
+		
+		{
+			std::stringstream ss;
+			const auto child = Printer2(pEnv, ss, m_indent + 1);
+			boost::apply_visitor(child, forExpression.doExpr);
+			os << ss.str();
+		}
 		os << indent() << ")" << footer();
 	}
 
@@ -980,6 +962,11 @@ namespace cgl
 		int i = 0;
 		for (const auto& expr : listConstractor.data)
 		{
+			if (maxShowListSize < i)
+			{
+				os << " ... ";
+				break;
+			}
 			//os << indent() << "(" << i << "): " << footer();
 			boost::apply_visitor(Printer2(pEnv, os, m_indent == 0 ? 0 : m_indent + 1), expr);
 			if (m_indent == 0 && i + 1 != listConstractor.data.size())
@@ -993,7 +980,11 @@ namespace cgl
 
 	void Printer2::operator()(const KeyExpr& keyExpr)const
 	{
-		boost::apply_visitor(Printer2(pEnv, os, m_indent, static_cast<std::string>(keyExpr.name) + ": "), keyExpr.expr);
+		//boost::apply_visitor(Printer2(pEnv, os, m_indent, static_cast<std::string>(keyExpr.name) + ": "), keyExpr.expr);
+
+		os << indent() << keyExpr.name.toString() << ": ";
+		boost::apply_visitor(Printer2(pEnv, os, 0), keyExpr.expr);
+		os << footer();
 	}
 
 	void Printer2::operator()(const RecordConstractor& recordConstractor)const
@@ -1015,35 +1006,19 @@ namespace cgl
 		os << indent() << "}" << footer();
 	}
 
-	void Printer2::operator()(const RecordInheritor& record)const
-	{
-		/*os << indent() << "RecordInheritor(" << footer();
-
-		const auto child = Printer2(pEnv, os, m_indent + 1);
-		Expr expr = record.adder;
-		boost::apply_visitor(child, record.original);
-		boost::apply_visitor(child, expr);
-
-		os << indent() << ")" << footer();*/
-		std::stringstream ss;
-		boost::apply_visitor(Printer2(pEnv, ss, 0), record.original);
-		Expr expr = record.adder;
-		boost::apply_visitor(Printer2(pEnv, os, m_indent, ss.str()), expr);
-	}
-
 	void Printer2::operator()(const DeclSat& node)const
 	{
-		os << indent() << "DeclSat(" << footer();
+		os << indent() << "sat(" << footer();
 		boost::apply_visitor(Printer2(pEnv, os, m_indent + 1), node.expr);
 		os << indent() << ")" << footer();
 	}
 
 	void Printer2::operator()(const DeclFree& node)const
 	{
-		os << indent() << "DeclFree(" << footer();
-		for (const auto& accessor : node.accessors)
+		os << indent() << "var(" << footer();
+		for (const auto& varRange : node.accessors)
 		{
-			Expr expr = accessor;
+			Expr expr = varRange.accessor;
 			boost::apply_visitor(Printer2(pEnv, os, m_indent + 1), expr);
 		}
 		os << indent() << ")" << footer();
@@ -1109,6 +1084,22 @@ namespace cgl
 					++argIndex;
 				}
 				ss << ")";
+			}
+			else if (auto opt = AsOpt<InheritAccess>(access))
+			{
+				ss << "{";
+				int argIndex = 0;
+				const auto& exprs = opt.get().adder.exprs;
+				for (const auto& arg : exprs)
+				{
+					boost::apply_visitor(child, arg);
+					if (argIndex + 1 != exprs.size())
+					{
+						ss << ", ";
+					}
+					++argIndex;
+				}
+				ss << "}";
 			}
 		}
 

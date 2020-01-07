@@ -1,8 +1,3 @@
-main = text{
-    rect: Square{scale= {x: 400, y: 300}}
-    str: "abcde"
-    base: path{
-        points: 7
-        passes: [rect.top(), rect.right(), rect.bottom(), rect.left()]
-    }
-}
+Print($"1 + 2 + 3 = {1 + 2 + 3}")
+Print((x = 3, y = 5, $"x + 3*y = { x + 3*y }, 2*x + y = { 2*x + y }"))
+Print($"This \{{ $"is \{{ $"nested \{{ $"string \{{"interpolation"}\}" }\}" }\}" }\}.")

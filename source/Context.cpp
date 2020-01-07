@@ -8,9 +8,533 @@
 #include <Pita/IntrinsicGeometricFunctions.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/BinaryEvaluator.hpp>
+#include <Pita/ClosureMaker.hpp>
 
 namespace cgl
 {
+	class ExprAddressCheker : public boost::static_visitor<void>
+	{
+	public:
+		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			currentAttribute(currentAttribute)
+		{}
+
+		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			outputAddresses(outputAddresses),
+			currentAttribute(currentAttribute)
+		{}
+
+		const Context& context;
+		std::unordered_set<Address>& reachableAddressSet;
+		std::unordered_set<Address>& newAddressSet;
+		boost::optional<OutputAddresses> outputAddresses;
+		RegionVariable::Attribute currentAttribute;
+
+		bool isMarked(Address address)const
+		{
+			return reachableAddressSet.find(address) != reachableAddressSet.end();
+		}
+
+		void checkValue(const Val& val)
+		{
+			if (outputAddresses)
+			{
+				CheckValue(val, context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses.get());
+			}
+			else
+			{
+				CheckValue(val, context, reachableAddressSet, newAddressSet, currentAttribute);
+			}
+		}
+
+		void update(Address address)
+		{
+			if (!isMarked(address))
+			{
+				reachableAddressSet.emplace(address);
+				newAddressSet.emplace(address);
+
+				if (outputAddresses && outputAddresses.get().pred(address))
+				{
+					outputAddresses.get().outputs.emplace_back(address, currentAttribute);
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					checkValue(opt.get());
+				}
+				else
+				{
+					CGL_ErrorInternal("不正なアドレスを参照しました。");
+				}
+			}
+		}
+
+		void operator()(const LRValue& node)
+		{
+			if (node.isRValue())
+			{
+				return;
+			}
+
+			update(node.address(context));
+		}
+
+		void operator()(const Identifier& node) {}
+
+		void operator()(const Import& node) {}
+
+		void operator()(const UnaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+		}
+
+		void operator()(const BinaryExpr& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Range& node)
+		{
+			boost::apply_visitor(*this, node.lhs);
+			boost::apply_visitor(*this, node.rhs);
+		}
+
+		void operator()(const Lines& node)
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const DefFunc& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const If& node)
+		{
+			boost::apply_visitor(*this, node.cond_expr);
+			boost::apply_visitor(*this, node.then_expr);
+			if (node.else_expr)
+			{
+				boost::apply_visitor(*this, node.else_expr.get());
+			}
+		}
+
+		void operator()(const For& node)
+		{
+			boost::apply_visitor(*this, node.rangeStart);
+			boost::apply_visitor(*this, node.rangeEnd);
+			boost::apply_visitor(*this, node.doExpr);
+		}
+
+		void operator()(const Return& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const ListConstractor& node)
+		{
+			for (const auto& expr : node.data)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const KeyExpr& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const RecordConstractor& node)
+		{
+			for (const auto& expr : node.exprs)
+			{
+				boost::apply_visitor(*this, expr);
+			}
+		}
+
+		void operator()(const Accessor& node)
+		{
+			boost::apply_visitor(*this, node.head);
+
+			for (const auto& access : node.accesses)
+			{
+				if (auto listAccess = AsOpt<ListAccess>(access))
+				{
+					boost::apply_visitor(*this, listAccess.get().index);
+				}
+				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
+				{
+					for (const auto& argument : functionAccess.get().actualArguments)
+					{
+						boost::apply_visitor(*this, argument);
+					}
+				}
+				else if (auto inheritAccess = AsOpt<InheritAccess>(access))
+				{
+					for (const auto& expr : inheritAccess.get().adder.exprs)
+					{
+						boost::apply_visitor(*this, expr);
+					}
+				}
+			}
+		}
+
+		void operator()(const DeclSat& node)
+		{
+			boost::apply_visitor(*this, node.expr);
+		}
+
+		void operator()(const DeclFree& node)
+		{
+			for (const auto& varRange : node.accessors)
+			{
+				Expr expr = varRange.accessor;
+				boost::apply_visitor(*this, expr);
+
+				if (varRange.range)
+				{
+					boost::apply_visitor(*this, varRange.range.get());
+				}
+			}
+		}
+	};
+
+	class ValueAddressChecker : public boost::static_visitor<void>
+	{
+	public:
+		ValueAddressChecker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			currentAttribute(currentAttribute)
+		{}
+
+		ValueAddressChecker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet,
+			RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses) :
+			context(context),
+			reachableAddressSet(reachableAddressSet),
+			newAddressSet(newAddressSet),
+			outputAddresses(outputAddresses),
+			currentAttribute(currentAttribute)
+		{}
+
+		const Context& context;
+		std::unordered_set<Address>& reachableAddressSet;
+		std::unordered_set<Address>& newAddressSet;
+		boost::optional<OutputAddresses> outputAddresses;
+		RegionVariable::Attribute currentAttribute;
+
+		bool isMarked(Address address)const
+		{
+			return reachableAddressSet.find(address) != reachableAddressSet.end();
+		}
+
+		void update(Address address)
+		{
+			if (!isMarked(address))
+			{
+				reachableAddressSet.emplace(address);
+				newAddressSet.emplace(address);
+
+				if (outputAddresses && outputAddresses.get().pred(address))
+				{
+					outputAddresses.get().outputs.emplace_back(address, currentAttribute);
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					boost::apply_visitor(*this, opt.get());
+				}
+				else
+				{
+					//CGL_ErrorInternal("不正なアドレスを参照しました。");
+					CGL_ErrorInternal(std::string("不正なアドレスを参照しました。: Address(") + address.toString() + ")");
+				}
+			}
+		}
+
+		void checkExpr(const Expr& expr)
+		{
+			if (outputAddresses)
+			{
+				CheckExpr(expr, context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses.get());
+			}
+			else
+			{
+				CheckExpr(expr, context, reachableAddressSet, newAddressSet, currentAttribute);
+			}
+		}
+
+		void operator()(bool node) {}
+
+		void operator()(int node) {}
+
+		void operator()(double node) {}
+
+		void operator()(const CharString& node) {}
+
+		void operator()(const List& node)
+		{
+			for (Address address : node.data)
+			{
+				update(address);
+			}
+		}
+
+		void operator()(const KeyValue& node)
+		{
+			CGL_Error("未対応");
+			//CheckValue(node.value, context, reachableAddressSet, newAddressSet);
+		}
+
+		void operator()(const Record& node)
+		{
+			//TODO: var(ShapeRecord in range)の場合はShapeRecordはpos,scale,angleのみ見ればよいと思ったが、
+			//SatVariableBinderでも参照可能なアドレスを探して紐付けるためにこの関数を呼んでいるため、
+			//これだとpos,scale,angle以外のメンバと紐付けられない問題が発生した。
+			/*{
+				const auto& values = node.values;
+				auto posIt = values.find("pos");
+				auto scaleIt = values.find("scale");
+				auto angleIt = values.find("angle");
+				const bool isShapeRecord = posIt != values.end() && scaleIt != values.end() && angleIt != values.end();
+				if (isShapeRecord)
+				{
+					const RegionVariable::Attribute defaultAttribute = currentAttribute;
+					currentAttribute = RegionVariable::Attribute::Position;
+					update(posIt->second);
+					currentAttribute = RegionVariable::Attribute::Scale;
+					update(scaleIt->second);
+					currentAttribute = RegionVariable::Attribute::Angle;
+					update(angleIt->second);
+					currentAttribute = defaultAttribute;
+				}
+				else
+				{
+					for (const auto& keyval : node.values)
+					{
+						update(keyval.second);
+					}
+				}
+			}*/
+			{
+				const RegionVariable::Attribute defaultAttribute = currentAttribute;
+				for (const auto& keyval : node.values)
+				{
+					if (keyval.first == "pos")
+					{
+						currentAttribute = RegionVariable::Attribute::Position;
+						update(keyval.second);
+					}
+					else if (keyval.first == "scale")
+					{
+						currentAttribute = RegionVariable::Attribute::Scale;
+						update(keyval.second);
+					}
+					else if (keyval.first == "angle")
+					{
+						currentAttribute = RegionVariable::Attribute::Angle;
+						update(keyval.second);
+					}
+					else
+					{
+						currentAttribute = defaultAttribute;
+						update(keyval.second);
+					}
+				}
+				currentAttribute = defaultAttribute;
+			}
+
+			for (const auto& problem : node.problems)
+			{
+				if (problem.expr)
+				{
+					checkExpr(problem.expr.get());
+				}
+
+				for (const Address address : problem.refs)
+				{
+					update(address);
+				}
+
+				for (const auto& var : problem.freeVariableRefs)
+				{
+					update(var.address);
+				}
+			}
+
+			if (node.constraint)
+			{
+				checkExpr(node.constraint.get());
+			}
+
+			for (const auto& varRange : node.boundedFreeVariables)
+			{
+				if (IsType<Accessor>(varRange.freeVariable))
+				{
+					const Expr expr = As<Accessor>(varRange.freeVariable);
+					checkExpr(expr);
+				}
+				else if(IsType<Reference>(varRange.freeVariable))
+				{
+					const Expr expr = LRValue(As<Reference>(varRange.freeVariable));
+					checkExpr(expr);
+				}
+				else
+				{
+					CGL_Error("不正な型");
+				}
+
+				if (varRange.freeRange)
+				{
+					checkExpr(varRange.freeRange.get());
+				}
+			}
+
+			for (const auto& var: node.original.regionVars)
+			{
+				update(var.address);
+			}
+
+			for (const auto& oldExprs : node.original.unitConstraints)
+			{
+				checkExpr(oldExprs);
+			}
+
+			for (const auto& appears : node.original.variableAppearances)
+			{
+				for (const Address address : appears)
+				{
+					update(address);
+				}
+			}
+
+			for (const auto& problem : node.original.groupConstraints)
+			{
+				if (problem.expr)
+				{
+					checkExpr(problem.expr.get());
+				}
+			}
+		}
+
+		void operator()(const FuncVal& node)
+		{
+			if (!node.builtinFuncAddress)
+			{
+				checkExpr(node.expr);
+			}
+		}
+
+		void operator()(const Jump& node)
+		{
+			CGL_Error("未対応");
+		}
+	};
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute)
+	{
+		ExprAddressCheker cheker(context, reachableAddressSet, newAddressSet, currentAttribute);
+		boost::apply_visitor(cheker, expr);
+	}
+
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute)
+	{
+		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet, currentAttribute);
+		boost::apply_visitor(cheker, evaluated);
+	}
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses)
+	{
+		ExprAddressCheker cheker(context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses);
+		boost::apply_visitor(cheker, expr);
+	}
+
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses)
+	{
+		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet, currentAttribute, outputAddresses);
+		boost::apply_visitor(cheker, evaluated);
+	}
+
+	/*std::unordered_set<Address> GetReachableAddressesFrom(const std::unordered_set<Address>& addresses, const Context& context)
+	{
+		std::unordered_set<Address> referenceableAddresses;
+
+		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
+		{
+			for (const Address address : addresses)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
+				traverse(addressesDelta, traverse);
+			}
+		};
+
+		traverse(addresses, traverse);
+
+		return referenceableAddresses;
+	}*/
+	void GetReachableAddressesFrom(std::unordered_set<Address>& referenceableAddresses, const std::unordered_set<Address>& targetAddresses, const Context& context)
+	{
+		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
+		{
+			for (const Address address : addresses)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
+				traverse(addressesDelta, traverse);
+			}
+		};
+
+		traverse(targetAddresses, traverse);
+	}
+
+	std::vector<RegionVariable> GetConstraintAddressesFrom(Address address, const Context& context, RegionVariable::Attribute attribute)
+	{
+		std::unordered_set<Address> initialAddresses;
+		initialAddresses.emplace(address);
+
+		std::vector<RegionVariable> result;
+
+		std::unordered_set<Address> referenceableAddresses;
+		OutputAddresses outputAddresses([&](Address address) {
+			const Val value = context.expand(LRValue(address), LocationInfo());
+			return IsType<int>(value) || IsType<double>(value);
+		}, result);
+
+		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
+		{
+			for (const Address address : addresses)
+			{
+				std::unordered_set<Address> addressesDelta;
+				CheckExpr(LRValue(address), context, referenceableAddresses, addressesDelta, attribute, outputAddresses);
+				traverse(addressesDelta, traverse);
+			}
+		};
+
+		traverse(initialAddresses, traverse);
+
+		return result;
+	}
+
 	Address Context::makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr)
 	{
 		std::set<std::string> functionArguments;
@@ -19,8 +543,8 @@ namespace cgl
 			functionArguments.insert(arg);
 		}
 
-		ClosureMaker maker(pEnv, functionArguments);
-		const Expr closedFuncExpr = boost::apply_visitor(maker, expr);
+		//TODO: ここの引数にfunctionArgumentsが入っていないのは正しい？
+		const Expr closedFuncExpr = AsClosure(*pEnv, expr);
 
 		FuncVal funcVal(arguments, closedFuncExpr);
 		return makeTemporaryValue(funcVal);
@@ -37,6 +561,7 @@ namespace cgl
 		}
 
 		bindValueID(name, address1);
+		m_globalFunctions[name] = address1;
 
 		if (isPlateausFunction)
 		{
@@ -62,7 +587,26 @@ namespace cgl
 
 	const Val& Context::expand(const LRValue& lrvalue, const LocationInfo& info)const
 	{
-		if (lrvalue.isLValue())
+		if (lrvalue.isEitherReference())
+		{
+			if (lrvalue.eitherReference().localReferenciable(*this))
+			{
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				return expand(boost::apply_visitor(evaluator, expr), info);
+			}
+			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			CGL_ErrorNode(info, std::string("値") + lrvalue.toString() + "の参照に失敗しました。");
+		}
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -78,7 +622,35 @@ namespace cgl
 
 	Val& Context::mutableExpand(LRValue& lrvalue, const LocationInfo& info)
 	{
-		if (lrvalue.isLValue())
+		if (lrvalue.isEitherReference())
+		{
+			/*if (lrvalue.eitherReference().localReferenciable(*this))
+			{
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				LRValue result = boost::apply_visitor(evaluator, expr);
+				return mutableExpand(result, info);
+			}
+			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}*/
+			if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			CGL_ErrorNode(info, std::string("値") + lrvalue.toString() + "の参照に失敗しました。");
+		}
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -94,7 +666,26 @@ namespace cgl
 
 	boost::optional<const Val&> Context::expandOpt(const LRValue& lrvalue)const
 	{
-		if (lrvalue.isLValue())
+		if (lrvalue.isEitherReference())
+		{
+			if (lrvalue.eitherReference().localReferenciable(*this))
+			{
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				return expandOpt(boost::apply_visitor(evaluator, expr));
+			}
+			else if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			return boost::none;
+		}
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -110,7 +701,26 @@ namespace cgl
 
 	boost::optional<Val&> Context::mutableExpandOpt(LRValue& lrvalue)
 	{
-		if (lrvalue.isLValue())
+		if (lrvalue.isEitherReference())
+		{
+			/*if (lrvalue.eitherReference().localReferenciable(*this))
+			{
+				Eval evaluator(m_weakThis.lock());
+				Expr expr = lrvalue.eitherReference().local.get();
+				return mutableExpandOpt(boost::apply_visitor(evaluator, expr));
+			}
+			else*/ if (lrvalue.eitherReference().replaced.isValid())
+			{
+				auto it = m_values.at(lrvalue.eitherReference().replaced);
+				if (it != m_values.end())
+				{
+					return it->second;
+				}
+			}
+
+			return boost::none;
+		}
+		else if (lrvalue.isLValue())
 		{
 			auto it = m_values.at(lrvalue.address(*this));
 			if (it != m_values.end())
@@ -145,466 +755,195 @@ namespace cgl
 	}
 
 	//オブジェクトの中にある全ての値への参照をリストで取得する
-	std::vector<Address> Context::expandReferences(Address address, const LocationInfo& info)
+	std::vector<RegionVariable> Context::expandReferences(Address address, const LocationInfo& info, RegionVariable::Attribute attribute)
 	{
-		std::vector<Address> result;
-		if (auto sharedThis = m_weakThis.lock())
-		{
-			const auto addElementRec = [&](auto rec, Address address)->void
-			{
-				const Val value = sharedThis->expand(address, info);
-
-				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
-				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
-				{
-					result.push_back(address);
-				}
-				else if (IsType<List>(value))
-				{
-					for (Address elemAddress : As<List>(value).data)
-					{
-						rec(rec, elemAddress);
-					}
-				}
-				else if (IsType<Record>(value))
-				{
-					for (const auto& elem : As<Record>(value).values)
-					{
-						rec(rec, elem.second);
-					}
-				}
-				//それ以外のデータは特に捕捉しない
-				//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
-			};
-
-			const auto addElement = [&](const Address address)
-			{
-				addElementRec(addElementRec, address);
-			};
-
-			addElement(address);
-		}
-
-		return result;
+		return GetConstraintAddressesFrom(address, *m_weakThis.lock(), attribute);
 	}
 
-	std::vector<std::pair<Address, VariableRange>> Context::expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info)
+	std::vector<RegionVariable> Context::expandReferences2(const Accessor& accessor, const LocationInfo& info)
 	{
-		std::vector<std::pair<Address, VariableRange>> result;
-		if (auto sharedThis = m_weakThis.lock())
+		auto sharedThis = m_weakThis.lock();
+
+		Eval evaluator(sharedThis);
+
+		using Addresses = std::vector<std::pair<Address, RegionVariable::Attribute>>;
+		std::array<Addresses, 2> addressBuffer;
+		unsigned int currentWriteIndex = 0;
+		const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
+		const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
+
+		const auto writeBuffer = [&]()->Addresses& {return addressBuffer[currentWriteIndex]; };
+		const auto readBuffer = [&]()->Addresses& {return addressBuffer[nextIndex()]; };
+
+		RegionVariable::Attribute currentAttribute = RegionVariable::Attribute::Other;
+
+		LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
+		if (headValue.isLValue())
 		{
-			const auto addElementRec = [&](auto rec, Address address, boost::optional<const PackedVal&> currentVariableRange)->void
-			{
-				const Val value = sharedThis->expand(address, info);
-
-				//追跡対象の変数にたどり着いたらそれを参照するアドレスを出力に追加
-				if (IsType<int>(value) || IsType<double>(value) /*|| IsType<bool>(value)*/)//TODO:boolへの対応？
-				{
-					VariableRange range;
-					if (currentVariableRange)
-					{
-						if (auto opt = AsOpt<PackedList>(currentVariableRange.get()))
-						{
-							const auto& rangeData = opt.get().data;
-							if (rangeData.size() == 2)
-							{
-								range.minimum = AsDouble(rangeData[0].value);
-								range.maximum = AsDouble(rangeData[1].value);
-							}
-							else CGL_Error("rangeは要素数が二つでなければなりません");
-						}
-						else CGL_Error("rangeの形が不正です");
-					}
-					result.emplace_back(address, range);
-				}
-				else if (IsType<List>(value))
-				{
-					if (currentVariableRange)
-					{
-						if (auto opt = AsOpt<PackedList>(currentVariableRange.get()))
-						{
-							const auto& rangeData = opt.get().data;
-							const auto& list = As<List>(value).data;
-
-							if (rangeData.size() != list.size())
-								CGL_Error("rangeと変数の形が対応していません");
-
-							for (size_t i = 0; i < list.size(); ++i)
-							{
-								rec(rec, list[i], rangeData[i].value);
-							}
-						}
-						else CGL_Error("rangeの形が不正です");
-					}
-					else
-					{
-						for (Address elemAddress : As<List>(value).data)
-						{
-							rec(rec, elemAddress, boost::none);
-						}
-					}
-				}
-				else if (IsType<Record>(value))
-				{
-					if (currentVariableRange)
-					{
-						if (auto opt = AsOpt<PackedRecord>(currentVariableRange.get()))
-						{
-							const auto& rangeData = opt.get().values;
-							const auto& record = As<Record>(value).values;
-
-							for (const auto& elem : record)
-							{
-								const auto rangeIt = rangeData.find(elem.first);
-								if (rangeIt == rangeData.end())
-									CGL_Error("rangeと変数の形が対応していません");
-								
-								rec(rec, elem.second, rangeIt->second.value);
-							}
-						}
-						else CGL_Error("rangeの形が不正です");
-					}
-					else
-					{
-						for (const auto& elem : As<Record>(value).values)
-						{
-							rec(rec, elem.second, boost::none);
-						}
-					}
-				}
-				//それ以外のデータは特に捕捉しない
-				//TODO:最終的に int や double 以外のデータへの参照は持つことにするか？
-			};
-
-			const auto addElement = [&](const Address address, boost::optional<const PackedVal&> currentVariableRange)
-			{
-				addElementRec(addElementRec, address, currentVariableRange);
-			};
-
-			addElement(address, variableRange);
+			writeBuffer().emplace_back(headValue.address(*this), currentAttribute);
 		}
-
-		return result;
-	}
-
-	/*std::vector<Address> Context::expandReferences2(const Accessor & accessor)
-	{
-		if (auto sharedThis = m_weakThis.lock())
+		else
 		{
-			Eval evaluator(sharedThis);
-
-			std::array<std::vector<Address>, 2> addressBuffer;
-			unsigned int currentWriteIndex = 0;
-			const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
-			const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
-
-			const auto writeBuffer = [&]()->std::vector<Address>& {return addressBuffer[currentWriteIndex]; };
-			const auto readBuffer = [&]()->std::vector<Address>& {return addressBuffer[nextIndex()]; };
-
-			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
-			if (headValue.isLValue())
+			Val evaluated = headValue.evaluated();
+			if (auto opt = AsOpt<Record>(evaluated))
 			{
-				writeBuffer().push_back(headValue.address(*this));
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
+			}
+			else if (auto opt = AsOpt<List>(evaluated))
+			{
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
+			}
+			else if (auto opt = AsOpt<FuncVal>(evaluated))
+			{
+				writeBuffer().emplace_back(makeTemporaryValue(opt.get()), currentAttribute);
 			}
 			else
 			{
-				Val evaluated = headValue.evaluated();
-				if (auto opt = AsOpt<Record>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else if (auto opt = AsOpt<List>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else if (auto opt = AsOpt<FuncVal>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else
-				{
-					CGL_Error("アクセッサのヘッドの評価結果が不正");
-				}
+				CGL_Error("アクセッサのヘッドの評価結果が不正");
 			}
+		}
 
-			for (const auto& access : accessor.accesses)
-			{
-				flipIndex();
-
-				writeBuffer().clear();
-
-				for (int i = 0; i < readBuffer().size(); ++i)
-				{
-					const Address address = readBuffer()[i];
-
-					boost::optional<const Val&> objOpt = expandOpt(address);
-					if (!objOpt)
-					{
-						CGL_Error("参照エラー");
-					}
-
-					const Val& objRef = objOpt.get();
-
-					if (auto listAccessOpt = AsOpt<ListAccess>(access))
-					{
-						if (!IsType<List>(objRef))
-						{
-							CGL_Error("オブジェクトがリストでない");
-						}
-
-						const List& list = As<const List&>(objRef);
-
-						if (listAccessOpt.get().isArbitrary)
-						{
-							const auto& allIndices = list.data;
-
-							writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
-						}
-						else
-						{
-							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index));
-
-							if (auto indexOpt = AsOpt<int>(value))
-							{
-								writeBuffer().push_back(list.get(indexOpt.get()));
-							}
-							else
-							{
-								CGL_Error("list[index] の index が int 型でない");
-							}
-						}
-					}
-					else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
-					{
-						if (!IsType<Record>(objRef))
-						{
-							CGL_Error("オブジェクトがレコードでない");
-						}
-
-						const Record& record = As<const Record&>(objRef);
-						auto it = record.values.find(recordAccessOpt.get().name);
-						if (it == record.values.end())
-						{
-							CGL_Error("指定された識別子がレコード中に存在しない");
-						}
-
-						writeBuffer().push_back(it->second);
-					}
-					else
-					{
-						auto funcAccess = As<FunctionAccess>(access);
-
-						if (!IsType<FuncVal>(objRef))
-						{
-							CGL_Error("オブジェクトが関数でない");
-						}
-
-						const FuncVal& function = As<const FuncVal&>(objRef);
-
-						std::vector<Address> args;
-						for (const auto& expr : funcAccess.actualArguments)
-						{
-							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr));
-							if (currentArgument.isLValue())
-							{
-								args.push_back(currentArgument.address(*this));
-							}
-							else
-							{
-								args.push_back(makeTemporaryValue(currentArgument.evaluated()));
-							}
-						}
-
-						const Val returnedValue = expand(evaluator.callFunction(function, args));
-						writeBuffer().push_back(makeTemporaryValue(returnedValue));
-					}
-				}
-			}
-
+		for (const auto& access : accessor.accesses)
+		{
 			flipIndex();
 
-			std::vector<Address> result;
-			for (const Address address : readBuffer())
+			writeBuffer().clear();
+
+			for (int i = 0; i < readBuffer().size(); ++i)
 			{
-				const auto expanded = expandReferences(address);
-				result.insert(result.end(), expanded.begin(), expanded.end());
-			}
+				const Address address = readBuffer()[i].first;
 
-			return result;
-		}
-
-		CGL_Error("shared this does not exist.");
-		return {};
-	}*/
-
-	std::vector<std::pair<Address, VariableRange>> Context::expandReferences2(const Accessor & accessor, boost::optional<const PackedVal&> rangeOpt, const LocationInfo& info)
-	{
-		if (auto sharedThis = m_weakThis.lock())
-		{
-			Eval evaluator(sharedThis);
-
-			std::array<std::vector<Address>, 2> addressBuffer;
-			unsigned int currentWriteIndex = 0;
-			const auto nextIndex = [&]() {return (currentWriteIndex + 1) & 1; };
-			const auto flipIndex = [&]() {currentWriteIndex = nextIndex(); };
-
-			const auto writeBuffer = [&]()->std::vector<Address>& {return addressBuffer[currentWriteIndex]; };
-			const auto readBuffer = [&]()->std::vector<Address>& {return addressBuffer[nextIndex()]; };
-
-			LRValue headValue = boost::apply_visitor(evaluator, accessor.head);
-			if (headValue.isLValue())
-			{
-				writeBuffer().push_back(headValue.address(*this));
-			}
-			else
-			{
-				Val evaluated = headValue.evaluated();
-				if (auto opt = AsOpt<Record>(evaluated))
+				boost::optional<const Val&> objOpt = expandOpt(LRValue(address));
+				if (!objOpt)
 				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
+					CGL_Error("参照エラー");
 				}
-				else if (auto opt = AsOpt<List>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else if (auto opt = AsOpt<FuncVal>(evaluated))
-				{
-					writeBuffer().push_back(makeTemporaryValue(opt.get()));
-				}
-				else
-				{
-					CGL_Error("アクセッサのヘッドの評価結果が不正");
-				}
-			}
 
-			for (const auto& access : accessor.accesses)
-			{
-				flipIndex();
+				const Val& objRef = objOpt.get();
 
-				writeBuffer().clear();
-
-				for (int i = 0; i < readBuffer().size(); ++i)
+				if (auto listAccessOpt = AsOpt<ListAccess>(access))
 				{
-					const Address address = readBuffer()[i];
-
-					boost::optional<const Val&> objOpt = expandOpt(address);
-					if (!objOpt)
+					if (!IsType<List>(objRef))
 					{
-						CGL_Error("参照エラー");
+						CGL_Error("オブジェクトがリストでない");
 					}
 
-					const Val& objRef = objOpt.get();
+					const List& list = As<List>(objRef);
 
-					if (auto listAccessOpt = AsOpt<ListAccess>(access))
+					if (listAccessOpt.get().isArbitrary)
 					{
-						if (!IsType<List>(objRef))
+						const auto& allIndices = list.data;
+
+						for (Address address : allIndices)
 						{
-							CGL_Error("オブジェクトがリストでない");
+							writeBuffer().emplace_back(address, currentAttribute);
 						}
+					}
+					else
+					{
+						Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), info);
 
-						const List& list = As<List>(objRef);
-
-						if (listAccessOpt.get().isArbitrary)
+						if (auto indexOpt = AsOpt<int>(value))
 						{
-							const auto& allIndices = list.data;
-
-							writeBuffer().insert(writeBuffer().end(), allIndices.begin(), allIndices.end());
+							writeBuffer().emplace_back(list.get(indexOpt.get()), currentAttribute);
 						}
-						else
+						else if (auto indicesOpt = AsOpt<List>(value))
 						{
-							Val value = expand(boost::apply_visitor(evaluator, listAccessOpt.get().index), info);
-
-							if (auto indexOpt = AsOpt<int>(value))
+							const List& indices = indicesOpt.get();
+							for (const Address indexAddress : indices.data)
 							{
-								writeBuffer().push_back(list.get(indexOpt.get()));
-							}
-							else if (auto indicesOpt = AsOpt<List>(value))
-							{
-								const List& indices = indicesOpt.get();
-								for (const Address indexAddress : indices.data)
+								Val indexValue = expand(LRValue(indexAddress), info);
+								if (auto indexOpt = AsOpt<int>(indexValue))
 								{
-									Val indexValue = expand(indexAddress, info);
-									if (auto indexOpt = AsOpt<int>(indexValue))
-									{
-										writeBuffer().push_back(list.get(indexOpt.get()));
-									}
-									else
-									{
-										CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
-									}
+									writeBuffer().emplace_back(list.get(indexOpt.get()), currentAttribute);
+								}
+								else
+								{
+									CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
 								}
 							}
-							else
-							{
-								CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
-							}
 						}
-					}
-					else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
-					{
-						if (!IsType<Record>(objRef))
+						else
 						{
-							CGL_Error("オブジェクトがレコードでない");
+							CGL_ErrorNode(info, "リストのインデックスが整数値ではありませんでした。");
 						}
-
-						const Record& record = As<Record>(objRef);
-						auto it = record.values.find(recordAccessOpt.get().name);
-						if (it == record.values.end())
-						{
-							//CGL_Error("指定された識別子がレコード中に存在しない");
-							CGL_Error(std::string() + "指定された識別子\"" + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しない");
-						}
-
-						writeBuffer().push_back(it->second);
-					}
-					else
-					{
-						auto funcAccess = As<FunctionAccess>(access);
-
-						if (!IsType<FuncVal>(objRef))
-						{
-							CGL_Error("オブジェクトが関数でない");
-						}
-
-						const FuncVal& function = As<FuncVal>(objRef);
-
-						std::vector<Address> args;
-						for (const auto& expr : funcAccess.actualArguments)
-						{
-							const LRValue currentArgument = expand(boost::apply_visitor(evaluator, expr), info);
-							if (currentArgument.isLValue())
-							{
-								args.push_back(currentArgument.address(*this));
-							}
-							else
-							{
-								args.push_back(makeTemporaryValue(currentArgument.evaluated()));
-							}
-						}
-
-						const Val returnedValue = expand(evaluator.callFunction(accessor, function, args), info);
-						writeBuffer().push_back(makeTemporaryValue(returnedValue));
 					}
 				}
+				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+				{
+					if (!IsType<Record>(objRef))
+					{
+						CGL_Error("オブジェクトがレコードでない");
+					}
+
+					const Record& record = As<Record>(objRef);
+					const std::string name = recordAccessOpt.get().name;
+					auto it = record.values.find(name);
+					if (it == record.values.end())
+					{
+						//CGL_Error("指定された識別子がレコード中に存在しない");
+						CGL_Error(std::string() + "指定された識別子\"" + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しない");
+					}
+
+					if (name == "pos")
+					{
+						currentAttribute = RegionVariable::Attribute::Position;
+					}
+					else if (name == "scale")
+					{
+						currentAttribute = RegionVariable::Attribute::Scale;
+					}
+					else if (name == "angle")
+					{
+						currentAttribute = RegionVariable::Attribute::Angle;
+					}
+
+					writeBuffer().emplace_back(it->second, currentAttribute);
+				}
+				else
+				{
+					auto funcAccess = As<FunctionAccess>(access);
+
+					if (!IsType<FuncVal>(objRef))
+					{
+						CGL_Error("オブジェクトが関数でない");
+					}
+
+					const FuncVal& function = As<FuncVal>(objRef);
+
+					std::vector<Address> args;
+					for (const auto& expr : funcAccess.actualArguments)
+					{
+						const LRValue currentArgument(expand(boost::apply_visitor(evaluator, expr), info));
+						if (currentArgument.isLValue())
+						{
+							args.push_back(currentArgument.address(*this));
+						}
+						else
+						{
+							args.push_back(makeTemporaryValue(currentArgument.evaluated()));
+						}
+					}
+
+					const Val returnedValue = expand(evaluator.callFunction(accessor, function, args), info);
+					writeBuffer().emplace_back(makeTemporaryValue(returnedValue), currentAttribute);
+				}
 			}
-
-			flipIndex();
-
-			std::vector<std::pair<Address, VariableRange>> result;
-			for (const Address address : readBuffer())
-			{
-				//var での省略記法 list[*] を使った場合、readBuffer() には複数のアドレスが格納される
-				//ここで、var( list[*].pos in range ) と書いた場合はこの range と各アドレスをどう結び付けるかが自明でない
-				//とりあえず今の実装では全てのアドレスに対して同じ range を割り当てるようにしている
-				const auto expanded = expandReferences(address, rangeOpt, info);
-				result.insert(result.end(), expanded.begin(), expanded.end());
-			}
-
-			return result;
 		}
 
-		CGL_Error("shared this does not exist.");
-		return {};
+		flipIndex();
+
+		std::vector<RegionVariable> result;
+		for (const auto& var : readBuffer())
+		{
+			//var での省略記法 list[*] を使った場合、readBuffer() には複数のアドレスが格納される
+			//ここで、var( list[*].pos in range ) と書いた場合はこの range と各アドレスをどう結び付けるかが自明でない
+			//とりあえず今の実装では全てのアドレスに対して同じ range を割り当てるようにしている
+			const auto expanded = expandReferences(var.first, info, var.second);
+			result.insert(result.end(), expanded.begin(), expanded.end());
+		}
+
+		return result;
 	}
 
 	Reference Context::bindReference(Address address)
@@ -663,7 +1002,7 @@ namespace cgl
 
 			for (const auto& access : accessor.accesses)
 			{
-				boost::optional<const Val&> objOpt = pEnv->expandOpt(address);
+				boost::optional<const Val&> objOpt = pEnv->expandOpt(LRValue(address));
 				if (!objOpt)
 				{
 					CGL_Error("参照エラー");
@@ -806,6 +1145,11 @@ namespace cgl
 		return localEnv().back().variables.find(name) != localEnv().back().variables.end();
 	}
 
+	bool Context::existsInLocalScope(const std::string& name)const
+	{
+		return std::any_of(localEnv().begin(), localEnv().end(), [&](const Scope& scope) {return scope.variables.find(name) != scope.variables.end(); });
+	}
+
 	void Context::printContext(bool flag)const {}
 
 	void Context::printContext(std::ostream& os)const
@@ -899,7 +1243,7 @@ namespace cgl
 						}
 						else
 						{
-							address = list.get(index);
+							address = LRValue(list.get(index));
 						}
 					}
 					else
@@ -930,7 +1274,7 @@ namespace cgl
 					}
 					else
 					{
-						address = it->second;
+						address = LRValue(it->second);
 					}
 				}
 				else
@@ -975,8 +1319,8 @@ namespace cgl
 
 		localEnv().back().temporaryAddresses.push_back(address);
 
-		//const int thresholdGC = 20000;
-		const int thresholdGC = 300;
+		const int thresholdGC = 20000;
+		//const int thresholdGC = 5000;
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
 			garbageCollect();
@@ -997,7 +1341,167 @@ namespace cgl
 			}
 		}
 
+		{
+			auto variableIt = m_globalFunctions.find(name);
+			if (variableIt != m_globalFunctions.end())
+			{
+				return variableIt->second;
+			}
+		}
+
+
 		return Address::Null();
+	}
+
+	std::set<std::string> Context::getVisibleIdentifiers()const
+	{
+		std::set<std::string> result;
+		for (const auto& env : m_localEnvStack)
+		{
+			for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
+			{
+				for (const auto& nameVal : scopeIt->variables)
+				{
+					result.insert(nameVal.first);
+				}
+			}
+		}
+		return result;
+	}
+
+	boost::optional<DefFuncWithScopeInfo&> Context::getDeferredFunction(const Identifier& deferredIdentifier)
+	{
+		if (!deferredIdentifier.isDeferredCall() && !deferredIdentifier.isMakeClosure())
+		{
+			//std::cerr << "End   getDeferredFunction(0)" << std::endl;
+			return boost::none;
+		}
+
+		auto [callerScopeInfo, rawIdentifier] = deferredIdentifier.decomposed();
+		
+		/*std::cerr << "deferredIdentifiers: " << deferredIdentifiers.size() << std::endl;
+		for (const auto& keyval : deferredIdentifiers)
+		{
+			std::cerr << "key: " << static_cast<std::string>(keyval.first) << std::endl;
+		}*/
+
+		const auto name = rawIdentifier.toString();
+		const size_t recDepthIndex = name.find("##");
+		if (recDepthIndex != std::string::npos)
+		{
+			rawIdentifier = Identifier(std::string(name.begin(), name.begin() + recDepthIndex));
+		}
+
+		// 呼び出しと一致する識別子の検索
+		auto it = deferredIdentifiers.find(rawIdentifier);
+		if (it == deferredIdentifiers.end() || it->second.empty())
+		{
+			//std::cerr << "End   getDeferredFunction(1) \"" << static_cast<std::string>(rawIdentifier) <<"\""<< std::endl;
+			return boost::none;
+		}
+		
+		// 呼び出しと一致するインデックス配列の検索
+		std::vector<DefFuncWithScopeInfo>& scopeInfos = it->second;
+		int maxMatchCount = -1;
+		int maxMatchCountIndex = -1;
+		
+		for (size_t functionIndex = 0; functionIndex < scopeInfos.size(); ++functionIndex)
+		{
+			const DefFuncWithScopeInfo& currentFuncInfo = scopeInfos[functionIndex];
+			const auto& funcScopeInfo = currentFuncInfo.scopeInfo;
+
+			// 呼び出し側より深いスコープで定義された遅延識別子が呼ばれることはない
+			if (callerScopeInfo.size() < funcScopeInfo.size())
+			{
+				continue;
+			}
+
+			// 呼び出しの必要条件：関数側のスコープが呼び出し側のスコープを包含している
+			// <=> 関数側のスコープインデックス配列が呼び出し側のスコープインデックス配列に包含されている
+			bool matched = true;
+			for (size_t i = 0; i < funcScopeInfo.size(); ++i)
+			{
+				if (funcScopeInfo[i] != callerScopeInfo[i])
+				{
+					matched = false;
+				}
+			}
+
+			// 呼び出し可能な遅延識別子の中ではより深いスコープで定義されたものが優先される
+			if (matched && maxMatchCount < static_cast<int>(funcScopeInfo.size()))
+			{
+				maxMatchCount = static_cast<int>(funcScopeInfo.size());
+				maxMatchCountIndex = static_cast<int>(functionIndex);
+			}
+		}
+
+		if (maxMatchCountIndex == -1)
+		{
+			//std::cerr << "End   getDeferredFunction(2)" << std::endl;
+			return boost::none;
+		}
+
+		//std::cerr << "End   getDeferredFunction(3)" << std::endl;
+		return scopeInfos[maxMatchCountIndex];
+	}
+
+	boost::optional<const DefFuncWithScopeInfo&> Context::getDeferredFunction(const Identifier& deferredIdentifier)const
+	{
+		if (!deferredIdentifier.isDeferredCall() && !deferredIdentifier.isMakeClosure())
+		{
+			return boost::none;
+		}
+
+		auto [callerScopeInfo, rawIdentifier] = deferredIdentifier.decomposed();
+
+		// 呼び出しと一致する識別子の検索
+		auto it = deferredIdentifiers.find(rawIdentifier);
+		if (it == deferredIdentifiers.end() || it->second.empty())
+		{
+			return boost::none;
+		}
+
+		// 呼び出しと一致するインデックス配列の検索
+		const std::vector<DefFuncWithScopeInfo>& scopeInfos = it->second;
+		int maxMatchCount = -1;
+		int maxMatchCountIndex = -1;
+
+		for (size_t functionIndex = 0; functionIndex < scopeInfos.size(); ++functionIndex)
+		{
+			const DefFuncWithScopeInfo& currentFuncInfo = scopeInfos[functionIndex];
+			const auto& funcScopeInfo = currentFuncInfo.scopeInfo;
+
+			// 呼び出し側より深いスコープで定義された遅延識別子が呼ばれることはない
+			if (callerScopeInfo.size() < funcScopeInfo.size())
+			{
+				continue;
+			}
+
+			// 呼び出しの必要条件：関数側のスコープが呼び出し側のスコープを包含している
+			// <=> 関数側のスコープインデックス配列が呼び出し側のスコープインデックス配列に包含されている
+			bool matched = true;
+			for (size_t i = 0; i < funcScopeInfo.size(); ++i)
+			{
+				if (funcScopeInfo[i] != callerScopeInfo[i])
+				{
+					matched = false;
+				}
+			}
+
+			// 呼び出し可能な遅延識別子の中ではより深いスコープで定義されたものが優先される
+			if (matched && maxMatchCount < static_cast<int>(funcScopeInfo.size()))
+			{
+				maxMatchCount = static_cast<int>(funcScopeInfo.size());
+				maxMatchCountIndex = static_cast<int>(functionIndex);
+			}
+		}
+
+		if (maxMatchCountIndex == -1)
+		{
+			return boost::none;
+		}
+
+		return scopeInfos[maxMatchCountIndex];
 	}
 
 	void Context::initialize()
@@ -1013,8 +1517,9 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			std::cout << "Address(" << arguments[0].toString() << "): ";
-			printVal(pEnv->expand(arguments[0], info), pEnv, std::cout, 0);
+			//std::cout << "Address(" << arguments[0].toString() << "): ";
+			printVal2(pEnv->expand(LRValue(arguments[0]), info), pEnv, std::cout, 0);
+			std::cout << std::endl;
 			return 0;
 		},
 			false
@@ -1029,7 +1534,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1081,7 +1586,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (auto opt = AsOpt<List>(value))
 			{
 				return static_cast<int>(opt.get().data.size());
@@ -1106,7 +1611,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsType<List>(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1114,6 +1619,109 @@ namespace cgl
 
 			List original = As<List>(value);
 			std::reverse(original.data.begin(), original.data.end());
+			return original;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Push",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			LRValue arg0(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(arg0, info);
+			if (!IsType<List>(listValue))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			const Val& value = pEnv->expand(LRValue(arguments[1]), info);
+
+			List& original = As<List>(listValue);
+			original.data.push_back(pEnv->makeTemporaryValue(value));
+			return original;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Pop",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			LRValue arg0(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(arg0, info);
+			if (!IsType<List>(listValue))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			List& original = As<List>(listValue);
+			original.data.pop_back();
+			return original;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Sort",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1 && arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			LRValue arg0(arguments[0]);
+			Val& listValue = pEnv->mutableExpand(arg0, info);
+			if (!IsType<List>(listValue))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			List& original = As<List>(listValue);
+
+			if (arguments.size() == 1)
+			{
+				std::sort(original.data.begin(), original.data.end(), 
+					[&](const Address& a, const Address& b)->bool
+				{
+					return LessThanFunc(pEnv->expand(LRValue(a), info), pEnv->expand(LRValue(b), info), *pEnv);
+				});
+			}
+			else
+			{
+				const Val& value = pEnv->expand(LRValue(arguments[1]), info);
+				if (!IsType<FuncVal>(value))
+				{
+					CGL_ErrorNode(info, "引数の型が正しくありません");
+				}
+				const FuncVal& predicate = As<FuncVal>(value);
+
+				Eval eval(pEnv);
+
+				std::sort(original.data.begin(), original.data.end(),
+					[&](const Address& a, const Address& b)->bool
+				{
+					std::vector<Address> args({a,b});
+					const Val result = pEnv->expand(eval.callFunction(info, predicate, args), info);
+					if (!IsType<bool>(result))
+					{
+						CGL_ErrorNode(info, "不正な型");
+					}
+					return As<bool>(result);
+				});
+			}
+
 			return original;
 		},
 			false
@@ -1137,7 +1745,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1157,7 +1765,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& value = pEnv->expand(arguments[0], info);
+			const Val& value = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(value))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1177,7 +1785,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1197,8 +1805,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
-			const Val& y = pEnv->expand(arguments[1], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& y = pEnv->expand(LRValue(arguments[1]), info);
 			if (!IsNum(x) || !IsNum(y))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1214,6 +1822,46 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Floor",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
+			if (!IsNum(x))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return static_cast<int>(std::floor(AsDouble(x)));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Ceil",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
+			if (!IsNum(x))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return static_cast<int>(std::ceil(AsDouble(x)));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Sin",
 			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -1222,7 +1870,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1242,13 +1890,33 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
 			return std::cos(deg2rad*AsDouble(x));
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Log",
+			[](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
+			if (!IsNum(x))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return std::log(AsDouble(x));
 		},
 			false
 			);
@@ -1262,7 +1930,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1282,7 +1950,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& x = pEnv->expand(arguments[0], info);
+			const Val& x = pEnv->expand(LRValue(arguments[0]), info);
 			if (!IsNum(x))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1302,8 +1970,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& v0 = expand(arguments[0], info);
-			const Val& v1 = expand(arguments[1], info);
+			const Val& v0 = expand(LRValue(arguments[0]), info);
+			const Val& v1 = expand(LRValue(arguments[1]), info);
 
 			if (!IsNum(v0) || !IsNum(v1))
 			{
@@ -1340,7 +2008,7 @@ namespace cgl
 			}
 			else
 			{
-				const Val& value = expand(arguments[0], info);
+				const Val& value = expand(LRValue(arguments[0]), info);
 				if (!IsType<int>(value))
 				{
 					CGL_ErrorNode(info, "引数の型が正しくありません");
@@ -1362,10 +2030,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& passesVal = pEnv->expand(arguments[0], info);
-			const Val& numVal = pEnv->expand(arguments[1], info);
+			const Val& passesVal = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& numVal = pEnv->expand(LRValue(arguments[1]), info);
 
-			auto obstaclesValOpt = arguments.size() == 3 ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
+			auto obstaclesValOpt = arguments.size() == 3 ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[2]), info)) : boost::none;
 
 			if (!IsType<List>(passesVal) || !IsType<int>(numVal))
 			{
@@ -1394,7 +2062,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1411,19 +2079,60 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
-			"Text",
+			"Fixed",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
-			if (arguments.size() != 1 && arguments.size() != 2 && arguments.size() != 3)
+			if (arguments.size() != 2)
 			{
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& strVal = pEnv->expand(arguments[0], info);
-			auto baseLineOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[1], info)) : boost::none;
-			auto fontNameOpt = 3 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(arguments[2], info)) : boost::none;
+			const Val strVal = pEnv->expand(LRValue(arguments[0]), info);
+			const Val digitsVal = pEnv->expand(LRValue(arguments[1]), info);
+
+			if (!IsNum(strVal))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+			if (!IsType<int>(digitsVal))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			const double num = AsDouble(strVal);
+			std::stringstream ss;
+			ss << std::setprecision(As<int>(digitsVal));
+			ss << num;
+			CharString printedStr(AsUtf32(ss.str()));
+
+			return printedStr;
+		},
+			true
+			);
+
+		registerBuiltInFunction(
+			"Text",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1 && arguments.size() != 2 && arguments.size() != 3 && arguments.size() != 4)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			Val strVal = pEnv->expand(LRValue(arguments[0]), info);
+			const auto heightOpt = 2 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[1]), info)) : boost::none;
+			const auto baseLineOpt = 3 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[2]), info)) : boost::none;
+			const auto fontNameOpt = 4 <= arguments.size() ? boost::optional<const Val&>(pEnv->expand(LRValue(arguments[3]), info)) : boost::none;
 
 			if (!IsType<CharString>(strVal))
+			{
+				std::stringstream ss;
+				ValuePrinter2 printer(m_weakThis.lock(), ss, 0);
+				boost::apply_visitor(printer, strVal);
+				CharString printedStr(AsUtf32(ss.str()));
+				strVal = printedStr;
+			}
+			if (heightOpt && !IsNum(heightOpt.get()))
 			{
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
@@ -1436,17 +2145,22 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の型が正しくありません");
 			}
 
-			if (3 <= arguments.size())
+			if (4 <= arguments.size())
 			{
 				return BuildText(
 					As<CharString>(strVal), 
+					AsDouble(heightOpt.get()),
 					As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this)), 
 					As<CharString>(fontNameOpt.get())
 				).unpacked(*this);
 			}
+			else if (3 <= arguments.size())
+			{
+				return BuildText(As<CharString>(strVal), AsDouble(heightOpt.get()), As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this))).unpacked(*this);
+			}
 			else if (2 <= arguments.size())
 			{
-				return BuildText(As<CharString>(strVal), As<PackedRecord>(As<Record>(baseLineOpt.get()).packed(*this))).unpacked(*this);
+				return BuildText(As<CharString>(strVal), AsDouble(heightOpt.get())).unpacked(*this);
 			}
 			return BuildText(As<CharString>(strVal)).unpacked(*this);
 		},
@@ -1462,8 +2176,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
-			const Val& arg2 = pEnv->expand(arguments[1], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& arg2 = pEnv->expand(LRValue(arguments[1]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1488,9 +2202,9 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
-			const Val& arg2 = pEnv->expand(arguments[1], info);
-			const Val& arg3 = pEnv->expand(arguments[2], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& arg2 = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& arg3 = pEnv->expand(LRValue(arguments[2]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1515,10 +2229,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& func = pEnv->expand(arguments[0], info);
-			const Val& beginX = pEnv->expand(arguments[1], info);
-			const Val& endX = pEnv->expand(arguments[2], info);
-			const Val& numOfPoints = pEnv->expand(arguments[3], info);
+			const Val& func = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& beginX = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& endX = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& numOfPoints = pEnv->expand(LRValue(arguments[3]), info);
 
 			if (!IsType<FuncVal>(func) || !IsNum(beginX) || !IsNum(endX) || !IsType<int>(numOfPoints))
 			{
@@ -1539,7 +2253,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1560,7 +2274,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1581,7 +2295,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& arg1 = pEnv->expand(arguments[0], info);
+			const Val& arg1 = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(arg1))
 			{
@@ -1594,6 +2308,48 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Touch",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return ShapeTouch(Packed(pEnv->expand(LRValue(arguments[0]), info), *pEnv), Packed(pEnv->expand(LRValue(arguments[1]), info), *pEnv), pEnv);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Near",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return ShapeNear(Packed(pEnv->expand(LRValue(arguments[0]), info), *pEnv), Packed(pEnv->expand(LRValue(arguments[1]), info), *pEnv), pEnv);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Avoid",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 2)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			return ShapeAvoid(Packed(pEnv->expand(LRValue(arguments[0]), info), *pEnv), Packed(pEnv->expand(LRValue(arguments[1]), info), *pEnv), pEnv);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
 			"Diff",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{
@@ -1602,7 +2358,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeDiff(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1616,7 +2372,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeUnion(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeUnion(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1630,7 +2386,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeIntersect(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeIntersect(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1644,7 +2400,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeSymDiff(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeSymDiff(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1658,7 +2414,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return Unpacked(ShapeBuffer(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv), *this);
+			return Unpacked(ShapeBuffer(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv), *this);
 		},
 			true
 			);
@@ -1672,8 +2428,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
-			const Val& path = pEnv->expand(arguments[1], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& path = pEnv->expand(LRValue(arguments[1]), info);
 
 			if (!IsType<Record>(shape) || !IsType<Record>(path))
 			{
@@ -1694,10 +2450,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
-			const Val& path = pEnv->expand(arguments[1], info);
-			const Val& p0 = pEnv->expand(arguments[2], info);
-			const Val& p1 = pEnv->expand(arguments[3], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& path = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& p0 = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& p1 = pEnv->expand(LRValue(arguments[3]), info);
 
 			if (!IsType<Record>(shape) || !IsType<Record>(path) || !IsType<Record>(p0) || !IsType<Record>(p1))
 			{
@@ -1722,11 +2478,11 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& p0 = pEnv->expand(arguments[0], info);
-			const Val& n0 = pEnv->expand(arguments[1], info);
-			const Val& p1 = pEnv->expand(arguments[2], info);
-			const Val& n1 = pEnv->expand(arguments[3], info);
-			const Val& num = pEnv->expand(arguments[4], info);
+			const Val& p0 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& n0 = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& p1 = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& n1 = pEnv->expand(LRValue(arguments[3]), info);
+			const Val& num = pEnv->expand(LRValue(arguments[4]), info);
 
 			if (!IsType<Record>(p0) || !IsType<Record>(n0) || !IsType<Record>(p1) || !IsType<Record>(n1) || !IsType<int>(num))
 			{
@@ -1753,11 +2509,11 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& p0 = pEnv->expand(arguments[0], info);
-			const Val& p1 = pEnv->expand(arguments[1], info);
-			const Val& p2 = pEnv->expand(arguments[2], info);
-			const Val& p3 = pEnv->expand(arguments[3], info);
-			const Val& num = pEnv->expand(arguments[4], info);
+			const Val& p0 = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& p1 = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& p2 = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& p3 = pEnv->expand(LRValue(arguments[3]), info);
+			const Val& num = pEnv->expand(LRValue(arguments[4]), info);
 
 			if (!IsType<Record>(p0) || !IsType<Record>(p1) || !IsType<Record>(p2) || !IsType<Record>(p3) || !IsType<int>(num))
 			{
@@ -1784,8 +2540,8 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
-			const Val& num = pEnv->expand(arguments[1], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& num = pEnv->expand(LRValue(arguments[1]), info);
 
 			if (!IsType<Record>(shape) || !IsType<int>(num))
 			{
@@ -1809,7 +2565,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeArea(Packed(pEnv->expand(arguments[0], info), *this), pEnv);
+			return ShapeArea(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), pEnv);
 		},
 			true
 			);
@@ -1823,7 +2579,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeDistance(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv);
+			return ShapeDistance(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv);
 		},
 			false
 			);
@@ -1837,7 +2593,175 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			return ShapeClosestPoints(Packed(pEnv->expand(arguments[0], info), *this), Packed(pEnv->expand(arguments[1], info), *this), pEnv).unpacked(*this);
+			return ShapeClosestPoints(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignH",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignH(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignHTop",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignHTop(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignHBottom",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignHBottom(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignHCenter",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignHCenter(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignV",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignV(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignVLeft",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignVLeft(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignVRight",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignVRight(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"AlignVCenter",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<List>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return AlignVCenter(As<PackedList>(As<List>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -1851,7 +2775,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1872,7 +2796,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1893,7 +2817,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1914,7 +2838,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1935,7 +2859,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1956,7 +2880,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1977,7 +2901,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -1998,7 +2922,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2019,7 +2943,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2027,6 +2951,27 @@ namespace cgl
 			}
 
 			return GetBoundingBox(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"ConvexHull",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() != 1)
+			{
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			}
+
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
+
+			if (!IsType<Record>(shape))
+			{
+				CGL_ErrorNode(info, "引数の型が正しくありません");
+			}
+
+			return GetConvexHull(As<PackedRecord>(As<Record>(shape).packed(*this)), pEnv).unpacked(*this);
 		},
 			false
 			);
@@ -2040,7 +2985,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2061,10 +3006,10 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& pos = pEnv->expand(arguments[0], info);
-			const Val& scale = pEnv->expand(arguments[1], info);
-			const Val& angle = pEnv->expand(arguments[2], info);
-			const Val& shape = pEnv->expand(arguments[3], info);
+			const Val& pos = pEnv->expand(LRValue(arguments[0]), info);
+			const Val& scale = pEnv->expand(LRValue(arguments[1]), info);
+			const Val& angle = pEnv->expand(LRValue(arguments[2]), info);
+			const Val& shape = pEnv->expand(LRValue(arguments[3]), info);
 
 			if (!IsType<Record>(shape) || !IsType<Record>(pos) || !IsType<Record>(scale) || !IsNum(angle))
 			{
@@ -2090,7 +3035,7 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			const Val& shape = pEnv->expand(arguments[0], info);
+			const Val& shape = pEnv->expand(LRValue(arguments[0]), info);
 
 			if (!IsType<Record>(shape))
 			{
@@ -2127,9 +3072,70 @@ namespace cgl
 				CGL_ErrorNode(info, "引数の数が正しくありません");
 			}
 
-			if (auto opt = AsOpt<bool>(pEnv->expand(arguments[0], info)))
+			if (auto opt = AsOpt<bool>(pEnv->expand(LRValue(arguments[0]), info)))
 			{
 				m_automaticGC = opt.get();
+			}
+
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Error",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() == 0)
+			{
+				CGL_ErrorNode(info, "Error() called");
+			}
+			else
+			{
+				std::stringstream ss;
+				ss << "Error() called: ";
+				printVal2(pEnv->expand(LRValue(arguments[0]), info), m_weakThis.lock(), ss);
+				CGL_ErrorNode(info, ss.str());
+			}
+
+			return 0;
+		},
+			false
+			);
+
+		registerBuiltInFunction(
+			"Assert",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+		{
+			if (arguments.size() == 0 || 3 <= arguments.size())
+			{
+				CGL_ErrorNode(info, "Assert() called");
+			}
+
+			if (arguments.size() == 1)
+			{
+				if (EqualFunc(pEnv->expand(LRValue(arguments[0]), info), true, *this))
+				{
+					return 0;
+				}
+				else
+				{
+					CGL_ErrorNode(info, "Assertion failed");
+				}
+			}
+			else
+			{
+				if (EqualFunc(pEnv->expand(LRValue(arguments[0]), info), true, *this))
+				{
+					return 0;
+				}
+				else
+				{
+					std::stringstream ss;
+					ss << "Assertion failed: ";
+					printVal2(pEnv->expand(LRValue(arguments[1]), info), m_weakThis.lock(), ss);
+					CGL_ErrorNode(info, ss.str());
+				}
 			}
 
 			return 0;
@@ -2198,7 +3204,7 @@ namespace cgl
 
 				for (size_t i = startIndex; i < tail.size(); ++i)
 				{
-					boost::optional<const Val&> objOpt = expandOpt(address);
+					boost::optional<const Val&> objOpt = expandOpt(LRValue(address));
 					if (!objOpt)
 					{
 						CGL_Error("参照エラー");
@@ -2256,353 +3262,22 @@ namespace cgl
 			}
 		}*/
 
-
 		//TODO: GCと同じ要領で環境から参照可能な全てのアドレスを参照し、該当アドレスを書き換える
 	}
 
-	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
-	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet);
-
-	class ExprAddressCheker : public boost::static_visitor<void>
-	{
-	public:
-		ExprAddressCheker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet) :
-			context(context),
-			reachableAddressSet(reachableAddressSet),
-			newAddressSet(newAddressSet)
-		{}
-
-		const Context& context;
-		std::unordered_set<Address>& reachableAddressSet;
-		std::unordered_set<Address>& newAddressSet;
-
-		bool isMarked(Address address)const
-		{
-			return reachableAddressSet.find(address) != reachableAddressSet.end();
-		}
-
-		void update(Address address)
-		{
-			if (!isMarked(address))
-			{
-				reachableAddressSet.emplace(address);
-				newAddressSet.emplace(address);
-				//CheckValue(context.expand(LRValue(address)), context, reachableAddressSet, newAddressSet);
-
-				if (auto opt = context.expandOpt(LRValue(address)))
-				{
-					CheckValue(opt.get(), context, reachableAddressSet, newAddressSet);
-				}
-				else
-				{
-					CGL_ErrorInternal("不正なアドレスを参照しました。");
-				}
-			}
-		}
-
-		void operator()(const LRValue& node)
-		{
-			if (node.isRValue())
-			{
-				return;
-			}
-
-			update(node.address(context));
-		}
-
-		void operator()(const Identifier& node) {}
-
-		void operator()(const Import& node) {}
-
-		void operator()(const UnaryExpr& node)
-		{
-			boost::apply_visitor(*this, node.lhs);
-		}
-
-		void operator()(const BinaryExpr& node)
-		{
-			boost::apply_visitor(*this, node.lhs);
-			boost::apply_visitor(*this, node.rhs);
-		}
-
-		void operator()(const Range& node)
-		{
-			boost::apply_visitor(*this, node.lhs);
-			boost::apply_visitor(*this, node.rhs);
-		}
-
-		void operator()(const Lines& node)
-		{
-			for (const auto& expr : node.exprs)
-			{
-				boost::apply_visitor(*this, expr);
-			}
-		}
-
-		void operator()(const DefFunc& node)
-		{
-			//boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const If& node)
-		{
-			boost::apply_visitor(*this, node.cond_expr);
-			boost::apply_visitor(*this, node.then_expr);
-			if (node.else_expr)
-			{
-				boost::apply_visitor(*this, node.else_expr.get());
-			}
-		}
-
-		void operator()(const For& node)
-		{
-			boost::apply_visitor(*this, node.rangeStart);
-			boost::apply_visitor(*this, node.rangeEnd);
-			boost::apply_visitor(*this, node.doExpr);
-		}
-
-		void operator()(const Return& node)
-		{
-			boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const ListConstractor& node)
-		{
-			for (const auto& expr : node.data)
-			{
-				boost::apply_visitor(*this, expr);
-			}
-		}
-
-		void operator()(const KeyExpr& node)
-		{
-			boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const RecordConstractor& node)
-		{
-			for (const auto& expr : node.exprs)
-			{
-				boost::apply_visitor(*this, expr);
-			}
-		}
-
-		void operator()(const RecordInheritor& node)
-		{
-			boost::apply_visitor(*this, node.original);
-			const Expr adderExpr = node.adder;
-			boost::apply_visitor(*this, adderExpr);
-		}
-
-		void operator()(const Accessor& node)
-		{
-			boost::apply_visitor(*this, node.head);
-
-			for (const auto& access : node.accesses)
-			{
-				if (auto listAccess = AsOpt<ListAccess>(access))
-				{
-					boost::apply_visitor(*this, listAccess.get().index);
-				}
-				else if (auto functionAccess = AsOpt<FunctionAccess>(access))
-				{
-					for (const auto& argument : functionAccess.get().actualArguments)
-					{
-						boost::apply_visitor(*this, argument);
-					}
-				}
-			}
-		}
-
-		void operator()(const DeclSat& node)
-		{
-			boost::apply_visitor(*this, node.expr);
-		}
-
-		void operator()(const DeclFree& node)
-		{
-			for (const auto& accessor : node.accessors)
-			{
-				Expr expr = accessor;
-				boost::apply_visitor(*this, expr);
-			}
-			for (const auto& range : node.ranges)
-			{
-				boost::apply_visitor(*this, range);
-			}
-		}
-	};
-
-	class ValueAddressChecker : public boost::static_visitor<void>
-	{
-	public:
-		ValueAddressChecker(const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet) :
-			context(context),
-			reachableAddressSet(reachableAddressSet),
-			newAddressSet(newAddressSet)
-		{}
-
-		const Context& context;
-		std::unordered_set<Address>& reachableAddressSet;
-		std::unordered_set<Address>& newAddressSet;
-
-		bool isMarked(Address address)const
-		{
-			return reachableAddressSet.find(address) != reachableAddressSet.end();
-		}
-
-		void update(Address address)
-		{
-			if (!isMarked(address))
-			{
-				reachableAddressSet.emplace(address);
-				newAddressSet.emplace(address);
-
-				//boost::apply_visitor(*this, context.expand(LRValue(address)));
-
-				if (auto opt = context.expandOpt(LRValue(address)))
-				{
-					boost::apply_visitor(*this, opt.get());
-				}
-				else
-				{
-					//CGL_ErrorInternal("不正なアドレスを参照しました。");
-					CGL_ErrorInternal(std::string("不正なアドレスを参照しました。: Address(") + address.toString() + ")");
-				}
-			}
-		}
-		
-		void operator()(bool node) {}
-
-		void operator()(int node) {}
-
-		void operator()(double node) {}
-
-		void operator()(const CharString& node) {}
-
-		void operator()(const List& node)
-		{
-			for (Address address : node.data)
-			{
-				update(address);
-			}
-		}
-
-		void operator()(const KeyValue& node)
-		{
-			//CheckValue(node.value, context, reachableAddressSet, newAddressSet);
-		}
-
-		void operator()(const Record& node)
-		{
-			for (const auto& keyval : node.values)
-			{
-				update(keyval.second);
-			}
-
-			if (node.constraint)
-			{
-				CheckExpr(node.constraint.get(), context, reachableAddressSet, newAddressSet);
-			}
-
-			for (const auto& problem : node.problems)
-			{
-				if (problem.expr)
-				{
-					CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
-				}
-			}
-
-			for (const auto& freeVar : node.freeVariables)
-			{
-				if (IsType<Accessor>(freeVar))
-				{
-					const Expr expr = As<Accessor>(freeVar);
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-				else
-				{
-					const Expr expr = LRValue(As<Reference>(freeVar));
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-			}
-
-			for (const auto& expr : node.freeRanges)
-			{
-				CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-			}
-
-			for (const auto& freeVar : node.original.freeVars)
-			{
-				if (IsType<Accessor>(freeVar))
-				{
-					const Expr expr = As<Accessor>(freeVar);
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-				else
-				{
-					const Expr expr = LRValue(As<Reference>(freeVar));
-					CheckExpr(expr, context, reachableAddressSet, newAddressSet);
-				}
-			}
-
-			for (const auto& oldExprs : node.original.unitConstraints)
-			{
-				CheckExpr(oldExprs, context, reachableAddressSet, newAddressSet);
-			}
-
-			for (const auto& appears : node.original.variableAppearances)
-			{
-				for (const Address address : appears)
-				{
-					update(address);
-				}
-			}
-
-			for (const auto& problem : node.original.groupConstraints)
-			{
-				if (problem.expr)
-				{
-					CheckExpr(problem.expr.get(), context, reachableAddressSet, newAddressSet);
-				}
-			}
-		}
-
-		void operator()(const FuncVal& node)
-		{
-			if (!node.builtinFuncAddress)
-			{
-				CheckExpr(node.expr, context, reachableAddressSet, newAddressSet);
-			}
-		}
-
-		void operator()(const Jump& node) {}
-	};
-
-	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
-	{
-		ExprAddressCheker cheker(context, reachableAddressSet, newAddressSet);
-		boost::apply_visitor(cheker, expr);
-	}
-
-	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet, std::unordered_set<Address>& newAddressSet)
-	{
-		ValueAddressChecker cheker(context, reachableAddressSet, newAddressSet);
-		boost::apply_visitor(cheker, evaluated);
-	}
-
-	void Context::garbageCollect()
+	void Context::garbageCollect(bool force)
 	{
 		if (!m_automaticGC)
 		{
 			return;
 		}
 
-		/*static int count = 0;
-		std::cout << "garbageCollect(" << count << ")" << std::endl;
-		printContext(std::cout);
-		++count;*/
+		static int count = 0;
+		//std::cout << "garbageCollect(" << count << ")" << std::endl;
+		//printContext(std::cout);
 
+		//printContext(std::cout);
+		//CGL_DBG1("GC begin");
 		std::unordered_set<Address> referenceableAddresses;
 
 		const auto isReachable = [&](const Address address)
@@ -2610,23 +3285,17 @@ namespace cgl
 			return referenceableAddresses.find(address) != referenceableAddresses.end();
 		};
 
-		const auto traverse = [&](const std::unordered_set<Address>& addresses, auto traverse)->void
-		{
-			for (const Address address : addresses)
-			{
-				std::unordered_set<Address> addressesDelta;
-				CheckExpr(LRValue(address), *this, referenceableAddresses, addressesDelta);
-				
-				traverse(addressesDelta, traverse);
-			}
-		};
-
 		{
 			std::unordered_set<Address> addressesDelta;
+			//std::cout << "Whole Local Env Stack Size: " << m_localEnvStack.size() << std::endl;
 			for (const auto& env : m_localEnvStack)
 			{
+				int scopeCount = 0;
+
+				//std::cout << "Current Scope Depth: " << env.size() << ", ";
 				for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
 				{
+					const int varCount = scopeIt->variables.size() + scopeIt->temporaryAddresses.size();
 					for (const auto& var : scopeIt->variables)
 					{
 						const Address address = var.second;
@@ -2643,10 +3312,14 @@ namespace cgl
 							addressesDelta.emplace(address);
 						}
 					}
+
+					//std::cout << "var(" << varCount << "), ";
 				}
+
+				//std::cout << "\n";
 			}
-			
-			traverse(addressesDelta, traverse);
+
+			GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 		}
 
 		{
@@ -2655,17 +3328,17 @@ namespace cgl
 				Record& record = currentRecords[i];
 				Val evaluated = record;
 				std::unordered_set<Address> addressesDelta;
-				CheckValue(evaluated, *this, referenceableAddresses, addressesDelta);
+				CheckValue(evaluated, *this, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
 
-				traverse(addressesDelta, traverse);
+				GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 			}
 
 			if (temporaryRecord)
 			{
 				std::unordered_set<Address> addressesDelta;
-				CheckValue(temporaryRecord.get(), *this, referenceableAddresses, addressesDelta);
+				CheckValue(temporaryRecord.get(), *this, referenceableAddresses, addressesDelta, RegionVariable::Attribute::Other);
 
-				traverse(addressesDelta, traverse);
+				GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 			}
 		}
 
@@ -2676,10 +3349,200 @@ namespace cgl
 
 		const size_t prevGC = m_values.size();
 
+		/*CGL_DBG1("referenceableAddresses: ");
+		for (const Address add : referenceableAddresses)
+		{
+			std::cout << "Address(" << add.toString() << ")\n";
+		}*/
+
 		m_values.gc(referenceableAddresses);
 
 		const size_t postGC = m_values.size();
 
+		//CGL_DBG1("GC end");
+
+		++count;
 		//std::cout << "GC: ValueSize(" << prevGC << " -> " << postGC << ")\n";
+	}
+
+	class ValueAccessorSearcher : public boost::static_visitor<bool>
+	{
+	public:
+		ValueAccessorSearcher(const Context& context, const Address searchAddress) :
+			context(context),
+			searchAddress(searchAddress)
+		{}
+
+		const Context& context;
+		const Address searchAddress;
+		std::stack<std::pair<std::string, Address>> currentSearchAddresses;
+
+		bool operator()(bool node) { return false; }
+
+		bool operator()(int node) { return false; }
+
+		bool operator()(double node) { return false; }
+
+		bool operator()(const CharString& node) { return false; }
+
+		bool operator()(const KeyValue& node) { return false; }
+
+		bool operator()(const FuncVal& node) { return false; }
+
+		bool operator()(const Jump& node) { return false; }
+
+		bool operator()(const List& node)
+		{
+			for (size_t i = 0; i < node.data.size(); ++i)
+			{
+				const Address address = node.data[i];
+				if (address == searchAddress)
+				{
+					std::stringstream ss;
+					ss << "[" << i << "]";
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					return true;
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					std::stringstream ss;
+					ss << "[" << i << "]";
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					if (boost::apply_visitor(*this, opt.get()))
+					{
+						return true;
+					}
+					currentSearchAddresses.pop();
+				}
+			}
+
+			return false;
+		}
+
+		bool operator()(const Record& node)
+		{
+			for (const auto& keyval : node.values)
+			{
+				const Address address = keyval.second;
+				if (keyval.second == searchAddress)
+				{
+					std::stringstream ss;
+					ss << "." << keyval.first;
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					return true;
+				}
+
+				if (auto opt = context.expandOpt(LRValue(address)))
+				{
+					std::stringstream ss;
+					ss << "." << keyval.first;
+					currentSearchAddresses.push(std::pair<std::string, Address>(ss.str(), address));
+					if (boost::apply_visitor(*this, opt.get()))
+					{
+						return true;
+					}
+					currentSearchAddresses.pop();
+				}
+			}
+
+			return false;
+		}
+	};
+
+	std::string Context::makeLabel(const Address& address)const
+	{
+		for (size_t i = 0; i < currentRecords.size(); ++i)
+		{
+			Record& record = currentRecords[i];
+			Val evaluated = record;
+			ValueAccessorSearcher searcher(*this, address);
+			if (boost::apply_visitor(searcher, evaluated))
+			{
+				std::string str;
+				while (!searcher.currentSearchAddresses.empty())
+				{
+					str = searcher.currentSearchAddresses.top().first + str;
+					searcher.currentSearchAddresses.pop();
+				}
+				return str;
+			}
+		}
+
+		if (temporaryRecord)
+		{
+			Val evaluated = temporaryRecord.get();
+			ValueAccessorSearcher searcher(*this, address);
+			if (boost::apply_visitor(searcher, evaluated))
+			{
+				std::string str;
+				while (!searcher.currentSearchAddresses.empty())
+				{
+					str = searcher.currentSearchAddresses.top().first + str;
+					searcher.currentSearchAddresses.pop();
+				}
+				return str;
+			}
+		}
+
+		for (const auto& env : m_localEnvStack)
+		{
+			for (auto scopeIt = env.rbegin(); scopeIt != env.rend(); ++scopeIt)
+			{
+				auto it = std::find_if(scopeIt->variables.begin(), scopeIt->variables.end(),
+					[&](const Scope::VariableMap::value_type& value)
+				{
+					return value.second == address;
+				});
+
+				if (it != scopeIt->variables.end())
+				{
+					return it->first;
+				}
+
+				for (const auto& nameVal : scopeIt->variables)
+				{
+					if (auto opt = expandOpt(LRValue(nameVal.second)))
+					{
+						ValueAccessorSearcher searcher(*this, address);
+						if (boost::apply_visitor(searcher, opt.get()))
+						{
+							std::string str;
+							while (!searcher.currentSearchAddresses.empty())
+							{
+								str = searcher.currentSearchAddresses.top().first + str;
+								searcher.currentSearchAddresses.pop();
+							}
+							return nameVal.first + str;
+						}
+					}
+				}
+			}
+		}
+
+		return "(unknown)";
+	}
+
+	std::shared_ptr<Context> Context::cloneContext()
+	{
+		std::shared_ptr<Context> inst = Context::Make();
+		inst->currentRecords = currentRecords;
+		inst->temporaryRecord = temporaryRecord;
+		inst->m_functions = m_functions;
+		inst->m_plateausFunctions = m_plateausFunctions;
+		inst->m_refAddressMap = m_refAddressMap;
+		inst->m_addressRefMap = m_addressRefMap;
+		inst->m_values = m_values.clone();
+		inst->m_localEnvStack = m_localEnvStack;
+		inst->m_referenceID = m_referenceID;
+		inst->m_lastGCValueSize = m_lastGCValueSize;
+		inst->m_automaticExtendMode = m_automaticExtendMode;
+		inst->m_automaticGC = m_automaticGC;
+		inst->m_solveTimeLimit = m_solveTimeLimit;
+		inst->m_dist = m_dist;
+		inst->m_random = m_random;
+		inst->m_weakThis = inst;
+
+		return inst;
 	}
 }

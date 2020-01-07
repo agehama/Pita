@@ -17,9 +17,9 @@ namespace cgl
 		FontBuilder(const std::string& fontPath);
 		~FontBuilder();
 
-		std::vector<gg::Geometry*> makePolygon(int codePoint, int quality = 1, double offsetX = 0, double offsetY = 0);
+		Geometries makePolygon(int codePoint, int quality = 1, double offsetX = 0, double offsetY = 0);
 
-		std::vector<gg::Geometry*> textToPolygon(const std::string& str, int quality = 1);
+		Geometries textToPolygon(const std::string& str, int quality = 1);
 
 		double glyphWidth(int codePoint);
 
@@ -38,13 +38,22 @@ namespace cgl
 			return std::max(lineGap1, lineGap2);
 		}
 
+		double scaledHeight()const;
+		void setScaledHeight(double newScale);
+
 	private:
 		void checkClockWise();
+
+		double fontSizeToReal(int fontSize)const
+		{
+			return fontSize * baseScale;
+		}
 
 		std::string fontDataRawEN, fontDataRawJP;
 		stbtt_fontinfo *fontInfo1 = nullptr, *fontInfo2 = nullptr;
 		int ascent1 = 0, descent1 = 0, lineGap1 = 0;
 		int ascent2 = 0, descent2 = 0, lineGap2 = 0;
 		bool clockWisePolygons;
+		double baseScale = 0.05;
 	};
 }

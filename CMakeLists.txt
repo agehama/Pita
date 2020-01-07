@@ -10,13 +10,7 @@ endif()
 
 project(Pita)
 
-set(CMAKE_CXX_STANDARD 14)
-
-if(CMAKE_COMPILER_IS_GNUCC)
-  message("CMAKE_COMPILER_IS_GNUCC True")
-else()
-  message("CMAKE_COMPILER_IS_GNUCC False")
-endif()
+set(CMAKE_CXX_STANDARD 17)
 
 set(Boost_USE_STATIC_LIBS ON)
 
@@ -41,8 +35,8 @@ if(OPENMP_FOUND)
 endif()
 
 if(MSVC)
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /source-charset:utf-8")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /source-charset:utf-8")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /source-charset:utf-8 /bigobj /Zi /DEBUG")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /source-charset:utf-8 /bigobj /Zi /DEBUG")
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -55,13 +49,24 @@ set(CGL_GEOS_TARGET_DIR "geos")
 set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 
 if(MSVC)
+  message("MSVC Boost 1.53.0 REQUIRED")
   find_package(Boost 1.53.0)
-else()
+elseif(USE_FILESYSTEM)
   find_package(Boost 1.53.0 COMPONENTS system filesystem REQUIRED)
+else()
+  find_package(Boost 1.53.0)
 endif()
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
+option(USE_FILESYSTEM "Use filesystem" ON)
+if(USE_FILESYSTEM)
+  add_definitions(-DUSE_IMPORT)
+  if(NOT MSVC AND Boost_FOUND)
+    add_definitions(-DUSE_BOOST_LIB)
+  endif()
 endif()
 
 set(EIGEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/external/Eigen" CACHE STRING "Eigen include directory" FORCE)
@@ -104,17 +109,19 @@ include_directories(external/stb)
 
 include_directories(include)
 
-add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Evaluator.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/Geometry.cpp)
+add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Graph.cpp source/Evaluator.cpp source/ValueCloner.cpp source/DynamicDeferredIdentifierSearcher.cpp source/StaticDeferredIdentifierSearcher.cpp source/ClosureMaker.cpp source/ExprTransformer.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/TreeLogger.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/Geometry.cpp)
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
+elseif(USE_FILESYSTEM)
+  target_link_libraries(pita_lib geos cmaes boost_system boost_filesystem)
 else()
-  target_link_libraries(pita_lib geos cmaes boost_system boost_filesystem ncurses)
+  target_link_libraries(pita_lib geos cmaes)
+  #target_link_libraries(pita_lib geos cmaes boost_system boost_filesystem ncurses)
   #target_link_libraries(pita_lib geos cmaes stdc++fs boost_system boost_filesystem)
   #target_link_libraries(pita_lib geos cmaes c++experimental)
 endif()
 
 add_executable(pita source/Source.cpp)
-#target_link_libraries(pita pita_lib boost_system boost_filesystem)
 target_link_libraries(pita pita_lib)
 
 install(TARGETS pita PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ DESTINATION bin)

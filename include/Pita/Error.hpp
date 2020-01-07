@@ -1,6 +1,7 @@
 #pragma once
 #pragma warning(disable:4996)
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <string>
 #include <exception>
@@ -40,14 +41,13 @@ namespace cgl
 		os << std::regex_replace(str, regex, "\n          |> ") << "\n";
 	}
 
-	inline double GetSec() {
+	inline double GetSec()
+	{
 		return static_cast<double>(
 			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()
 			) / 1000000000.0;
 	}
 }
-
-//extern std::ofstream ofs;
 
 #define CGL_FileName (strchr(__FILE__, '\\') ? strchr(__FILE__, '\\') + 1 : __FILE__)
 #define CGL_FileDesc (std::string(CGL_FileName) + "(" + std::to_string(__LINE__) + ")")

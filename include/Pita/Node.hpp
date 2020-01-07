@@ -1,6 +1,12 @@
 #pragma once
 #pragma warning(disable:4996)
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <cmath>
+#include <cfloat>
 #include <vector>
 #include <memory>
 #include <functional>
@@ -13,19 +19,20 @@
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
+#include <type_traits>
 
 #include <boost/version.hpp>
 #define CGL_BOOST_MAJOR_VERSION (BOOST_VERSION / 100000)
 #define CGL_BOOST_MINOR_VERSION (BOOST_VERSION / 100 % 1000)
 
 #include <boost/fusion/include/vector.hpp>
-
 #include <boost/variant.hpp>
 #include <boost/mpl/vector/vector30.hpp>
 #include <boost/optional.hpp>
-
 #include <boost/regex/pending/unicode_iterator.hpp>
+#include <boost/functional/hash.hpp>
 
+#include <cereal/access.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/array.hpp>
 #include <cereal/types/valarray.hpp>
@@ -58,29 +65,12 @@
 #include <Eigen/Core>
 
 #include "Error.hpp"
+#include "Util.hpp"
 
 namespace cgl
 {
-	const double pi = 3.1415926535;
-	const double deg2rad = pi / 180.0;
-	const double rad2deg = 180.0 / pi;
-
 	template<class T>
 	using Vector = std::vector<T, Eigen::aligned_allocator<T>>;
-
-	inline std::string AsUtf8(const std::u32string& input) {
-		return std::string(
-			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.begin()),
-			boost::u32_to_u8_iterator<std::u32string::const_iterator>(input.end()));
-	}
-
-	inline std::u32string AsUtf32(const std::string& input) {
-		return std::u32string(
-			boost::u8_to_u32_iterator<std::string::const_iterator>(input.begin()),
-			boost::u8_to_u32_iterator<std::string::const_iterator>(input.end()));
-	}
-
-	//std::string UTF8ToString(const std::string& str);
 
 	template<class T1, class T2>
 	inline bool SameType(const T1& t1, const T2& t2)
@@ -160,7 +150,28 @@ namespace cgl
 	}
 #endif
 
-	//enum class UnaryOp
+	//https://stackoverflow.com/questions/37626566/get-boostvariants-type-index-with-boostmpl
+	template <typename T, typename ... Ts>
+	struct type_index;
+
+	template <typename T, typename ... Ts>
+	struct type_index<T, T, Ts ...>
+		: std::integral_constant<std::size_t, 0>
+	{};
+
+	template <typename T, typename U, typename ... Ts>
+	struct type_index<T, U, Ts ...>
+		: std::integral_constant<std::size_t, 1 + type_index<T, Ts...>::value>
+	{};
+
+	template <typename T, typename ... Ts>
+	struct variant_first_same_type_idx;
+
+	template <typename T, typename Head, typename ... Tail>
+	struct variant_first_same_type_idx<T, boost::variant<Head, Tail ... >>
+		: type_index<T, Head, Tail ...>
+	{};
+
 	enum UnaryOp
 	{
 		Not,
@@ -171,20 +182,6 @@ namespace cgl
 		Dynamic
 	};
 
-	inline std::string UnaryOpToStr(UnaryOp op)
-	{
-		switch (op)
-		{
-		case UnaryOp::Not:     return "Not";
-		case UnaryOp::Plus:    return "Plus";
-		case UnaryOp::Minus:   return "Minus";
-		case UnaryOp::Dynamic: return "Dynamic";
-		}
-
-		return "UnknownUnaryOp";
-	}
-
-	//enum class BinaryOp
 	enum BinaryOp
 	{
 		And,
@@ -210,37 +207,11 @@ namespace cgl
 		SetDiff
 	};
 
-	inline std::string BinaryOpToStr(BinaryOp op)
-	{
-		switch (op)
-		{
-		case BinaryOp::And: return "And";
-		case BinaryOp::Or:  return "Or";
+	std::string UnaryOpToStr(UnaryOp op);
+	std::string BinaryOpToStr(BinaryOp op);
 
-		case BinaryOp::Equal:        return "Equal";
-		case BinaryOp::NotEqual:     return "NotEqual";
-		case BinaryOp::LessThan:     return "LessThan";
-		case BinaryOp::LessEqual:    return "LessEqual";
-		case BinaryOp::GreaterThan:  return "GreaterThan";
-		case BinaryOp::GreaterEqual: return "GreaterEqual";
-
-		case BinaryOp::Add: return "Add";
-		case BinaryOp::Sub: return "Sub";
-		case BinaryOp::Mul: return "Mul";
-		case BinaryOp::Div: return "Div";
-
-		case BinaryOp::Pow:    return "Pow";
-		case BinaryOp::Assign: return "Assign";
-
-		case BinaryOp::Concat: return "Concat";
-
-		case BinaryOp::SetDiff: return "SetDiff";
-		}
-
-		return "UnknownBinaryOp";
-	}
-
-	struct DefFunc;
+	using ScopeIndex = unsigned;
+	using ScopeAddress = std::deque<ScopeIndex>;
 
 	struct Identifier : public LocationInfo
 	{
@@ -282,7 +253,19 @@ namespace cgl
 			return name;
 		}
 
-		friend std::ostream& operator<<(std::ostream& os, const Identifier& node) { return os; }
+		bool isDeferredCall()const;
+		Identifier asDeferredCall(const ScopeAddress& identifierScopeInfo)const;
+
+		bool isMakeClosure()const;
+		Identifier asMakeClosure(const ScopeAddress& identifierScopeInfo)const;
+		
+		//rawIdentifierの形式：再帰深度の情報は除去しないため##の付いた形で返る
+		std::pair<ScopeAddress, Identifier> decomposed()const;
+
+		/*friend std::ostream& operator<<(std::ostream& os, const Identifier& node)
+		{
+			return os;
+		}*/
 
 	//private:
 		std::string name;
@@ -390,54 +373,20 @@ namespace std
 			return hash<size_t>()(static_cast<size_t>(reference.referenceID));
 		}
 	};
+
+	template <>
+	struct hash<cgl::Identifier>
+	{
+	public:
+		size_t operator()(const cgl::Identifier& identifier)const
+		{
+			return hash<std::string>()(static_cast<std::string>(identifier));
+		}
+	};
 }
 
 namespace cgl
 {
-	class Context;
-
-	struct FuncVal;
-
-	struct UnaryExpr;
-	struct BinaryExpr;
-
-	struct Lines;
-
-	struct If;
-	struct For;
-
-	struct Return;
-
-	struct Range;
-
-	struct ListConstractor;
-	struct List;
-	struct PackedList;
-
-	struct ListAccess;
-
-	struct KeyExpr;
-	struct RecordConstractor;
-	struct RecordInheritor;
-
-	struct Character;
-
-	struct KeyValue;
-	struct Record;
-	struct PackedRecord;
-
-	struct RecordAccess;
-	struct FunctionAccess;
-
-	struct Accessor;
-
-	struct DeclSat;
-	struct DeclFree;
-
-	struct Jump;
-
-	struct Import;
-
 	struct CharString
 	{
 	public:
@@ -482,30 +431,41 @@ namespace cgl
 		std::u32string str;
 	};
 
+	struct KeyValue;
+	struct Jump;
+	struct FuncVal;
+	struct Record;
+	struct List;
 	using Val = boost::variant<
 		CharString,
-		bool,
 		int,
+		bool,
 		double,
 		boost::recursive_wrapper<KeyValue>,
-		boost::recursive_wrapper<Jump>,
-		boost::recursive_wrapper<FuncVal>,
+		boost::recursive_wrapper<List>,
 		boost::recursive_wrapper<Record>,
-		boost::recursive_wrapper<List>
+		boost::recursive_wrapper<FuncVal>,
+		boost::recursive_wrapper<Jump>
 	>;
 
+	struct PackedList;
+	struct PackedRecord;
 	using PackedVal = boost::variant<
-		bool,
-		int,
-		double,
 		CharString,
-		boost::recursive_wrapper<PackedList>,
+		int,
+		bool,
+		double,
 		boost::recursive_wrapper<KeyValue>,
+		boost::recursive_wrapper<PackedList>,
 		boost::recursive_wrapper<PackedRecord>,
 		boost::recursive_wrapper<FuncVal>,
 		boost::recursive_wrapper<Jump>
 	>;
 
+	class Context;
+	size_t GetHash(const Val& val, const Context& context);
+	size_t GetHash(const PackedVal& val);
+	
 	PackedVal Packed(const Val& value, const Context& context);
 	Val Unpacked(const PackedVal& packedValue, Context& context);
 
@@ -549,9 +509,22 @@ namespace cgl
 
 	Eigen::Vector2d AsVec2(const Val& value, const Context& context);
 
-	struct RValue;
 	struct LRValue;
-
+	struct Import;
+	struct UnaryExpr;
+	struct BinaryExpr;
+	struct DefFunc;
+	struct Range;
+	struct Lines;
+	struct If;
+	struct For;
+	struct Return;
+	struct ListConstractor;
+	struct KeyExpr;
+	struct RecordConstractor;
+	struct DeclSat;
+	struct DeclFree;
+	struct Accessor;
 	using Expr = boost::variant<
 		boost::recursive_wrapper<LRValue>,
 		Identifier,
@@ -574,32 +547,65 @@ namespace cgl
 
 		boost::recursive_wrapper<KeyExpr>,
 		boost::recursive_wrapper<RecordConstractor>,
-		boost::recursive_wrapper<RecordInheritor>,
 		boost::recursive_wrapper<DeclSat>,
 		boost::recursive_wrapper<DeclFree>,
 
 		boost::recursive_wrapper<Accessor>
 	>;
 
+	template<typename T>
+	inline constexpr int ExprIndex()
+	{
+		return variant_first_same_type_idx<T, Expr>::value;
+	}
+
 	bool IsEqualVal(const Val& value1, const Val& value2);
 	bool IsEqual(const Expr& value1, const Expr& value2);
 
 	void printExpr(const Expr& expr);
+
+	struct EitherReference
+	{
+		//std::shared_ptr<Expr> local;
+		boost::optional<Identifier> local;
+		Address replaced;
+
+		EitherReference() = default;
+
+		/*EitherReference(const Expr& original)
+			: local(std::make_shared<Expr>(original))
+		{}
+
+		EitherReference(const Expr& original, Address address)
+			: local(std::make_shared<Expr>(original))
+			, replaced(address)
+		{}
+
+		EitherReference(std::shared_ptr<Expr> original, Address address)
+			: local(original)
+			, replaced(address)
+		{}*/
+		explicit EitherReference(const boost::optional<Identifier>& original)
+			: local(original)
+		{}
+
+		EitherReference(const boost::optional<Identifier>& original, Address address)
+			: local(original)
+			, replaced(address)
+		{}
+
+		bool localReferenciable(const Context& context)const;
+
+		std::string toString()const;
+	};
 
 	struct RValue
 	{
 		RValue() = default;
 		explicit RValue(const Val& value) :value(value) {}
 
-		bool operator==(const RValue& other)const
-		{
-			return IsEqualVal(value, other.value);
-		}
-
-		bool operator!=(const RValue& other)const
-		{
-			return !IsEqualVal(value, other.value);
-		}
+		bool operator==(const RValue& other)const { return IsEqualVal(value, other.value); }
+		bool operator!=(const RValue& other)const { return !IsEqualVal(value, other.value); }
 
 		Val value;
 	};
@@ -608,68 +614,63 @@ namespace cgl
 	{
 		LRValue() = default;
 
-		LRValue(const Val& value) :value(RValue(value)) {}
 		LRValue(const RValue& value) :value(value) {}
-		LRValue(Address value) :value(value) {}
-		LRValue(Reference value) :value(value) {}
+		explicit LRValue(const Val& value) :value(RValue(value)) {}
+		explicit LRValue(Address value) :value(value) {}
+		explicit LRValue(Reference value) :value(value) {}
+		explicit LRValue(const EitherReference& value) :value(value) {}
 
-		static LRValue Bool(bool a) { return LRValue(Val(a)); }
-		static LRValue Int(int a) { return LRValue(Val(a)); }
+		static LRValue Bool(bool a);
+		static LRValue Int(int a);
 		static LRValue Double(double a) { return LRValue(Val(a)); }
-		//static LRValue Float(const std::string& str) { return LRValue(std::stod(str)); }
 		static LRValue Float(const std::u32string& str);
-		//static LRValue Sat(const DeclSat& a) { return LRValue(a); }
-		//static LRValue Free(const DeclFree& a) { return LRValue(a); }
 
-		LRValue& setLocation(const LocationInfo& info)
-		{
-			locInfo_lineBegin = info.locInfo_lineBegin;
-			locInfo_lineEnd = info.locInfo_lineEnd;
-			locInfo_posBegin = info.locInfo_posBegin;
-			locInfo_posEnd = info.locInfo_posEnd;
-			return *this;
-		}
+		LRValue& setLocation(const LocationInfo& info);
 
-		bool isRValue()const
-		{
-			return IsType<RValue>(value);
-		}
+		bool isRValue()const { return IsType<RValue>(value); }
+		bool isLValue()const { return !isRValue(); }
 
-		bool isLValue()const
-		{
-			return !isRValue();
-		}
-
-		bool isAddress()const
-		{
-			return IsType<Address>(value);
-		}
-
-		bool isReference()const
-		{
-			return IsType<Reference>(value);
-		}
+		bool isAddress()const { return IsType<Address>(value); }
+		bool isReference()const { return IsType<Reference>(value); }
+		bool isEitherReference()const { return IsType<EitherReference>(value); }
 
 		bool isValid()const;
 
 		std::string toString()const;
+		std::string toString(Context& context)const;
 
-		Address address(const Context& env)const;
-
-		Reference reference()const
+		Reference reference()const { return As<Reference>(value); }
+		const EitherReference& eitherReference()const
 		{
-			return As<Reference>(value);
+			const auto& result = As<EitherReference>(value);
+			return result;
 		}
 
-		const Val& evaluated()const
+		const Val& evaluated()const { return As<RValue>(value).value; }
+		Val& mutableVal() { return As<RValue>(value).value; }
+
+		template<class T>
+		void push_back(T& data, Context& context)const
 		{
-			return As<RValue>(value).value;
+			if (isEitherReference())
+			{
+				data.push_back(eitherReference().replaced);
+			}
+			else if (isReference())
+			{
+				data.push_back(getReference(context));
+			}
+			else if (isAddress())
+			{
+				data.push_back(address(context));
+			}
+			else
+			{
+				data.push_back(makeTemporaryValue(context));
+			}
 		}
 
-		Val& mutableVal()
-		{
-			return As<RValue>(value).value;
-		}
+		boost::optional<Address> deref(const Context& env)const;
 
 		bool operator==(const LRValue& other)const
 		{
@@ -695,33 +696,105 @@ namespace cgl
 			return os;
 		}
 
-		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference> value;
+		boost::variant<boost::recursive_wrapper<RValue>, Address, Reference, EitherReference> value;
+
+		private:
+			friend class Context;
+			friend class ExprAddressCheker;
+			friend class AddressReplacer;
+
+			Address address(const Context& context)const;
+
+			Address getReference(const Context& context)const;
+
+			Address makeTemporaryValue(Context& context)const;
 	};
 
-	struct OptimizationProblemSat;
-
-	struct SatUnaryExpr;
-	struct SatBinaryExpr;
-	struct SatLines;
-
-	struct SatFunctionReference;
-
-	using SatExpr = boost::variant<
-		double,
-		boost::recursive_wrapper<SatUnaryExpr>,
-		boost::recursive_wrapper<SatBinaryExpr>,
-		boost::recursive_wrapper<SatFunctionReference>
-	>;
-
-	struct VariableRange
+	struct Interval
 	{
-		double minimum = -100.0;
-		double maximum = +100.0;
-		VariableRange() = default;
-		VariableRange(double minimum, double maximum) :
+		double minimum = -DBL_MAX;
+		double maximum = +DBL_MAX;
+		Interval() = default;
+		Interval(double minimum, double maximum) :
 			minimum(minimum),
 			maximum(maximum)
 		{}
+	};
+
+	struct RegionVariable
+	{
+		Address address;
+
+		enum Attribute {
+			Position = 1 << 0,
+			Scale = 1 << 1,
+			Angle = 1 << 2,
+			Other = 1 << 3
+			//Position
+			//Scale
+			//Angle
+			//Other
+			//X
+			//Y
+			//Shape
+		};
+		std::set<Attribute> attributes;
+
+		RegionVariable() = default;
+		RegionVariable(Address address, Attribute attribute) :
+			address(address),
+			attributes({ attribute })
+		{}
+
+		bool has(Attribute attribute)const
+		{
+			return attributes.find(attribute) != attributes.end();
+		}
+
+		std::string toString()const
+		{
+			std::string result = "Address(" + address.toString() + "): ";
+			if (!attributes.empty())
+			{
+				switch (*attributes.begin())
+				{
+				case cgl::RegionVariable::Position:
+					result += "Position";
+					break;
+				case cgl::RegionVariable::Scale:
+					result += "Scale";
+					break;
+				case cgl::RegionVariable::Angle:
+					result += "Angle";
+					break;
+				case cgl::RegionVariable::Other:
+					result += "Other";
+					break;
+				default:
+					result += "unknown";
+					break;
+				}
+				return result;
+			}
+			return result + "undefined";
+		}
+	};
+
+	struct OptimizeRegion
+	{
+		boost::variant<Interval, PackedVal> region;
+		boost::optional<double> eps;
+
+		//一つのregionはvariableの集合に対してかかる
+		//したがって、variableのリストのうちどこからどこまでに対応するかというインデックス情報を保存しておく
+		//->制約が分解されたときにインデックスがずれるのでこれではだめだった。普通にアドレスの集合を持つ
+		//->また、freeVariablesに対応した順序でAddressが取り出せないといけないので、setではなくvectorで管理する
+		std::vector<Address> addresses;
+
+		bool has(Address address)const
+		{
+			return std::find(addresses.begin(), addresses.end(), address) != addresses.end();
+		}
 	};
 
 	struct Import : public LocationInfo
@@ -794,8 +867,9 @@ namespace cgl
 
 		std::unordered_map<Address, int> invRefs;//Address->参照ID
 
-												 //freeVariablesから辿れる全てのアドレス
-		std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//変数ID->Address
+		//freeVariablesから辿れる全てのアドレス
+		std::vector<RegionVariable> freeVariableRefs;//変数ID->Address
+		std::vector<OptimizeRegion> optimizeRegions;
 
 		bool hasPlateausFunction = false;
 
@@ -815,80 +889,6 @@ namespace cgl
 		}
 
 		double eval(std::shared_ptr<Context> pEnv, const LocationInfo& info);
-	};
-
-	struct SatUnaryExpr
-	{
-		SatExpr lhs;
-		UnaryOp op;
-
-		SatUnaryExpr() = default;
-
-		SatUnaryExpr(const SatExpr& lhs, UnaryOp op) :
-			lhs(lhs),
-			op(op)
-		{}
-	};
-
-	struct SatBinaryExpr
-	{
-		SatExpr lhs;
-		SatExpr rhs;
-		BinaryOp op;
-
-		SatBinaryExpr() = default;
-
-		SatBinaryExpr(const SatExpr& lhs, const SatExpr& rhs, BinaryOp op) :
-			lhs(lhs),
-			rhs(rhs),
-			op(op)
-		{}
-	};
-
-	struct SatLines
-	{
-		std::vector<SatExpr> exprs;
-
-		SatLines() = default;
-
-		SatLines(const SatExpr& expr) :
-			exprs({ expr })
-		{}
-
-		SatLines(const std::vector<SatExpr>& exprs_) :
-			exprs(exprs_)
-		{}
-
-		void add(const SatExpr& expr)
-		{
-			exprs.push_back(expr);
-		}
-
-		void concat(const SatLines& lines)
-		{
-			exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
-		}
-
-		SatLines& operator+=(const SatLines& lines)
-		{
-			exprs.insert(exprs.end(), lines.exprs.begin(), lines.exprs.end());
-			return *this;
-		}
-
-		size_t size()const
-		{
-			return exprs.size();
-		}
-
-		const SatExpr& operator[](size_t index)const
-		{
-			return exprs[index];
-		}
-
-		SatExpr& operator[](size_t index)
-		{
-			return exprs[index];
-		}
 	};
 
 	struct UnaryExpr : public LocationInfo
@@ -1242,6 +1242,43 @@ namespace cgl
 		friend std::ostream& operator<<(std::ostream& os, const DefFunc& node) { return os; }
 	};
 
+	// 遅延呼び出しされる識別子の管理に必要
+	struct DefFuncWithScopeInfo
+	{
+		DefFuncWithScopeInfo() = default;
+		DefFuncWithScopeInfo(const ScopeAddress& scopeInfo)
+			: scopeInfo(scopeInfo)
+		{}
+		DefFuncWithScopeInfo(const DefFunc& generalDef, const ScopeAddress& scopeInfo)
+			: generalDef(generalDef)
+			, scopeInfo(scopeInfo)
+		{}
+		DefFuncWithScopeInfo(const DefFunc& specialDef, int recDepth, const ScopeAddress& scopeInfo)
+			: specialDefs({ {recDepth, specialDef} })
+			, scopeInfo(scopeInfo)
+		{}
+
+		void setGeneralDef(const DefFunc& defFunc)
+		{
+			generalDef = defFunc;
+		}
+		void setSpecialDef(const DefFunc& defFunc, int recDepth)
+		{
+			specialDefs[recDepth] = defFunc;
+		}
+
+		DefFunc generalDef;
+		std::unordered_map<int, DefFunc> specialDefs;
+		ScopeAddress scopeInfo;
+
+	private:
+		friend class Eval;
+		int callDepth = 0;
+		//std::unordered_map<RecMemoInfo, Address> memo;
+		std::unordered_map<size_t, Address> memo;
+	};
+	using DeferredIdentifiers = std::unordered_map<Identifier, std::vector<DefFuncWithScopeInfo>>;
+
 	struct If : public LocationInfo
 	{
 		Expr cond_expr;
@@ -1524,7 +1561,6 @@ namespace cgl
 		Val unpacked(Context& context)const;
 
 	private:
-
 		template<typename Head>
 		void addsImpl(const Head& head)
 		{
@@ -1561,7 +1597,7 @@ namespace cgl
 			data.push_back(address);
 		}
 
-		List& append(const Address& address)
+		List& push_back(const Address& address)
 		{
 			data.push_back(address);
 			return *this;
@@ -1763,6 +1799,20 @@ namespace cgl
 		}
 	};
 
+	struct PackedKeyValue
+	{
+		Identifier name;
+		PackedVal value;
+		Address address;
+
+		PackedKeyValue() = default;
+
+		PackedKeyValue(const Identifier& name, const PackedVal& value) :
+			name(name),
+			value(value)
+		{}
+	};
+	
 	struct DeclSat : public LocationInfo
 	{
 		Expr expr;
@@ -1796,171 +1846,17 @@ namespace cgl
 		friend std::ostream& operator<<(std::ostream& os, const DeclSat& node) { return os; }
 	};
 
-	struct SatFunctionReference
-	{
-		struct ListRef
-		{
-			int index;
-
-			ListRef() = default;
-			ListRef(int index) :index(index) {}
-
-			bool operator==(const ListRef& other)const
-			{
-				return index == other.index;
-			}
-
-			std::string asString()const
-			{
-				return std::string("[") + std::to_string(index) + "]";
-			}
-		};
-
-		struct RecordRef
-		{
-			std::string key;
-
-			RecordRef() = default;
-			RecordRef(const std::string& key) :key(key) {}
-
-			bool operator==(const RecordRef& other)const
-			{
-				return key == other.key;
-			}
-
-			std::string asString()const
-			{
-				return std::string(".") + key;
-			}
-		};
-
-		struct FunctionRef
-		{
-			std::vector<SatExpr> args;
-
-			FunctionRef() = default;
-			FunctionRef(const std::vector<SatExpr>& args) :args(args) {}
-
-			bool operator==(const FunctionRef& other)const
-			{
-				if (args.size() != other.args.size())
-				{
-					return false;
-				}
-
-				for (size_t i = 0; i < args.size(); ++i)
-				{
-					/*if (!IsEqual(args[i], other.args[i]))
-					{
-					return false;
-					}*/
-				}
-
-				return true;
-			}
-
-			std::string asString()const
-			{
-				return std::string("( ") + std::to_string(args.size()) + "args" + " )";
-			}
-
-			void appendExpr(const SatExpr& value)
-			{
-				args.push_back(value);
-			}
-		};
-
-		using Ref = boost::variant<ListRef, RecordRef, FunctionRef>;
-
-		//using ObjectT = boost::variant<boost::recursive_wrapper<FuncVal>>;
-
-		//ObjectT headValue;
-
-		//std::string funcName;
-		Address headAddress; //funcName -> headAddress に変更
-
-		std::vector<Ref> references;
-
-		SatFunctionReference() = default;
-
-		SatFunctionReference(Address address)
-			:headAddress(address)
-		{}
-
-		void appendListRef(int index)
-		{
-			references.push_back(ListRef(index));
-		}
-
-		void appendRecordRef(const std::string& key)
-		{
-			references.push_back(RecordRef(key));
-		}
-
-		//void appendFunctionRef(const std::vector<Val>& args)
-		void appendFunctionRef(const FunctionRef& ref)
-		{
-			//references.push_back(FunctionRef(args));
-			references.push_back(ref);
-		}
-
-		bool operator==(const SatFunctionReference& other)const
-		{
-			//if (!(headValue == other.headValue))
-			/*if (!(funcName == other.funcName))
-			{
-			return false;
-			}*/
-			if (!(headAddress == other.headAddress))
-			{
-				return false;
-			}
-
-			if (references.size() != other.references.size())
-			{
-				return false;
-			}
-
-			for (size_t i = 0; i<references.size(); ++i)
-			{
-				if (!(references[i] == other.references[i]))
-				{
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		std::string asString()const
-		{
-			std::string str = "objName";
-
-			for (const auto& r : references)
-			{
-				if (auto opt = AsOpt<ListRef>(r))
-				{
-					str += opt.get().asString();
-				}
-				else if (auto opt = AsOpt<RecordRef>(r))
-				{
-					str += opt.get().asString();
-				}
-				else if (auto opt = AsOpt<FunctionRef>(r))
-				{
-					str += opt.get().asString();
-				}
-			}
-
-			return str;
-		}
-	};
-
 	struct DeclFree : public LocationInfo
 	{
-		//std::vector<Accessor> accessors;
-		std::vector<Expr> accessors;
-		std::vector<Expr> ranges;
+		struct DeclVar
+		{
+			Expr accessor;
+			boost::optional<Expr> range;
+
+			DeclVar() = default;
+			DeclVar(const Expr& accessor) :accessor(accessor) {}
+		};
+		std::vector<DeclVar> accessors;
 
 		DeclFree() = default;
 
@@ -1975,13 +1871,12 @@ namespace cgl
 
 		void addAccessor(const Expr& accessor)
 		{
-			//accessors.push_back(accessor);
 			accessors.emplace_back(accessor);
 		}
 
 		void addRange(const Expr& range)
 		{
-			ranges.push_back(range);
+			accessors.back().range = range;
 		}
 
 		static void AddAccessor(DeclFree& decl, const Accessor& accessor)
@@ -1991,12 +1886,12 @@ namespace cgl
 
 		static void AddAccessorDynamic(DeclFree& decl, const Accessor& accessor)
 		{
-			decl.accessors.push_back(UnaryExpr(accessor, UnaryOp::Dynamic));
+			decl.accessors.push_back(DeclVar(UnaryExpr(accessor, UnaryOp::Dynamic)));
 		}
 
 		static void AddRange(DeclFree& decl, const Expr& expr)
 		{
-			decl.ranges.push_back(expr);
+			decl.accessors.back().range = expr;
 		}
 
 		bool operator==(const DeclFree& other)const
@@ -2043,9 +1938,18 @@ namespace cgl
 
 	//using FreeVariable = std::pair<Address, VariableRange>;
 
-	using FreeVariableAddress = std::pair<Address, VariableRange>;
+	//using FreeVariableAddress = std::pair<Address, VariableRange>;
 
 	using FreeVarType = boost::variant<boost::recursive_wrapper<Accessor>, Reference>;
+
+	struct BoundedFreeVar
+	{
+		FreeVarType freeVariable;// Accessor | Reference
+		boost::optional<Expr> freeRange;
+
+		BoundedFreeVar() = default;
+		BoundedFreeVar(const FreeVarType& freeVariable) :freeVariable(freeVariable) {}
+	};
 
 	//unitConstraintに出現するfree変数のAddress
 	using ConstraintAppearance = std::unordered_set<Address>;
@@ -2058,8 +1962,9 @@ namespace cgl
 	{
 		OldRecordData() = default;
 
-		//変数ID->アドレス
-		std::vector<FreeVarType> freeVars;
+		//変数ID->変数・範囲
+		std::vector<RegionVariable> regionVars;
+		std::vector<OptimizeRegion> optimizeRegions;
 
 		//分解された単位制約
 		std::vector<Expr> unitConstraints;
@@ -2090,12 +1995,8 @@ namespace cgl
 		std::vector<OptimizationProblemSat> problems;
 		boost::optional<Expr> constraint;
 
-		//var宣言で指定されたアクセッサ
-		//std::vector<Accessor> freeVariables;
-		std::vector<FreeVarType> freeVariables;
-
-		//var宣言で指定されたアクセッサの範囲
-		std::vector<Expr> freeRanges;
+		//var宣言で指定されたアクセッサとその範囲
+		std::vector<BoundedFreeVar> freeVariables;
 
 		OldRecordData original;
 
@@ -2125,7 +2026,6 @@ namespace cgl
 		Val unpacked(Context& context)const;
 
 	private:
-
 		template<typename HeadName, typename HeadVal>
 		void addsImpl(const HeadName& headName, const HeadVal& headVal)
 		{
@@ -2162,12 +2062,13 @@ namespace cgl
 
 		//var宣言で指定されたアクセッサ
 		//std::vector<Accessor> freeVariables;
-		std::vector<FreeVarType> freeVariables;// Accessor | Reference
-
-		//std::vector<std::pair<Address, VariableRange>> freeVariableRefs;//freeVariablesから辿れる全てのアドレス
+		//std::vector<FreeVarType> freeVariables;// Accessor | Reference
 
 		//var宣言で指定されたアクセッサの範囲
-		std::vector<Expr> freeRanges;
+		//std::vector<Expr> freeRanges;
+
+		//var宣言で指定されたアクセッサとその範囲
+		std::vector<BoundedFreeVar> boundedFreeVariables;
 
 		OldRecordData original;
 
@@ -2329,7 +2230,27 @@ namespace cgl
 		friend std::ostream& operator<<(std::ostream& os, const FunctionAccess& node) { return os; }
 	};
 
-	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess>;
+	struct InheritAccess
+	{
+		RecordConstractor adder;
+
+		InheritAccess() = default;
+		InheritAccess(const RecordConstractor& record)
+			:adder(record)
+		{}
+
+		static InheritAccess Make(const RecordConstractor& record)
+		{
+			return InheritAccess(record);
+		}
+
+		bool operator==(const InheritAccess& other)const
+		{
+			return IsEqual(adder, other.adder);
+		}
+	};
+
+	using Access = boost::variant<ListAccess, RecordAccess, FunctionAccess, InheritAccess>;
 
 	struct Accessor : public LocationInfo
 	{
@@ -2374,6 +2295,11 @@ namespace cgl
 		}
 
 		static void AppendFunction(Accessor& obj, const FunctionAccess& access)
+		{
+			obj.accesses.push_back(access);
+		}
+
+		static void AppendInherit(Accessor& obj, const InheritAccess& access)
 		{
 			obj.accesses.push_back(access);
 		}
@@ -2513,90 +2439,6 @@ namespace cgl
 		}
 	};
 
-	struct RecordInheritor : public LocationInfo
-	{
-		//using OriginalRecord = boost::variant<Identifier, boost::recursive_wrapper<Record>>;
-		//OriginalRecord original;
-		//OriginalRecordがRecordになるのはあり得なくない？
-		//それよりも関数の返り値がレコードの場合もあるのでoriginalには一般の式を取るべきだと思う
-
-		Expr original;
-		//std::vector<Expr> exprs;
-		RecordConstractor adder;
-
-		RecordInheritor() = default;
-
-		RecordInheritor(const Expr& original) :
-			original(original)
-		{}
-
-		RecordInheritor& setLocation(const LocationInfo& info)
-		{
-			locInfo_lineBegin = info.locInfo_lineBegin;
-			locInfo_lineEnd = info.locInfo_lineEnd;
-			locInfo_posBegin = info.locInfo_posBegin;
-			locInfo_posEnd = info.locInfo_posEnd;
-			return *this;
-		}
-
-		static RecordInheritor MakeIdentifier(const Identifier& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static RecordInheritor MakeAccessor(const Accessor& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static RecordInheritor MakeLines(const Lines& original)
-		{
-			return RecordInheritor(original);
-		}
-
-		static void AppendKeyExpr(RecordInheritor& rec, const KeyExpr& KeyExpr)
-		{
-			rec.adder.exprs.push_back(KeyExpr);
-		}
-
-		static void AppendExpr(RecordInheritor& rec, const Expr& expr)
-		{
-			rec.adder.exprs.push_back(expr);
-		}
-
-		static void AppendRecord(RecordInheritor& rec, const RecordConstractor& rec2)
-		{
-			auto& exprs = rec.adder.exprs;
-			exprs.insert(exprs.end(), rec2.exprs.begin(), rec2.exprs.end());
-		}
-
-		static RecordInheritor MakeRecord(const Identifier& original, const RecordConstractor& rec2)
-		{
-			RecordInheritor obj(original);
-			AppendRecord(obj, rec2);
-			return obj;
-		}
-
-		bool operator==(const RecordInheritor& other)const
-		{
-			/*if (IsType<Identifier>(original) && IsType<Identifier>(other.original))
-			{
-			return As<Identifier>(original) == As<Identifier>(other.original) && adder == other.adder;
-			}
-			if (IsType<Record>(original) && IsType<Record>(other.original))
-			{
-			return As<const Record&>(original) == As<const Record&>(other.original) && adder == other.adder;
-			}*/
-
-			return IsEqual(original, other.original) && adder == other.adder;
-
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return false;
-		}
-
-		friend std::ostream& operator<<(std::ostream& os, const RecordInheritor& node) { return os; }
-	};
-
 	Expr BuildString(const std::u32string& str);
 }
 
@@ -2624,6 +2466,19 @@ namespace cereal
 	}
 
 	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedList::Data& node)
+	{
+		ar(node.value);
+		ar(node.address);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedList& node)
+	{
+		ar(node.data);
+	}
+
+	template<class Archive>
 	inline void serialize(Archive& ar, cgl::KeyValue& node)
 	{
 		ar(node.name);
@@ -2636,9 +2491,27 @@ namespace cereal
 		ar(node.values);
 		ar(node.problems);
 		ar(node.constraint);
-		ar(node.freeVariables);
-		ar(node.freeRanges);
+		ar(node.boundedFreeVariables);
 		ar(node.original);
+		ar(node.type);
+		ar(node.isSatisfied);
+		ar(node.pathPoints);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedRecord::Data& node)
+	{
+		ar(node.value);
+		ar(node.address);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::PackedRecord& node)
+	{
+		ar(node.values);
+		ar(node.problems);
+		ar(node.constraint);
+		ar(node.freeVariables);
 		ar(node.type);
 		ar(node.isSatisfied);
 		ar(node.pathPoints);
@@ -2669,6 +2542,13 @@ namespace cereal
 	inline void serialize(Archive& ar, cgl::Reference& reference)
 	{
 		ar(reference.referenceID);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::EitherReference& reference)
+	{
+		ar(reference.local);
+		ar(reference.replaced);
 	}
 
 	template<class Archive>
@@ -2776,13 +2656,6 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::RecordInheritor& node)
-	{
-		ar(node.original);
-		ar(node.adder);
-	}
-
-	template<class Archive>
 	inline void serialize(Archive& ar, cgl::ListAccess& node)
 	{
 		ar(node.index);
@@ -2802,6 +2675,12 @@ namespace cereal
 	}
 
 	template<class Archive>
+	inline void serialize(Archive& ar, cgl::InheritAccess& node)
+	{
+		ar(node.adder);
+	}
+
+	template<class Archive>
 	inline void serialize(Archive& ar, cgl::Accessor& node)
 	{
 		ar(node.head);
@@ -2815,17 +2694,38 @@ namespace cereal
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::DeclFree& node)
+	inline void serialize(Archive& ar, cgl::DeclFree::DeclVar& node)
 	{
-		ar(node.accessors);
-		ar(node.ranges);
+		ar(node.accessor);
+		ar(node.range);
 	}
 
 	template<class Archive>
-	inline void serialize(Archive& ar, cgl::VariableRange& node)
+	inline void serialize(Archive& ar, cgl::DeclFree& node)
+	{
+		ar(node.accessors);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::Interval& node)
 	{
 		ar(node.minimum);
 		ar(node.maximum);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::RegionVariable& node)
+	{
+		ar(node.address);
+		ar(node.attributes);
+	}
+
+	template<class Archive>
+	inline void serialize(Archive& ar, cgl::OptimizeRegion& node)
+	{
+		ar(node.region);
+		ar(node.eps);
+		ar(node.addresses);
 	}
 
 	template<class Archive>
@@ -2840,9 +2740,17 @@ namespace cereal
 	}
 
 	template<class Archive>
+	inline void serialize(Archive& ar, cgl::BoundedFreeVar& node)
+	{
+		ar(node.freeVariable);
+		ar(node.freeRange);
+	}
+
+	template<class Archive>
 	inline void serialize(Archive& ar, cgl::OldRecordData& node)
 	{
-		ar(node.freeVars);
+		ar(node.regionVars);
+		ar(node.optimizeRegions);
 		ar(node.unitConstraints);
 		ar(node.variableAppearances);
 		ar(node.groupConstraints);

@@ -13,7 +13,6 @@ koch_template = (p, q ->
 )
 
 rec_curve = (f, depth, template, ps -> 
-    mergin = 4
     if depth == 0
     then {
         line: ps
@@ -31,7 +30,7 @@ rec_curve = (f, depth, template, ps ->
 
 tree = Shape{
     tri = Triangle{scale = {x: 10, y: 10}}
-    depth = 7
+    depth = 6
     a: Shape{
         l: [
             rec_curve(rec_curve, depth, koch_template, [tri.p0(), tri.p1()])

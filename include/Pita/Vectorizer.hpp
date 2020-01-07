@@ -29,16 +29,105 @@ namespace cgl
 	namespace gob = geos::operation::buffer;
 	namespace god = geos::operation::distance;
 
+	template<class DeleterT, class PointerT>
+	inline std::unique_ptr<PointerT, DeleterT> ToUnique(PointerT* p)
+	{
+		return std::unique_ptr<PointerT, DeleterT>(p);
+	}
+
+	struct GeometryDeleter
+	{
+		void operator()(gg::Geometry* pGeometry) const;
+	};
+	using GeometryPtr = std::unique_ptr<gg::Geometry, GeometryDeleter>;
+
+	class Geometries
+	{
+	public:
+		Geometries();
+		~Geometries();
+		Geometries(Geometries&&);
+
+		bool empty()const
+		{
+			return gs.empty();
+		}
+
+		size_t size()const
+		{
+			return gs.size();
+		}
+
+		GeometryPtr takeOut(size_t index)
+		{
+			GeometryPtr ptr(std::move(gs[index]));
+			gs.erase(gs.begin() + index);
+			return ptr;
+		}
+
+		const gg::Geometry* const refer(size_t index)const
+		{
+			return gs[index].get();
+		}
+
+		void insert(size_t index, GeometryPtr g)
+		{
+			gs.insert(gs.begin() + index, std::move(g));
+		}
+
+		void erase(size_t index)
+		{
+			gs.erase(gs.begin() + index);
+		}
+
+		void push_back(GeometryPtr g)
+		{
+			gs.push_back(std::move(g));
+		}
+
+		void push_back_raw(gg::Geometry* g)
+		{
+			gs.push_back(ToUnique<GeometryDeleter>(g));
+		}
+
+		void pop_back()
+		{
+			gs.pop_back();
+		}
+
+		void append(Geometries&& tail)
+		{
+			gs.insert(gs.end(), std::make_move_iterator(tail.gs.begin()), std::make_move_iterator(tail.gs.end()));
+			tail.gs.clear();
+		}
+
+		std::vector<gg::Geometry*> releaseAsRawPtrs()
+		{
+			std::vector<gg::Geometry*> ps;
+			for (size_t i = 0; i < gs.size(); ++i)
+			{
+				ps.push_back(gs[i].release());
+			}
+			gs.clear();
+			return ps;
+		}
+
+		Geometries& operator=(Geometries&&);
+
+	private:
+		std::vector<GeometryPtr> gs;
+	};
+
 	void GetQuadraticBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, int n, bool includesEndPoint);
 	void GetCubicBezier(Vector<Eigen::Vector2d>& output, const Eigen::Vector2d& p0, const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Eigen::Vector2d& p3, int n, bool includesEndPoint);
 
 	bool IsClockWise(const Vector<Eigen::Vector2d>& closedPath);
 	bool IsClockWise(const gg::LineString* closedPath);
+	std::tuple<bool, std::unique_ptr<gg::Geometry>> IsClockWise(std::unique_ptr<gg::Geometry> pLineString);
 
 	std::string GetGeometryType(gg::Geometry* geometry);
 	gg::Polygon* ToPolygon(const Vector<Eigen::Vector2d>& exterior);
 	gg::LineString* ToLineString(const Vector<Eigen::Vector2d>& exterior);
-	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail);
 
 	void DebugPrint(const gg::Geometry* geometry);
 
@@ -56,7 +145,8 @@ namespace cgl
 		std::string toString()const
 		{
 			std::stringstream ss;
-			ss << "rgb(" << r << ", " << g << ", " << b << ")";
+			const auto clamp = [](int x) {return std::max(std::min(x, 255), 0); };
+			ss << "rgb(" << clamp(r) << ", " << clamp(g) << ", " << clamp(b) << ")";
 			return ss.str();
 		}
 	};
@@ -66,12 +156,12 @@ namespace cgl
 	public:
 		PitaGeometry() = default;
 
-		PitaGeometry(gg::Geometry* shape, const Color& color) :
+		PitaGeometry(std::shared_ptr<gg::Geometry> shape, const Color& color) :
 			shape(shape),
 			color(color)
 		{}
 
-		gg::Geometry* shape;
+		std::shared_ptr<gg::Geometry> shape;
 		Color color;
 	};
 
@@ -209,13 +299,15 @@ namespace cgl
 		Mat3x3 mat;
 	};
 
+	GeometryPtr MakeLine(const Eigen::Vector2d& p0, const Eigen::Vector2d& p1);
+
 	//Compress to ShapeRecord
 	PackedRecord WritePathPacked(const Path& path);
 	//PackedRecord GetPolygonPacked(const gg::Polygon* poly);
 
 	using PackedPolyData = std::vector<PackedList>;
-	//�ŏI�I��Shape�ɕϊ�������ȊO�ł́A�ė��p�����l��PackedList�͓����ɒ��_�݂̂�\�����̂Ƃ��A
-	//�����̃|���S����std::vector<PackedList>�ŕ\������
+	//最終的にShapeに変換する個所以外では、再利用性を考えPackedListは内部に頂点のみを持つものとし、
+	//複数のポリゴンはstd::vector<PackedList>で表現する
 	PackedPolyData GetPolygonVertices(const gg::Polygon* poly);
 	//PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
 
@@ -239,6 +331,6 @@ namespace cgl
 	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());
 	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name);*/
 	BoundingRect BoundingRectRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext);
-	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform = cgl::TransformPacked());
+	Geometries GeosFromRecordPacked(const PackedVal& value, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform = cgl::TransformPacked());
 	bool OutputSVG2(std::ostream& os, const PackedVal& value, const std::string& name, std::shared_ptr<Context> pContext);
 }

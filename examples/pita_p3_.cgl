@@ -1,3 +1,5 @@
+EnableGC(true)
+
 baseColor = Rgb(245, 245, 245)
 mainColor = Rgb(49, 187, 222)
 accentColor = Rgb(68, 84, 106)
@@ -53,8 +55,8 @@ main = {
     bridgeR: skeleton(3){ pos: Sub(rectR.topLeft(), end()) }
 
     sat( Contact(bridgeL.begin(), rectL.topRight()) )
-    sat( Distance({a:triangle, p: @bridgeL, pos: p.end()}, rail) == 0.0 )
-    sat( Distance({a:triangle, p: @bridgeR, pos: p.begin()}, rail) == 0.0 )
+    sat( Distance({a:Triangle{}, p: @bridgeL, pos: p.end()}, rail) == 0.0 )
+    sat( Distance({a:Triangle{}, p: @bridgeR, pos: p.begin()}, rail) == 0.0 )
     sat( Contact(bridgeR.end(), rectR.topLeft()) )
     sat( Contact(bridgeL.end(), bridgeR.begin()) )
     

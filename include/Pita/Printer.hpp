@@ -120,26 +120,6 @@ namespace cgl
 	inline void printVal(const Val& evaluated, std::shared_ptr<Context> pEnv, int indent = 0) {}
 #endif
 
-	class PrintSatExpr : public boost::static_visitor<void>
-	{
-	public:
-		PrintSatExpr(const std::vector<double>& data, std::ostream& os) :
-			data(data),
-			os(os)
-		{}
-
-		const std::vector<double>& data;
-		std::ostream& os;
-
-		void operator()(double node)const;
-
-		void operator()(const SatUnaryExpr& node)const;
-
-		void operator()(const SatBinaryExpr& node)const;
-
-		void operator()(const SatFunctionReference& node)const;
-	};
-
 	class Printer : public boost::static_visitor<void>
 	{
 	public:
@@ -182,8 +162,6 @@ namespace cgl
 		void operator()(const KeyExpr& keyExpr)const;
 
 		void operator()(const RecordConstractor& recordConstractor)const;
-
-		void operator()(const RecordInheritor& record)const;
 
 		void operator()(const DeclSat& node)const;
 
@@ -239,8 +217,6 @@ namespace cgl
 
 		void operator()(const RecordConstractor& recordConstractor)const;
 
-		void operator()(const RecordInheritor& record)const;
-
 		void operator()(const DeclSat& node)const;
 
 		void operator()(const DeclFree& node)const;
@@ -258,6 +234,7 @@ namespace cgl
 	inline void printExpr2(const Expr& expr, std::shared_ptr<Context> pEnv, std::ostream& os)
 	{
 		boost::apply_visitor(Printer2(pEnv, os), expr);
+		os << std::endl;
 	}
 
 #ifdef CGL_EnableLogOutput
@@ -269,4 +246,31 @@ namespace cgl
 	inline void printExpr(const Expr& expr) {}
 #endif
 
+	inline std::string exprVal(const Expr& expr, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printExpr(expr, pEnv, ss);
+		return ss.str();
+	}
+
+	inline std::string exprStr2(const Expr& expr, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printExpr2(expr, pEnv, ss);
+		return ss.str();
+	}
+
+	inline std::string valStr(const Val& val, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printVal(val, pEnv, ss);
+		return ss.str();
+	}
+
+	inline std::string valStr2(const Val& val, std::shared_ptr<Context> pEnv)
+	{
+		std::stringstream ss;
+		printVal2(val, pEnv, ss);
+		return ss.str();
+	}
 }

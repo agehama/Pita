@@ -1,12 +1,854 @@
 #pragma warning(disable:4996)
 #include <iostream>
 
+#include <boost/algorithm/string.hpp>
+
 #include <Pita/Evaluator.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/OptimizationEvaluator.hpp>
 #include <Pita/Printer.hpp>
 #include <Pita/IntrinsicGeometricFunctions.hpp>
 #include <Pita/Program.hpp>
+#include <Pita/Graph.hpp>
+#include <Pita/ExprTransformer.hpp>
+#include <Pita/ClosureMaker.hpp>
+#include <Pita/ValueCloner.hpp>
+#include <Pita/TreeLogger.hpp>
+#include <Pita/StaticDeferredIdentifierSearcher.hpp>
+#include <Pita/DynamicDeferredIdentifierSearcher.hpp>
+
+extern bool isDebugMode;
+extern bool isContextFreeMode;
+namespace cgl
+{
+	class VersionReducer : public ExprTransformer
+	{
+	public:
+		VersionReducer() = default;
+
+		static bool IsVersioned(const Identifier& identifier)
+		{
+			const auto& str = identifier.toString();
+			return !str.empty() && str[0] == '$';
+		}
+
+		static Identifier WithoutVersion(const Identifier& identifier)
+		{
+			if (IsVersioned(identifier))
+			{
+				const std::string& str = identifier.toString();
+				std::string originalName(str.begin() + str.find(')') + 1, str.end());
+				return Identifier(originalName);
+			}
+
+			return identifier;
+		}
+
+		Expr operator()(const Identifier& node)override
+		{
+			std::cout << node.toString() << ", ";
+			return WithoutVersion(node);
+		}
+
+		Expr operator()(const KeyExpr& node)override
+		{
+			const KeyExpr result(WithoutVersion(node.name), boost::apply_visitor(*this, node.expr));
+			return result;
+		}
+
+		Expr operator()(const LRValue& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const UnaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const BinaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Lines& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DefFunc& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const If& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const For& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Accessor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclSat& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclFree& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Import& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Range& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Return& node)override { return ExprTransformer::operator()(node); }
+	};
+
+	inline Expr VersionReduced(const Expr& expr)
+	{
+		VersionReducer reducer;
+		auto result = boost::apply_visitor(reducer, expr);
+		std::cout << std::endl;
+		return result;
+	}
+
+	class NameReplacer : public ExprTransformer
+	{
+	public:
+		NameReplacer(const std::unordered_map<std::string, Expr>& replaceMap) :
+			replaceMap(replaceMap)
+		{}
+
+		const std::unordered_map<std::string, Expr>& replaceMap;
+
+		Expr operator()(const Identifier& node)override
+		{
+			auto it = replaceMap.find(node.toString());
+			if (it != replaceMap.end())
+			{
+				return it->second;
+			}
+			return node;
+		}
+
+		Expr operator()(const LRValue& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const UnaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const BinaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Lines& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DefFunc& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const If& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const For& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const KeyExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Accessor& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclSat& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclFree& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Import& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Range& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Return& node)override { return ExprTransformer::operator()(node); }
+	};
+
+	inline Expr ReplaceName(const Expr& original, const std::unordered_map<std::string, Expr>& replaceMap)
+	{
+		NameReplacer replacer(replaceMap);
+		return boost::apply_visitor(replacer, original);
+	}
+
+	//Contextのクローンを作って評価しながら、全実行可能パスの解析を行う
+	class InlineExpander : public ExprTransformer
+	{
+	public:
+		InlineExpander(std::unordered_map<std::string, size_t>& identifierCounts,
+			std::shared_ptr<Context> pContext,
+			const std::unordered_map<std::string, std::string>& renameTable,
+			int indent) :
+			identifierCounts(identifierCounts),
+			pContext(pContext),
+			renameTable(renameTable),
+			m_indent(indent)
+		{}
+
+		//全体で共通
+		std::unordered_map<std::string, size_t>& identifierCounts;
+
+		//パスごとに異なる
+		std::shared_ptr<Context> pContext;
+
+		//呼び出し階層ごとに異なる
+		std::unordered_map<std::string, std::string> renameTable;
+		int m_indent;
+
+		static bool IsVersioned(const Identifier& identifier)
+		{
+			const auto& str = identifier.toString();
+			return !str.empty() && str[0] == '$';
+		}
+
+		static Identifier WithoutVersion(const Identifier& identifier)
+		{
+			if (IsVersioned(identifier))
+			{
+				const std::string& str = identifier.toString();
+				std::string originalName(str.begin() + str.find(')') + 1, str.end());
+				return Identifier(originalName);
+			}
+
+			return identifier;
+		}
+
+		//n番目のname => $(n)name
+		Identifier NewVersioned(const Identifier& identifier)
+		{
+			const std::string& original = identifier.toString();
+
+			std::stringstream ss;
+			ss << "$(" << identifierCounts[original] << ")" << original;
+			const std::string renamed = ss.str();
+
+			renameTable[original] = renamed;
+			++identifierCounts[original];
+
+			return Identifier(renamed);
+		}
+
+		std::string indent()const
+		{
+			const int tabSize = 4;
+			std::string str;
+			for (int i = 0; i < m_indent*tabSize; ++i)
+			{
+				str += ' ';
+			}
+			return str;
+		}
+
+		Expr operator()(const LRValue& node)override
+		{
+			/*
+			インライン展開をした結果ここでは名前の解決を静的に行えるようになったはずなので、
+			EitherReferenceがローカル変数なのかAddressなのかをここで解決する。
+			また、ローカル変数であればリネームも行う。
+			*/
+			if (node.isEitherReference())
+			{
+				const auto& ref = node.eitherReference();
+				if (ref.local)
+				{
+					auto it = renameTable.find(ref.local.get().toString());
+					if (it != renameTable.end())
+					{
+						return Identifier(it->second);
+					}
+				}
+
+				return LRValue(ref.replaced);
+			}
+			else
+			{
+				return ExprTransformer::operator()(node);
+			}
+		}
+
+		Expr operator()(const Identifier& node)override
+		{
+			if (IsVersioned(node))
+			{
+				return node;
+			}
+
+			auto it = renameTable.find(node.toString());
+			if (it == renameTable.end())
+			{
+				CGL_ErrorNode(node, msgs::Undefined(node));
+			}
+
+			return Identifier(it->second).setLocation(node);
+		}
+
+		Expr operator()(const UnaryExpr& node)override
+		{
+			return ExprTransformer::operator()(node);
+		}
+
+		Expr operator()(const BinaryExpr& node)override
+		{
+			if (node.op == BinaryOp::Assign)
+			{
+				Expr result;
+				Expr evalExpr = node;
+
+				//識別子の名前が変化した時も、変更前の名前でEvalしてContextに登録しておく
+				//こうすれば、後からその変数を参照するときは普通に名前で検索でき、そしてrenameTableを見ればその場でリネームすることができる
+				if (auto opt = AsOpt<Identifier>(node.lhs))
+				{
+					const auto currentName = opt.get();
+					result = BinaryExpr(
+						(IsVersioned(currentName) ? currentName : NewVersioned(currentName)),
+						boost::apply_visitor(*this, node.rhs),
+						node.op).setLocation(node);
+
+					evalExpr = VersionReduced(node);
+				}
+				else
+				{
+					result = ExprTransformer::operator()(node);
+				}
+
+				std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+				Eval eval(pContext);
+				boost::apply_visitor(eval, evalExpr);
+				std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+				return result;
+			}
+
+			return ExprTransformer::operator()(node);
+		}
+
+		Expr operator()(const Lines& node)override
+		{
+			InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+			Lines result;
+			for (size_t i = 0; i < node.size(); ++i)
+			{
+				result.add(boost::apply_visitor(child, node.exprs[i]));
+			}
+			return result.setLocation(node);
+		}
+
+		Expr operator()(const DefFunc& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const If& node)override
+		{
+			If result(boost::apply_visitor(*this, node.cond_expr));
+
+			//else式がない場合は分岐は必要ない
+			if (!node.else_expr)
+			{
+				InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+				result.then_expr = boost::apply_visitor(child, node.then_expr);
+				return result.setLocation(node);
+			}
+			else
+			{
+				//最初にContextを保存する
+				std::shared_ptr<Context> originalContext = pContext;
+
+				{
+					//保存したContextのクローンを作る
+					pContext = originalContext->cloneContext();
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+					result.then_expr = boost::apply_visitor(child, node.then_expr);
+				}
+
+				{
+					//再び保存したContextのクローンを作る
+					pContext = originalContext->cloneContext();
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+					result.else_expr = boost::apply_visitor(child, node.else_expr.get());
+				}
+
+				//最初のContextを復元する
+				pContext = originalContext;
+			}
+
+			return result.setLocation(node);
+		}
+
+		Expr operator()(const For& node)override
+		{
+			Expr evalExpr = VersionReduced(BinaryExpr(node.loopCounter, node.rangeStart, BinaryOp::Assign));
+			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+			Eval eval(pContext);
+			boost::apply_visitor(eval, evalExpr);
+			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+			//*
+			For result;
+			result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
+			result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
+			result.loopCounter = (IsVersioned(node.loopCounter) ? node.loopCounter : NewVersioned(node.loopCounter));
+			result.doExpr = boost::apply_visitor(*this, node.doExpr);
+			result.asList = node.asList;
+			return result.setLocation(node);
+			//*/
+
+			/*
+			Expr startExpr = VersionReduced(node.rangeStart);
+			Expr endExpr = VersionReduced(node.rangeStart);
+
+			Eval eval(pContext);
+			const Val startVal = pContext->expand(boost::apply_visitor(eval, startExpr), LocationInfo());
+			const Val endVal = pContext->expand(boost::apply_visitor(eval, endExpr), LocationInfo());
+
+			if (IsType<int>(startVal) && IsType<int>(endVal))
+			{
+				for (int i = As<int>(startVal); i <= As<int>(endVal); ++i)
+				{
+					i;
+				}
+			}
+			else if (IsType<double>(startVal) && IsType<double>(endVal))
+			{
+				;
+			}
+			else
+			{
+				CGL_Error("ループカウンタが型が不正");
+			}
+
+			node.loopCounter;
+
+			node.doExpr;
+			//*/
+		}
+
+		Expr operator()(const ListConstractor& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const KeyExpr& node)override
+		{
+			const auto result = KeyExpr(
+				(IsVersioned(node.name) ? node.name : NewVersioned(node.name)),
+				boost::apply_visitor(*this, node.expr)).setLocation(node);
+
+			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+			Eval eval(pContext);
+			Expr expr = VersionReduced(node);
+			{
+				std::cout << "Expr:\n";
+				Printer2 printer(pContext, std::cout);
+				boost::apply_visitor(printer, expr);
+				std::cout << std::endl;
+			}
+			{
+				std::cout << "Expr(renamed):\n";
+				Expr expr2 = result;
+				Printer2 printer(pContext, std::cout);
+				boost::apply_visitor(printer, expr2);
+				std::cout << std::endl;
+			}
+			boost::apply_visitor(eval, expr);
+			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+			return result;
+		}
+
+		Expr operator()(const RecordConstractor& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const Accessor& accessor)override
+		{
+			Accessor newAccessor;
+
+			//最初のアクセスがList/Recordアクセスの場合はheadはこのまま残る
+			//Function/Inheritアクセスの場合はheadは後から書き換えられる
+			newAccessor.head = accessor.head;
+
+			Address address;
+
+			if (IsType<Identifier>(accessor.head))
+			{
+				const auto head = As<Identifier>(accessor.head);
+				if (!pContext->findAddress(head).isValid())
+				{
+					CGL_ErrorNode(accessor, msgs::Undefined(head));
+				}
+			}
+
+			Eval evaluator(pContext);
+
+			std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+			const auto expr_ = VersionReduced(accessor.head);
+			LRValue headValue = boost::apply_visitor(evaluator, expr_);
+			std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+			if (headValue.isLValue() && headValue.deref(*pContext))
+			{
+				address = headValue.deref(*pContext).get();
+			}
+			else
+			{
+				Val evaluated = headValue.evaluated();
+				if (auto opt = AsOpt<Record>(evaluated))
+				{
+					address = pContext->makeTemporaryValue(opt.get());
+				}
+				else if (auto opt = AsOpt<List>(evaluated))
+				{
+					address = pContext->makeTemporaryValue(opt.get());
+				}
+				else if (auto opt = AsOpt<FuncVal>(evaluated))
+				{
+					address = pContext->makeTemporaryValue(opt.get());
+				}
+				else
+				{
+					CGL_ErrorNodeInternal(accessor, "アクセッサの先頭の評価結果がレコード、リスト、関数のどの値でもありませんでした。");
+				}
+			}
+
+			{
+				std::cout << indent() << "====== Replace Accessor HeadValue ======" << std::endl;
+
+				InlineExpander child(identifierCounts, pContext, renameTable, m_indent);
+				Expr replacedHead = boost::apply_visitor(child, newAccessor.head);
+				newAccessor.head = replacedHead;
+			}
+
+			for(size_t accessIndex = 0; accessIndex < accessor.accesses.size(); ++accessIndex)
+			{
+				const auto& access = accessor.accesses[accessIndex];
+				LRValue lrAddress = LRValue(address);
+				boost::optional<Val&> objOpt = pContext->mutableExpandOpt(lrAddress);
+				if (!objOpt)
+				{
+					CGL_ErrorNode(accessor, "アクセッサによる参照先が存在しませんでした。");
+				}
+
+				Val& objRef = objOpt.get();
+
+				if (auto listAccessOpt = AsOpt<ListAccess>(access))
+				{
+					std::cout << indent() << "====== Expansion Accessor List(begin) ======" << std::endl;
+
+					if (!IsType<List>(objRef))
+					{
+						CGL_ErrorNode(accessor, "リストでない値に対してリストアクセスを行おうとしました。");
+					}
+
+					{
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+						Expr replacedIndex = boost::apply_visitor(child, listAccessOpt.get().index);
+
+						ListAccess replacedListAccess;
+						replacedListAccess.isArbitrary = listAccessOpt.get().isArbitrary;
+						//replacedListAccess.index = boost::apply_visitor(child, replacedIndex);
+						replacedListAccess.index = replacedIndex;
+
+						newAccessor.accesses.push_back(replacedListAccess);
+					}
+
+					std::cout << indent() << "====== Eval(begin) Line(" << __LINE__ << ")" << std::endl;
+					const auto expr_ = VersionReduced(listAccessOpt.get().index);
+					Val value = pContext->expand(boost::apply_visitor(evaluator, expr_), accessor);
+					std::cout << indent() << "====== Eval(end)   Line(" << __LINE__ << ")" << std::endl;
+
+					List& list = As<List>(objRef);
+
+					if (auto indexOpt = AsOpt<int>(value))
+					{
+						const int indexValue = indexOpt.get();
+						const int listSize = static_cast<int>(list.data.size());
+						const int maxIndex = listSize - 1;
+
+						if (0 <= indexValue && indexValue <= maxIndex)
+						{
+							address = list.get(indexValue);
+						}
+						else if (indexValue < 0 || !pContext->isAutomaticExtendMode())
+						{
+							CGL_ErrorNode(accessor, "リストの範囲外アクセスが発生しました。");
+						}
+						else
+						{
+							while (static_cast<int>(list.data.size()) - 1 < indexValue)
+							{
+								list.data.push_back(pContext->makeTemporaryValue(0));
+							}
+							address = list.get(indexValue);
+						}
+					}
+					else
+					{
+						CGL_ErrorNode(accessor, "リストアクセスのインデックスが整数値ではありませんでした。");
+					}
+
+					std::cout << indent() << "====== Expansion Accessor List(end) ======" << std::endl;
+				}
+				else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+				{
+					std::cout << indent() << "====== Expansion Accessor Record(begin) ======" << std::endl;
+
+					if (!IsType<Record>(objRef))
+					{
+						CGL_ErrorNode(accessor, "レコードでない値に対してレコードアクセスを行おうとしました。");
+					}
+
+					const Record& record = As<Record>(objRef);
+					
+					bool found = false;
+					const std::string searchName = recordAccessOpt.get().name.toString();
+					//レコードメンバにアクセッサはまだリネームされてないので、元の名前で探す
+					for (const auto& value : record.values)
+					{
+						std::cout << indent() << "====== Matching with: " << Identifier(value.first).toString() << std::endl;
+						if (WithoutVersion(Identifier(value.first)).toString() == searchName)
+						{
+							RecordAccess newRecordAccess = recordAccessOpt.get();
+							newRecordAccess.name = Identifier(value.first);
+
+							//Recordアクセスはリネーム後の名前をpushする
+							newAccessor.accesses.emplace_back(newRecordAccess);
+							
+							address = value.second;
+							found = true;
+							break;
+						}
+					}
+
+					if (!found)
+					{
+						CGL_ErrorNode(accessor, std::string("指定された識別子\"") + recordAccessOpt.get().name.toString() + "\"がレコード中に存在しませんでした。");
+					}
+
+					std::cout << indent() << "====== Expansion Accessor Record(end) ======" << std::endl;
+				}
+				else if (auto recordAccessOpt = AsOpt<FunctionAccess>(access))
+				{
+					std::cout << indent() << "====== Expansion Accessor Function(begin) ======" << std::endl;
+
+					if (!IsType<FuncVal>(objRef))
+					{
+						CGL_ErrorNode(accessor, "関数でない値に対して関数呼び出しを行おうとしました。");
+					}
+
+					auto funcAccess = As<FunctionAccess>(access);
+
+					const FuncVal& function = As<FuncVal>(objRef);
+
+					//引数を展開する
+					std::vector<Expr> replacedArguments;
+					std::unordered_map<std::string, Expr> replaceMap;
+					{
+						std::cout << indent() << "====== Expansion Function Arguments ======" << std::endl;
+						Printer printer(pContext, std::cout, 0);
+
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+						for (const auto& expr : funcAccess.actualArguments)
+						{
+							/*std::cout << indent() << "Argument: \n";
+							boost::apply_visitor(printer, expr);
+							std::cout << std::endl;*/
+							replacedArguments.push_back(boost::apply_visitor(child, expr));
+						}
+
+						for (size_t argIndex = 0; argIndex < function.arguments.size(); ++argIndex)
+						{
+							replaceMap.emplace(function.arguments[argIndex].toString(), replacedArguments[argIndex]);
+						}
+					}
+
+					//組み込み関数の場合は、展開した引数をアクセッサの引数に入れておく
+					if (function.builtinFuncAddress)
+					{
+						FunctionAccess newFunctionAccess = funcAccess;
+						newFunctionAccess.actualArguments.clear();
+
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+						//置き換えた式自体がまた関数呼び出しを含む可能性があるので再帰的に展開する
+						for (size_t i = 0; i < replacedArguments.size(); ++i)
+						{
+							const Expr expandedArgument = boost::apply_visitor(child, replacedArguments[i]);
+							newFunctionAccess.actualArguments.push_back(expandedArgument);
+						}
+
+						newAccessor.accesses.clear();
+						newAccessor.accesses.push_back(newFunctionAccess);
+					}
+					//Pita関数の場合は、展開した引数を直接関数の定義の該当箇所に挿入する
+					else
+					{
+						if (function.arguments.size() != funcAccess.actualArguments.size())
+						{
+							std::stringstream ss;
+							ss << "(仮引数: " << function.arguments.size() << " | 実引数: " << funcAccess.actualArguments.size() << ")";
+							CGL_ErrorNode(accessor, "仮引数と実引数の数が一致しませんでした。" + ss.str());
+						}
+
+						Expr expandedFunction;
+						{
+							//関数は展開するとLines(expr1,expr2,...)という形になる
+							expandedFunction = ReplaceName(function.expr, replaceMap);
+							if (!IsType<Lines>(expandedFunction))
+							{
+								CGL_ErrorNode(accessor, "関数を展開した結果の型がLinesではありませんでした。");
+							}
+
+							//普通に展開していくと、どんどんLines(Lines(...))というようにネストが増えていく
+							//したがって、Linesの中に単一のLinesがいる場合は取り出すようにする
+							Lines lines = As<Lines>(expandedFunction);
+							while (lines.exprs.size() == 1 && IsType<Lines>(lines.exprs.front()))
+							{
+								expandedFunction = lines.exprs.front();
+								lines = As<Lines>(expandedFunction);
+							}
+						}
+
+						//置き換えた式自体がまた関数呼び出しを含む可能性があるので再帰的に展開する
+						{
+							std::cout << indent() << "====== Expanded Function(prev) ======" << std::endl;
+							Expr prevExpand = accessor;
+							Printer2 printer2(pContext, std::cout, m_indent);
+							boost::apply_visitor(printer2, prevExpand);
+							std::cout << std::endl;
+						}
+						{
+							std::cout << indent() << "====== Expanded Function(args) ======" << std::endl;
+							for (const auto& arg : replacedArguments)
+							{
+								std::cout << indent() << "====== Arg:" << std::endl;
+								Printer2 printer2(pContext, std::cout, m_indent);
+								boost::apply_visitor(printer2, arg);
+								std::cout << std::endl;
+							}
+						}
+						{
+							std::cout << indent() << "====== Expanded Function(post) ======" << std::endl;
+							Printer2 printer2(pContext, std::cout, m_indent);
+							boost::apply_visitor(printer2, expandedFunction);
+							std::cout << std::endl;
+						}
+
+						InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+						std::cout << indent() << "====== Expanded Function Arguments Recursively(begin) ======" << std::endl;
+						expandedFunction = boost::apply_visitor(child, expandedFunction);
+						std::cout << indent() << "====== Expanded Function Arguments Recursively(end) ======" << std::endl;
+
+						newAccessor.head = expandedFunction;
+						newAccessor.accesses.clear();
+
+						//Input  => record1.func1(arg1).record2.[list1]
+						//Output => (... arg1 ...).record2.[list1]
+					}
+
+					std::cout << indent() << "====== Expansion Function Eval(begin) ======" << std::endl;
+					std::vector<Address> args;
+					for (const auto& expr : funcAccess.actualArguments)
+					{
+						const auto expr_ = VersionReduced(expr);
+						const LRValue currentArgument = boost::apply_visitor(evaluator, expr_);
+						currentArgument.push_back(args, *pContext);
+					}
+
+					const Val returnedValue = pContext->expand(evaluator.callFunction(accessor, function, args), accessor);
+					address = pContext->makeTemporaryValue(returnedValue);
+					std::cout << indent() << "====== Expansion Function Eval(end) ======" << std::endl;
+
+					std::cout << indent() << "====== Expansion Accessor Function(end) ======" << std::endl;
+				}
+				else
+				{
+					std::cout << indent() << "====== Expansion Accessor Inherit(begin) ======" << std::endl;
+
+					if (!IsType<Record>(objRef))
+					{
+						CGL_ErrorNode(accessor, "レコードでない値に対して継承式を適用しようとしました。");
+					}
+
+					auto inheritAccess = As<InheritAccess>(access);
+
+					const Record& record = As<Record>(objRef);
+
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+					RecordConstractor recordConstructor;
+					for (const auto& keyval : record.values)
+					{
+						Expr expr = LRValue(keyval.second);
+
+						const auto currentName = Identifier(keyval.first);
+						recordConstructor.adds(
+							(IsVersioned(currentName) ? currentName : NewVersioned(currentName)),
+							boost::apply_visitor(child, expr));
+					}
+
+					const Expr adderExpr = inheritAccess.adder;
+					const Expr newAdderExpr = boost::apply_visitor(child, adderExpr);
+					if (!IsType<RecordConstractor>(newAdderExpr))
+					{
+						CGL_Error("エラー");
+					}
+
+					const RecordConstractor newAdder = As<RecordConstractor>(newAdderExpr);
+					recordConstructor.exprs.insert(recordConstructor.exprs.end(), newAdder.exprs.begin(), newAdder.exprs.end());
+					newAccessor.head = recordConstructor;
+					newAccessor.accesses.clear();
+
+					const Val returnedValue = pContext->expand(evaluator.inheritRecord(accessor, record, inheritAccess.adder), accessor);
+					address = pContext->makeTemporaryValue(returnedValue);
+
+					std::cout << indent() << "====== Expansion Accessor Inherit(end) ======" << std::endl;
+				}
+				/*{
+					std::cout << indent() << "====== Expansion Accessor Inherit(begin) ======" << std::endl;
+
+					if (!IsType<Record>(objRef))
+					{
+						CGL_ErrorNode(accessor, "レコードでない値に対して継承式を適用しようとしました。");
+					}
+
+					auto inheritAccess = As<InheritAccess>(access);
+
+					const Record& record = As<Record>(objRef);
+
+					InlineExpander child(identifierCounts, pContext, renameTable, m_indent + 1);
+
+					RecordConstractor recordConstructor;
+					for (const auto& keyval : record.values)
+					{
+						Expr expr = LRValue(keyval.second);
+
+						const auto currentName = Identifier(keyval.first);
+						recordConstructor.adds(
+							(IsVersioned(currentName) ? currentName : NewVersioned(currentName)),
+							boost::apply_visitor(child, expr));
+					}
+
+					//今見ているレコードがアクセッサの先頭要素かどうかにかかわらず、勝手に先頭に置き換える
+					//func1().record{scale: ...}
+					//のようなレコードも全て展開して、{ ... }{scale: ...}　このようになるが、これで問題になるケースは少ないはず。
+					newAccessor.head = recordConstructor;
+					newAccessor.accesses.clear();
+
+					const Expr adderExpr = inheritAccess.adder;
+					const auto newAdder = boost::apply_visitor(child, adderExpr);
+					if (!IsType<RecordConstractor>(newAdder))
+					{
+						CGL_Error("エラー");
+					}
+					
+					InheritAccess newInheritAccess = inheritAccess;
+					newInheritAccess.adder = As<RecordConstractor>(newAdder);
+
+					newAccessor.accesses.push_back(newInheritAccess);
+
+					{
+						std::cout << indent() << "====== Inherit(begin) Line(" << __LINE__ << ")" << std::endl;
+						{
+							std::cout << "Adder:\n";
+							Expr expr = inheritAccess.adder;
+							Printer2 printer(pContext, std::cout);
+							boost::apply_visitor(printer, expr);
+							std::cout << std::endl;
+						}
+						{
+							std::cout << "Adder(renamed):\n";
+							Expr expr2 = newAdder;
+							Printer2 printer(pContext, std::cout);
+							boost::apply_visitor(printer, expr2);
+							std::cout << std::endl;
+						}
+						std::cout << indent() << "====== Inherit(end)   Line(" << __LINE__ << ")" << std::endl;
+					}
+
+					const Val returnedValue = pContext->expand(evaluator.inheritRecord(accessor, record, inheritAccess.adder), accessor);
+					address = pContext->makeTemporaryValue(returnedValue);
+
+					std::cout << indent() << "====== Expansion Accessor Inherit(end) ======" << std::endl;
+				}*/
+			}
+
+			std::cout << indent() << "====== Return Expansion Accessor ======" << std::endl;
+
+			if (newAccessor.accesses.empty())
+			{
+				return newAccessor.head;
+			}
+
+			return newAccessor;
+		}
+
+		Expr operator()(const DeclSat& node) { CGL_Error("未対応"); }
+		Expr operator()(const DeclFree& node) { CGL_Error("未対応"); }
+		Expr operator()(const Import& node) { CGL_Error("未対応"); }
+		Expr operator()(const Range& node) { CGL_Error("未対応"); }
+		Expr operator()(const Return& node) { CGL_Error("未対応"); }
+	};
+
+	inline Expr InlineExpand(Expr expr, std::shared_ptr<Context> pContext)
+	{
+		auto contextClone = pContext->cloneContext();
+		std::unordered_map<std::string, size_t> identifierCounts;
+
+		std::unordered_map<std::string, std::string> renameTable;
+		InlineExpander expander(identifierCounts, pContext, renameTable, 0);
+
+		return ExpandedEmptyLines(boost::apply_visitor(expander, expr));
+	}
+}
 
 extern int constraintViolationCount;
 extern bool isInConstraint;
@@ -54,7 +896,6 @@ namespace cgl
 		std::string operator()(const ListConstractor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const KeyExpr& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const RecordConstractor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
-		std::string operator()(const RecordInheritor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const Accessor& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const DeclSat& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
 		std::string operator()(const DeclFree& node)const { return static_cast<const LocationInfo&>(node).getInfo(); }
@@ -120,930 +961,147 @@ namespace cgl
 		return i;
 	}
 
-	boost::optional<Address> AddressReplacer::getOpt(Address address)const
+	LRValue Eval::operator()(const Identifier& node)
 	{
-		auto it = replaceMap.find(address);
-		if (it != replaceMap.end())
-		{
-			return it->second;
-		}
-		return boost::none;
-	}
+		auto scopeLog = ScopeLog("Eval::operator()(const Identifier& node)");
 
-	Expr AddressReplacer::operator()(const LRValue& node)const
-	{
-		if (node.isRValue())
+		if (node.isMakeClosure())
 		{
-			return node;
-		}
+			scopeLog.write("isMakeClosure");
 
-		if (auto opt = getOpt(node.address(*pEnv)))
-		{
-			if (node.isReference())
+			const auto [scopeAddress, rawIdentifier] = node.decomposed();
+
+			if (auto opt = pEnv->getDeferredFunction(node))
 			{
-				return LRValue(pEnv->cloneReference(node.reference(), replaceMap)).setLocation(node);
-			}
-			else
-			{
-				return LRValue(opt.get()).setLocation(node);
-			}
-		}
+				scopeLog.write("getDeferredFunction");
 
-		return node;
-	}
-	
-	Expr AddressReplacer::operator()(const UnaryExpr& node)const
-	{
-		return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op).setLocation(node);
-	}
+				DefFuncWithScopeInfo& func = opt.get();
+				
+				const std::string lhsStr = rawIdentifier.toString();
+				const size_t index = lhsStr.find("##");
 
-	Expr AddressReplacer::operator()(const BinaryExpr& node)const
-	{
-		return BinaryExpr(
-			boost::apply_visitor(*this, node.lhs), 
-			boost::apply_visitor(*this, node.rhs), 
-			node.op).setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const Range& node)const
-	{
-		return Range(
-			boost::apply_visitor(*this, node.lhs),
-			boost::apply_visitor(*this, node.rhs)).setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const Lines& node)const
-	{
-		Lines result;
-		for (size_t i = 0; i < node.size(); ++i)
-		{
-			result.add(boost::apply_visitor(*this, node.exprs[i]));
-		}
-		return result.setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const DefFunc& node)const
-	{
-		return DefFunc(node.arguments, boost::apply_visitor(*this, node.expr)).setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const If& node)const
-	{
-		If result(boost::apply_visitor(*this, node.cond_expr));
-		result.then_expr = boost::apply_visitor(*this, node.then_expr);
-		if (node.else_expr)
-		{
-			result.else_expr = boost::apply_visitor(*this, node.else_expr.get());
-		}
-
-		return result.setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const For& node)const
-	{
-		For result;
-		result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
-		result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
-		result.loopCounter = node.loopCounter;
-		result.doExpr = boost::apply_visitor(*this, node.doExpr);
-		result.asList = node.asList;
-		return result.setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const Return& node)const
-	{
-		return Return(boost::apply_visitor(*this, node.expr)).setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const ListConstractor& node)const
-	{
-		ListConstractor result;
-		for (const auto& expr : node.data)
-		{
-			result.data.push_back(boost::apply_visitor(*this, expr));
-		}
-		return result.setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const KeyExpr& node)const
-	{
-		KeyExpr result(node.name);
-		result.expr = boost::apply_visitor(*this, node.expr);
-		return result.setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const RecordConstractor& node)const
-	{
-		RecordConstractor result;
-		for (const auto& expr : node.exprs)
-		{
-			result.exprs.push_back(boost::apply_visitor(*this, expr));
-		}
-		return result.setLocation(node);
-	}
-		
-	Expr AddressReplacer::operator()(const RecordInheritor& node)const
-	{
-		RecordInheritor result;
-		result.original = boost::apply_visitor(*this, node.original);
-
-		Expr originalAdder = node.adder;
-		Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
-		if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
-		{
-			result.adder = opt.get();
-			return result.setLocation(node);
-		}
-
-		CGL_Error("node.adderの置き換え結果がRecordConstractorでない");
-		return LRValue(0);
-	}
-
-	Expr AddressReplacer::operator()(const Accessor& node)const
-	{
-		Accessor result;
-		result.head = boost::apply_visitor(*this, node.head);
-
-		for (const auto& access : node.accesses)
-		{
-			if (auto listAccess = AsOpt<ListAccess>(access))
-			{
-				//result.add(ListAccess(boost::apply_visitor(*this, listAccess.get().index)));
-				ListAccess newListAccess(boost::apply_visitor(*this, listAccess.get().index));
-				newListAccess.isArbitrary = listAccess.get().isArbitrary;
-				result.add(newListAccess);
-			}
-			else if (auto recordAccess = AsOpt<RecordAccess>(access))
-			{
-				result.add(recordAccess.get());
-			}
-			else if (auto functionAccess = AsOpt<FunctionAccess>(access))
-			{
-				FunctionAccess access;
-				for (const auto& argument : functionAccess.get().actualArguments)
+				/*std::set<std::string> functionArguments = pEnv->getVisibleIdentifiers();
+				for (const auto& arg : func.specialDefs[index].arguments)
 				{
-					access.add(boost::apply_visitor(*this, argument));
-				}
-				result.add(access);
-			}
-			else
-			{
-				CGL_Error("aaa");
-			}
-		}
+					functionArguments.insert(arg);
+				}*/
+				std::set<std::string> functionArguments = {};
+				
 
-		return result.setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const DeclSat& node)const
-	{
-		return DeclSat(boost::apply_visitor(*this, node.expr)).setLocation(node);
-	}
-
-	Expr AddressReplacer::operator()(const DeclFree& node)const
-	{
-		DeclFree result;
-		for (const auto& accessor : node.accessors)
-		{
-			Expr expr = accessor;
-			result.addAccessor(boost::apply_visitor(*this, expr));
-		}
-		for (const auto& range : node.ranges)
-		{
-			result.addRange(boost::apply_visitor(*this, range));
-		}
-		return result.setLocation(node);
-	}
-
-	boost::optional<Address> ValueCloner::getOpt(Address address)const
-	{
-		auto it = replaceMap.find(address);
-		if (it != replaceMap.end())
-		{
-			return it->second;
-		}
-		return boost::none;
-	}
-
-	Val ValueCloner::operator()(const List& node)
-	{
-		List result;
-		const auto& data = node.data;
-		
-		for (size_t i = 0; i < data.size(); ++i)
-		{
-			if (auto opt = getOpt(data[i]))
-			{
-				result.append(opt.get());
-			}
-			else
-			{
-				const Val& substance = pEnv->expand(data[i], info);
-				const Val clone = boost::apply_visitor(*this, substance);
-				const Address newAddress = pEnv->makeTemporaryValue(clone);
-				result.append(newAddress);
-				replaceMap[data[i]] = newAddress;
-			}
-		}
-
-		return result;
-	}
-
-	Val ValueCloner::operator()(const Record& node)
-	{
-		Record result;
-
-		for (const auto& value : node.values)
-		{
-			if (auto opt = getOpt(value.second))
-			{
-				result.append(value.first, opt.get());
-			}
-			else
-			{
-				const Val& substance = pEnv->expand(value.second, info);
-				const Val clone = boost::apply_visitor(*this, substance);
-				const Address newAddress = pEnv->makeTemporaryValue(clone);
-				result.append(value.first, newAddress);
-				replaceMap[value.second] = newAddress;
-			}
-		}
-
-		result.problems = node.problems;
-		result.type = node.type;
-		result.constraint = node.constraint;
-		result.isSatisfied = node.isSatisfied;
-		result.freeVariables = node.freeVariables;
-
-		//result.unitConstraints = node.unitConstraints;
-		//result.variableAppearances = node.variableAppearances;
-		////result.constraintGroups = node.constraintGroups;
-		//result.groupConstraints = node.groupConstraints;
-		result.original = node.original;
-
-		return result;
-	}
-
-	boost::optional<Address> ValueCloner2::getOpt(Address address)const
-	{
-		auto it = replaceMap.find(address);
-		if (it != replaceMap.end())
-		{
-			return it->second;
-		}
-		return boost::none;
-	}
-
-	Val ValueCloner2::operator()(const List& node)
-	{
-		const auto& data = node.data;
-
-		for (size_t i = 0; i < data.size(); ++i)
-		{
-			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
-			const Val& substance = pEnv->expand(data[i], info);
-			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(data[i], boost::apply_visitor(*this, substance));
-		}
-
-		return node;
-	}
-		
-	Val ValueCloner2::operator()(const Record& node)
-	{
-		for (const auto& value : node.values)
-		{
-			//ValueCloner1でクローンは既に作ったので、そのクローンを直接書き換える
-			const Val& substance = pEnv->expand(value.second, info);
-			pEnv->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(value.second, boost::apply_visitor(*this, substance));
-		}
-
-		return node;
-	}
-
-	Val ValueCloner2::operator()(const FuncVal& node)const
-	{
-		if (node.builtinFuncAddress)
-		{
-			return node;
-		}
-
-		FuncVal result;
-		result.arguments = node.arguments;
-		result.builtinFuncAddress = node.builtinFuncAddress;
-
-		AddressReplacer replacer(replaceMap, pEnv);
-		result.expr = boost::apply_visitor(replacer, node.expr);
-
-		return result;
-	}
-	
-	boost::optional<Address> ValueCloner3::getOpt(Address address)const
-	{
-		auto it = replaceMap.find(address);
-		if (it != replaceMap.end())
-		{
-			return it->second;
-		}
-		return boost::none;
-	}
-
-	Address ValueCloner3::replaced(Address address)const
-	{
-		auto it = replaceMap.find(address);
-		if (it != replaceMap.end())
-		{
-			return it->second;
-		}
-		return address;
-	}
-
-	void ValueCloner3::operator()(Record& node)
-	{
-		AddressReplacer replacer(replaceMap, pEnv);
-
-		if (node.constraint)
-		{
-			node.constraint = boost::apply_visitor(replacer, node.constraint.get());
-		}
-
-		for (auto& problem : node.problems)
-		{
-			if (problem.expr)
-			{
-				problem.expr = boost::apply_visitor(replacer, problem.expr.get());
-			}
-
-			for (size_t i = 0; i < problem.refs.size(); ++i)
-			{
-				const Address oldAddress = problem.refs[i];
-				if (auto newAddressOpt = getOpt(oldAddress))
+				// 特殊形
+				if (index != std::string::npos)
 				{
-					const Address newAddress = newAddressOpt.get();
-					problem.refs[i] = newAddress;
-					problem.invRefs[newAddress] = problem.invRefs[oldAddress];
-					problem.invRefs.erase(oldAddress);
-				}
-			}
+					// 特殊形の場合は遅延呼び出ししか存在しないためチェックはしない
 
-			for (size_t i = 0; i < problem.freeVariableRefs.size(); ++i)
-			{
-				auto& currentElem = problem.freeVariableRefs[i];
-				const Address oldAddress = currentElem.first;
-				if (auto newAddressOpt = getOpt(oldAddress))
-				{
-					const Address newAddress = newAddressOpt.get();
-					currentElem.first = newAddress;
-				}
-			}
-		}
+					// TODO:##以降がちゃんと数字になっているかの確認も必要
+					const int specializationRecDepth = std::stoi(std::string(lhsStr.begin() + index + 2, lhsStr.end()));
 
-		auto& original = node.original;
-
-		/*for (auto& currentElem : original.freeVariableAddresses)
-		{
-			const Address oldAddress = currentElem.first;
-			if (auto newAddressOpt = getOpt(oldAddress))
-			{
-				const Address newAddress = newAddressOpt.get();
-				currentElem.first = newAddress;
-			}
-		}*/
-		/*
-		for (auto& currentElem : original.freeVars)
-		{
-			if (IsType<Accessor>(currentElem))
-			{
-				Expr expr = As<Accessor>(currentElem);
-				currentElem = As<Accessor>(boost::apply_visitor(replacer, expr));
-				//アクセッサの場合、ClosureMakerを通っているので先頭は必ずアドレスになっている
-			}
-			//elseの場合はReferenceであり、この場合はContextが勝手に参照先を切り替えるのでここでは何もしなくてよい
-		}
-		*/
-		for (auto& freeVariable : original.freeVars)
-		{
-			if (IsType<Accessor>(freeVariable))
-			{
-				const Expr expr = As<Accessor>(freeVariable);
-				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
-			}
-			else
-			{
-				const Reference reference = As<Reference>(freeVariable);
-				freeVariable = pEnv->cloneReference(reference, replaceMap);
-			}
-		}
-
-		for (auto& unitConstraint : original.unitConstraints)
-		{
-			unitConstraint = boost::apply_visitor(replacer, unitConstraint);
-		}
-
-		if (!original.variableAppearances.empty())
-		{
-			std::vector<ConstraintAppearance> newAppearance;
-
-			for (auto& appearance : original.variableAppearances)
-			{
-				ConstraintAppearance currentAppearance;
-				for (const Address address : appearance)
-				{
-					if (auto newAddressOpt = getOpt(address))
+					// functionArguments は特殊形と一般形で変えない方針のため同じものをそのまま使う
+					func.specialDefs[specializationRecDepth].expr = AsClosure(
+						*pEnv, 
+						func.specialDefs[specializationRecDepth].expr,
+						functionArguments);
+					
 					{
-						currentAppearance.insert(newAddressOpt.get());
+						std::stringstream ss;
+						printExpr2(func.specialDefs[specializationRecDepth].expr, nullptr, ss);
+						scopeLog.write("specialDef replaced closure: ");
+						scopeLog.write(ss.str());
+
+						scopeLog.write("arguments: ");
+						const auto& args = func.specialDefs[specializationRecDepth].arguments;
+						for (const auto& arg : args)
+						{
+							scopeLog.write(arg.toString());
+						}
+					}
+				}
+				//一般形
+				else
+				{
+					// 一般形の場合は右辺が本当に遅延呼び出しする必要がある式かどうかチェックする
+
+					DynamicDeferredIdentifierSearcher searcher(functionArguments, scopeAddress, pEnv->deferredIdentifiers, *pEnv);
+					
+					{
+						std::stringstream ss;
+						printExpr(func.generalDef.expr, nullptr, ss);
+						scopeLog.write("original: ");
+						scopeLog.write(ss.str());
+
+						scopeLog.write("arguments: ");
+						const auto& args = func.generalDef.arguments;
+						for (const auto& arg : args)
+						{
+							scopeLog.write(arg.toString());
+						}
+					}
+
+					// もし遅延呼び出しの必要がない場合は、返り値に置き換え前の式が復元されているはずなので、これをそのまま評価すればよい
+					const Expr originalExpr = boost::apply_visitor(searcher, func.generalDef.expr);
+
+					{
+						std::stringstream ss;
+						printExpr2(originalExpr, nullptr, ss);
+						scopeLog.write("replaced: ");
+						scopeLog.write(ss.str());
+
+						scopeLog.write("arguments: ");
+						const auto& args = func.generalDef.arguments;
+						for (const auto& arg : args)
+						{
+							scopeLog.write(arg.toString());
+						}
+					}
+					//std::cerr << (searcher.hasDeferredCall ? "hasDeferredCall:" : "not has DeferredCall:") << std::endl;
+					//printExpr(originalExpr, pEnv, std::cerr);
+
+					if (searcher.hasDeferredCall, true)
+					{
+						func.generalDef.expr = AsClosure(*pEnv, func.generalDef.expr, functionArguments);
+
+						{
+							std::stringstream ss;
+							printExpr2(func.generalDef.expr, nullptr, ss);
+							scopeLog.write("hasDeferredCall -> replaced closure: ");
+							scopeLog.write(ss.str());
+
+							scopeLog.write("arguments: ");
+							const auto& args = func.generalDef.arguments;
+							for (const auto& arg : args)
+							{
+								scopeLog.write(arg.toString());
+							}
+						}
 					}
 					else
 					{
-						currentAppearance.insert(address);
-					}
-				}
-				newAppearance.push_back(currentAppearance);
-			}
+						// DeferredCall を持たない場合は元の式を復元して評価を行う
+						// この時、元の関数の引数があるかないかで復元する式の形が変わることに注意する
 
-			original.variableAppearances = newAppearance;
-		}
+						Expr originalAssignExpr;
+						if (func.generalDef.arguments.empty())
+						{
+							originalAssignExpr = BinaryExpr(rawIdentifier, originalExpr, BinaryOp::Assign).setLocation(node);
+						}
+						else
+						{
+							DefFunc originalFunc = func.generalDef;
+							originalFunc.expr = originalExpr;
+							originalAssignExpr = BinaryExpr(rawIdentifier, originalFunc, BinaryOp::Assign).setLocation(node);
+						}
 
-		for (auto& problem : original.groupConstraints)
-		{
-			if (problem.expr)
-			{
-				problem.expr = boost::apply_visitor(replacer, problem.expr.get());
-			}
+						//std::cerr << "MakeClosure was replaced to following original expr: "<< std::endl;
+						//printExpr2(originalAssignExpr, pEnv, std::cerr);
 
-			for (size_t i = 0; i < problem.refs.size(); ++i)
-			{
-				const Address oldAddress = problem.refs[i];
-				if (auto newAddressOpt = getOpt(oldAddress))
-				{
-					const Address newAddress = newAddressOpt.get();
-					problem.refs[i] = newAddress;
-					problem.invRefs[newAddress] = problem.invRefs[oldAddress];
-					problem.invRefs.erase(oldAddress);
-				}
-			}
-
-			for (size_t i = 0; i < problem.freeVariableRefs.size(); ++i)
-			{
-				auto& currentElem = problem.freeVariableRefs[i];
-				const Address oldAddress = currentElem.first;
-				if (auto newAddressOpt = getOpt(oldAddress))
-				{
-					const Address newAddress = newAddressOpt.get();
-					currentElem.first = newAddress;
-				}
-			}
-		}
-
-		//constraintGroupsはただの数字だからそのままでよい
-
-		/*
-		for (auto& freeVariable : node.freeVariables)
-		{
-			if (IsType<Accessor>(freeVariable))
-			{
-				const Expr expr = As<Accessor>(freeVariable);
-				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
-				//アクセッサの場合、ClosureMakerを通っているので先頭は必ずアドレスになっている
-			}
-			//Expr expr = freeVariable;
-			//freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
-		}
-		*/
-
-		for (auto& freeVariable : node.freeVariables)
-		{
-			if (IsType<Accessor>(freeVariable))
-			{
-				const Expr expr = As<Accessor>(freeVariable);
-				freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
-			}
-			else
-			{
-				const Reference reference = As<Reference>(freeVariable);
-				freeVariable = pEnv->cloneReference(reference, replaceMap);
-			}
-		}
-		
-		/*
-		auto& problem = node.problem;
-		if (problem.candidateExpr)
-		{
-			problem.candidateExpr = boost::apply_visitor(replacer, problem.candidateExpr.get());
-		}
-
-		for (size_t i = 0; i < problem.refs.size(); ++i)
-		{
-			const Address oldAddress = problem.refs[i];
-			if (auto newAddressOpt = getOpt(oldAddress))
-			{
-				const Address newAddress = newAddressOpt.get();
-				problem.refs[i] = newAddress;
-				problem.invRefs[newAddress] = problem.invRefs[oldAddress];
-				problem.invRefs.erase(oldAddress);
-			}
-		}
-
-		for (auto& freeVariable : node.freeVariables)
-		{
-			Expr expr = freeVariable;
-			freeVariable = As<Accessor>(boost::apply_visitor(replacer, expr));
-		}
-		*/
-	}
-
-	Val Clone(std::shared_ptr<Context> pEnv, const Val& value, const LocationInfo& info)
-	{
-		/*
-		関数値がアドレスを内部に持っている時、クローン作成の前後でその依存関係を保存する必要があるので、クローン作成は2ステップに分けて行う。
-		1. リスト・レコードの再帰的なコピー
-		2. 関数の持つアドレスを新しい方に付け替える		
-		*/
-		ValueCloner cloner(pEnv, info);
-		const Val& evaluated = boost::apply_visitor(cloner, value);
-		ValueCloner2 cloner2(pEnv, cloner.replaceMap, info);
-		ValueCloner3 cloner3(pEnv, cloner.replaceMap);
-		Val evaluated2 = boost::apply_visitor(cloner2, evaluated);
-		boost::apply_visitor(cloner3, evaluated2);
-
-		/*{
-			std::cout << "Cloner replaceMap:\n";
-			std::vector<std::pair<Address, Address>> as;
-			for (const auto& keyval : cloner.replaceMap)
-			{
-				as.emplace_back(keyval.first, keyval.second);
-			}
-
-			std::sort(as.begin(), as.end(), [](const std::pair<Address, Address>& a, const std::pair<Address, Address>& b) {return a.first < b.first; });
-			for (const auto& keyval : as)
-			{
-				std::cout << keyval.first.toString() << " -> " << keyval.second.toString() << "\n";
-			}
-		}*/
-
-		return evaluated2;
-	}
-
-	ClosureMaker& ClosureMaker::addLocalVariable(const std::string& name)
-	{
-		localVariables.insert(name);
-		return *this;
-	}
-
-	bool ClosureMaker::isLocalVariable(const std::string& name)const
-	{
-		return localVariables.find(name) != localVariables.end();
-	}
-
-	Expr ClosureMaker::operator()(const Identifier& node)
-	{
-		//その関数のローカル変数であれば関数の実行時に評価すればよいので、名前を残す
-		if (isLocalVariable(node))
-		{
-			return node;
-		}
-		//ローカル変数に無ければアドレスに置き換える
-		const Address address = pEnv->findAddress(node);
-		if (address.isValid())
-		{
-			//Identifier RecordConstructor の形をしたレコード継承の head 部分
-			//とりあえず参照先のレコードのメンバはローカル変数とおく
-			if (isInnerRecord)
-			{
-				const Val& evaluated = pEnv->expand(address, node);
-				if (auto opt = AsOpt<Record>(evaluated))
-				{
-					const Record& record = opt.get();
-					
-					for (const auto& keyval : record.values)
-					{
-						addLocalVariable(keyval.first);
+						return boost::apply_visitor(*this, originalAssignExpr);
 					}
 				}
 			}
 
-			return LRValue(address).setLocation(node);
+			return LRValue(0);
 		}
 
-		//それ以外の場合は実行してみないと分からないため、とりあえずローカル変数と仮定する
-		//例：f = (s -> s{g()}) のgがsのメンバかどうかはfのクロージャ生成時点では分からない
-		return node;
-	}
-
-	Expr ClosureMaker::operator()(const UnaryExpr& node)
-	{
-		if (node.op == UnaryOp::Dynamic && !isInnerClosure)
-		{
-			if (IsType<Identifier>(node.lhs))
-			{
-				if (isLocalVariable(As<Identifier>(node.lhs)))
-				{
-					return node;
-				}
-				return LRValue(pEnv->bindReference(As<Identifier>(node.lhs))).setLocation(node);
-			}
-			else if (IsType<Accessor>(node.lhs))
-			{
-				if (IsType<Identifier>(As<Accessor>(node.lhs).head) && isLocalVariable(As<Identifier>(As<Accessor>(node.lhs).head)))
-				{
-					return node;
-				}
-				return LRValue(pEnv->bindReference(As<Accessor>(node.lhs), node)).setLocation(node);
-			}
-
-			CGL_ErrorNode(node, "参照演算子\"@\"の右辺には識別子かアクセッサしか用いることができません。");
-		}
-
-		return UnaryExpr(boost::apply_visitor(*this, node.lhs), node.op).setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const BinaryExpr& node)
-	{
-		const Expr rhs = boost::apply_visitor(*this, node.rhs);
-
-		if (node.op != BinaryOp::Assign)
-		{
-			const Expr lhs = boost::apply_visitor(*this, node.lhs);
-			return BinaryExpr(lhs, rhs, node.op).setLocation(node);
-		}
-
-		//Assignの場合、lhs は Address or Identifier or Accessor に限られる
-		//つまり現時点では、(if cond then x else y) = true のような式を許可していない
-		//ここで左辺に直接アドレスが入っていることは有り得る？
-		//a = b = 10　のような式でも、右結合であり左側は常に識別子が残っているはずなので、あり得ないと思う
-		if (auto valOpt = AsOpt<Identifier>(node.lhs))
-		{
-			const Identifier identifier = valOpt.get();
-
-			//ローカル変数にあれば、その場で解決できる識別子なので何もしない
-			if (isLocalVariable(identifier))
-			{
-				return BinaryExpr(node.lhs, rhs, node.op).setLocation(node);
-			}
-			else
-			{
-				const Address address = pEnv->findAddress(identifier);
-
-				//ローカル変数に無く、スコープにあれば、アドレスに置き換える
-				if (address.isValid())
-				{
-					//TODO: 制約式の場合は、ここではじく必要がある
-					return BinaryExpr(LRValue(address), rhs, node.op).setLocation(node);
-				}
-				//スコープにも無い場合は新たなローカル変数の宣言なので、ローカル変数に追加しておく
-				else
-				{
-					addLocalVariable(identifier);
-					return BinaryExpr(node.lhs, rhs, node.op).setLocation(node);
-				}
-			}
-		}
-		else if (auto valOpt = AsOpt<Accessor>(node.lhs))
-		{
-			//アクセッサの場合は少なくとも変数宣言ではない
-			//ローカル変数 or スコープ
-			/*～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
-			Accessorのheadだけ評価してアドレス値に変換したい
-				headさえ分かればあとはそこから辿れるので
-				今の実装ではheadは式になっているが、これだと良くない
-				今は左辺にはそんなに複雑な式は許可していないので、これも識別子くらいの単純な形に制限してよいのではないか
-			～～～～～～～～～～～～～～～～～～～～～～～～～～～～～*/
-
-			//評価することにした
-			const Expr lhs = boost::apply_visitor(*this, node.lhs);
-
-			return BinaryExpr(lhs, rhs, node.op).setLocation(node);
-		}
-		//左辺に参照変数が来るケース：@a = x
-		else if (auto valOpt = AsOpt<UnaryExpr>(node.lhs))
-		{
-			if (valOpt.get().op == UnaryOp::Dynamic)
-			{
-				const Expr lhs = boost::apply_visitor(*this, node.lhs);
-
-				return BinaryExpr(lhs, rhs, node.op).setLocation(node);
-			}
-		}
-
-		CGL_ErrorNode(node, "二項演算子\"=\"の左辺は単一の左辺値でなければなりません。");
-		return LRValue(0);
-	}
-
-	Expr ClosureMaker::operator()(const Range& node)
-	{
-		return Range(
-			boost::apply_visitor(*this, node.lhs),
-			boost::apply_visitor(*this, node.rhs)).setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const Lines& node)
-	{
-		Lines result;
-		for (size_t i = 0; i < node.size(); ++i)
-		{
-			result.add(boost::apply_visitor(*this, node.exprs[i]));
-		}
-		return result.setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const DefFunc& node)
-	{
-		//ClosureMaker child(*this);
-		ClosureMaker child(pEnv, localVariables, false, true);
-		for (const auto& argument : node.arguments)
-		{
-			child.addLocalVariable(argument);
-		}
-
-		return DefFunc(node.arguments, boost::apply_visitor(child, node.expr)).setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const If& node)
-	{
-		If result(boost::apply_visitor(*this, node.cond_expr));
-		result.then_expr = boost::apply_visitor(*this, node.then_expr);
-		if (node.else_expr)
-		{
-			result.else_expr = boost::apply_visitor(*this, node.else_expr.get());
-		}
-
-		return result.setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const For& node)
-	{
-		For result;
-		result.rangeStart = boost::apply_visitor(*this, node.rangeStart);
-		result.rangeEnd = boost::apply_visitor(*this, node.rangeEnd);
-
-		//ClosureMaker child(*this);
-		ClosureMaker child(pEnv, localVariables, false, isInnerClosure);
-		child.addLocalVariable(node.loopCounter);
-		result.doExpr = boost::apply_visitor(child, node.doExpr);
-		result.loopCounter = node.loopCounter;
-		result.asList = node.asList;
-
-		return result.setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const Return& node)
-	{
-		return Return(boost::apply_visitor(*this, node.expr)).setLocation(node);
-		//これだとダメかもしれない？
-		//return a = 6, a + 2
-	}
-
-	Expr ClosureMaker::operator()(const ListConstractor& node)
-	{
-		ListConstractor result;
-		//ClosureMaker child(*this);
-		ClosureMaker child(pEnv, localVariables, false, isInnerClosure);
-		for (const auto& expr : node.data)
-		{
-			result.data.push_back(boost::apply_visitor(child, expr));
-		}
-		return result.setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const KeyExpr& node)
-	{
-		//変数宣言式
-		//再代入の可能性もあるがどっちにしろこれ以降この識別子はローカル変数と扱ってよい
-		addLocalVariable(node.name);
-
-		KeyExpr result(node.name);
-		result.expr = boost::apply_visitor(*this, node.expr);
-		return result.setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const RecordConstractor& node)
-	{
-		RecordConstractor result;
-
-		if (isInnerRecord)
-		{
-			isInnerRecord = false;
-			for (const auto& expr : node.exprs)
-			{
-				result.exprs.push_back(boost::apply_visitor(*this, expr));
-			}
-			isInnerRecord = true;
-		}
-		else
-		{
-			ClosureMaker child(pEnv, localVariables, false, isInnerClosure);
-			for (const auto& expr : node.exprs)
-			{
-				result.exprs.push_back(boost::apply_visitor(child, expr));
-			}
-		}
-
-		return result.setLocation(node);
-	}
-
-	//レコード継承構文については特殊で、adderを評価する時のスコープはheadと同じである必要がある。
-	//つまり、headを評価する時にはその中身を、一段階だけ（波括弧一つ分だけ）展開するようにして評価しなければならない。
-	Expr ClosureMaker::operator()(const RecordInheritor& node)
-	{
-		RecordInheritor result;
-
-		//新たに追加
-		ClosureMaker child(pEnv, localVariables, true, isInnerClosure);
-
-		//result.original = boost::apply_visitor(*this, node.original);
-		result.original = boost::apply_visitor(child, node.original);
-			
-		Expr originalAdder = node.adder;
-		//Expr replacedAdder = boost::apply_visitor(*this, originalAdder);
-		Expr replacedAdder = boost::apply_visitor(child, originalAdder);
-		if (auto opt = AsOpt<RecordConstractor>(replacedAdder))
-		{
-			result.adder = opt.get();
-			return result.setLocation(node);
-		}
-
-		CGL_ErrorNodeInternal(node, "node.adderの評価結果がRecordConstractorでありませんでした。");
-		return LRValue(0);
-	}
-
-	Expr ClosureMaker::operator()(const Accessor& node)
-	{
-		Accessor result;
-
-		result.head = boost::apply_visitor(*this, node.head);
-		//DeclSatの評価後ではsat式中のアクセッサ（の内sat式のローカル変数でないもの）のheadはアドレス値に評価されている必要がある。
-		//しかし、ここでは*thisを使っているので、任意の式がアドレス値に評価されるわけではない。
-		//例えば、次の式 ([f1,f2] @ [f3])[0](x) だとhead部はリストの結合式であり、Evalを通さないとアドレス値にできない。
-		//しかし、ここでEvalは使いたくない（ClosureMakerが副作用を起こすのは良くない）ため、現時点ではアクセッサのhead部は単一の識別子のみで構成されるものと仮定している。
-		//こうすることにより、識別子がローカル変数ならそのまま残り、外部の変数ならアドレス値に変換されることが保証できる。
-
-		for (const auto& access : node.accesses)
-		{
-			if (auto listAccess = AsOpt<ListAccess>(access))
-			{
-				if (listAccess.get().isArbitrary)
-				{
-					result.add(listAccess.get());
-				}
-				else
-				{
-					result.add(ListAccess(boost::apply_visitor(*this, listAccess.get().index)));
-				}
-			}
-			else if (auto recordAccess = AsOpt<RecordAccess>(access))
-			{
-				result.add(recordAccess.get());
-			}
-			else if (auto functionAccess = AsOpt<FunctionAccess>(access))
-			{
-				FunctionAccess access;
-				for (const auto& argument : functionAccess.get().actualArguments)
-				{
-					access.add(boost::apply_visitor(*this, argument));
-				}
-				result.add(access);
-			}
-			else
-			{
-				CGL_ErrorNodeInternal(node, "アクセッサの評価結果が不正です。");
-			}
-		}
-
-		return result.setLocation(node);
-	}
-		
-	Expr ClosureMaker::operator()(const DeclSat& node)
-	{
-		DeclSat result;
-		result.expr = boost::apply_visitor(*this, node.expr);
-		return result.setLocation(node);
-	}
-
-	Expr ClosureMaker::operator()(const DeclFree& node)
-	{
-		DeclFree result;
-		for (const auto& accessor : node.accessors)
-		{
-			const Expr expr = accessor;
-			const Expr closedAccessor = boost::apply_visitor(*this, expr);
-			if (IsType<Accessor>(closedAccessor) || IsType<UnaryExpr>(closedAccessor))
-			{
-				result.addAccessor(closedAccessor);
-			}
-			else
-			{
-				CGL_ErrorNodeInternal(node, "アクセッサの評価結果が不正です。");
-			}
-		}
-		for (const auto& range : node.ranges)
-		{
-			const Expr closedRange = boost::apply_visitor(*this, range);
-			result.addRange(closedRange);
-		}
-		return result.setLocation(node);
-	}
-
-	LRValue Eval::operator()(const Identifier& node)
-	{
 		const Address address = pEnv->findAddress(node);
 		if (address.isValid())
 		{
@@ -1055,11 +1113,15 @@ namespace cgl
 
 	LRValue Eval::operator()(const Import& node)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const Import& node)");
+
 		return node.eval(pEnv);
 	}
 
 	LRValue Eval::operator()(const UnaryExpr& node)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const UnaryExpr& node)");
+
 		const Val lhs = pEnv->expand(boost::apply_visitor(*this, node.lhs), node);
 
 		switch (node.op)
@@ -1076,6 +1138,11 @@ namespace cgl
 
 	LRValue Eval::operator()(const BinaryExpr& node)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const BinaryExpr& node)");
+
+		scopeLog.write("lhs: " + exprStr2(node.lhs, pEnv));
+		scopeLog.write("op: " + BinaryOpToStr(node.op));
+
 		UpdateCurrentLocation(node);
 
 		const LRValue rhs_ = boost::apply_visitor(*this, node.rhs);
@@ -1113,8 +1180,6 @@ namespace cgl
 
 		case BinaryOp::Assign:
 		{
-			//return Assign(lhs, rhs, *pEnv);
-
 			//Assignの場合、lhs は Address or Identifier or Accessor に限られる
 			//つまり現時点では、(if cond then x else y) = true のような式を許可していない
 			//ここで左辺に直接アドレスが入っていることは有り得る？
@@ -1127,8 +1192,23 @@ namespace cgl
 					pEnv->assignToReference(valOpt.get().reference(), rhs_, node);
 					return RValue(rhs);
 				}
+				else if (valOpt.get().isEitherReference())
+				{
+					const auto& ref = valOpt.get().eitherReference();
+					if (ref.local)
+					{
+						Expr assignExpr = BinaryExpr(*ref.local, rhs_, BinaryOp::Assign);
+						return LRValue(pEnv->expand(boost::apply_visitor(*this, assignExpr), node));
+					}
+					else
+					{
+						//ref.replaced;
+						CGL_ErrorNodeInternal(node, "一時オブジェクトへの代入はできません。");
+					}
+				}
 				else
 				{
+					printExpr(node.lhs, pEnv, std::cout);
 					CGL_ErrorNodeInternal(node, "一時オブジェクトへの代入はできません。");
 				}
 			}
@@ -1183,83 +1263,29 @@ namespace cgl
 
 	LRValue Eval::operator()(const DefFunc& defFunc)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const DefFunc& node)");
+
 		UpdateCurrentLocation(defFunc);
-		return pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr);
+		return LRValue(pEnv->makeFuncVal(pEnv, defFunc.arguments, defFunc.expr));
 	}
 
-	LRValue Eval::callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& expandedArguments)
+	LRValue Eval::callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& arguments)
 	{
+		auto scopeLog = ScopeLog("Eval::callFunction(const LocationInfo& info, const FuncVal& funcVal, const std::vector<Address>& arguments)");
+
 		CGL_DebugLog("Function Context:");
 		pEnv->printContext();
 
-		/*
-		まだ参照をスコープ間で共有できるようにしていないため、引数に与えられたオブジェクトは全て展開して渡す。
-		そして、引数の評価時点ではまだ関数の中に入っていないので、スコープを変える前に展開を行う。
-		*/
-
-		/*
-		12/14
-		全ての値はIDで管理するようにする。
-		そしてスコープが変わると、変数のマッピングは変わるが、値は共通なのでどちらからも参照できる。
-		*/
-		/*
-		std::vector<Address> expandedArguments(callFunc.actualArguments.size());
-		for (size_t i = 0; i < expandedArguments.size(); ++i)
-		{
-			expandedArguments[i] = pEnv->makeTemporaryValue(callFunc.actualArguments[i]);
-		}
-
-		CGL_DebugLog("");
-
-		FuncVal funcVal;
-
-		if (auto opt = AsOpt<FuncVal>(callFunc.funcRef))
-		{
-			funcVal = opt.get();
-		}
-		else
-		{
-			const Address funcAddress = pEnv->findAddress(As<Identifier>(callFunc.funcRef));
-			if (funcAddress.isValid())
-			{
-				if (auto funcOpt = pEnv->expandOpt(funcAddress))
-				{
-					if (IsType<FuncVal>(funcOpt.get()))
-					{
-						funcVal = As<FuncVal>(funcOpt.get());
-					}
-					else
-					{
-						CGL_Error("指定された変数名に紐つけられた値が関数でない");
-					}
-				}
-				else
-				{
-					CGL_Error("ここは通らないはず");
-				}
-			}
-			else
-			{
-				CGL_Error("指定された変数名に値が紐つけられていない");
-			}
-		}
-		*/
-
-		/*if (funcVal.builtinFuncAddress)
-		{
-			return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.get(), expandedArguments));
-		}*/
 		if (funcVal.builtinFuncAddress)
 		{
-			return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.get(), expandedArguments, info));
+			return LRValue(pEnv->callBuiltInFunction(funcVal.builtinFuncAddress.get(), arguments, info));
 		}
 
-		CGL_DebugLog("");
-
 		//if (funcVal.arguments.size() != callFunc.actualArguments.size())
-		if (funcVal.arguments.size() != expandedArguments.size())
+		if (funcVal.arguments.size() != arguments.size())
 		{
-			CGL_ErrorNode(info, "仮引数の数と実引数の数が合っていません。");
+			CGL_ErrorNode(info, 
+				"仮引数の数(" + std::to_string(funcVal.arguments.size()) + ")と実引数(" + std::to_string(arguments.size()) + ")の数が合っていません。");
 		}
 
 		//関数の評価
@@ -1271,12 +1297,8 @@ namespace cgl
 		//TODO: これは、意味論的に正しいのか一度考える必要がある
 		//とりあえず関数がスコープに依存することはなくなったので、単純に別のスコープに切り替えるだけで良い
 
-		CGL_DebugLog("");
-
 		//(2)関数の引数用にスコープを一つ追加する
 		pEnv->enterScope();
-
-		CGL_DebugLog("");
 
 		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 		{
@@ -1284,40 +1306,26 @@ namespace cgl
 			12/14
 			引数はスコープをまたぐ時に参照先が変わらないように全てIDで渡すことにする。
 			*/
-			pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
+			pEnv->bindValueID(funcVal.arguments[i], arguments[i]);
 		}
 
 		CGL_DebugLog("Function Definition:");
 		printExpr(funcVal.expr);
 
 		//(3)関数の戻り値を元のスコープに戻す時も、引数と同じ理由で全て展開して渡す。
-		//Val result = pEnv->expandObject(boost::apply_visitor(*this, funcVal.expr));
 		Val result;
 		{
-			//const Val resultValue = pEnv->expand(boost::apply_visitor(*this, funcVal.expr));
-			//result = pEnv->expandRef(pEnv->makeTemporaryValue(resultValue));
-			/*
-			EliminateScopeDependency elim(pEnv);
-			result = pEnv->makeTemporaryValue(boost::apply_visitor(elim, resultValue));
-			*/
 			result = pEnv->expand(boost::apply_visitor(*this, funcVal.expr), info);
 			CGL_DebugLog("Function Val:");
 			printVal(result, nullptr);
 		}
-		//Val result = pEnv->expandObject();
-
-		CGL_DebugLog("");
 
 		//(4)関数を抜ける時に、仮引数は全て解放される
 		pEnv->exitScope();
 
-		CGL_DebugLog("");
-
 		//(5)最後にローカル変数の環境を関数の実行前のものに戻す。
 		pEnv->switchBackScope();
 
-		CGL_DebugLog("");
-			
 		//評価結果がreturn式だった場合はreturnを外して中身を返す
 		//return以外のジャンプ命令は関数では効果を持たないのでそのまま上に返す
 		if (IsType<Jump>(result))
@@ -1341,6 +1349,7 @@ namespace cgl
 
 	LRValue Eval::operator()(const Lines& statement)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const Lines& statement)");
 		//UpdateCurrentLocation(statement);
 
 		pEnv->enterScope();
@@ -1352,11 +1361,8 @@ namespace cgl
 			CGL_DebugLog("Evaluate expression(" + std::to_string(i) + ")");
 			pEnv->printContext();
 
-			CGL_DebugLog("");
 			result = pEnv->expand(boost::apply_visitor(*this, expr), statement);
 			printVal(result, pEnv);
-
-			CGL_DebugLog("");
 
 			//TODO: 後で考える
 			//式の評価結果が左辺値の場合は中身も見て、それがマクロであれば中身を展開した結果を式の評価結果とする
@@ -1373,56 +1379,23 @@ namespace cgl
 			}
 			*/
 
-			CGL_DebugLog("");
 			//途中でジャンプ命令を読んだら即座に評価を終了する
 			if (IsType<Jump>(result))
 			{
-				CGL_DebugLog("");
 				break;
 			}
-
-			CGL_DebugLog("");
 
 			++i;
 		}
 
-		CGL_DebugLog("");
-
-		//この後すぐ解放されるので dereference しておく
-		bool deref = true;
-		/*
-		if (auto refOpt = AsOpt<ObjectReference>(result))
-		{
-			if (IsType<unsigned>(refOpt.get().headValue))
-			{
-				deref = false;
-			}
-		}
-		
-		if (deref)
-		{
-			result = pEnv->dereference(result);
-		}
-		*/
-
-		/*
-		if (auto refOpt = AsOpt<Address>(result))
-		{
-			//result = pEnv->dereference(refOpt.get());
-			//result = pEnv->expandRef(refOpt.get());
-			result = pEnv->expand(refOpt.get());
-		}
-		*/
-
-		CGL_DebugLog("");
-
 		pEnv->exitScope();
-		CGL_DebugLog("");
 		return LRValue(result);
 	}
 
 	LRValue Eval::operator()(const If& if_statement)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const If& if_statement)");
+
 		UpdateCurrentLocation(if_statement);
 
 		const Val cond = pEnv->expand(boost::apply_visitor(*this, if_statement.cond_expr), if_statement);
@@ -1435,7 +1408,6 @@ namespace cgl
 		{
 			const Val result = pEnv->expand(boost::apply_visitor(*this, if_statement.then_expr), if_statement);
 			return RValue(result);
-
 		}
 		else if (if_statement.else_expr)
 		{
@@ -1443,14 +1415,13 @@ namespace cgl
 			return RValue(result);
 		}
 
-		//else式が無いケースで cond = False であったら一応警告を出す
-		//std::cerr << "Warning(" << __LINE__ << ")\n";
-		CGL_WarnLog("else式が無いケースで cond = False であった");
 		return RValue(0);
 	}
 
 	LRValue Eval::operator()(const For& forExpression)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const For& forExpression)");
+
 		UpdateCurrentLocation(forExpression);
 
 		const Val startVal = pEnv->expand(boost::apply_visitor(*this, forExpression.rangeStart), forExpression);
@@ -1558,6 +1529,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const Return& return_statement)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const Return& return_statement)");
+
 		const Val lhs = pEnv->expand(boost::apply_visitor(*this, return_statement.expr), return_statement);
 
 		return RValue(Jump::MakeReturn(lhs));
@@ -1565,20 +1538,15 @@ namespace cgl
 
 	LRValue Eval::operator()(const ListConstractor& listConstractor)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const ListConstractor& listConstractor)");
+
 		UpdateCurrentLocation(listConstractor);
 
 		List list;
 		for (const auto& expr : listConstractor.data)
 		{
 			LRValue lrvalue = boost::apply_visitor(*this, expr);
-			if (lrvalue.isLValue())
-			{
-				list.append(lrvalue.address(*pEnv));
-			}
-			else
-			{
-				list.append(pEnv->makeTemporaryValue(lrvalue.evaluated()));
-			}
+			lrvalue.push_back(list, *pEnv);
 		}
 
 		return RValue(list);
@@ -1586,21 +1554,9 @@ namespace cgl
 
 	LRValue Eval::operator()(const KeyExpr& node)
 	{
-		UpdateCurrentLocation(node);
-		/*
-		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
-		Val rhs = pEnv->expand(rhs_, node);
-		if (pEnv->existsInCurrentScope(node.name))
-		{
-			CGL_ErrorNode(node, "宣言演算子\":\"による変数への値の再代入は行えません。代わりに代入演算子\"=\"を使用してください。");
-		}
-		else
-		{
-			pEnv->bindNewValue(node.name, rhs);
-		}
+		auto scopeLog = ScopeLog("Eval::operator()(const KeyExpr& node)");
 
-		return RValue(rhs);
-		*/
+		UpdateCurrentLocation(node);
 
 		const LRValue rhs_ = boost::apply_visitor(*this, node.expr);
 		Val rhs = pEnv->expand(rhs_, node);
@@ -1618,6 +1574,8 @@ namespace cgl
 
 	LRValue Eval::operator()(const RecordConstractor& recordConsractor)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const RecordConstractor& recordConsractor)");
+
 		UpdateCurrentLocation(recordConsractor);
 		
 		//CGL_DebugLog("");
@@ -1642,7 +1600,6 @@ namespace cgl
 
 		if (pEnv->temporaryRecord)
 		{
-			//pEnv->currentRecords.push(pEnv->temporaryRecord.get());
 			pEnv->currentRecords.push_back(pEnv->temporaryRecord.get());
 			pEnv->temporaryRecord = boost::none;
 		}
@@ -1658,34 +1615,17 @@ namespace cgl
 
 		int i = 0;
 		
+		scopeLog.write("Record Expressions Evaluation");
+
 		for (const auto& expr : recordConsractor.exprs)
 		{
-			/*
-			CGL_DebugLog("");
-			CGL_DebugLog("Evaluate: ");
-			Val value = pEnv->expand(boost::apply_visitor(*this, expr));
-			CGL_DebugLog("Result: ");
-			printVal(value, pEnv);
-
 			//キーに紐づけられる値はこの後の手続きで更新されるかもしれないので、今は名前だけ控えておいて後で値を参照する
-			if (auto keyValOpt = AsOpt<KeyValue>(value))
-			{
-				const auto keyVal = keyValOpt.get();
-				keyList.push_back(keyVal.name);
-
-				CGL_DebugLog(std::string("assign to ") + static_cast<std::string>(keyVal.name));
-
-				pEnv->bindNewValue(keyVal.name, keyVal.value);
-
-				CGL_DebugLog("");
-			}
-			*/
-
 			if (IsType<KeyExpr>(expr))
 			{
 				keyList.push_back(As<KeyExpr>(expr).name);
 			}
 
+			scopeLog.write("  eval expr: " + exprStr2(expr, pEnv));
 			Val value = pEnv->expand(boost::apply_visitor(*this, expr), recordConsractor);
 
 			//valueは今は右辺値のみになっている
@@ -1712,25 +1652,33 @@ namespace cgl
 			++i;
 		}
 		
+		scopeLog.write("Record Expressions Evaluation - End");
 		pEnv->printContext();
-		CGL_DebugLog("");
-
-		/*for (const auto& satExpr : innerSatClosures)
-		{
-			record.problem.addConstraint(satExpr);
-		}
-		innerSatClosures.clear();*/
-
-		CGL_DebugLog("");
 
 		//各free変数の範囲をまとめたレコードを作成する
-		const auto makePackedRanges = [&](std::shared_ptr<Context> pContext, const std::vector<Expr>& ranges)->std::vector<PackedVal>
+		const auto makePackedRanges = [&](std::shared_ptr<Context> pContext, const std::vector<BoundedFreeVar>& freeVars)->std::vector<PackedVal>
 		{
 			Eval evaluator(pContext);
 			std::vector<PackedVal> packedRanges;
-			for (const auto& rangeExpr : ranges)
+			for (const auto& rangeExpr : freeVars)
 			{
-				packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr), recordConsractor), *pContext));
+				if (rangeExpr.freeRange)
+				{
+					//TODO:ここでrangeの型が妥当か判定すべき（図形かもしくはIntervalでなければはじく）
+					if (isDebugMode, false)
+					{
+						std::cout << "Has range\n";
+					}
+					packedRanges.push_back(Packed(pContext->expand(boost::apply_visitor(evaluator, rangeExpr.freeRange.get()), recordConsractor), *pContext));
+				}
+				else
+				{
+					if (isDebugMode, false)
+					{
+						std::cout << "Has not range\n";
+					}
+					packedRanges.push_back(0);
+				}
 			}
 			return packedRanges;
 		};
@@ -1789,12 +1737,16 @@ namespace cgl
 		};
 		*/
 
+		//declfreeで指定されたアクセッサを全て展開して辿れるアドレスを返す（範囲指定なし）
 		const auto makeFreeVariableAddresses = [&](std::shared_ptr<Context> pContext, const std::vector<FreeVarType>& freeVariables)
-			->std::vector<std::pair<Address, VariableRange>>
+			->std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>>
 		{
-			std::vector<std::pair<Address, VariableRange>> freeVariableAddresses;
+			std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>> results;
+			auto& resultAddresses = results.first;
+			auto& resultRegions = results.second;
 			for (size_t i = 0; i < freeVariables.size(); ++i)
 			{
+				std::vector<RegionVariable> currentResult;
 				const auto& accessor = freeVariables[i];
 				if (IsType<Accessor>(accessor))
 				{
@@ -1803,8 +1755,7 @@ namespace cgl
 					printExpr2(expr, pContext, std::cout);
 					std::cout << "\n";*/
 
-					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), boost::none, recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences2(As<Accessor>(accessor), recordConsractor);
 				}
 				else if(IsType<Reference>(accessor))
 				{
@@ -1812,21 +1763,36 @@ namespace cgl
 					std::cout << As<Reference>(accessor).toString();
 					std::cout << "\n";*/
 
-					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), boost::none, recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), recordConsractor);
 				}
+
+				const size_t startIndex = resultAddresses.size();
+				const size_t numOfIndices = currentResult.size();
+				resultAddresses.insert(resultAddresses.end(), currentResult.begin(), currentResult.end());
+
+				OptimizeRegion region;
+				region.region = Interval();
+				for (const auto& var : currentResult)
+				{
+					region.addresses.push_back(var.address);
+				}
+				resultRegions.push_back(region);
 			}
-			return freeVariableAddresses;
+
+			return results;
 		};
 
 		//declfreeで指定されたアクセッサを全て展開して辿れるアドレスを返す（範囲指定あり）
-		const auto makeFreeVariableAddressesRange = [&](std::shared_ptr<Context> pContext, const std::vector<FreeVarType>& freeVariables, const std::vector<PackedVal>& packedRanges)
-			->std::vector<std::pair<Address, VariableRange>>
+		const auto makeFreeVariableAddressesRange = [&](std::shared_ptr<Context> pContext, const std::vector<BoundedFreeVar>& freeVariables,
+			const std::vector<PackedVal>& packedRanges)->std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>>
 		{
-			std::vector<std::pair<Address, VariableRange>> freeVariableAddresses;
+			std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>> results;
+			auto& resultAddresses = results.first;
+			auto& resultRegions = results.second;
 			for (size_t i = 0; i < freeVariables.size(); ++i)
 			{
-				const auto& accessor = freeVariables[i];
+				std::vector<RegionVariable> currentResult;
+				const auto& accessor = freeVariables[i].freeVariable;
 				if (IsType<Accessor>(accessor))
 				{
 					/*std::cout << "expand accessor: ";
@@ -1834,8 +1800,7 @@ namespace cgl
 					printExpr2(expr, pContext, std::cout);
 					std::cout << "\n";*/
 
-					const auto addresses = pContext->expandReferences2(As<Accessor>(accessor), packedRanges[i], recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences2(As<Accessor>(accessor), recordConsractor);
 				}
 				else if (IsType<Reference>(accessor))
 				{
@@ -1843,12 +1808,27 @@ namespace cgl
 					std::cout << As<Reference>(accessor).toString();
 					std::cout << "\n";*/
 
-					const auto reference = As<LRValue>(accessor).reference();
-					const auto addresses = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), packedRanges[i], recordConsractor);
-					freeVariableAddresses.insert(freeVariableAddresses.end(), addresses.begin(), addresses.end());
+					currentResult = pContext->expandReferences(pEnv->getReference(As<Reference>(accessor)), recordConsractor);
 				}
+
+				const size_t startIndex = resultAddresses.size();
+				const size_t numOfIndices = currentResult.size();
+				resultAddresses.insert(resultAddresses.end(), currentResult.begin(), currentResult.end());
+
+				/*
+				RegionVariableは最小のdouble型単位であるのに対し、OptimizeRegionはvar宣言に指定された形がそのまま保持される。
+				したがって、各RegionVaribaleごとの範囲はここでは計算せず、実際に評価する前に計算することにする。
+				*/
+				OptimizeRegion region;
+				region.region = packedRanges[i];
+				for (const auto& var : currentResult)
+				{
+					region.addresses.push_back(var.address);
+				}
+				resultRegions.push_back(region);
 			}
-			return freeVariableAddresses;
+
+			return results;
 		};
 
 		//論理積で繋がれた制約をリストに分解して返す
@@ -1861,18 +1841,39 @@ namespace cgl
 
 		//それぞれのunitConstraintについて、出現するアドレスの集合を求めたものを返す
 		const auto searchFreeVariablesOfConstraint = [](std::shared_ptr<Context> pContext, const Expr& constraint,
-			const std::vector<std::pair<Address, VariableRange>>& freeVariableAddresses)->ConstraintAppearance
+			const std::vector<RegionVariable>& regionVars)->ConstraintAppearance
 		{
 			//制約ID -> ConstraintAppearance
 			ConstraintAppearance appearingList;
 
-			std::vector<char> usedInSat(freeVariableAddresses.size(), 0);
+			std::vector<char> usedInSat(regionVars.size(), 0);
 			std::vector<Address> refs;
 			std::unordered_map<Address, int> invRefs;
 			bool hasPlateausFunction = false;
 
-			SatVariableBinder binder(pContext, freeVariableAddresses, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
+			if (isDebugMode/*, false*/)
+			{
+				CGL_DBG1("Expr: ");
+				printExpr2(constraint, pContext, std::cout);
+
+				CGL_DBG1("freeVariables: " + ToS(regionVars.size()));
+				for (const auto& val : regionVars)
+				{
+					CGL_DBG1(std::string("  Address(") + val.address.toString() + ")");
+				}
+			}
+
+			SatVariableBinder binder(pContext, regionVars, usedInSat, refs, appearingList, invRefs, hasPlateausFunction);
 			boost::apply_visitor(binder, constraint);
+
+			if (isDebugMode/*, false*/)
+			{
+				CGL_DBG1("appearingList: " + ToS(appearingList.size()));
+				for (const auto& a : appearingList)
+				{
+					CGL_DBG1(std::string("  Address(") + a.toString() + ")");
+				}
+			}
 
 			return appearingList;
 		};
@@ -1892,6 +1893,7 @@ namespace cgl
 					return true;
 				}
 			}
+
 			return false;
 		};
 
@@ -1967,8 +1969,8 @@ namespace cgl
 		{
 			for (size_t i = 0; i < resultxs.size(); ++i)
 			{
-				Address address = problem.freeVariableRefs[i].first;
-				const auto range = problem.freeVariableRefs[i].second;
+				Address address = problem.freeVariableRefs[i].address;
+				//const auto range = problem.freeVariableRefs[i].second;
 				//std::cout << "Address(" << address.toString() << "): [" << range.minimum << ", " << range.maximum << "]\n";
 				std::cout << "Address(" << address.toString() << "): " << resultxs[i] << "\n";
 				pContext->TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(address, resultxs[i]);
@@ -2002,6 +2004,43 @@ namespace cgl
 			return true;
 		};
 
+		//RegionVariablesとOptimizeRegionsについて実際に制約グループに登場するAddressでマスクをかける
+		const auto maskedRegionVariables = [&](const std::vector<RegionVariable>& regionVariables, const std::vector<OptimizeRegion>& optimizeRegions,
+			const ConstraintAppearance& constraintAppearance)->std::pair<std::vector<RegionVariable>, std::vector<OptimizeRegion>>
+		{
+			std::vector<RegionVariable> currentConstraintRegionVars;
+			for (size_t i = 0; i < regionVariables.size(); ++i)
+			{
+				if (constraintAppearance.find(regionVariables[i].address) != constraintAppearance.end())
+				{
+					currentConstraintRegionVars.push_back(regionVariables[i]);
+				}
+			}
+
+			std::vector<OptimizeRegion> currentConstraintOptimizeRegions;
+			for (size_t i = 0; i < optimizeRegions.size(); ++i)
+			{
+				const auto& originalAddresses = optimizeRegions[i].addresses;
+
+				OptimizeRegion newRegion = optimizeRegions[i];
+				newRegion.addresses.clear();
+				for (const Address address : optimizeRegions[i].addresses)
+				{
+					if (constraintAppearance.find(address) != constraintAppearance.end())
+					{
+						newRegion.addresses.push_back(address);
+					}
+				}
+
+				if (!newRegion.addresses.empty())
+				{
+					currentConstraintOptimizeRegions.push_back(newRegion);
+				}
+			}
+
+			return { currentConstraintRegionVars, currentConstraintOptimizeRegions };
+		};
+
 		auto& original = record.original;
 		
 		//TODO: record.constraintには継承時のoriginalが持つ制約は含まれていないものとする
@@ -2010,39 +2049,17 @@ namespace cgl
 			isInConstraint = true;
 			std::cout << "--------------------------------------------------------------\n";
 			std::cout << "Solve Record Constraints:" << std::endl;
+			scopeLog.write("Solve Record Constraints:");
 			record.problems.clear();
 			
+			scopeLog.write("  1. Address expansion");
 			std::cout << "  1. Address expansion" << std::endl;
 			///////////////////////////////////
 			//1. free変数に指定されたアドレスの展開
 
-			const auto& ranges = record.freeRanges;
-			const bool hasRange = !ranges.empty();
+			const std::vector<PackedVal> recordPackedRanges = makePackedRanges(pEnv, record.boundedFreeVariables);
+			std::cout << "recordPackedRanges  : " << recordPackedRanges.size() << std::endl;
 
-			const std::vector<PackedVal> adderPackedRanges = makePackedRanges(pEnv, ranges);
-
-#ifdef commentout
-			//変数ID->アドレス
-			std::vector<FreeVariableAddress> adderFreeVariableAddresses_ = (hasRange
-				? makeFreeVariableAddressesRange(pEnv, record.freeVariables, adderPackedRanges)
-				: makeFreeVariableAddresses(pEnv, record.freeVariables));
-
-			//TODO:freeVariableAddressesの重複を削除するべき？
-			/*
-			std::cout << "freeVariableAddresses before unique: " << freeVariableAddresses.size() << std::endl;
-
-			freeVariableAddresses.erase(std::unique(freeVariableAddresses.begin(), freeVariableAddresses.end(), 
-				[](const FreeVariable& a, const FreeVariable& b) {return a.first == b.first; }), freeVariableAddresses.end());
-
-			std::cout << "freeVariableAddresses after  unique: " << freeVariableAddresses.size() << std::endl;
-			*/
-
-			std::vector<FreeVariableAddress> mergedFreeVariableAddresses = original.freeVariableAddresses;
-			mergedFreeVariableAddresses.insert(mergedFreeVariableAddresses.end(), adderFreeVariableAddresses_.begin(), adderFreeVariableAddresses_.end());
-#endif
-
-			std::vector<FreeVarType> margedFreeVars = original.freeVars;
-			margedFreeVars.insert(margedFreeVars.end(), record.freeVariables.begin(), record.freeVariables.end());
 			/*{
 				std::cout << "margedFreeVars: ";
 				for (const auto& var : margedFreeVars)
@@ -2060,20 +2077,66 @@ namespace cgl
 					std::cout << "\n";
 				}
 			}*/
+			auto recordVarAddresses = makeFreeVariableAddressesRange(pEnv, record.boundedFreeVariables, recordPackedRanges);
 
-			std::cout << "margedFreeVars: " << margedFreeVars.size();
-			std::vector<FreeVariableAddress> mergedFreeVariableAddresses = (hasRange
-				? makeFreeVariableAddressesRange(pEnv, margedFreeVars, adderPackedRanges)
-				: makeFreeVariableAddresses(pEnv, margedFreeVars));
+			if (isDebugMode, false)
 			{
-				std::cout << "current variables: ";
-				for (const auto& val : mergedFreeVariableAddresses)
+				for (const auto& val : recordVarAddresses.first)
 				{
-					std::cout << "Address(" << val.first.toString() << "), ";
+					std::cout << "Address(" << val.address.toString() << "): ";
+					if (val.attributes.empty())
+					{
+						std::cout << "No attribute";
+					}
+					else
+					{
+						switch (*val.attributes.begin())
+						{
+						case cgl::RegionVariable::Position:
+							std::cout << "Position"; break;
+						case cgl::RegionVariable::Scale:
+							std::cout << "Scale"; break;
+						case cgl::RegionVariable::Angle:
+							std::cout << "Angle"; break;
+						case cgl::RegionVariable::Other:
+							std::cout << "Other"; break;
+						default:
+							break;
+						}
+					}
+					std::cout << "\n";
 				}
 				std::cout << "\n";
 			}
 
+			std::vector<RegionVariable> mergedRegionVars = original.regionVars;
+			std::vector<OptimizeRegion> mergedOptimizeRegions = original.optimizeRegions;
+			{
+				mergedRegionVars.insert(mergedRegionVars.end(), recordVarAddresses.first.begin(), recordVarAddresses.first.end());
+				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
+			}
+
+			if (isDebugMode, false)
+			{
+				for (const OptimizeRegion& r : mergedOptimizeRegions)
+				{
+					if (IsType<Interval>(r.region))
+					{
+						auto interval = As<Interval>(r.region);
+						std::cout << "Region: [" << interval.minimum << ", " << interval.maximum << "]" << std::endl;
+					}
+					else if (IsType<PackedVal>(r.region))
+					{
+						std::cout << "Shape Region" << std::endl;
+					}
+					else
+					{
+						CGL_Error("Error");
+					}
+				}
+			}
+
+			scopeLog.write("  2. Constraints separation");
 			std::cout << "  2. Constraints separation" << std::endl;
 			///////////////////////////////////
 			//2. 変数の依存関係を見て独立した制約を分解
@@ -2081,11 +2144,13 @@ namespace cgl
 			//分解された単位制約
 			const std::vector<Expr> adderUnitConstraints = record.constraint ? separateUnitConstraints(record.constraint.get()) : std::vector<Expr>();
 
+			scopeLog.write("  collect each constraint depending variables");
+			std::cout << "  collect each constraint depending variables" << std::endl;
 			//単位制約ごとの依存するfree変数の集合
 			std::vector<ConstraintAppearance> adderVariableAppearances;
 			for (const auto& constraint : adderUnitConstraints)
 			{
-				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedFreeVariableAddresses));
+				adderVariableAppearances.push_back(searchFreeVariablesOfConstraint(pEnv, constraint, mergedRegionVars));
 				/*std::cout << "constraint:\n";
 				printExpr(constraint, pEnv, std::cout);
 				std::stringstream ss;
@@ -2095,10 +2160,13 @@ namespace cgl
 				}
 				std::cout << ss.str() << "\n\n";*/
 			}
-			
-			std::cout << "1 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << std::endl;
+
+			scopeLog.write("  mergedRegionVars.size(): " + ToS(mergedRegionVars.size()));
+			std::cout << "  mergedRegionVars.size(): " << mergedRegionVars.size() << std::endl;
+
 			//現在のレコードが継承前の制約を持っているならば、制約が独立かどうかを判定して必要ならば合成を行う
 			{
+				scopeLog.write("  3. Dependency analysis");
 				std::cout << "  3. Dependency analysis" << std::endl;
 
 				//std::vector<Address> addressesOriginal;
@@ -2121,6 +2189,55 @@ namespace cgl
 
 				std::vector<ConstraintAppearance> mergedVariableAppearances = original.variableAppearances;
 				mergedVariableAppearances.insert(mergedVariableAppearances.end(), adderVariableAppearances.begin(), adderVariableAppearances.end());
+
+#define useDependencyAnalysis
+#ifdef useDependencyAnalysis
+				if (isDebugMode && record.constraint, false)
+				{
+					const auto dependencyGraphAnalysis = [&](const Expr& constraint)
+					{
+						{
+							std::cout << "====== Before expansion ======" << std::endl;
+							Printer2 printer(pEnv, std::cout, 0);
+							boost::apply_visitor(printer, constraint);
+							std::cout << std::endl;
+						}
+
+						{
+							std::cout << "====== After expansion ======" << std::endl;
+							Printer2 printer(pEnv, std::cout, 0);
+							auto expanded = InlineExpand(constraint, pEnv);
+							boost::apply_visitor(printer, expanded);
+							std::cout << std::endl;
+
+							std::ofstream graphFile;
+							graphFile.open("constraint_CFG.dot");
+							
+							ConstraintAppearance flattenAddresses;
+							for (const auto& appears : mergedVariableAppearances)
+							{
+								flattenAddresses.insert(appears.begin(), appears.end());
+							}
+
+							ConstraintGraph graph = ConstructConstraintGraph(pEnv, expanded);
+							graph.addVariableAddresses(*pEnv, flattenAddresses);
+							graph.outputGraphViz(graphFile, pEnv);
+						}
+					};
+
+					if(!mergedUnitConstraints.empty())
+					{
+						Expr wholeConstraint = mergedUnitConstraints[0];
+						
+						for (int i = 1; i < mergedUnitConstraints.size(); ++i)
+						{
+							wholeConstraint = BinaryExpr(wholeConstraint, mergedUnitConstraints[i], BinaryOp::And);
+						}
+
+						dependencyGraphAnalysis(wholeConstraint);
+					}
+				}
+#endif
 
 				/*{
 					for (const Address address : wholeAddressesOriginal)
@@ -2157,6 +2274,7 @@ namespace cgl
 				//ケースB: 独立でない
 				if (intersects(wholeAddressesAdder, wholeAddressesOriginal))
 				{
+					scopeLog.write("Case B");
 					std::cout << "Case B" << std::endl; 
 
 					std::vector<ConstraintGroup> mergedConstraintGroups = original.constraintGroups;
@@ -2179,7 +2297,8 @@ namespace cgl
 					}*/
 
 					//original.freeVariableAddresses = mergedFreeVariableAddresses;
-					original.freeVars = margedFreeVars;
+					original.regionVars = mergedRegionVars;
+					original.optimizeRegions = mergedOptimizeRegions;
 					original.unitConstraints = mergedUnitConstraints;
 					original.variableAppearances = mergedVariableAppearances;
 					original.constraintGroups = mergedConstraintGroups;
@@ -2192,16 +2311,21 @@ namespace cgl
 						auto& currentProblem = record.problems[constraintGroupID];
 						const auto& currentConstraintIDs = mergedConstraintGroups[constraintGroupID];
 
+						ConstraintAppearance currentGroupDependentAddresses;
 						for (size_t constraintID : currentConstraintIDs)
 						{
 							//currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
 							currentProblem.addUnitConstraint(mergedUnitConstraints[constraintID]);
+							currentGroupDependentAddresses.insert(mergedVariableAppearances[constraintID].begin(), mergedVariableAppearances[constraintID].end());
 						}
 
-						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
+						const auto maskedVars = maskedRegionVariables(mergedRegionVars, mergedOptimizeRegions, currentGroupDependentAddresses);
+
+						currentProblem.freeVariableRefs = maskedVars.first;
+						currentProblem.optimizeRegions = maskedVars.second;
 
 						std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
-						std::cout << "2 mergedFreeVariableAddresses.size(): " << mergedFreeVariableAddresses.size() << "\n";
+						std::cout << "2 mergedRegionVars.size(): " << mergedRegionVars.size() << "\n";
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
 						readResult(pEnv, resultxs, currentProblem);
@@ -2219,11 +2343,13 @@ namespace cgl
 				//ケースA: 独立 or originalのみ or adderのみ
 				else
 				{
+					scopeLog.write("Case A");
 					std::cout << "Case A" << std::endl; 
 					//独立な場合は、まずoriginalの制約がadderの評価によって満たされなくなっていないかを確認する
 					//満たされなくなっていた制約は解きなおす
 					for (auto& oldConstraint : original.groupConstraints)
 					{
+						std::cout << "Old Constraint" << std::endl;
 						const Val result = pEnv->expand(boost::apply_visitor(*this, oldConstraint.expr.get()), recordConsractor);
 						/*if (!IsType<bool>(result))
 						{
@@ -2248,9 +2374,8 @@ namespace cgl
 
 						if (!currentConstraintIsSatisfied)
 						{
-							oldConstraint.freeVariableRefs = (hasRange
-								? makeFreeVariableAddressesRange(pEnv, original.freeVars, adderPackedRanges)
-								: makeFreeVariableAddresses(pEnv, original.freeVars));
+							oldConstraint.freeVariableRefs = original.regionVars;
+							oldConstraint.optimizeRegions = original.optimizeRegions;
 
 							//TODO: SatVariableBinderをやり直す必要まではない？
 							//クローンでずれたアドレスを張り替えるだけで十分かもしれない？
@@ -2270,6 +2395,8 @@ namespace cgl
 							}
 						}
 					}
+
+					std::cout << "New Constraints" << std::endl;
 
 					//次に、新たに追加される制約について解く
 
@@ -2296,8 +2423,8 @@ namespace cgl
 						std::cout << "Record constraint separated to " << std::to_string(constraintGroups.size()) << " independent constraints" << std::endl;
 					}
 
-					//original.freeVariableAddresses = mergedFreeVariableAddresses;
-					original.freeVars = margedFreeVars;
+					original.regionVars = mergedRegionVars;
+					original.optimizeRegions = mergedOptimizeRegions;
 					original.unitConstraints = mergedUnitConstraints;
 					original.variableAppearances = mergedVariableAppearances;
 					original.constraintGroups = mergedConstraintGroups;
@@ -2310,14 +2437,20 @@ namespace cgl
 						auto& currentProblem = record.problems[constraintGroupID];
 						const auto& currentConstraintIDs = constraintGroups[constraintGroupID];
 
+						ConstraintAppearance currentGroupDependentAddresses;
 						for (size_t constraintID : currentConstraintIDs)
 						{
 							//CGL_DBG1("Constraint:");
 							//printExpr(adderUnitConstraints[constraintID], pEnv, std::cout);
 							currentProblem.addUnitConstraint(adderUnitConstraints[constraintID]);
+							//ここで現在の制約グループに対応したAddressを引っ張ってくる
+							currentGroupDependentAddresses.insert(adderVariableAppearances[constraintID].begin(), adderVariableAppearances[constraintID].end());
 						}
 
-						currentProblem.freeVariableRefs = mergedFreeVariableAddresses;
+						const auto maskedVars = maskedRegionVariables(recordVarAddresses.first, recordVarAddresses.second, currentGroupDependentAddresses);
+
+						currentProblem.freeVariableRefs = maskedVars.first;
+						currentProblem.optimizeRegions = maskedVars.second;
 
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
 
@@ -2331,17 +2464,17 @@ namespace cgl
 						}
 
 						original.groupConstraints.push_back(currentProblem);
-
 					}
 				}
 			}
 
 			record.problems.clear();
 			record.constraint = boost::none;
-			record.freeVariables.clear();
-			record.freeRanges.clear();
+			record.boundedFreeVariables.clear();
 
 			isInConstraint = false;
+
+			scopeLog.write("Constraints Solved");
 		}
 		
 		for (const auto& key : keyList)
@@ -2358,30 +2491,23 @@ namespace cgl
 			record.append(key, address);
 		}
 
-		/*if (record.type == RecordType::RecordTypePath)
-		{
-			GetPath(record, pEnv);
-		}
-		else if (record.type == RecordType::RecordTypeText)
-		{
-			GetText(record, pEnv);
-		}
-		else if (record.type == RecordType::RecordTypeShapePath)
-		{
-			GetText(record, pEnv);
-		}*/
-		
 		pEnv->printContext();
 
 		CGL_DebugLog("");
 
-		//pEnv->currentRecords.pop();
 		pEnv->currentRecords.pop_back();
 		
-		//pEnv->pop();
 		if (isNewScope)
 		{
 			pEnv->exitScope();
+		}
+
+		{
+			scopeLog.write("RecordConstractor result: ");
+			for (const auto& keyval : record.values)
+			{
+				scopeLog.write("    " + keyval.first + ": " + exprStr2(LRValue(keyval.second), pEnv));
+			}
 		}
 
 		const Address address = pEnv->makeTemporaryValue(record);
@@ -2396,95 +2522,19 @@ namespace cgl
 		return LRValue(address);
 	}
 
-	LRValue Eval::operator()(const RecordInheritor& record)
+	LRValue Eval::inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder)
 	{
-		UpdateCurrentLocation(record);
+		auto scopeLog = ScopeLog("Eval::inheritRecord(const LocationInfo& info, const Record& original, const RecordConstractor& adder)");
 
-		boost::optional<Record> recordOpt;
-
-		/*
-		if (auto opt = AsOpt<Identifier>(record.original))
-		{
-			//auto originalOpt = pEnv->find(opt.get().name);
-			boost::optional<const Val&> originalOpt = pEnv->dereference(pEnv->findAddress(opt.get()));
-			if (!originalOpt)
-			{
-				//エラー：未定義のレコードを参照しようとした
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
-			}
-
-			recordOpt = AsOpt<Record>(originalOpt.get());
-			if (!recordOpt)
-			{
-				//エラー：識別子の指すオブジェクトがレコード型ではない
-				std::cerr << "Error(" << __LINE__ << ")\n";
-				return 0;
-			}
-		}
-		else if (auto opt = AsOpt<Record>(record.original))
-		{
-			recordOpt = opt.get();
-		}
-		*/
-
-		//Val originalRecordRef = boost::apply_visitor(*this, record.original);
-		//Val originalRecordVal = pEnv->expandRef(originalRecordRef);
-
-		/*
-		a{}を評価する手順
-		(1) オリジナルのレコードaのクローン(a')を作る
-		(2) a'の各キーと値に対する参照をローカルスコープに追加する
-		(3) 追加するレコードの中身を評価する
-		(4) ローカルスコープの参照値を読みレコードに上書きする //リストアクセスなどの変更処理
-		(5) レコードをマージする //ローカル変数などの変更処理
-		*/
-
-		if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("path"))
-		{
-			Record pathRecord;
-			pathRecord.type = RecordType::RecordTypePath;
-			recordOpt = pathRecord;
-		}
-		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("text"))
-		{
-			Record pathRecord;
-			pathRecord.type = RecordType::RecordTypeText;
-			recordOpt = pathRecord;
-		}
-		else if (IsType<Identifier>(record.original) && As<Identifier>(record.original).toString() == std::string("shapepath"))
-		{
-			Record pathRecord;
-			pathRecord.type = RecordType::RecordTypeShapePath;
-			recordOpt = pathRecord;
-		}
-		else
-		{
-			Val originalRecordVal = pEnv->expand(boost::apply_visitor(*this, record.original), record);
-			if (auto opt = AsOpt<Record>(originalRecordVal))
-			{
-				recordOpt = opt.get();
-			}
-			else
-			{
-				CGL_ErrorNode(record, "レコード値ではない値に対してレコード継承式を適用しようとしました。");
-			}
-
-			pEnv->printContext(true);
-			CGL_DebugLog("Original:");
-			printVal(originalRecordVal, pEnv);
-		}
-
-		
 		//(1)オリジナルのレコードaのクローン(a')を作る
-		Record clone = As<Record>(Clone(pEnv, recordOpt.get(), record));
+		Record clone = As<Record>(Clone(pEnv, original, info));
 
 		CGL_DebugLog("Clone:");
 		printVal(clone, pEnv);
 
 		if (pEnv->temporaryRecord)
 		{
-			CGL_ErrorNodeInternal(record, "二重にレコード継承式を適用しようとしました。temporaryRecordは既に存在しています。");
+			CGL_ErrorNodeInternal(info, "二重にレコード継承式を適用しようとしました。temporaryRecordは既に存在しています。");
 		}
 		pEnv->temporaryRecord = clone;
 
@@ -2493,13 +2543,13 @@ namespace cgl
 		for (auto& keyval : clone.values)
 		{
 			pEnv->makeVariable(keyval.first, keyval.second);
-			
+
 			CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
 		}
 
 		//(3) 追加するレコードの中身を評価する
-		Expr expr = record.adder;
-		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr), record);
+		Expr expr = adder;
+		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr), info);
 
 		//(4) ローカルスコープの参照値を読みレコードに上書きする
 		//レコード中のコロン式はレコードの最後でkeylistを見て値が紐づけられるので問題ないが
@@ -2519,75 +2569,36 @@ namespace cgl
 		}
 
 		pEnv->exitScope();
-		
-		return pEnv->makeTemporaryValue(recordValue);
 
-		/*
-		//(2)
-		pEnv->enterScope();
-		for (auto& keyval : clone.values)
-		{
-			//pEnv->bindObjectRef(keyval.first, keyval.second);
-			pEnv->makeVariable(keyval.first, keyval.second);
-
-			CGL_DebugLog(std::string("Bind ") + keyval.first + " -> " + "Address(" + keyval.second.toString() + ")");
-		}
-
-		CGL_DebugLog("");
-
-		//(3)
-		Expr expr = record.adder;
-		//Val recordValue = boost::apply_visitor(*this, expr);
-		Val recordValue = pEnv->expand(boost::apply_visitor(*this, expr));
-		if (auto opt = AsOpt<Record>(recordValue))
-		{
-			CGL_DebugLog("");
-
-			//(4)
-			for (auto& keyval : recordOpt.get().values)
-			{
-				clone.values[keyval.first] = pEnv->findAddress(keyval.first);
-			}
-
-			CGL_DebugLog("");
-
-			//(5)
-			MargeRecordInplace(clone, opt.get());
-
-			CGL_DebugLog("");
-
-			//TODO:ここで制約処理を行う
-
-			//pEnv->pop();
-			pEnv->exitScope();
-
-			//return RValue(clone);
-			return pEnv->makeTemporaryValue(clone);
-
-			//MargeRecord(recordOpt.get(), opt.get());
-		}
-
-		CGL_DebugLog("");
-
-		//pEnv->pop();
-		pEnv->exitScope();
-		*/
+		return LRValue(pEnv->makeTemporaryValue(recordValue));
 	}
 
 	LRValue Eval::operator()(const DeclSat& node)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const DeclSat& node)");
+
 		UpdateCurrentLocation(node);
 
 		//ここでクロージャを作る必要がある
-		ClosureMaker closureMaker(pEnv, std::set<std::string>());
-		const Expr closedSatExpr = boost::apply_visitor(closureMaker, node.expr);
+		const Expr closedSatExpr = AsClosure(*pEnv, node.expr, std::set<std::string>());
 		//innerSatClosures.push_back(closedSatExpr);
 
 		pEnv->enterScope();
+		{
+			std::stringstream ss;
+			printExpr(closedSatExpr, pEnv, ss);
+			scopeLog.write("check constraint satisfiability:");
+			scopeLog.write(ss.str());
+		}
 		//DeclSat自体は現在制約が満たされているかどうかを評価結果として返す
 		const Val result = pEnv->expand(boost::apply_visitor(*this, closedSatExpr), node);
 		pEnv->exitScope();
 
+		{
+			std::stringstream ss;
+			printVal2(result, pEnv, ss);
+			scopeLog.write("result: " + ss.str());
+		}
 		if (pEnv->currentRecords.empty())
 		{
 			CGL_ErrorNode(node, "制約宣言はレコード式の中にしか書くことができません。");
@@ -2602,10 +2613,12 @@ namespace cgl
 
 	LRValue Eval::operator()(const DeclFree& node)
 	{
+		auto scopeLog = ScopeLog("Eval::operator()(const DeclFree& node)");
+
 		UpdateCurrentLocation(node);
 
 		//std::cout << "Begin LRValue Eval::operator()(const DeclFree& node)" << std::endl;
-		for (const auto& accessor : node.accessors)
+		for (const auto& decl : node.accessors)
 		{
 			//std::cout << "  accessor:" << std::endl;
 			if (pEnv->currentRecords.empty())
@@ -2613,10 +2626,10 @@ namespace cgl
 				CGL_ErrorNode(node, "var宣言はレコード式の中にしか書くことができません。");
 			}
 
-			ClosureMaker closureMaker(pEnv, std::set<std::string>());
-			const Expr varExpr = accessor;
-			const Expr closedVarExpr = boost::apply_visitor(closureMaker, varExpr);
+			const Expr varExpr = decl.accessor;
+			const Expr closedVarExpr = AsClosure(*pEnv, varExpr, std::set<std::string>());
 
+			auto& freeVars = pEnv->currentRecords.back().get().boundedFreeVariables;
 			/*std::cout << "VarExpr: ";
 			printExpr2(varExpr, pEnv, std::cout);
 			std::cout << "\n";
@@ -2626,129 +2639,179 @@ namespace cgl
 
 			if (IsType<Accessor>(closedVarExpr))
 			{
-				pEnv->currentRecords.back().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
+				//pEnv->currentRecords.back().get().freeVariables.push_back(As<Accessor>(closedVarExpr));
+				freeVars.emplace_back(As<Accessor>(closedVarExpr));
 			}
 			else if (IsType<Identifier>(closedVarExpr))
 			{
 				Accessor result(closedVarExpr);
-				pEnv->currentRecords.back().get().freeVariables.push_back(result);
+				//pEnv->currentRecords.back().get().freeVariables.push_back(result);
+				freeVars.emplace_back(result);
 			}
 			else if (IsType<LRValue>(closedVarExpr) && As<LRValue>(closedVarExpr).isReference())
 			{
-				pEnv->currentRecords.back().get().freeVariables.push_back(As<LRValue>(closedVarExpr).reference());
+				//pEnv->currentRecords.back().get().freeVariables.push_back(As<LRValue>(closedVarExpr).reference());
+				freeVars.emplace_back(As<LRValue>(closedVarExpr).reference());
 			}
 			else
 			{
 				CGL_ErrorNode(node, "var宣言には識別子かアクセッサしか用いることができません。");
 			}
+
+			if (decl.range)
+			{
+				const Expr closedRangeExpr = AsClosure(*pEnv, decl.range.get(), std::set<std::string>());
+				freeVars.back().freeRange = closedRangeExpr;
+			}
 		}
 
-		for (const auto& range : node.ranges)
-		{
-			ClosureMaker closureMaker(pEnv, std::set<std::string>());
-			const Expr closedRangeExpr = boost::apply_visitor(closureMaker, range);
-			pEnv->currentRecords.back().get().freeRanges.push_back(closedRangeExpr);
-		}
 		//std::cout << "End LRValue Eval::operator()(const DeclFree& node)" << std::endl;
 		return RValue(0);
 	}
 
 	LRValue Eval::operator()(const Accessor& accessor)
 	{
-		/*
-		ObjectReference result;
-
-		Val headValue = boost::apply_visitor(*this, accessor.head);
-		if (auto opt = AsOpt<Identifier>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else if (auto opt = AsOpt<Record>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else if (auto opt = AsOpt<List>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else if (auto opt = AsOpt<FuncVal>(headValue))
-		{
-			result.headValue = opt.get();
-		}
-		else
-		{
-			//エラー：識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return 0;
-		}
-		*/
+		auto scopeLog = ScopeLog(__FUNCTION__ + accessor.getInfo());
 
 		Address address;
+		size_t currentIndex = 0;
 
-		/*
-		Val headValue = boost::apply_visitor(*this, accessor.head);
-		if (auto opt = AsOpt<Address>(headValue))
 		{
-			address = opt.get();
+			std::stringstream ss;
+			printExpr(accessor, pEnv, ss);
+			scopeLog.write("Accessor :\n" + ss.str());
 		}
-		else if (auto opt = AsOpt<Record>(headValue))
-		{
-			address = pEnv->makeTemporaryValue(opt.get());
-		}
-		else if (auto opt = AsOpt<List>(headValue))
-		{
-			address = pEnv->makeTemporaryValue(opt.get());
-		}
-		else if (auto opt = AsOpt<FuncVal>(headValue))
-		{
-			address = pEnv->makeTemporaryValue(opt.get());
-		}
-		else
-		{
-			//エラー：識別子かリテラル以外（評価結果としてオブジェクトを返すような式）へのアクセスには未対応
-			std::cerr << "Error(" << __LINE__ << ")\n";
-			return 0;
-		}
-		*/
 
-
-		if (IsType<Identifier>(accessor.head))
+		// 遅延識別子呼び出し
+		if (IsType<Identifier>(accessor.head) && As<Identifier>(accessor.head).isDeferredCall())
 		{
 			const auto head = As<Identifier>(accessor.head);
-			if (!pEnv->findAddress(head).isValid())
-			{
-				CGL_ErrorNode(accessor, msgs::Undefined(head));
-			}
-		}
 
-		LRValue headValue = boost::apply_visitor(*this, accessor.head);
-		if (headValue.isLValue())
-		{
-			address = headValue.address(*pEnv);
-		}
-		else
-		{
-			Val evaluated = headValue.evaluated();
-			if (auto opt = AsOpt<Record>(evaluated))
+			if (!accessor.accesses.empty() && IsType<FunctionAccess>(accessor.accesses.front()))
 			{
-				address = pEnv->makeTemporaryValue(opt.get());
-			}
-			else if (auto opt = AsOpt<List>(evaluated))
-			{
-				address = pEnv->makeTemporaryValue(opt.get());
-			}
-			else if (auto opt = AsOpt<FuncVal>(evaluated))
-			{
-				address = pEnv->makeTemporaryValue(opt.get());
+				scopeLog.write("deferred call func \"" + head.toString() + "\"");
+				auto funcAccess = As<FunctionAccess>(accessor.accesses.front());
+
+				if (auto defFuncOpt = pEnv->getDeferredFunction(head))
+				{
+					DefFuncWithScopeInfo& recFunc = defFuncOpt.get();
+					std::reference_wrapper<const DefFunc> defFunc = std::cref(recFunc.generalDef);
+
+					{
+						std::stringstream ss;
+						printExpr2(recFunc.generalDef, pEnv, ss);
+						scopeLog.write("generalDef: " + ss.str());
+					}
+
+					//++recFunc.callDepth;
+					if (pEnv->m_MaxRecDepth <= pEnv->m_recDepth)
+					{
+						address = pEnv->makeTemporaryValue(0);
+					}
+					else
+					{
+						++pEnv->m_recDepth;
+						{
+							size_t memoHash = std::hash<int>()(pEnv->m_recDepth);
+
+							scopeLog.write("funcAccess.actualArguments: " + std::to_string(funcAccess.actualArguments.size()));
+							std::vector<Address> args;
+							for (const auto& expr : funcAccess.actualArguments)
+							{
+								const LRValue currentArgument = boost::apply_visitor(*this, expr);
+
+								boost::hash_combine(memoHash, GetHash(pEnv->expand(currentArgument, accessor), *pEnv));
+
+								currentArgument.push_back(args, *pEnv);
+							}
+
+							//const RecMemoInfo memoIndex(pEnv->m_recDepth, args);
+							//const auto memoIt = recFunc.memo.find(memoIndex);
+							const auto memoIt = recFunc.memo.find(memoHash);
+							if (memoIt == recFunc.memo.end())
+							{
+								//auto specialDefIt = recFunc.specialDefs.find(recFunc.callDepth);
+								auto specialDefIt = recFunc.specialDefs.find(pEnv->m_recDepth);
+								if (specialDefIt != recFunc.specialDefs.end())
+								{
+									defFunc = std::cref(specialDefIt->second);
+								}
+
+								const FuncVal function(defFunc.get().arguments, defFunc.get().expr);
+
+								scopeLog.write("args: " + std::to_string(args.size()));
+								const Val returnedValue = pEnv->expand(callFunction(accessor, function, args), accessor);
+								//printVal(returnedValue, pEnv, std::cerr, recFunc.callDepth);
+								//printVal(returnedValue, pEnv, std::cerr, pEnv->m_recDepth);
+								address = pEnv->makeTemporaryValue(returnedValue);
+
+								recFunc.memo.insert({ memoHash, address });
+							}
+							else
+							{
+								address = memoIt->second;
+							}
+						}
+						//--recFunc.callDepth;
+						--pEnv->m_recDepth;
+					}
+				}
+				else
+				{
+					const std::string message = std::string("遅延識別子\"") + static_cast<std::string>(head) +
+						"\"に一致する遅延呼び出し可能な識別子が定義されていません。";
+					CGL_ErrorNode(accessor, message);
+				}
 			}
 			else
 			{
-				CGL_ErrorNodeInternal(accessor, "アクセッサの先頭の評価結果がレコード、リスト、関数のどの値でもありませんでした。");
+				CGL_ErrorNode(accessor, "内部エラー : StaticDeferredIdentifierSearcherの置き換えミス？");
+			}
+
+			currentIndex = 1;
+		}
+		// 通常の変数アクセス
+		else
+		{
+			if (IsType<Identifier>(accessor.head))
+			{
+				const auto head = As<Identifier>(accessor.head);
+				if (!pEnv->findAddress(head).isValid())
+				{
+					CGL_ErrorNode(accessor, msgs::Undefined(head));
+				}
+			}
+
+			LRValue headValue = boost::apply_visitor(*this, accessor.head);
+			if (headValue.isLValue() && headValue.deref(*pEnv))
+			{
+				address = headValue.deref(*pEnv).get();
+			}
+			else
+			{
+				Val evaluated = headValue.evaluated();
+				if (auto opt = AsOpt<Record>(evaluated))
+				{
+					address = pEnv->makeTemporaryValue(opt.get());
+				}
+				else if (auto opt = AsOpt<List>(evaluated))
+				{
+					address = pEnv->makeTemporaryValue(opt.get());
+				}
+				else if (auto opt = AsOpt<FuncVal>(evaluated))
+				{
+					address = pEnv->makeTemporaryValue(opt.get());
+				}
+				else
+				{
+					CGL_ErrorNodeInternal(accessor, "アクセッサの先頭の評価結果がレコード、リスト、関数のどの値でもありませんでした。");
+				}
 			}
 		}
 
-		for (const auto& access : accessor.accesses)
+		for (;currentIndex < accessor.accesses.size(); ++currentIndex)
 		{
+			const auto& access = accessor.accesses[currentIndex];
 			//boost::optional<Val&> objOpt = pEnv->expandOpt(address);
 			LRValue lrAddress = LRValue(address);
 			boost::optional<Val&> objOpt = pEnv->mutableExpandOpt(lrAddress);
@@ -2761,12 +2824,12 @@ namespace cgl
 
 			if (auto listAccessOpt = AsOpt<ListAccess>(access))
 			{
-				Val value = pEnv->expand(boost::apply_visitor(*this, listAccessOpt.get().index), accessor);
-
 				if (!IsType<List>(objRef))
 				{
 					CGL_ErrorNode(accessor, "リストでない値に対してリストアクセスを行おうとしました。");
 				}
+
+				Val value = pEnv->expand(boost::apply_visitor(*this, listAccessOpt.get().index), accessor);
 
 				List& list = As<List>(objRef);
 
@@ -2814,14 +2877,14 @@ namespace cgl
 
 				address = it->second;
 			}
-			else
+			else if (auto recordAccessOpt = AsOpt<FunctionAccess>(access))
 			{
-				auto funcAccess = As<FunctionAccess>(access);
-
 				if (!IsType<FuncVal>(objRef))
 				{
 					CGL_ErrorNode(accessor, "関数でない値に対して関数呼び出しを行おうとしました。");
 				}
+
+				auto funcAccess = As<FunctionAccess>(access);
 
 				const FuncVal& function = As<FuncVal>(objRef);
 
@@ -2841,18 +2904,24 @@ namespace cgl
 				std::vector<Address> args;
 				for (const auto& expr : funcAccess.actualArguments)
 				{
-					const LRValue currentArgument = pEnv->expand(boost::apply_visitor(*this, expr), accessor);
-					if (currentArgument.isLValue())
-					{
-						args.push_back(currentArgument.address(*pEnv));
-					}
-					else
-					{
-						args.push_back(pEnv->makeTemporaryValue(currentArgument.evaluated()));
-					}
+					const LRValue currentArgument = boost::apply_visitor(*this, expr);
+					currentArgument.push_back(args, *pEnv);
 				}
 
 				const Val returnedValue = pEnv->expand(callFunction(accessor, function, args), accessor);
+				address = pEnv->makeTemporaryValue(returnedValue);
+			}
+			else
+			{
+				if (!IsType<Record>(objRef))
+				{
+					CGL_ErrorNode(accessor, "レコードでない値に対して継承式を適用しようとしました。");
+				}
+
+				auto inheritAccess = As<InheritAccess>(access);
+
+				const Record& record = As<Record>(objRef);
+				const Val returnedValue = pEnv->expand(inheritRecord(accessor, record, inheritAccess.adder), accessor);
 				address = pEnv->makeTemporaryValue(returnedValue);
 			}
 		}
@@ -2860,88 +2929,43 @@ namespace cgl
 		return LRValue(address);
 	}
 
-
-	bool HasFreeVariables::operator()(const LRValue& node)
+	//代入式の右辺がDefFuncかどうかでStaticDeferredIdentifierSearcherの挙動が変わるため、
+	//無意味なLinesの入れ子は取り除く必要がある
+	class RedundantNodeRemover : public ExprTransformer
 	{
-		if (node.isRValue())
+	public:
+		RedundantNodeRemover() = default;
+
+		Expr operator()(const LRValue& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Identifier& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const UnaryExpr& node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const BinaryExpr& node)override { return ExprTransformer::operator()(node); }
+
+		Expr operator()(const Lines& node)override
 		{
-			const Val& val = node.evaluated();
-			if (IsType<double>(val) || IsType<int>(val) || IsType<bool>(val))
+			if (node.size() == 1)
 			{
-				return false;
+				return boost::apply_visitor(*this, node.exprs.front());
 			}
-
-			CGL_ErrorNodeInternal(node, "制約式の評価結果が不正な値でした。");
+			return ExprTransformer::operator()(node);
 		}
 
-		Address address = node.address(*pEnv);
-		for (const auto& freeVal : freeVariables)
-		{
-			if (address == freeVal)
-			{
-				return true;
-			}
-		}
+		Expr operator()(const DefFunc & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const If & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const For & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const ListConstractor & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const KeyExpr & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const RecordConstractor & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Accessor & node)override { return ExprTransformer::operator()(node); }
 
-		return false;
-	}
+		Expr operator()(const DeclSat & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const DeclFree & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Import & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Range & node)override { return ExprTransformer::operator()(node); }
+		Expr operator()(const Return & node)override { return ExprTransformer::operator()(node); }
+	};
 
-	bool HasFreeVariables::operator()(const Identifier& node)
-	{
-		Address address = pEnv->findAddress(node);
-		for (const auto& freeVal : freeVariables)
-		{
-			if (address == freeVal)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	bool HasFreeVariables::operator()(const UnaryExpr& node)
-	{
-		return boost::apply_visitor(*this, node.lhs);
-	}
-
-	bool HasFreeVariables::operator()(const BinaryExpr& node)
-	{
-		const bool lhs = boost::apply_visitor(*this, node.lhs);
-		if (lhs)
-		{
-			return true;
-		}
-
-		const bool rhs = boost::apply_visitor(*this, node.rhs);
-		return rhs;
-	}
-
-	bool HasFreeVariables::operator()(const Accessor& node)
-	{
-		Expr expr = node;
-		Eval evaluator(pEnv);
-		const LRValue value = boost::apply_visitor(evaluator, expr);
-
-		if (value.isLValue())
-		{
-			const Address address = value.address(*pEnv);
-
-			for (const auto& freeVal : freeVariables)
-			{
-				if (address == freeVal)
-				{
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		CGL_ErrorNodeInternal(node, "制約式の評価結果が不正な値でした。");
-		return false;
-	}
-
+	/*
 	boost::optional<const Val&> evalExpr(const Expr& expr)
 	{
 		auto env = Context::Make();
@@ -2958,6 +2982,73 @@ namespace cgl
 
 		return result;
 	}
+	*/
+	LRValue ExecuteProgram(const Expr& expr, std::shared_ptr<Context> pContext)
+	{
+		Eval evaluator(pContext);
+		return boost::apply_visitor(evaluator, expr);
+	}
+
+	LRValue ExecuteProgramWithRec(const Expr& expr, std::shared_ptr<Context> pContext)
+	{
+		if (!isContextFreeMode)
+		{
+			return ExecuteProgram(expr, pContext);
+		}
+
+		RedundantNodeRemover remover;
+		Expr expr1 = boost::apply_visitor(remover, expr);
+
+		const bool debugPrint = true;
+		if (debugPrint)
+		{
+			std::cerr << "removed expr:" << std::endl;
+			printExpr(expr1, pContext, std::cerr);
+			std::cerr << "------------------------------" << std::endl;
+		}
+		
+		/*const auto currentLocalVars = pContext->getVisibleIdentifiers();
+		if (debugPrint)
+		{
+			std::cerr << "currentLocalVars:" << std::endl;
+			for (const auto& var : currentLocalVars)
+			{
+				std::cerr << var << std::endl;
+			}
+			std::cerr << "------------------------------" << std::endl;
+		}*/
+		
+		//StaticDeferredIdentifierSearcher replacer(pContext->getVisibleIdentifiers(), {}, pContext->deferredIdentifiers);
+		StaticDeferredIdentifierSearcher2 replacer(pContext->getVisibleIdentifiers(), {}, pContext->deferredIdentifiers);
+		Expr deferredExpr = boost::apply_visitor(replacer, expr1);
+		if (debugPrint)
+		{
+			std::cerr << "replaced expr:" << std::endl;
+			printExpr(deferredExpr, pContext, std::cerr);
+			std::cerr << "------------------------------" << std::endl;
+		}
+		
+		Eval evaluator(pContext);
+		return boost::apply_visitor(evaluator, deferredExpr);
+	}
+
+	/*
+	boost::optional<const Val&> ExecuteProgramWithRec(const Expr& expr, std::shared_ptr<Context> pContext)
+	{
+		if (!pContext)
+		{
+			pContext = Context::Make();
+		}
+
+		StaticDeferredIdentifierSearcher replacer(pContext->getVisibleIdentifiers(), {});
+		Expr deferredExpr = boost::apply_visitor(replacer, expr);
+
+		pContext->deferredIdentifiers = replacer.deferredIdentifiers;
+
+		Eval evaluator(pContext);
+		return pContext->expandOpt(boost::apply_visitor(evaluator, deferredExpr));
+	}
+	*/
 
 	bool IsEqualVal(const Val& value1, const Val& value2)
 	{
@@ -3147,10 +3238,6 @@ namespace cgl
 		else if (IsType<RecordConstractor>(value1))
 		{
 			return As<RecordConstractor>(value1) == As<RecordConstractor>(value2);
-		}
-		else if (IsType<RecordInheritor>(value1))
-		{
-			return As<RecordInheritor>(value1) == As<RecordInheritor>(value2);
 		}
 		else if (IsType<DeclSat>(value1))
 		{

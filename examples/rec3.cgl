@@ -1,0 +1,8 @@
+A\_10 = Square{scale: X2(100)}
+
+A = Shape{
+    a: Square{scale: X2(100)}
+    b: A{scale: X2(0.9), pos: Vec2(100, 0), angle: 30}
+}
+
+A{}

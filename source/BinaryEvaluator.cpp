@@ -1,7 +1,9 @@
 #include <cmath>
+#include <algorithm>
 #include <Pita/Node.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/IntrinsicGeometricFunctions.hpp>
+#include <Pita/Printer.hpp>
 
 namespace cgl
 {
@@ -37,6 +39,11 @@ namespace cgl
 		{
 			return -As<double>(lhs);
 		}
+		else if (IsVec2(lhs))
+		{
+			Eigen::Vector2d v = AsVec2(lhs, env);
+			return MakeRecord("x", -v.x(), "y", -v.y()).unpacked(env);
+		}
 
 		CGL_Error("不正な式です");
 		return 0;
@@ -44,14 +51,27 @@ namespace cgl
 
 	Val AndFunc(const Val& lhs, const Val& rhs, Context& context)
 	{
-		if (IsType<bool>(lhs) && IsType<bool>(rhs))
+		if ((IsType<bool>(lhs) || IsNum(lhs)) && (IsType<bool>(rhs) || IsNum(rhs)))
 		{
-			return As<bool>(lhs) && As<bool>(rhs);
-		}
-		else if (IsNum(lhs) && IsNum(rhs))
-		{
-			const double eps = 1.e-4;
-			return AsDouble(lhs) < eps && AsDouble(rhs) < eps;
+			if (IsType<bool>(lhs) && IsType<bool>(rhs))
+			{
+				return As<bool>(lhs) && As<bool>(rhs);
+			}
+			else if (IsNum(lhs) && IsNum(rhs))
+			{
+				const double eps = 1.e-4;
+				return AsDouble(lhs) < eps && AsDouble(rhs) < eps;
+			}
+			else if (IsType<bool>(lhs) && IsNum(rhs))
+			{
+				const double eps = 1.e-4;
+				return As<bool>(lhs) && AsDouble(rhs) < eps;
+			}
+			else if (IsNum(lhs) && IsType<bool>(rhs))
+			{
+				const double eps = 1.e-4;
+				return AsDouble(lhs) < eps && As<bool>(rhs);
+			}
 		}
 		else if (IsShape(lhs) && IsShape(rhs))
 		{
@@ -59,6 +79,14 @@ namespace cgl
 				Packed(lhs, context),
 				Packed(rhs, context), context.m_weakThis.lock()), context);
 		}
+
+		std::cout << "lhs: \n";
+		printVal2(lhs, nullptr, std::cout);
+		std::cout << std::endl;
+
+		std::cout << "rhs: \n";
+		printVal2(rhs, nullptr, std::cout);
+		std::cout << std::endl;
 
 		CGL_Error("不正な式です");
 		return 0;
@@ -351,6 +379,21 @@ namespace cgl
 			Eigen::Vector2d v = AsVec2(lhs, env) + AsVec2(rhs, env);
 			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
 		}
+		else if (IsType<CharString>(lhs))
+		{
+			if (IsType<CharString>(rhs))
+			{
+				CharString str = As<CharString>(lhs);
+				str.str.append(As<CharString>(rhs).str);
+				return str;
+			}
+			std::stringstream ss;
+			ValuePrinter2 printer(nullptr, ss, 0);
+			boost::apply_visitor(printer, rhs);
+			CharString lhsStr = As<CharString>(lhs);
+			lhsStr.str.append(AsUtf32(ss.str()));
+			return lhsStr;
+		}
 
 		CGL_Error("不正な式です");
 		return 0;
@@ -403,6 +446,14 @@ namespace cgl
 			return MakeRecord("x", v.x(), "y", v.y()).unpacked(env);
 		}
 
+		std::cout << "lhs: \n";
+		printVal2(lhs, nullptr, std::cout);
+		std::cout << std::endl;
+
+		std::cout << "rhs: \n";
+		printVal2(rhs, nullptr, std::cout);
+		std::cout << std::endl;
+
 		CGL_Error("不正な式です");
 		return 0;
 	}
@@ -440,7 +491,32 @@ namespace cgl
 	{
 		if (IsNum(lhs) && IsNum(rhs))
 		{
-			return AsDouble(lhs) / AsDouble(rhs);
+			if (IsType<int>(lhs) && IsType<int>(rhs))
+			{
+				const int x = As<int>(lhs);
+				const int y = As<int>(rhs);
+				if (y == 0)
+				{
+					return 1;
+				}
+				else if (1 <= y)
+				{
+					int result = 1;
+					for (int i = 0; i < y; ++i)
+					{
+						result *= x;
+					}
+					return result;
+				}
+				else
+				{
+					return std::pow(AsDouble(lhs), AsDouble(rhs));
+				}
+			}
+			else
+			{
+				return std::pow(AsDouble(lhs), AsDouble(rhs));
+			}
 		}
 		else if (IsShape(lhs) && IsShape(rhs))
 		{

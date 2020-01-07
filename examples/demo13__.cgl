@@ -1,0 +1,44 @@
+EnableGC(true)
+
+main = Shape{
+    a = Vec2(200, 0)
+    b = Vec2(300, 150)
+    c = Vec2(0, 150)
+
+    tri = MakeTriangle(a,b,c)
+
+    outerCirclePos = (a+b+c)/3.0
+    outerCircleRadius = 5.0
+
+    innerCirclePos = (a+b+c)/3.0
+    innerCircleRadius = 5.0
+
+    line: (->[[a, b],[c, b],[a, c]])
+    
+    innerCircle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(innerCircleRadius), pos: innerCirclePos}).polygon
+    )}
+
+    outerCircle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(outerCircleRadius), pos: outerCirclePos}).polygon
+    )}
+    
+    sat( Cmaes(innerCircleRadius),
+        Touch(Line(a, b), innerCircle) & 
+        Touch(Line(c, b), innerCircle) & 
+        Touch(Line(a, c), innerCircle)
+    )
+    sat(
+        Touch(a, ShapeOuterPath(outerCircle)) & 
+        Touch(b, ShapeOuterPath(outerCircle)) & 
+        Touch(c, ShapeOuterPath(outerCircle))
+    )
+    //var(innerCirclePos in makeTriangle(a,b,c), innerCircleRadius in [1.0, 150])
+    var(innerCirclePos, innerCircleRadius)
+    var(outerCirclePos, outerCircleRadius)
+
+    stroke: Rgb(100, 100, 100)
+    fill: 0
+}
+
+main

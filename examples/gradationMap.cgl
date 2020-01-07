@@ -1,0 +1,125 @@
+/*
+record1 = {
+    a: {xs:[1,2,3]}
+    b: [1,2,3]
+    c: {xs:[1,2,3]}
+    funcA: (->a.xs = a.xs @ [4])
+    funcB: (->b = b @ [4])
+    funcC: (->Push(c.xs, 4))
+}
+
+Print(record1)
+record1.funcA()
+record1.funcB()
+record1.funcC()
+Print(record1)
+*/
+
+LerpColor = (a, b, t -> Rgb(a.r + (b.r - a.r)*t, a.g + (b.g - a.g)*t, a.b + (b.b - a.b)*t))
+UpperIndex = (list, t ->
+    lowerIndex = 0
+    for i in 0:Size(list)-1 do(
+        if list[i].t < t
+        then(
+            lowerIndex = i
+        )
+    )
+    lowerIndex + 1
+)
+
+GradationMap = {
+    list: []
+    add: (t, c -> 
+        Push(list, {t:t, c:c})
+        Sort(list, (a, b -> a.t < b.t))
+    )
+    get: (t -> 
+        upperIndex = UpperIndex(list, t)
+        lowerIndex = upperIndex - 1
+        currentTWidth = list[upperIndex].t - list[lowerIndex].t
+        dt = (t - list[lowerIndex].t) / currentTWidth
+        LerpColor(list[lowerIndex].c, list[upperIndex].c, dt)
+    )
+}
+
+map = GradationMap{}
+dt = 1.0/9.0
+map.add(dt*0, Rgb(255,255,255))
+map.add(dt*1, Rgb(248,231,76))
+map.add(dt*2, Rgb(248,191,40))
+map.add(dt*3, Rgb(240,136,35))
+map.add(dt*4, Rgb(231,89,30))
+map.add(dt*5, Rgb(209,38,98))
+map.add(dt*6, Rgb(173,0,142))
+map.add(dt*7, Rgb(120,0,146))
+map.add(dt*8, Rgb(43,0,118))
+map.add(dt*9, Rgb(0,0,0))
+
+main = Shape{
+    frame: Square{scale: X2(500), fill: 0}
+    xSize = 5
+    unitWidth = frame.scale.x / xSize
+    rows: [Shape{
+        unitHeight = frame.scale.y
+        rects: [Square{scale: Vec2(unitWidth, unitHeight), fill: map.get(0.5)}]
+        sat( Contact(BottomLeft(rects[0]), BottomLeft(frame)) )
+        var(rects[0].pos)
+    }]
+    for i in 1:xSize-1 do(
+        ySize = 2^i
+        unitHeight = frame.scale.y / ySize
+        rows[i] = Shape{
+            rects: for rectIndex in 0:ySize-1 list(
+                Square{scale: Vec2(unitWidth,unitHeight), fill: map.get(0.5/ySize + (1.0/ySize)*rectIndex)}
+            )
+            sat( Contact(BottomLeft(rects[0]), BottomRight(rows[i-1].rects[0])) )
+            for rectIndex in 1:ySize-1 do(
+                sat( Contact(BottomLeft(rects[rectIndex]), TopLeft(rects[rectIndex-1])) )
+            )
+            var(rects[*].pos)
+        }
+    )
+    angle: -45
+}
+
+/*
+main = Shape{
+    frame: Square{scale: X2(400), fill: 0}
+    s1: Shape{
+        lower: Square{scale: Vec2(100,200), fill: map.get(0.25)}
+        upper: Square{scale: Vec2(100,200), fill: map.get(0.75)}
+        sat( Contact(BottomLeft(lower), BottomLeft(frame)) & Contact(TopLeft(upper), TopLeft(frame)) )
+        var(lower.pos, upper.pos)
+    }
+    s2: Shape{
+        ss: for i in 0:3 list(
+            Square{scale: Vec2(100,100), fill: map.get(0.25/2 + 0.25*i)}
+        )
+        sat( Contact(BottomLeft(ss[0]), BottomRight(s1.lower)) )
+        for i in 1:3 do(
+            sat( Contact(BottomLeft(ss[i]), TopLeft(ss[i-1])) )
+        )
+        var(ss[*].pos)
+    }
+    s3: Shape{
+        ss: for i in 0:7 list(
+            Square{scale: Vec2(100,50), fill: map.get(0.125/2 + 0.125*i)}
+        )
+        sat( Contact(BottomLeft(ss[0]), BottomRight(s2.ss[0])) )
+        for i in 1:7 do(
+            sat( Contact(BottomLeft(ss[i]), TopLeft(ss[i-1])) )
+        )
+        var(ss[*].pos)
+    }
+    s4: Shape{
+        ss: for i in 0:15 list(
+            Square{scale: Vec2(100,25), fill: map.get(0.0625/2 + 0.0625*i)}
+        )
+        sat( Contact(BottomLeft(ss[0]), BottomRight(s3.ss[0])) )
+        for i in 1:15 do(
+            sat( Contact(BottomLeft(ss[i]), TopLeft(ss[i-1])) )
+        )
+        var(ss[*].pos)
+    }
+}
+*/

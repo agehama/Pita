@@ -1,8 +1,7 @@
+EnableGC(true)
+
 baseColor = Rgb(245, 245, 245)
 mainColor = Rgb(49, 187, 222)
-
-fontPath = "C:/Users/dphs1/AppData/Roaming/Adobe/CoreSync/plugins/livetype/r/35668"
-sourceFontPath = "C:/Windows/Fonts/SourceCodePro-Regular.ttf"
 
 sourceCodeText =
 "{
@@ -15,30 +14,30 @@ sourceCodeText =
 }"
 
 sourceCodeShape = {
-    a: BuildText(sourceCodeText, {}, sourceFontPath)
+    a: Text(sourceCodeText)
 }
 
 main = {
     a: Square{scale: X2(300), angle: 45, fill: mainColor, 
         basePos: (->Lerp(topLeft(), bottomRight(), 0.3))}
     b: a{pos: a.topLeft(), fill: mainColor
-        sat( Distant(a.top(), bottom(), 10) & parallel([a.bottom(), a.top()], [a.top(), bottom()]) ), 
+        sat( Distant(a.top(), bottom(), 10) & Parallel([a.bottom(), a.top()], [a.top(), bottom()]) ), 
         var(pos)}
     c: a{pos: a.topRight(), fill: mainColor
-        sat( Distant(a.right(), left(), 10) & parallel([a.left(), a.right()], [a.right(), left()]) ), 
+        sat( Distant(a.right(), left(), 10) & Parallel([a.left(), a.right()], [a.right(), left()]) ), 
         var(pos)}
     d: Shape{
-        text: BuildText("構文", {}, fontPath)
+        text: Text("構文")
         fill: baseColor
         pos: b.bottomRight()
     }
     e: Shape{
-        text: BuildText("図形演算", {}, fontPath)
+        text: Text("図形演算")
         fill: baseColor
         pos: a.bottomRight()
     }
     f: Shape{
-        text: BuildText("制約処理", {}, fontPath)
+        text: Text("制約処理")
         fill: baseColor
         pos: c.center()
     }
@@ -53,7 +52,7 @@ main = {
     }
 
     g: Shape{
-        s: Intersect(Buffer(sourceCodeShape{
+        s: Intersect(sourceCodeShape{
             bb = BoundingBox(b)
             tl = bb.topLeft
             br = bb.bottomRight
@@ -61,12 +60,12 @@ main = {
                 tl.x + (br.x - tl.x)*0.3,
                 tl.y + (br.y - tl.y)*0.35)
             scale: X2(0.4)
-        }, 0.5), b)
+        }, b)
         fill: baseColor
     }
     h: Shape{
         bens: Shape{
-            left= (_ = Circle(60), _{scale: X2(120)})
+            left = Circle{scale: X2(120)}
             right= left{pos: Vec2(80, 0)}
             s: SymDiff(left, right)
             pos: Lerp(a.topLeft(), a.bottomRight(), 0.6)
@@ -99,14 +98,13 @@ main = {
         fill: baseColor
     }
 
-
     sat( b.topLeft().x == BoundingBox(d).center.x )
     sat( Distance(bOut, d) == 20.0 )
 
     sat( a.topLeft().x == BoundingBox(e).center.x )
     sat( Distance(aOut, e) == 20.0 )
 
-    sat( Cmaes(f.pos), c.topLeft().x == BoundingBox(f).center.x )
+    sat( Cmaes(f.pos) & c.topLeft().x == BoundingBox(f).center.x )
     sat( Distance(cOut, f) == 20.0 )
     var(d.pos, e.pos, f.pos)
 }
@@ -131,7 +129,7 @@ main2 = Shape{
             currentLine = ls1[i].line
             {
                 line: [currentLine[0], Lerp(currentLine[0], currentLine[1], 0.75)]
-                s: (_ = Circle(10), _{scale: X2(2.0), pos: line[1]})
+                s: Circle{scale: X2(2.0), pos: line[1]}
             }
         )
     }

@@ -1,0 +1,120 @@
+/*
+main = Shape{
+    /*
+    a = Vec2(0, 0)
+    b = Vec2(30, -5)
+    c = Vec2(10, 50)
+    d = Vec2(20, 30)
+    */
+    a = Vec2(0, 0)
+    b = Vec2(100, 50)
+    c = Vec2(100, 0)
+    d = Vec2(0, 100)
+    
+    /*
+    s1: Shape{
+        line: (->[a, b])
+    }
+    s2: Shape{
+        line: (->[c, d])
+    }
+    */
+    
+    line: (->[
+        [a, b]
+        [c, d]
+    ])
+
+    sat( Touch(Line(a,b),Line(c,d)) == 0 & Dot(b - a, d - c) == 0 )
+    var(b)
+    stroke: Rgb(0,0,0)
+}
+*/
+
+/*
+main = Shape{
+    a = Vec2(0, 0)
+    b = Vec2(300, 150)
+    c = Vec2(50, 150)
+
+    circlePos = Vec2(0, 0)
+    
+    circle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(70), pos: circlePos}).polygon
+    )}
+    
+    line: (->[[a, b],[c, b]])
+
+    sat( Touch(Line(a, b), circle) + Touch(Line(c, b), circle) == 0 )
+    var(circlePos)
+    stroke: Rgb(0,0,0)
+    fill: Rgb(255,255,255)
+}
+*/
+
+/*
+main = Shape{
+    a = Vec2(0, 0)
+    b = Vec2(300, 150)
+    c = Vec2(50, 150)
+
+    circlePos = (a+b+c)/3.0
+    radius = 5.0
+    
+    circle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(radius), pos: circlePos}).polygon
+    )}
+    
+    line: (->[[a, b],[c, b],[a, c]])
+
+    sat( Touch(Line(a, b), circle) + Touch(Line(c, b), circle) + Touch(Line(a, c), circle) == 0 )
+    var(circlePos, radius)
+    stroke: Rgb(0,0,0)
+    fill: Rgb(255,255,255)
+}
+*/
+
+makeTriangle = (v1, v2, v3 -> Triangle{
+    polygon[0] = v1
+    polygon[1] = v2
+    polygon[2] = v3
+})
+
+main = Shape{
+    a = Vec2(200, 0)
+    b = Vec2(300, 150)
+    c = Vec2(0, 150)
+
+    tri = makeTriangle(a,b,c)
+
+    labelA: Text("A"){stroke: 0, fill: Rgb(0,0,0)}
+    labelB: Text("B"){stroke: 0, fill: Rgb(0,0,0)}
+    labelC: Text("C"){stroke: 0, fill: Rgb(0,0,0)}
+
+    sat(Near(labelA, a) & Avoid(labelA, tri) &
+        Near(labelB, b) & Avoid(labelB, tri) &
+        Near(labelC, c) & Avoid(labelC, tri))
+    var(labelA.pos, labelB.pos, labelC.pos)
+
+    circlePos = (a+b+c)/3.0
+    radius = 5.0
+
+    line: (->[[a, b],[c, b],[a, c]])
+    
+    circle: Shape{polygon:(->
+        GlobalShape(Circle{scale: X2(radius), pos: circlePos}).polygon
+    )}
+    
+    sat( Cmaes(radius),
+        Touch(Line(a, b), circle) & 
+        Touch(Line(c, b), circle) & 
+        Touch(Line(a, c), circle)
+    )
+    //var(circlePos in makeTriangle(a,b,c), radius in [1.0, 150])
+    var(circlePos, radius)
+
+    stroke: Rgb(0,0,0)
+    fill: 0
+}
+
+main

@@ -1,0 +1,306 @@
+LerpColor = (a, b, t -> Rgb(a.r + (b.r - a.r)*t, a.g + (b.g - a.g)*t, a.b + (b.b - a.b)*t))
+UpperIndex = (list, t ->
+    lowerIndex = 0
+    for i in 0:Size(list)-1 do(
+        if list[i].t < t
+        then(
+            lowerIndex = i
+        )
+    )
+    lowerIndex + 1
+)
+
+GradationMap = {
+    list: []
+    add: (t, c -> 
+        Push(list, {t:t, c:c})
+        Sort(list, (a, b -> a.t < b.t))
+    )
+    get: (t -> 
+        upperIndex = UpperIndex(list, t)
+        lowerIndex = upperIndex - 1
+        currentTWidth = list[upperIndex].t - list[lowerIndex].t
+        dt = (t - list[lowerIndex].t) / currentTWidth
+        LerpColor(list[lowerIndex].c, list[upperIndex].c, dt)
+    )
+}
+
+gradationMap = GradationMap{}
+
+
+//dt = 1.0/9.0
+dt = 1.0/40.0
+gradationMap.add(dt*0, Rgb(255,255,255))
+gradationMap.add(dt*1, Rgb(248,231,76))
+gradationMap.add(dt*2, Rgb(248,191,40))
+gradationMap.add(dt*3, Rgb(240,136,35))
+gradationMap.add(dt*4, Rgb(231,89,30))
+gradationMap.add(dt*5, Rgb(209,38,98))
+gradationMap.add(dt*6, Rgb(173,0,142))
+gradationMap.add(dt*7, Rgb(120,0,146))
+gradationMap.add(dt*8, Rgb(43,0,118))
+gradationMap.add(dt*40, Rgb(0,0,0))
+//gradationMap.add(dt*9, Rgb(0,0,0))
+
+
+/*
+//dt = 1.0/15.0
+dt = 1.0/30.0
+gradationMap.add(dt*0, Rgb(255,0,0))
+gradationMap.add(dt*1, Rgb(0,255,0))
+gradationMap.add(dt*2, Rgb(0,0,255))
+gradationMap.add(dt*3, Rgb(255,255,0))
+gradationMap.add(dt*4, Rgb(0,255,255))
+gradationMap.add(dt*30, Rgb(255,0,255))
+*/
+
+
+Log10 = (x -> Log(x)/Log(10))
+
+MakeGraphFrame = (width, height, log_record, xIndex, yIndex, zIndex -> Shape{
+    xLabel: log_record.labels[xIndex]
+    yLabel: log_record.labels[yIndex]
+    zLabel: log_record.labels[zIndex]
+
+    xLog: log_record.logAxis[xIndex]
+    yLog: log_record.logAxis[yIndex]
+    //zLog: log_record.logAxis[zIndex]
+
+    minX = log_record.data[0][xIndex]
+    maxX = log_record.data[0][xIndex]
+    minY = log_record.data[0][yIndex]
+    maxY = log_record.data[0][yIndex]
+    minZ = log_record.data[0][zIndex]
+    maxZ = log_record.data[0][zIndex]
+
+    costIndex = Size(log_record.data[0])-1
+    minCost = log_record.data[0][costIndex]
+    maxCost = log_record.data[0][costIndex]
+
+    for i in 1:Size(log_record.data)-1 do(
+        if(log_record.data[i][xIndex] < minX)then(minX = log_record.data[i][xIndex])
+        if(maxX < log_record.data[i][xIndex])then(maxX = log_record.data[i][xIndex])
+        if(log_record.data[i][yIndex] < minY)then(minY = log_record.data[i][yIndex])
+        if(maxY < log_record.data[i][yIndex])then(maxY = log_record.data[i][yIndex])
+        if(log_record.data[i][zIndex] < minZ)then(minZ = log_record.data[i][zIndex])
+        if(maxZ < log_record.data[i][zIndex])then(maxZ = log_record.data[i][zIndex])
+        if(log_record.data[i][costIndex] < minCost)then(minCost = log_record.data[i][costIndex])
+        if(maxCost < log_record.data[i][costIndex])then(maxCost = log_record.data[i][costIndex])
+    )
+
+    /*
+    if xLog then (
+        minX = Log10(minX)
+        maxX = Log10(maxX)
+    )
+    if yLog then (
+        minY = Log10(minY)
+        maxY = Log10(maxY)
+    )
+
+    minXPos = if xLog then (Log10(minX)) else (minX)
+    maxXPos = if xLog then (Log10(maxX)) else (maxX)
+    minYPos = if yLog then (Log10(minY)) else (minY)
+    maxYPos = if yLog then (Log10(maxY)) else (maxY)
+    */
+
+    minXPos = (if xLog 
+        then (
+            Log10(minX)
+        )
+        else (
+            minX
+        ))
+    maxXPos = (if xLog 
+        then (
+            Log10(maxX)
+        )
+        else (
+            maxX
+        ))
+    minYPos = (if yLog
+        then (
+            Log10(minY)
+        )
+        else (
+            minY
+        ))
+    maxYPos = (if yLog
+        then (
+            Log10(maxY)
+        )
+        else (
+            maxY
+        ))
+
+    rangeX = maxX - minX
+    rangeY = maxY - minY
+    
+    rangeXPos = maxXPos - minXPos
+    rangeYPos = maxYPos - minYPos
+
+    margin = 20
+    width_ = width - margin*2
+    height_ = height - margin*2
+
+    rangeZ = maxZ - minZ
+    rangeCost = maxCost - minCost
+
+    //map: (p -> Vec2(width_*(p.x - minX)/rangeX-width_*0.5, height_*(p.y - minY)/rangeY-height_*0.5) )
+    //map: (p -> Vec2(width_*Log10((p.x - minX)/rangeX)-width_*0.5, height_*Log10((p.y - minY)/rangeY)-height_*0.5) )
+    map: if xLog
+        then (if yLog 
+            then (p -> Vec2(width_*(Log10(p.x) - minXPos)/rangeXPos-width_*0.5, height_*(Log10(p.y) - minYPos)/rangeYPos-height_*0.5) )
+            else (p -> Vec2(width_*(Log10(p.x) - minXPos)/rangeXPos-width_*0.5, height_*(p.y - minYPos)/rangeYPos-height_*0.5) )
+        )
+        else (if yLog 
+            then (p -> Vec2(width_*(p.x - minXPos)/rangeXPos-width_*0.5, height_*(Log10(p.y) - minYPos)/rangeYPos-height_*0.5) )
+            else (p -> Vec2(width_*(p.x - minXPos)/rangeXPos-width_*0.5, height_*(p.y - minYPos)/rangeYPos-height_*0.5) )
+        )
+    invMap: if xLog
+        then (if yLog 
+            then (p -> Vec2(10^(minXPos + rangeXPos*(p.x + width_*0.5)/width_), 10^(minYPos + rangeYPos*(p.y + height_*0.5)/height_)) )
+            else (p -> Vec2(10^(minXPos + rangeXPos*(p.x + width_*0.5)/width_), minYPos + rangeYPos*(p.y + height_*0.5)/height_) )
+        )
+        else (if yLog 
+            then (p -> Vec2(minXPos + rangeXPos*(p.x + width_*0.5)/width_, 10^(minYPos + rangeYPos*(p.y + height_*0.5)/height_)) )
+            else (p -> Vec2(minXPos + rangeXPos*(p.x + width_*0.5)/width_, minYPos + rangeYPos*(p.y + height_*0.5)/height_) )
+        )
+    invMapByT: if xLog
+        then (if yLog 
+            then (pt -> Vec2(10^(minXPos + rangeXPos*pt.x), 10^(minYPos + rangeYPos*pt.y)) )
+            else (pt -> Vec2(10^(minXPos + rangeXPos*pt.x), minYPos + rangeYPos*pt.y) )
+        )
+        else (if yLog 
+            then (pt -> Vec2(minXPos + rangeXPos*pt.x, 10^(minYPos + rangeYPos*pt.y)) )
+            else (pt -> Vec2(minXPos + rangeXPos*pt.x, minYPos + rangeYPos*pt.y) )
+        )
+    mapZ: (zValue -> (zValue - minZ) / rangeZ)
+    invMapZ: (t -> minZ + t * rangeZ)
+    mapCost: (cost -> (cost - minCost) / rangeCost)
+
+    //Print([map(Vec2(0.1,0.1)), map(Vec2(0.01,0.01)), map(Vec2(0.001,0.001))])
+
+    xIndex: xIndex
+    yIndex: yIndex
+    zIndex: zIndex
+    costIndex: costIndex
+
+    frame: Shape{
+        frameRect: Square{
+            scale: Vec2(width, height)
+            //fill: Rgb(255,255,255)
+            //fill: 0
+            fill: Rgb(200,200,200)
+            stroke: Rgb(0,0,0)
+        }
+        center: (->globalPos(BoundingBox(frameRect).center))
+        numOfAxes = 5
+        axesX: for i in 0:numOfAxes list(
+            t = 1.0*i/numOfAxes
+            //currentInput = minX + rangeX*t
+            currentInput = invMapByT(Vec2(t, 0)).x
+            Print(Vec2(currentInput, 0))
+            x = map(Vec2(currentInput, 0)).x
+            basePos = Vec2(x, -height*0.5)
+            Shape{
+                tick: Square{
+                    scale: Vec2(1, 5)
+                    pos: Vec2(x, 0)
+                    Print([top(), basePos])
+                    sat(Contact(top(), basePos))
+                    var(pos.y)
+                }
+                number: Text(Fixed(currentInput, 5), 20)
+                sat(Contact(Bottom(Buffer(BoundingBox(number), 5)), basePos))
+                var(number.pos)
+            }
+        )
+        axesY: for i in 0:numOfAxes list(
+            t = 1.0*i/numOfAxes
+            //currentInput = minY + rangeY*t
+            currentInput = invMapByT(Vec2(0, t)).y
+            y = map(Vec2(0, currentInput)).y
+            basePos = Vec2(width*0.5, y)
+            Shape{
+                tick: Square{
+                    scale: Vec2(5, 1)
+                    pos: Vec2(0, y)
+                    sat(Contact(right(), basePos))
+                    var(pos.x)
+                }
+                number: Text(Fixed(currentInput, 5), 20)
+                sat(Contact(Left(Buffer(BoundingBox(number), 5)), basePos))
+                var(number.pos)
+            }
+        )
+        labels: Shape{
+            labelDistanceX = 30
+            //labelDistanceY = 50
+            labelDistanceY = 70
+            xl: Text(xLabel, 40)
+            yl: Text(yLabel, 40){angle: 90}
+            sat( Contact(Bottom(BoundingBox(xl)), Top(frameRect) + Vec2(0, -labelDistanceX)) )
+            sat( Contact(Left(BoundingBox(yl)), Right(frameRect) + Vec2(labelDistanceY, 0)) )
+            var(xl.pos, yl.pos)
+        }
+    }
+    center: (->globalPos(frame.center()))
+})
+
+MakePlot = (graph, log_record, zMaskFunc, labelText -> Shape{
+    frame: graph{}
+    points: []
+    for i in 1:Size(log_record.data)-1 do(
+        if(zMaskFunc(log_record.data[i][graph.zIndex]))
+        then(
+            Push(points, Square{
+                pos: graph.map(Vec2(log_record.data[i][graph.xIndex], log_record.data[i][graph.yIndex]))
+                scale: X2(5)
+                angle: 45
+                //scale: X2(21)
+                fill: gradationMap.get(graph.mapCost(log_record.data[i][graph.costIndex]))
+            })
+        )
+    )
+    label: Text(labelText, 60)
+    center: (->globalPos(frame.center()))
+    sat( Contact(Top(BoundingBox(label)), Bottom(frame) + Vec2(0, 20)) )
+    var(label.pos)
+})
+
+main = Shape{
+    //data = import "optimize_log_min.cgl"
+    //data = import "plot_input.cgl"
+    //data = import "pita_plot_data"
+    //data = import "pita_plot_p11"
+    //data = import "pita_plot_p11_0_25"
+    data = import "integrate_data_.cgl"
+    //data = import "optimize_log_full.cgl"
+    //data = import "optimize_log_debug.cgl"
+    //data = import "optimize_log.cgl"
+    graphBase = MakeGraphFrame(400, 400, data, 0, 1, 2)
+    //plotSize = 5
+    plotSize = 1
+    dz = 1.0/plotSize
+    dzToText = (z -> Fixed(graphBase.invMapZ(z), 3))
+    plots: [MakePlot(
+        graphBase, 
+        data, 
+        //(zValue->graphBase.mapZ(zValue) < dz),
+        (zValue->true),
+        "" + dzToText(0) + " < " + graphBase.zLabel + " < " + dzToText(dz))]
+    /*
+    for i in 1:plotSize-1 do(
+        Push(plots, MakePlot(
+            graphBase,
+            data,
+            (zValue -> dz*i <= graphBase.mapZ(zValue) & graphBase.mapZ(zValue) < dz*(i+1)),
+            "" + dzToText(dz*i) + " < " + graphBase.zLabel + " < " + dzToText(dz*(i+1))
+        ))
+        leftBox = BoundingBox(plots[i-1])
+        shiftVec = (Right(leftBox) - Left(leftBox)) + Vec2(50,0)
+        plots[i].pos = plots[i-1].center() + shiftVec
+    )
+    */
+}

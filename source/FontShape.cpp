@@ -14,12 +14,6 @@
 
 namespace cgl
 {
-	double FontSizeToReal(int fontSize)
-	{
-		const double size = 0.05;
-		return fontSize*size;
-	}
-
 	FontBuilder::FontBuilder()
 	{
 		//mplus-1m-medium-sub.ttf
@@ -76,7 +70,7 @@ namespace cgl
 		delete fontInfo2;
 	}
 
-	std::vector<gg::Geometry*> FontBuilder::makePolygon(int codePoint, int quality, double offsetX, double offsetY)
+	Geometries FontBuilder::makePolygon(int codePoint, int quality, double offsetX, double offsetY)
 	{
 		const auto vec2 = [&](short x, short y)
 		{
@@ -84,8 +78,8 @@ namespace cgl
 			
 			//const double size = 0.025;
 			//return EigenVec2(size * (offsetX + x), size * (offsetY - y));
-			//return EigenVec2(offsetX + FontSizeToReal(x), offsetY + FontSizeToReal(-y));
-			return EigenVec2(offsetX + FontSizeToReal(x), FontSizeToReal(offsetY - y));
+			//return EigenVec2(offsetX + fontSizeToReal(x), offsetY + fontSizeToReal(-y));
+			return EigenVec2(offsetX + fontSizeToReal(x), fontSizeToReal(offsetY - y));
 		};
 
 		bool isFont1 = true;
@@ -105,8 +99,8 @@ namespace cgl
 
 		using Vertices = Vector<Eigen::Vector2d>;
 
-		std::vector<gg::Geometry*> currentPolygons;
-		std::vector<gg::Geometry*> currentHoles;
+		Geometries currentPolygons;
+		Geometries currentHoles;
 
 		int polygonBeginIndex = 0;
 		while (polygonBeginIndex < verticesNum)
@@ -149,11 +143,11 @@ namespace cgl
 
 			if (clockWisePolygons == IsClockWise(points))
 			{
-				currentPolygons.push_back(ToPolygon(points));
+				currentPolygons.push_back_raw(ToPolygon(points));
 			}
 			else
 			{
-				currentHoles.push_back(ToPolygon(points));
+				currentHoles.push_back_raw(ToPolygon(points));
 			}
 
 			polygonBeginIndex = nextPolygonFirstIndex;
@@ -171,45 +165,59 @@ namespace cgl
 		}
 		else
 		{
-			for (int s = 0; s < currentPolygons.size(); ++s)
+			for (int s = 0; s < currentPolygons.size();)
 			{
-				gg::Geometry* erodeGeometry = currentPolygons[s];
+				GeometryPtr pErodeGeometry(currentPolygons.takeOut(s));
 
 				for (int d = 0; d < currentHoles.size(); ++d)
 				{
 					//穴に含まれるポリゴンについては、引かないようにする
 					//本当は包含判定をすべきだがフォントならそんなに複雑な構造にならないはず
-					if (erodeGeometry->getArea() < currentHoles[d]->getArea())
+					if (pErodeGeometry->getArea() < currentHoles.refer(d)->getArea())
 					{
 						continue;
 					}
 
-					erodeGeometry = erodeGeometry->difference(currentHoles[d]);
+					GeometryPtr pTemporaryGeometry(ToUnique<GeometryDeleter>(pErodeGeometry->difference(currentHoles.refer(d))));
 
-					if (erodeGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 					{
-						currentPolygons.erase(currentPolygons.begin() + s);
+						pErodeGeometry = std::move(pTemporaryGeometry);
+						continue;
+					}
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
+					{
+						currentPolygons.erase(s);
 
-						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(erodeGeometry);
+						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(pTemporaryGeometry.get());
 						for (int i = 0; i < polygons->getNumGeometries(); ++i)
 						{
-							currentPolygons.insert(currentPolygons.begin() + s, polygons->getGeometryN(i)->clone());
+							currentPolygons.insert(s, ToUnique<GeometryDeleter>(polygons->getGeometryN(i)->clone()));
 						}
 
-						erodeGeometry = currentPolygons[s];
+						pErodeGeometry = currentPolygons.takeOut(s);
+					}
+					else if (pErodeGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
+					{
+						pErodeGeometry.reset();
+						break;
 					}
 				}
 
-				currentPolygons[s] = erodeGeometry;
+				if (pErodeGeometry)
+				{
+					currentPolygons.insert(s, std::move(pErodeGeometry));
+					++s;
+				}
 			}
 
 			return currentPolygons;
 		}
 	}
 
-	std::vector<gg::Geometry*> FontBuilder::textToPolygon(const std::string& str, int quality)
+	Geometries FontBuilder::textToPolygon(const std::string& str, int quality)
 	{
-		std::vector<gg::Geometry*> result;
+		Geometries result;
 		int offsetX = 0;
 		for (int i = 0; i < str.size(); ++i)
 		{
@@ -217,8 +225,8 @@ namespace cgl
 			const int codePoint = static_cast<int>(str[i]);
 			//int x0, x1, y0, y1;
 			//stbtt_GetGlyphBox(fontInfo, glyphIndex, &x0, &y0, &x1, &y1);
-			const auto characterPolygon = makePolygon(codePoint, quality, offsetX, 0);
-			result.insert(result.end(), characterPolygon.begin(), characterPolygon.end());
+			auto characterPolygon = makePolygon(codePoint, quality, offsetX, 0);
+			result.append(std::move(characterPolygon));
 			//offsetX += (x1 - x0);
 
 			offsetX += glyphWidth(codePoint);
@@ -233,7 +241,7 @@ namespace cgl
 		int advanceWidth;
 		int leftSideBearing;
 		stbtt_GetCodepointHMetrics(fontInfo, codePoint, &advanceWidth, &leftSideBearing);
-		return FontSizeToReal(advanceWidth - leftSideBearing);
+		return fontSizeToReal(advanceWidth - leftSideBearing);
 		*/
 
 		bool isFont1 = true;
@@ -254,14 +262,14 @@ namespace cgl
 			? stbtt_GetCodepointHMetrics(fontInfo1, codePoint, &advanceWidth, &leftSideBearing)
 			: stbtt_GetCodepointHMetrics(fontInfo2, codePoint, &advanceWidth, &leftSideBearing);
 
-		return FontSizeToReal(advanceWidth - leftSideBearing);
+		return fontSizeToReal(advanceWidth - leftSideBearing);
 	}
 
 	void FontBuilder::checkClockWise()
 	{
 		const auto vec2 = [&](short x, short y)
 		{
-			return EigenVec2(FontSizeToReal(x), FontSizeToReal(-y));
+			return EigenVec2(fontSizeToReal(x), fontSizeToReal(-y));
 		};
 
 		const int codePoint = static_cast<int>('.');
@@ -328,5 +336,16 @@ namespace cgl
 			clockWisePolygons = IsClockWise(points);
 			return;
 		}
+	}
+
+	double  FontBuilder::scaledHeight()const
+	{
+		return fontSizeToReal(ascent() - descent());
+	}
+
+	void FontBuilder::setScaledHeight(double newScale)
+	{
+		baseScale = 0.05;
+		baseScale *= newScale / scaledHeight();
 	}
 }

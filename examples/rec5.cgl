@@ -1,0 +1,23 @@
+{
+    res = {
+        a: Print(A{})
+    }
+}
+
+A\_2 = {}
+B\_2 = {}
+
+A = Shape{
+    //s: Triangle{scale: X2(100), angle: 90}
+    //a: A{scale: X2(0.9), pos: Vec2(200, 0), angle: 0}
+    b: B{}
+    //b2: B{scale: X2(0.9), pos: Angle(-30, 100), angle: 10}
+    //fill: Rgb(128,128,0)
+}
+
+B = Shape{
+    s: Triangle{scale: X2(100)}
+    t: A{}
+    //fill: Rgb(0,128,128)
+}
+

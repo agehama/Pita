@@ -68,19 +68,38 @@ namespace cgl
 
 		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
 		{
-			const gg::Point* p1 = closedPath->getPointN(p);
-			const gg::Point* p2 = closedPath->getPointN(p + 1);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+			const gg::Coordinate& p1 = closedPath->getCoordinateN(p);
+			const gg::Coordinate& p2 = closedPath->getCoordinateN(p + 1);
+			sum += (p2.x - p1.x)*(p2.y + p1.y);
 		}
 		{
-			const gg::Point*  p1 = closedPath->getPointN(closedPath->getNumPoints() - 1);
-			const gg::Point*  p2 = closedPath->getPointN(0);
-
-			sum += (p2->getX() - p1->getX())*(p2->getY() + p1->getY());
+			const gg::Coordinate& p1 = closedPath->getCoordinateN(closedPath->getNumPoints() - 1);
+			const gg::Coordinate& p2 = closedPath->getCoordinateN(0);
+			sum += (p2.x - p1.x)*(p2.y + p1.y);
 		}
 
 		return sum < 0.0;
+	}
+
+	std::tuple<bool, std::unique_ptr<gg::Geometry>> IsClockWise(std::unique_ptr<gg::Geometry> pLineString)
+	{
+		double sum = 0;
+
+		const gg::LineString* closedPath = dynamic_cast<const gg::LineString*>(pLineString.get());
+
+		for (size_t p = 0; p + 1 < closedPath->getNumPoints(); ++p)
+		{
+			const gg::Coordinate& p1 = closedPath->getCoordinateN(p);
+			const gg::Coordinate& p2 = closedPath->getCoordinateN(p + 1);
+			sum += (p2.x - p1.x)*(p2.y + p1.y);
+		}
+		{
+			const gg::Coordinate& p1 = closedPath->getCoordinateN(closedPath->getNumPoints() - 1);
+			const gg::Coordinate& p2 = closedPath->getCoordinateN(0);
+			sum += (p2.x - p1.x)*(p2.y + p1.y);
+		}
+
+		return std::make_tuple(sum < 0.0, std::move(pLineString));
 	}
 
 	std::string GetGeometryType(gg::Geometry* geometry)
@@ -114,7 +133,6 @@ namespace cgl
 			pts.add(pts.front());
 		}
 
-		//gg::GeometryFactory::unique_ptr factory = gg::GeometryFactory::create();
 		auto factory = gg::GeometryFactory::create();
 		return factory->createPolygon(factory->createLinearRing(pts), {});
 	}
@@ -130,11 +148,6 @@ namespace cgl
 
 		auto factory = gg::GeometryFactory::create();
 		return factory->createLineString(pts);
-	}
-
-	void GeosPolygonsConcat(std::vector<gg::Geometry*>& head, const std::vector<gg::Geometry*>& tail)
-	{
-		head.insert(head.end(), tail.begin(), tail.end());
 	}
 
 	void DebugPrint(const gg::Geometry* geometry)
@@ -354,5 +367,17 @@ namespace cgl
 			std::cout << "\n";
 		}
 		std::cout << ")\n";
+	}
+
+	GeometryPtr MakeLine(const Eigen::Vector2d& p0, const Eigen::Vector2d& p1)
+	{
+		gg::CoordinateArraySequence pts;
+
+		pts.add(gg::Coordinate(p0.x(), p0.y()));
+		pts.add(gg::Coordinate(p1.x(), p1.y()));
+
+		auto factory = gg::GeometryFactory::create();
+
+		return ToUnique<GeometryDeleter>(factory->createLineString(pts));
 	}
 }

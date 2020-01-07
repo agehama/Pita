@@ -1,0 +1,15 @@
+func1 = (n -> if n<=0 then 0 else 1 + func2(n - 1))
+func2 = (n -> if n<=0 then 0 else 2 + func1(n - 1))
+
+func1\_1 = (n -> 1)
+func2\_2 = (n -> 1)
+
+/*
+{
+    a = func(10)
+    Print(a)
+}
+*/
+
+a = func1(10)
+Print(a)

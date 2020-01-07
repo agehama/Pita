@@ -1,0 +1,7 @@
+f = (n -> 
+    if n <= 1
+    then n
+    else f(n - 1) + f(n - 2)
+)
+
+for i in 0:9 do Print(f(i))

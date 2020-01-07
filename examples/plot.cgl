@@ -1,0 +1,126 @@
+/*
+record1 = {
+    a: {xs:[1,2,3]}
+    b: [1,2,3]
+    c: {xs:[1,2,3]}
+    funcA: (->a.xs = a.xs @ [4])
+    funcB: (->b = b @ [4])
+    funcC: (->Push(c.xs, 4))
+}
+
+Print(record1)
+record1.funcA()
+record1.funcB()
+record1.funcC()
+Print(record1)
+*/
+
+LerpColor = (a, b, t -> Rgb(a.r + (b.r - a.r)*t, a.g + (b.g - a.g)*t, a.b + (b.b - a.b)*t))
+UpperIndex = (list, t ->
+    lowerIndex = 0
+    for i in 0:Size(list)-1 do(
+        if list[i].t < t
+        then(
+            lowerIndex = i
+        )
+    )
+    lowerIndex + 1
+)
+
+GradationMap = {
+    list: []
+    add: (t, c -> 
+        Push(list, {t:t, c:c})
+        Sort(list, (a, b -> a.t < b.t))
+    )
+    get: (t -> 
+        upperIndex = UpperIndex(list, t)
+        lowerIndex = upperIndex - 1
+        currentTWidth = list[upperIndex].t - list[lowerIndex].t
+        dt = (t - list[lowerIndex].t) / currentTWidth
+        LerpColor(list[lowerIndex].c, list[upperIndex].c, dt)
+    )
+}
+
+map = GradationMap{}
+
+dt = 1.0/9.0
+map.add(dt*0, Rgb(255,255,255))
+map.add(dt*1, Rgb(248,231,76))
+map.add(dt*2, Rgb(248,191,40))
+map.add(dt*3, Rgb(240,136,35))
+map.add(dt*4, Rgb(231,89,30))
+map.add(dt*5, Rgb(209,38,98))
+map.add(dt*6, Rgb(173,0,142))
+map.add(dt*7, Rgb(120,0,146))
+map.add(dt*8, Rgb(43,0,118))
+map.add(dt*9, Rgb(0,0,0))
+
+Plot = (width, height, data -> Shape{
+    minX: data[0].x
+    maxX: data[0].x
+    minY: data[0].y
+    maxY: data[0].y
+
+    for i in 1:Size(data)-1 do(
+        if(data[i].x < minX)then(minX = data[i].x)
+        if(maxX < data[i].x)then(maxX = data[i].x)
+        if(data[i].y < minY)then(minY = data[i].y)
+        if(maxY < data[i].y)then(maxY = data[i].y)
+    )
+
+    rangeX = maxX - minX
+    rangeY = maxY - minY
+    margin = 20
+    width_ = width - margin*2
+    height_ = height - margin*2
+
+    map = (p -> Vec2(width_*(p.x - minX)/rangeX-width_*0.5, height_*(p.y - minY)/rangeY-height_*0.5) )
+
+    frame: Shape{
+        s: Square{scale: Vec2(width, height)}
+        fill: Rgb(255,255,255)
+        stroke: Rgb(0,0,0)
+    }
+    points: for i in 0:Size(data)-1 list(
+        Square{pos: map(data[i]), scale: X2(3), fill: Hsv(Mod(15*i,360),1,1)}
+    )
+
+    numOfAxes = 5
+    axesX: for i in 0:numOfAxes list(
+        t = 1.0*i/numOfAxes
+        currentInput = minX + rangeX*t
+        x = map(Vec2(currentInput, 0)).x
+        basePos = Vec2(x, -height*0.5)
+        Shape{
+            tick: Square{
+                scale: Vec2(1, 10)
+                pos: Vec2(x, 0)
+                sat(Contact(top(), basePos))
+                var(pos.y)
+            }
+            number: Text(currentInput, 20)
+            sat(Contact(Bottom(Buffer(BoundingBox(number), 5)), basePos))
+            var(number.pos)
+        }
+    )
+    axesY: for i in 0:numOfAxes list(
+        t = 1.0*i/numOfAxes
+        currentInput = minY + rangeY*t
+        y = map(Vec2(0, currentInput)).y
+        basePos = Vec2(width*0.5, y)
+        Shape{
+            tick: Square{
+                scale: Vec2(10, 1)
+                pos: Vec2(0, y)
+                sat(Contact(right(), basePos))
+                var(pos.x)
+            }
+            number: Text(currentInput, 20)
+            sat(Contact(Left(Buffer(BoundingBox(number), 5)), basePos))
+            var(number.pos)
+        }
+    )
+})
+
+Plot(500, 500, import "data.cgl")

@@ -1,3 +1,5 @@
+EnableGC(true)
+
 kite = Shape{
     polygon: [
         {x: 0, y: 0}, {x: 20, y: -20}, {x: 80, y: 0}, {x: 20, y: +20}
@@ -11,7 +13,7 @@ skeleton = (num -> Shape{
     for i in 0:num-1 do(
         newKite = kite{pos.x = 100*i}
         ss = ss @ [newKite]
-        var(@ss[i].pos, @ss[i].angle)
+        var(ss[i].pos, ss[i].angle)
     )
     for i in 0:num-2 do(
         sat( Contact(ss[i].end(), ss[i+1].begin()) )
@@ -21,8 +23,10 @@ skeleton = (num -> Shape{
 })
 
 skeletonA = skeleton(7)
+//skeletonA = skeleton(5)
 
 main = skeletonA{
+    Print(Triangle{})
     sat( Contact(begin(), {x: 30, y:200}) )
     sat( Contact(end(), {x: 200, y:150}) )
 }

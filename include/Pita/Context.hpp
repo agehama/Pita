@@ -6,6 +6,8 @@
 
 #include "Node.hpp"
 
+extern bool printAddressInsertion;
+
 namespace cgl
 {
 	template<class ValueType>
@@ -18,8 +20,7 @@ namespace cgl
 
 		Address add(const ValueType& value)
 		{
-			m_values.insert({ newAddress(), value });
-
+			m_values.emplace(newAddress(), value);
 			return Address(m_ID);
 		}
 
@@ -57,7 +58,15 @@ namespace cgl
 			}
 			else
 			{
-				m_values.emplace(key, value);
+				try
+				{
+					m_values.emplace(key, value);
+				}
+				catch (std::exception& e)
+				{
+					std::cout << "Values::bind: " << e.what() << std::endl;
+					throw;
+				}
 			}
 		}
 
@@ -92,6 +101,7 @@ namespace cgl
 			{
 				if (ramainAddresses.find(it->first) == ramainAddresses.end())
 				{
+					//std::cout << "remove " << it->first.toString() << "\n";
 					it = m_values.erase(it);
 				}
 				else
@@ -101,13 +111,30 @@ namespace cgl
 			}
 		}
 
+		template <class Archive>
+		void serialize(Archive & archive)
+		{
+			archive(m_values, m_ID);
+		}
+
+		//変数表の分岐を作るためのコピー
+		Values clone()const
+		{
+			Values inst;
+			inst.m_values = m_values;
+			inst.m_ID = m_ID;
+			return inst;
+		}
+
 	private:
 		Address newAddress()
 		{
 			return Address(++m_ID);
 		}
 
-	public:
+		friend class Context;
+		friend class cereal::access;
+
 		ValueList m_values;
 
 		unsigned m_ID = 0;
@@ -115,20 +142,21 @@ namespace cgl
 
 	struct Scope
 	{
-		using VriableMap = std::unordered_map<std::string, Address>;
+		using VariableMap = std::unordered_map<std::string, Address>;
 
 		Scope() = default;
 
-		VriableMap variables;
+		VariableMap variables;
 		std::vector<Address> temporaryAddresses;
 	};
 
 	class Context
 	{
 	public:
+		Context() = default;
+
 		using LocalContext = std::vector<Scope>;
 
-		//using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&)>;
 		using BuiltInFunction = std::function<Val(std::shared_ptr<Context>, const std::vector<Address>&, const LocationInfo& info)>;
 
 		Address makeFuncVal(std::shared_ptr<Context> pEnv, const std::vector<Identifier>& arguments, const Expr& expr);
@@ -148,7 +176,6 @@ namespace cgl
 		{
 			m_localEnvStack.push_back(LocalContext());
 		}
-
 		void switchBackScope()
 		{
 			m_localEnvStack.pop_back();
@@ -160,20 +187,14 @@ namespace cgl
 		bool isPlateausBuiltInFunction(Address functionAddress);
 
 		const Val& expand(const LRValue& lrvalue, const LocationInfo& info)const;
-
 		Val& mutableExpand(LRValue& lrvalue, const LocationInfo& info);
-
 		boost::optional<const Val&> expandOpt(const LRValue& lrvalue)const;
-
 		boost::optional<Val&> mutableExpandOpt(LRValue& lrvalue);
 
 		Address evalReference(const Accessor& access);
 
-		std::vector<Address> expandReferences(Address address, const LocationInfo& info);
-		std::vector<std::pair<Address, VariableRange>> expandReferences(Address address, boost::optional<const PackedVal&> variableRange, const LocationInfo& info);
-
-		//std::vector<Address> expandReferences2(const Accessor& access);
-		std::vector<std::pair<Address, VariableRange>> expandReferences2(const Accessor& access, boost::optional<const PackedVal&> rangeOpt, const LocationInfo& info);
+		std::vector<RegionVariable> expandReferences(Address address, const LocationInfo& info, RegionVariable::Attribute attribute = RegionVariable::Attribute::Other);
+		std::vector<RegionVariable> expandReferences2(const Accessor& access, const LocationInfo& info);
 
 		Reference bindReference(Address address);
 		Reference bindReference(const Identifier& identifier);
@@ -187,16 +208,14 @@ namespace cgl
 		{
 			bindValueID(name, ref);
 		}
-
 		void bindNewValue(const std::string& name, const Val& value)
 		{
-			CGL_DebugLog("");
 			makeVariable(name, makeTemporaryValue(value));
 		}
-
 		void bindValueID(const std::string& name, const Address ID);
 
 		bool existsInCurrentScope(const std::string& name)const;
+		bool existsInLocalScope(const std::string& name)const;
 
 		//bindValueIDの変数宣言式用
 		void makeVariable(const std::string& name, const Address ID)
@@ -213,7 +232,15 @@ namespace cgl
 			}
 			else
 			{
-				variables[name] = ID;
+				try
+				{
+					variables[name] = ID;
+				}
+				catch (std::exception& e)
+				{
+					std::cout << "Context::makeVariable: " << e.what() << std::endl;
+					throw;
+				}
 			}
 		}
 
@@ -222,18 +249,15 @@ namespace cgl
 
 		void TODO_Remove__ThisFunctionIsDangerousFunction__AssignToObject(Address address, const Val& newValue)
 		{
-			//m_values[address] = newValue;
 			m_values.bind(address, newValue);
 		}
 
 		//Accessorの示すリスト or レコードの持つアドレスを書き換える
 		void assignToAccessor(const Accessor& accessor, const LRValue& newValue, const LocationInfo& info);
-
 		//Referenceの示すアドレスを書き換える
 		void assignToReference(const Reference& accessor, const LRValue& newValue, const LocationInfo& info);
 
 		static std::shared_ptr<Context> Make();
-
 		static std::shared_ptr<Context> Make(const Context& other);
 
 		std::shared_ptr<Context> clone()
@@ -245,19 +269,11 @@ namespace cgl
 		//式の評価途中でGCは走らないようにするべきか？
 		Address makeTemporaryValue(const Val& value);
 
-		Context() = default;
-
 		Address findAddress(const std::string& name)const;
 
-		void garbageCollect();
+		void garbageCollect(bool force = false);
 
-		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
-		std::vector<std::reference_wrapper<Record>> currentRecords;
-
-		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
-		boost::optional<Record&> temporaryRecord;
-
-		bool isAutomaticExtendMode()
+		bool isAutomaticExtendMode()const
 		{
 			return m_automaticExtendMode;
 		}
@@ -276,6 +292,21 @@ namespace cgl
 		{
 			m_solveTimeLimit = limitSec;
 		}
+
+		std::string makeLabel(const Address& address)const;
+
+		std::shared_ptr<Context> cloneContext();
+
+		//sat/var宣言は現在の場所から見て最も内側のレコードに対して適用されるべきなので、その階層情報をスタックで持っておく
+		std::vector<std::reference_wrapper<Record>> currentRecords;
+
+		//レコード継承を行う時に、レコードを作ってから合成するのは難しいので、古いレコードを拡張する形で作ることにする
+		boost::optional<Record&> temporaryRecord;
+
+		std::set<std::string> getVisibleIdentifiers()const;
+
+		boost::optional<DefFuncWithScopeInfo&> getDeferredFunction(const Identifier& deferredIdentifier);
+		boost::optional<const DefFuncWithScopeInfo&> getDeferredFunction(const Identifier& deferredIdentifier)const;
 
 	private:
 		void initialize();
@@ -300,19 +331,28 @@ namespace cgl
 		Values<BuiltInFunction> m_functions;
 		std::unordered_map<Address, std::string> m_plateausFunctions;
 
+		//TODO: ローカルスコープに常にグローバル関数のリストは入れておくようにする
+		//遅延呼び出し式の中でグローバル関数を呼び出せるように保存
+		std::unordered_map<std::string, Address> m_globalFunctions;
+
 		std::unordered_map<Reference, DeepReference> m_refAddressMap;
 		std::unordered_multimap<Address, Reference> m_addressRefMap;
+
+		DeferredIdentifiers deferredIdentifiers;
 
 		Values<Val> m_values;
 
 		std::vector<LocalContext> m_localEnvStack;
+
+		int m_recDepth = -1;
+		int m_MaxRecDepth = 100;
 
 		unsigned m_referenceID = 0;
 
 		size_t m_lastGCValueSize = 0;
 
 		bool m_automaticExtendMode = true;
-		bool m_automaticGC = false;
+		bool m_automaticGC = true;
 
 		boost::optional<double> m_solveTimeLimit;
 
@@ -321,6 +361,28 @@ namespace cgl
 
 		std::weak_ptr<Context> m_weakThis;
 	};
+
+	struct OutputAddresses
+	{
+		std::function<bool(Address)> pred;
+		std::vector<RegionVariable>& outputs;
+
+		OutputAddresses(const std::function<bool(Address)>& pred, std::vector<RegionVariable>& outputs) :
+			pred(pred),
+			outputs(outputs)
+		{}
+	};
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute);
+	void CheckValue(const Val& evaluated, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute);
+
+	void CheckExpr(const Expr& expr, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses);
+	void CheckValue(const Val& val, const Context& context, std::unordered_set<Address>& reachableAddressSet,
+		std::unordered_set<Address>& newAddressSet, RegionVariable::Attribute currentAttribute, OutputAddresses& outputAddresses);
+
 }
 
 namespace cereal
@@ -330,13 +392,6 @@ namespace cereal
 	{
 		ar(scope.variables);
 		ar(scope.temporaryAddresses);
-	}
-
-	template<class Archive>
-	inline void serialize(Archive& ar, cgl::Values<cgl::Val>& values)
-	{
-		ar(values.m_values);
-		ar(values.m_ID);
 	}
 
 	template<class Archive>
@@ -351,6 +406,7 @@ namespace cereal
 		ar(context.m_referenceID);
 		ar(context.m_lastGCValueSize);
 		ar(context.m_automaticExtendMode);
+		ar(context.m_globalFunctions);
 		//ar(context.m_automaticGC);
 
 		//std::uniform_real_distribution<double> m_dist;

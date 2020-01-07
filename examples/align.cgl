@@ -1,0 +1,12 @@
+/*AlignHCenter([
+    Square{scale: X2(100)}, 
+    Space(10), 
+    Triangle{scale: X2(70)}, 
+    Space(10), 
+    Circle{scale: X2(50)}
+])
+*/
+
+a = AlignH([Square{scale:X2(100)}, Triangle{scale:X2(100)}, Circle{scale:X2(100)}])
+b = AlignH([Triangle{scale:X2(100)}, Circle{scale:X2(100)}, Square{scale:X2(50)}])
+AlignV([a,b])

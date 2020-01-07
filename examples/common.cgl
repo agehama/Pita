@@ -22,6 +22,8 @@ Moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
 Vec2 = (x, y -> {x: x, y: y})
 X2 = (v -> {x: v, y: v})
 
+Angle = (r, theta -> {x: r*Cos(theta), y: r*Sin(theta)})
+
 Add = (p, q -> {x: p.x + q.x, y:p.y + q.y})
 Sub = (p, q -> {x: p.x - q.x, y:p.y - q.y})
 
@@ -38,6 +40,26 @@ SetLength = (v, l -> Mul(Div(v, Length(v)), l))
 LineLength = (l -> ((l[1].x - l[0].x)^2 + (l[1].y - l[0].y)^2)^0.5)
 
 Rgb = (r, g, b -> {r: r, g: g, b: b})
+Hsv = (h, s, v ->
+    c = v * s
+    x = c * (1.0 - Abs(Mod(h / 60.0, 2) - 1))
+    m = v - c
+    if h < 180
+    then(
+        if h < 60
+        then Rgb((c+m)*255,(x+m)*255,(0+m)*255)
+        else if h < 120
+        then Rgb((x+m)*255,(c+m)*255,(0+m)*255)
+        else Rgb((0+m)*255,(c+m)*255,(x+m)*255)
+    )
+    else(
+        if h < 240
+        then Rgb((0+m)*255,(x+m)*255,(c+m)*255)
+        else if h < 300
+        then Rgb((x+m)*255,(0+m)*255,(c+m)*255)
+        else Rgb((c+m)*255,(0+m)*255,(x+m)*255)
+    )
+)
 
 Contact = (p1, p2 -> (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) == 0)
 Distant = (p, q, dist -> (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y) == dist*dist)
@@ -84,6 +106,12 @@ Triangle = Shape{
     bottomEdge:  (->[p2(), p1()])
 }
 
+MakeTriangle = (v1, v2, v3 -> Triangle{
+    polygon[0] = v1
+    polygon[1] = v2
+    polygon[2] = v3
+})
+
 Hexagon = Shape{
     r = 0.5
     polygon: for i in 0:5 list(
@@ -92,7 +120,7 @@ Hexagon = Shape{
     p: (index -> globalPos( polygon[index] ))
 }
 
-Circle = (quality -> Shape{
+MakeCircle = (quality -> Shape{
     r = 0.5
     delta = 360.0 / quality
     polygon: for i in 0:quality list(
@@ -100,6 +128,8 @@ Circle = (quality -> Shape{
         Vec2(r*Cos(currentAngle), r*Sin(currentAngle))
     )
 })
+
+Circle = MakeCircle(100)
 
 Arrow = Shape{
     body: Square{scale = Vec2(20, 200), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
@@ -109,4 +139,19 @@ Arrow = Shape{
     beginLine: (->globalShape(body.bottomEdge()))
 }
 
+Line = (p1, p2 -> Shape{line: [p1, p2]})
+
+Dot = (a, b -> a.x*b.x + a.y*b.y)
+Cross = (a, b -> a.x*b.y - a.y*b.x)
+
+Screen = Square{
+    scale: Vec2(2000, 2000)
+}
+
+Space = (space -> Square{
+    fill: 0
+    scale: X2(space)
+})
+
+EnableGC(true)
 GC()

@@ -6,7 +6,45 @@ lines = Shape{
     )
 }
 
-Shape{
-    s: Diff(lines, Circle{scale: X2(80)})
+main = Shape{
+    s: Intersect(lines, Circle{scale: X2(80)})
     stroke: Rgb(0,0,0)
 }
+
+Hatch = (shape, interval ->
+    bb = BoundingBox(shape)
+    offset = bb.min
+    xNum = bb.width() / interval
+    yNum = bb.height() / interval
+
+    hBars = for y in 0:yNum list(
+        [offset + Vec2(0, y*interval), offset + Vec2(bb.width(), y*interval)]
+    )
+    vBars = for x in 0:xNum list(
+        [offset + Vec2(x*interval, 0), offset + Vec2(x*interval, bb.height())]
+    )
+    Intersect(Shape{line: hBars @ vBars}, shape)
+    //Intersect(shape, Shape{line: hBars @ vBars})
+)
+
+Shape{
+    c = Circle{scale: X2(150), fill: 0}
+    inner = Shape{s:c, stroke: Rgb(0,0,0), stroke_width: 3}
+    s: AlignH([
+        Hatch(c, 5){stroke_width: 1, stroke: Rgb(0,0,0), i: inner{}}
+        Space(10){stroke_width: 0}
+        Hatch(c, 10){stroke_width: 1, stroke: Rgb(0,0,0), i: inner{}}
+        Space(10){stroke_width: 0}
+        Hatch(c, 20){stroke_width: 1, stroke: Rgb(0,0,0), i: inner{}}
+    ])
+    bb = BoundingBox(Shape{s:s})
+    w: Buffer(bb, 5){fill: 0}
+}
+
+/*Shape{
+    c = Text("Pita", 150){}
+    inner = Shape{s:c, stroke: Rgb(0,0,0), stroke_width: 3}
+    s: Hatch(c, 5){stroke_width: 1, stroke: Rgb(0,0,0)}
+    bb = BoundingBox(Shape{s:s})
+    w: Buffer(bb, 5){fill: 0}
+}*/

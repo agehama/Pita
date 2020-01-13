@@ -534,6 +534,26 @@ namespace cgl
 		);
 	}
 
+	PackedRecord MakePolygonPathResult(const PackedVal& polygon, const PackedVal& path)
+	{
+		return MakeRecord(
+			"polygon", polygon,
+			"line", path,
+			"pos", MakeRecord("x", 0, "y", 0),
+			"scale", MakeRecord("x", 1.0, "y", 1.0),
+			"angle", 0
+		);
+	}
+
+	PackedRecord MakeEmptyShapeResult()
+	{
+		return MakeRecord(
+			"pos", MakeRecord("x", 0, "y", 0),
+			"scale", MakeRecord("x", 1.0, "y", 1.0),
+			"angle", 0
+		);
+	}
+
 	PackedRecord GetOffsetPathImpl(const Path& originalPath, double offset)
 	{
 		auto factory = gg::GeometryFactory::create();
@@ -1497,6 +1517,15 @@ namespace cgl
 						//currentPolygonsに挿入したのはcloneなのでdifferenceの結果はここで削除してよい
 						//->次のpErodeGeometryには分割された最初のポリゴンが入っている
 					}
+					//点の場合はとりあえず無視する
+					else if (
+						pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POINT ||
+						pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOINT)
+					{
+						pErodeGeometry.reset();
+						break;
+						//->次のpErodeGeometryには何も入っていないのでループを抜ける
+					}
 					else if (pTemporaryGeometry->getNumGeometries() == 0 && pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
 						//結果が空であれば、ポリゴンを削除する
@@ -1525,13 +1554,7 @@ namespace cgl
 			//両方ある
 			if (!resultPolygons.data.empty() && !resultLines.data.empty())
 			{
-				return MakeRecord(
-					"polygon", resultPolygons,
-					"line", resultLines,
-					"pos", MakeRecord("x", 0, "y", 0),
-					"scale", MakeRecord("x", 1.0, "y", 1.0),
-					"angle", 0
-				);
+				return MakePolygonPathResult(resultPolygons, resultLines);
 			}
 			//ポリゴンのみ
 			else if (!resultPolygons.data.empty())
@@ -1544,11 +1567,7 @@ namespace cgl
 				return MakePathResult(resultLines);
 			}
 
-			return MakeRecord(
-				"pos", MakeRecord("x", 0, "y", 0),
-				"scale", MakeRecord("x", 1.0, "y", 1.0),
-				"angle", 0
-			);
+			return MakeEmptyShapeResult();
 		}
 	}
 
@@ -1577,7 +1596,26 @@ namespace cgl
 			ptrs.pop_back();
 		}
 
-		return MakePolygonResult(GetPolygon(result));
+		const auto resultPolygons = GetPolygon(result);
+		const auto resultLines = GetLine(result);
+
+		//両方ある
+		if (!resultPolygons.data.empty() && !resultLines.data.empty())
+		{
+			return MakePolygonPathResult(resultPolygons, resultLines);
+		}
+		//ポリゴンのみ
+		else if (!resultPolygons.data.empty())
+		{
+			return MakePolygonResult(resultPolygons);
+		}
+		//線分のみ
+		else if (!resultLines.data.empty())
+		{
+			return MakePathResult(resultLines);
+		}
+
+		return MakeEmptyShapeResult();
 	}
 
 	PackedRecord ShapeIntersect(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
@@ -1613,6 +1651,11 @@ namespace cgl
 						pErodeGeometry = std::move(pTemporaryGeometry);
 						continue;
 					}
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_LINESTRING)
+					{
+						pErodeGeometry = std::move(pTemporaryGeometry);
+						continue;
+					}
 					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 					{
 						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(pTemporaryGeometry.get());
@@ -1622,15 +1665,26 @@ namespace cgl
 						}
 						pErodeGeometry = lhsPolygon.takeOut(s);
 					}
-					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTILINESTRING)
+					{
+						const gg::MultiLineString* lines = dynamic_cast<const gg::MultiLineString*>(pTemporaryGeometry.get());
+						for (int i = 0; i < lines->getNumGeometries(); ++i)
+						{
+							lhsPolygon.insert(s, ToUnique<GeometryDeleter>(lines->getGeometryN(i)->clone()));
+						}
+						pErodeGeometry = lhsPolygon.takeOut(s);
+					}
+					else if (
+						pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POINT ||
+						pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOINT)
 					{
 						pErodeGeometry.reset();
 						break;
 					}
-					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_LINESTRING)
+					else if (pTemporaryGeometry->getNumGeometries() == 0 && pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
-						pErodeGeometry = std::move(pTemporaryGeometry);
-						continue;
+						pErodeGeometry.reset();
+						break;
 					}
 					else
 					{
@@ -1645,7 +1699,26 @@ namespace cgl
 				}
 			}
 
-			return MakePolygonResult(GetPolygon(lhsPolygon));
+			const auto resultPolygons = GetPolygon(lhsPolygon);
+			const auto resultLines = GetLine(lhsPolygon);
+
+			//両方ある
+			if (!resultPolygons.data.empty() && !resultLines.data.empty())
+			{
+				return MakePolygonPathResult(resultPolygons, resultLines);
+			}
+			//ポリゴンのみ
+			else if (!resultPolygons.data.empty())
+			{
+				return MakePolygonResult(resultPolygons);
+			}
+			//線分のみ
+			else if (!resultLines.data.empty())
+			{
+				return MakePathResult(resultLines);
+			}
+
+			return MakeEmptyShapeResult();
 		}
 	}
 
@@ -1682,7 +1755,28 @@ namespace cgl
 			rhsPtrs.pop_back();
 		}
 
-		return MakePolygonResult(GetPolygon({ result }));
+		//return MakePolygonResult(GetPolygon({ result }));
+
+		const auto resultPolygons = GetPolygon(result);
+		const auto resultLines = GetLine(result);
+
+		//両方ある
+		if (!resultPolygons.data.empty() && !resultLines.data.empty())
+		{
+			return MakePolygonPathResult(resultPolygons, resultLines);
+		}
+		//ポリゴンのみ
+		else if (!resultPolygons.data.empty())
+		{
+			return MakePolygonResult(resultPolygons);
+		}
+		//線分のみ
+		else if (!resultLines.data.empty())
+		{
+			return MakePathResult(resultLines);
+		}
+
+		return MakeEmptyShapeResult();
 	}
 
 	PackedRecord ShapeBuffer(const PackedVal& shape, const PackedVal& amount, std::shared_ptr<Context> pContext)

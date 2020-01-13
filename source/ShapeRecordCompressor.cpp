@@ -84,7 +84,7 @@ namespace cgl
 		return result;
 	}
 
-	PackedList AsPackedListPolygons(const std::vector<PackedList>& polygons)
+	PackedList VectorToPackedList(const std::vector<PackedList>& polygons)
 	{
 		PackedList result;
 		for (const auto& polygon : polygons)
@@ -111,26 +111,29 @@ namespace cgl
 		return PackedPolyDataType::MULTIPOLYGON;
 	}
 
-	PackedRecord GetLineStringPacked(const gg::LineString* line)
+	PackedList GetLineStringVertices(const gg::LineString* line)
 	{
 		const auto appendCoord = [&](PackedList& list, double x, double y)
 		{
 			list.add(MakeRecord("x", x, "y", y));
 		};
 
-		PackedRecord result;
+		PackedList result;
+
+		//LineStringはPolygonと異なりループしない（頂点が重ならない）ので飛ばさずに読む
+		for (int i = 0; i < static_cast<int>(line->getNumPoints()); ++i)
 		{
-			PackedList polygonList;
-
-			//LineStringはPolygonと異なりループしない（頂点が重ならない）ので飛ばさずに読む
-			for (int i = 0; i < static_cast<int>(line->getNumPoints()); ++i)
-			{
-				const gg::Coordinate& p = line->getCoordinateN(i);
-				appendCoord(polygonList, p.x, p.y);
-			}
-
-			result.add("line", polygonList);
+			const gg::Coordinate& p = line->getCoordinateN(i);
+			appendCoord(result, p.x, p.y);
 		}
+
+		return result;
+	}
+
+	PackedRecord GetLineStringPacked(const gg::LineString* line)
+	{
+		PackedRecord result;
+		result.add("line", GetLineStringVertices(line));
 
 		return result;
 	}

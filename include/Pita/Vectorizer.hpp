@@ -310,12 +310,13 @@ namespace cgl
 	//複数のポリゴンはstd::vector<PackedList>で表現する
 	PackedPolyData GetPolygonVertices(const gg::Polygon* poly);
 	//PackedList GetShapesFromGeosPacked(const std::vector<gg::Geometry*>& polygons);
+	PackedList GetLineStringVertices(const gg::LineString* line);
 
 	enum class PackedPolyDataType {
 		POLYGON, MULTIPOLYGON
 	};
 
-	PackedList AsPackedListPolygons(const PackedPolyData& polygons);
+	PackedList VectorToPackedList(const PackedPolyData& polygons);
 	PackedPolyDataType GetPackedListType(const PackedList& packedList);
 
 	//Convert ShapeRecord

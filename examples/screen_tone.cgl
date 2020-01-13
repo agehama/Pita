@@ -1,0 +1,12 @@
+lines = Shape{
+    offset = Vec2(-50,-150)
+    line: for i in 0:20 list(
+        y = i*10
+        [Vec2(0,0+y)+offset, Vec2(100,100+y)+offset]
+    )
+}
+
+Shape{
+    s: Diff(lines, Circle{scale: X2(80)})
+    stroke: Rgb(0,0,0)
+}

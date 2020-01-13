@@ -379,6 +379,7 @@ namespace cgl
 
 	PackedList GetPolygon(const Geometries& originalPolygons)
 	{
+		//ポリゴンが1つ未満
 		try
 		{
 			if (originalPolygons.empty())
@@ -399,7 +400,7 @@ namespace cgl
 
 				//1つのポリゴンと複数の穴からなるケース
 				//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
-				return AsPackedListPolygons(polygonList);
+				return VectorToPackedList(polygonList);
 			}
 		}
 		catch (std::exception& e)
@@ -408,12 +409,13 @@ namespace cgl
 			throw;
 		}
 
+		//ポリゴンが2つ以上
 		std::vector<PackedList> polygons;
 		try
 		{
-			for (size_t i = 0; i < originalPolygons.size(); ++i)
+			for (size_t geometryIndex = 0; geometryIndex < originalPolygons.size(); ++geometryIndex)
 			{
-				auto pGeometry = originalPolygons.refer(i);
+				auto pGeometry = originalPolygons.refer(geometryIndex);
 				if (pGeometry->getGeometryTypeId() == GEOS_POLYGON)
 				{
 					const auto polygonList = GetPolygonVertices(dynamic_cast<const gg::Polygon*>(pGeometry));
@@ -439,7 +441,7 @@ namespace cgl
 		try
 		{
 			//polygon: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
-			return AsPackedListPolygons(polygons);
+			return VectorToPackedList(polygons);
 		}
 		catch (std::exception& e)
 		{
@@ -451,6 +453,65 @@ namespace cgl
 	PackedList GetPolygon(const PackedRecord& shape, std::shared_ptr<Context> pContext)
 	{
 		return GetPolygon(GeosFromRecordPacked(shape, pContext));
+	}
+
+	PackedList GetLine(const Geometries& originalLines)
+	{
+		try
+		{
+			if (originalLines.empty())
+			{
+				//line: []
+				return PackedList();
+			}
+			//1本の折れ線からなるケース
+			else if (originalLines.size() == 1 && originalLines.refer(0)->getGeometryTypeId() == GEOS_LINESTRING)
+			{
+				return GetLineStringVertices(dynamic_cast<const gg::LineString*>(originalLines.refer(0)));
+			}
+		}
+		catch (std::exception & e)
+		{
+			std::cout << "GetLine 1: " << e.what() << std::endl;
+			throw;
+		}
+
+		std::vector<PackedList> lines;
+		try
+		{
+			for (size_t geometryIndex = 0; geometryIndex < originalLines.size(); ++geometryIndex)
+			{
+				auto pGeometry = originalLines.refer(geometryIndex);
+				if (pGeometry->getGeometryTypeId() == GEOS_LINESTRING)
+				{
+					lines.push_back(GetLineStringVertices(dynamic_cast<const gg::LineString*>(pGeometry)));
+				}
+				else if (pGeometry->getGeometryTypeId() == GEOS_MULTILINESTRING)
+				{
+					const gg::MultiLineString* pLineString = dynamic_cast<const gg::MultiLineString*>(pGeometry);
+					for (size_t i = 0; i < pLineString->getNumGeometries(); ++i)
+					{
+						lines.push_back(GetLineStringVertices(dynamic_cast<const gg::LineString*>(pLineString->getGeometryN(i))));
+					}
+				}
+			}
+		}
+		catch (std::exception & e)
+		{
+			std::cout << "GetLine 2: " << e.what() << std::endl;
+			throw;
+		}
+
+		try
+		{
+			//line: [[p00, p01, ... , p0n], [p10, p11, ... , p1n], ... , [pm0, pm1, ... , pmn]]
+			return VectorToPackedList(lines);
+		}
+		catch (std::exception & e)
+		{
+			std::cout << "GetLine 3: " << e.what() << std::endl;
+			throw;
+		}
 	}
 
 	PackedRecord MakePolygonResult(const PackedVal& polygon)
@@ -1406,6 +1467,12 @@ namespace cgl
 						continue;
 						//->次のpErodeGeometryには現在のポリゴンがそのまま入っている
 					}
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_LINESTRING)
+					{
+						pErodeGeometry = std::move(pTemporaryGeometry);
+						continue;
+						//->次のpErodeGeometryには現在のポリゴンがそのまま入っている
+					}
 					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
 					{
 						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(pTemporaryGeometry.get());
@@ -1418,7 +1485,19 @@ namespace cgl
 						//currentPolygonsに挿入したのはcloneなのでdifferenceの結果はここで削除してよい
 						//->次のpErodeGeometryには分割された最初のポリゴンが入っている
 					}
-					else if (pErodeGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
+					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTILINESTRING)
+					{
+						const gg::MultiLineString* lines = dynamic_cast<const gg::MultiLineString*>(pTemporaryGeometry.get());
+						for (int i = 0; i < lines->getNumGeometries(); ++i)
+						{
+							lhsPolygon.insert(s, ToUnique<GeometryDeleter>(lines->getGeometryN(i)->clone()));
+						}
+						pErodeGeometry = lhsPolygon.takeOut(s);
+
+						//currentPolygonsに挿入したのはcloneなのでdifferenceの結果はここで削除してよい
+						//->次のpErodeGeometryには分割された最初のポリゴンが入っている
+					}
+					else if (pTemporaryGeometry->getNumGeometries() == 0 && pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
 						//結果が空であれば、ポリゴンを削除する
 						pErodeGeometry.reset();
@@ -1440,7 +1519,36 @@ namespace cgl
 				}
 			}
 
-			return MakePolygonResult(GetPolygon(lhsPolygon));
+			const auto resultPolygons = GetPolygon(lhsPolygon);
+			const auto resultLines = GetLine(lhsPolygon);
+
+			//両方ある
+			if (!resultPolygons.data.empty() && !resultLines.data.empty())
+			{
+				return MakeRecord(
+					"polygon", resultPolygons,
+					"line", resultLines,
+					"pos", MakeRecord("x", 0, "y", 0),
+					"scale", MakeRecord("x", 1.0, "y", 1.0),
+					"angle", 0
+				);
+			}
+			//ポリゴンのみ
+			else if (!resultPolygons.data.empty())
+			{
+				return MakePolygonResult(resultPolygons);
+			}
+			//線分のみ
+			else if (!resultLines.data.empty())
+			{
+				return MakePathResult(resultLines);
+			}
+
+			return MakeRecord(
+				"pos", MakeRecord("x", 0, "y", 0),
+				"scale", MakeRecord("x", 1.0, "y", 1.0),
+				"angle", 0
+			);
 		}
 	}
 
@@ -2410,7 +2518,7 @@ namespace cgl
 			}
 		}
 
-		return MakePathResult(AsPackedListPolygons(pathList));
+		return MakePathResult(VectorToPackedList(pathList));
 	}
 
 	PackedRecord GetShapeInnerPaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
@@ -2453,7 +2561,7 @@ namespace cgl
 			}
 		}
 
-		return MakePathResult(AsPackedListPolygons(pathList));
+		return MakePathResult(VectorToPackedList(pathList));
 	}
 
 	PackedRecord GetShapePaths(const PackedRecord& shape, std::shared_ptr<Context> pContext)
@@ -2535,7 +2643,7 @@ namespace cgl
 			}
 		}
 
-		return MakePathResult(AsPackedListPolygons(pathList));
+		return MakePathResult(VectorToPackedList(pathList));
 	}
 
 	PackedRecord GetBoundingBox(const PackedRecord& shape, std::shared_ptr<Context> pContext)

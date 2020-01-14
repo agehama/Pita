@@ -6,12 +6,12 @@ lines = Shape{
     )
 }
 
-main = Shape{
+/*main = Shape{
     s: Intersect(lines, Circle{scale: X2(80)})
     stroke: Rgb(0,0,0)
-}
+}*/
 
-Hatch = (shape, interval ->
+HatchGrid = (shape, interval ->
     bb = BoundingBox(shape)
     offset = bb.min
     xNum = bb.width() / interval
@@ -23,28 +23,55 @@ Hatch = (shape, interval ->
     vBars = for x in 0:xNum list(
         [offset + Vec2(x*interval, 0), offset + Vec2(x*interval, bb.height())]
     )
-    Intersect(Shape{line: hBars @ vBars}, shape)
-    //Intersect(shape, Shape{line: hBars @ vBars})
+    Intersect(shape, Shape{line: hBars @ vBars})
 )
 
-Shape{
-    c = Circle{scale: X2(150), fill: 0}
-    inner = Shape{s:c, stroke: Rgb(0,0,0), stroke_width: 3}
+HatchLineX = (shape, interval ->
+    bb = BoundingBox(shape)
+    offset = bb.min
+    yNum = bb.height() / interval
+
+    hBars = for y in 0:yNum list(
+        [offset + Vec2(0, y*interval), offset + Vec2(bb.width(), y*interval)]
+    )
+    Intersect(shape, Shape{line: hBars})
+)
+
+HatchLineY = (shape, interval ->
+    bb = BoundingBox(shape)
+    offset = bb.min
+    xNum = bb.width() / interval
+
+    vBars = for x in 0:xNum list(
+        [offset + Vec2(x*interval, 0), offset + Vec2(x*interval, bb.height())]
+    )
+    Intersect(shape, Shape{line: vBars})
+)
+
+shape1 = Shape{
+    circle = Circle{scale: X2(150), fill: 0}
+    tri = Triangle{scale: X2(150), fill: 0}
+    rect = Square{scale: X2(150), fill: 0}
+    inner = (s->Shape{s:s, stroke: Rgb(0,0,0), stroke_width: 2})
     s: AlignH([
-        Hatch(c, 5){stroke_width: 1, stroke: Rgb(0,0,0), i: inner{}}
+        HatchLineX(circle, 5){stroke_width: 1, stroke: Rgb(0,0,0), i: inner(circle)}
         Space(10){stroke_width: 0}
-        Hatch(c, 10){stroke_width: 1, stroke: Rgb(0,0,0), i: inner{}}
+        HatchLineY(tri, 10){stroke_width: 1, stroke: Rgb(0,0,0), i: inner(tri)}
         Space(10){stroke_width: 0}
-        Hatch(c, 20){stroke_width: 1, stroke: Rgb(0,0,0), i: inner{}}
+        HatchGrid(rect, 20){stroke_width: 1, stroke: Rgb(0,0,0), i: inner(rect)}
     ])
     bb = BoundingBox(Shape{s:s})
     w: Buffer(bb, 5){fill: 0}
 }
 
-/*Shape{
-    c = Text("Pita", 150){}
+fontPath = "C:/Windows/Fonts/GOTHIC.TTF"
+
+shape2 = Shape{
+    c = Text("Pita", 150, {}, fontPath){}
     inner = Shape{s:c, stroke: Rgb(0,0,0), stroke_width: 3}
-    s: Hatch(c, 5){stroke_width: 1, stroke: Rgb(0,0,0)}
+    s: HatchGrid(c, 5){stroke_width: 1, stroke: Rgb(0,0,0)}
     bb = BoundingBox(Shape{s:s})
-    w: Buffer(bb, 5){fill: 0}
-}*/
+    w: Buffer(bb, 3){fill: 0}
+}
+
+AlignVCenter([shape1,shape2])

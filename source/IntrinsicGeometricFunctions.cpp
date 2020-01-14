@@ -1638,22 +1638,22 @@ namespace cgl
 		{
 			Geometries resultGeometries;
 
-			for (int s = 0; s < lhsPolygon.size();)
+			for (int s = 0; s < lhsPolygon.size(); ++s)
 			{
-				GeometryPtr pErodeGeometry(lhsPolygon.takeOut(s));
+				auto pGeometry = lhsPolygon.refer(s);
 
 				for (int d = 0; d < rhsPolygon.size(); ++d)
 				{
-					GeometryPtr pTemporaryGeometry(ToUnique<GeometryDeleter>(pErodeGeometry->intersection(rhsPolygon.refer(d))));
+					GeometryPtr pTemporaryGeometry(ToUnique<GeometryDeleter>(pGeometry->intersection(rhsPolygon.refer(d))));
 
 					if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POLYGON)
 					{
-						pErodeGeometry = std::move(pTemporaryGeometry);
+						resultGeometries.push_back(std::move(pTemporaryGeometry));
 						continue;
 					}
 					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_LINESTRING)
 					{
-						pErodeGeometry = std::move(pTemporaryGeometry);
+						resultGeometries.push_back(std::move(pTemporaryGeometry));
 						continue;
 					}
 					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOLYGON)
@@ -1661,46 +1661,36 @@ namespace cgl
 						const gg::MultiPolygon* polygons = dynamic_cast<const gg::MultiPolygon*>(pTemporaryGeometry.get());
 						for (int i = 0; i < polygons->getNumGeometries(); ++i)
 						{
-							lhsPolygon.insert(s, ToUnique<GeometryDeleter>(polygons->getGeometryN(i)->clone()));
+							resultGeometries.push_back_raw(polygons->getGeometryN(i)->clone());
 						}
-						pErodeGeometry = lhsPolygon.takeOut(s);
 					}
 					else if (pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTILINESTRING)
 					{
 						const gg::MultiLineString* lines = dynamic_cast<const gg::MultiLineString*>(pTemporaryGeometry.get());
 						for (int i = 0; i < lines->getNumGeometries(); ++i)
 						{
-							lhsPolygon.insert(s, ToUnique<GeometryDeleter>(lines->getGeometryN(i)->clone()));
+							resultGeometries.push_back_raw(lines->getGeometryN(i)->clone());
 						}
-						pErodeGeometry = lhsPolygon.takeOut(s);
 					}
 					else if (
 						pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_POINT ||
 						pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_MULTIPOINT)
 					{
-						pErodeGeometry.reset();
-						break;
+						continue;
 					}
 					else if (pTemporaryGeometry->getNumGeometries() == 0 && pTemporaryGeometry->getGeometryTypeId() == geos::geom::GEOS_GEOMETRYCOLLECTION)
 					{
-						pErodeGeometry.reset();
-						break;
+						continue;
 					}
 					else
 					{
 						CGL_Error(std::string("Intersectの結果が予期せぬデータ形式: \"") + GetGeometryType(pTemporaryGeometry.get()) + "\"");
 					}
 				}
-
-				if (pErodeGeometry)
-				{
-					lhsPolygon.insert(s, std::move(pErodeGeometry));
-					++s;
-				}
 			}
 
-			const auto resultPolygons = GetPolygon(lhsPolygon);
-			const auto resultLines = GetLine(lhsPolygon);
+			const auto resultPolygons = GetPolygon(resultGeometries);
+			const auto resultLines = GetLine(resultGeometries);
 
 			//両方ある
 			if (!resultPolygons.data.empty() && !resultLines.data.empty())

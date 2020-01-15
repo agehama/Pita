@@ -2585,6 +2585,20 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"Distance2",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+			{
+				if (arguments.size() != 2)
+				{
+					CGL_ErrorNode(info, "引数の数が正しくありません");
+				}
+
+				return ShapeDistance2(Packed(pEnv->expand(LRValue(arguments[0]), info), *this), Packed(pEnv->expand(LRValue(arguments[1]), info), *this), pEnv).unpacked(*this);
+			},
+			false
+				);
+
+		registerBuiltInFunction(
 			"ClosestPoints",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

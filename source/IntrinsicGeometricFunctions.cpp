@@ -1939,6 +1939,50 @@ namespace cgl
 		return result;
 	}
 
+	PackedRecord ShapeDistance2(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
+	{
+		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))
+		{
+			CGL_Error("不正な式です");
+		}
+
+		Geometries lhsPolygon(GeosFromRecordPacked(lhs, pContext));
+		Geometries rhsPolygon(GeosFromRecordPacked(rhs, pContext));
+
+		std::vector<gg::Geometry*> lhsPtrs = lhsPolygon.releaseAsRawPtrs();
+		geos::operation::geounion::CascadedUnion unionCalcLhs(&lhsPtrs);
+		auto lhsResult = ToUnique<GeometryDeleter>(unionCalcLhs.Union());
+
+		std::vector<gg::Geometry*> rhsPtrs = rhsPolygon.releaseAsRawPtrs();
+		geos::operation::geounion::CascadedUnion unionCalcRhs(&rhsPtrs);
+		auto rhsResult = ToUnique<GeometryDeleter>(unionCalcRhs.Union());
+
+		geos::operation::distance::DistanceOp distOp(lhsResult.get(), rhsResult.get());
+		gg::CoordinateSequence* nearestPoints = distOp.closestPoints();
+
+		while (!lhsPtrs.empty())
+		{
+			delete lhsPtrs.back();
+			lhsPtrs.pop_back();
+		}
+
+		while (!rhsPtrs.empty())
+		{
+			delete rhsPtrs.back();
+			rhsPtrs.pop_back();
+		}
+
+		//一応距離なので正の値を返す
+		auto result = MakeRecord(
+			"x", std::abs(nearestPoints->getX(1) - nearestPoints->getX(0)),
+			"y", std::abs(nearestPoints->getY(1) - nearestPoints->getY(0))
+		);
+
+		delete nearestPoints;
+
+		return result;
+	}
+
 	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext)
 	{
 		if ((!IsType<PackedRecord>(lhs) && !IsType<PackedList>(lhs)) || (!IsType<PackedRecord>(rhs) && !IsType<PackedList>(rhs)))

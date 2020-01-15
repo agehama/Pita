@@ -23,6 +23,7 @@ namespace cgl
 	double ShapeArea(const PackedVal& lhs, std::shared_ptr<Context> pContext);
 
 	double ShapeDistance(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext);
+	PackedRecord ShapeDistance2(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext);
 
 	PackedRecord ShapeClosestPoints(const PackedVal& lhs, const PackedVal& rhs, std::shared_ptr<Context> pContext);
 

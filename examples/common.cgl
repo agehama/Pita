@@ -39,6 +39,36 @@ SetLength = (v, l -> Mul(Div(v, Length(v)), l))
 
 LineLength = (l -> ((l[1].x - l[0].x)^2 + (l[1].y - l[0].y)^2)^0.5)
 
+Min = (list->
+    if Size(list) == 0
+    then 0
+    else(
+        minVal = list[0]
+        for i in 1:Size(list)-1 do(
+            if list[i] < minVal
+            then(
+                minVal = list[i]
+            )
+        )
+        minVal
+    )
+)
+
+Max = (list->
+    if Size(list) == 0
+    then 0
+    else(
+        maxVal = list[0]
+        for i in 1:Size(list)-1 do(
+            if maxVal < list[i]
+            then(
+                maxVal = list[i]
+            )
+        )
+        maxVal
+    )
+)
+
 Rgb = (r, g, b -> {r: r, g: g, b: b})
 Hsv = (h, s, v ->
     c = v * s

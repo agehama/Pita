@@ -129,7 +129,7 @@ namespace cgl
 		return true;
 	}
 
-	bool ReadColorPacked(Color& output, const PackedRecord& record, const TransformPacked& transform)
+	bool ReadColorPacked(Color& output, const PackedRecord& record)
 	{
 		double r = 0, g = 0, b = 0;
 

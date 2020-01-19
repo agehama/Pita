@@ -3065,6 +3065,8 @@ namespace cgl
 			"LinearGradient",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 			{
+				static int id = 0;
+				++id;
 				// [color1, color2, ...]
 				if (arguments.size() == 1)
 				{
@@ -3075,6 +3077,7 @@ namespace cgl
 
 						return MakeRecord(
 							"gradient", CharString(AsUtf32("linear")),
+							"gradient_id", CharString(AsUtf32("gradient_" + ToS(id))),
 							"stop", list.packed(*this)
 						).unpacked(*this);
 					}
@@ -3088,7 +3091,7 @@ namespace cgl
 					const Val& endVal = pEnv->expand(LRValue(arguments[1]), info);
 
 					auto beginOpt = AsOpt<Record>(beginVal);
-					auto endOpt = AsOpt<Record>(beginVal);
+					auto endOpt = AsOpt<Record>(endVal);
 					if (beginOpt && endOpt)
 					{
 						const Record& begin = beginOpt.get();
@@ -3096,6 +3099,7 @@ namespace cgl
 						
 						return MakeRecord(
 							"gradient", CharString(AsUtf32("linear")),
+							"gradient_id", CharString(AsUtf32("gradient_" + ToS(id))),
 							"stop", MakeList(begin.packed(*this), end.packed(*this))
 						).unpacked(*this);
 					}

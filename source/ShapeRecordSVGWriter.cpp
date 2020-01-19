@@ -51,6 +51,162 @@ namespace cgl
 		return indent;
 	}
 
+	struct GradientStop
+	{
+		double x;
+		double y;
+		Color color;
+		GradientStop() = default;
+		GradientStop(double x, double y, const Color& color)
+			:x(x), y(y), color(color)
+		{}
+	};
+
+	bool WriteDefinitionsList(std::ostream& os, const PackedList& list, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
+
+	bool WriteDefinitionsRecord(std::ostream& os, const PackedVal& value, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform = cgl::TransformPacked());
+
+	bool WriteDefinitionsRecordImpl(std::ostream& os, const PackedRecord& record, std::shared_ptr<Context> pContext, const cgl::TransformPacked& parent)
+	{
+		const cgl::TransformPacked current(record);
+		const cgl::TransformPacked transform = parent * current;
+
+		bool hasDefinitions = false;
+
+		enum class GradientType { Linear, Radial };
+		GradientType gradientType;
+		std::string gradientName;
+		std::vector<GradientStop> gradientStops;
+
+		for (const auto& member : record.values)
+		{
+			const cgl::PackedVal& value = member.second.value;
+
+			if (member.first == "gradient")
+			{
+				if (auto opt = AsOpt<CharString>(member.second.value))
+				{
+					const std::string gradientTypeStr = AsUtf8(opt.get().toString());
+					if (gradientTypeStr == "linear")
+					{
+						gradientType = GradientType::Linear;
+					}
+					else if (gradientTypeStr == "radial")
+					{
+						gradientType = GradientType::Radial;
+					}
+				}
+			}
+			else if (member.first == "gradient_id")
+			{
+				if (auto opt = AsOpt<CharString>(member.second.value))
+				{
+					gradientName = AsUtf8(opt.get().toString());
+				}
+			}
+			else if (member.first == "stop")
+			{
+				if (auto stopListOpt = AsOpt<PackedList>(member.second.value))
+				{
+					for (const auto& stop : stopListOpt.get().data)
+					{
+						if (auto recordOpt = AsOpt<PackedRecord>(stop.value))
+						{
+							const auto& record = recordOpt.get().values;
+
+							const auto posIt = record.find("pos");
+							const auto colorIt = record.find("color");
+							if (posIt != record.end() && IsType<PackedRecord>(posIt->second.value) && 
+								colorIt != record.end() && IsType<PackedRecord>(colorIt->second.value))
+							{
+								const auto resultPos = ReadVec2Packed(As<PackedRecord>(posIt->second.value), transform);
+								Color resultColor;
+								if (ReadColorPacked(resultColor, As<PackedRecord>(colorIt->second.value)))
+								{
+									gradientStops.emplace_back(
+										std::get<0>(resultPos),
+										std::get<1>(resultPos),
+										resultColor);
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					CGL_Error("stopに指定されたデータの形式が不正です。");
+				}
+			}
+			else if (IsType<PackedRecord>(value))
+			{
+				hasDefinitions = WriteDefinitionsRecordImpl(os, As<PackedRecord>(value), pContext, transform) || hasDefinitions;
+			}
+			else if (IsType<PackedList>(value))
+			{
+				hasDefinitions = WriteDefinitionsList(os, As<PackedList>(value), pContext, transform) || hasDefinitions;
+			}
+		}
+
+		if (!gradientName.empty() && 2 <= gradientStops.size())
+		{
+			hasDefinitions = true;
+			const Eigen::Vector2d p0(gradientStops.front().x, gradientStops.front().y);
+			const Eigen::Vector2d p1(gradientStops.back().x, gradientStops.back().y);
+			const Eigen::Vector2d v = (p1 - p0).normalized();
+			const double length = (p1 - p0).dot(v);
+			
+			os << getIndent(2) << "<linearGradient gradientUnits=\"userSpaceOnUse\" id=\"" << gradientName << "\" ";
+			os << "x1=\"" << p0.x() << "\" y1=\"" << p0.y() << "\" x2=\"" << p1.x() << "\" y2=\"" << p1.y() << "\">\n";
+
+			for (const auto& stop : gradientStops)
+			{
+				const Eigen::Vector2d p(stop.x, stop.y);
+				const double t = (p - p0).dot(v) / length;
+				os << getIndent(3) << "<stop stop-color=\"" << stop.color.toString() << "\" offset=\"" << t << "\"/>\n";
+			}
+
+			os << getIndent(2) << "</linearGradient>\n";
+		}
+
+		return hasDefinitions;
+	}
+
+	bool WriteDefinitionsList(std::ostream& os, const PackedList& list, std::shared_ptr<Context> pContext, const TransformPacked& transform)
+	{
+		bool hasDefinitions = false;
+		for (const auto& member : list.data)
+		{
+			const auto& value = member.value;
+
+			if (IsType<PackedRecord>(value))
+			{
+				hasDefinitions = WriteDefinitionsRecordImpl(os, As<PackedRecord>(value), pContext, transform) || hasDefinitions;
+			}
+			else if (IsType<PackedList>(value))
+			{
+				hasDefinitions = WriteDefinitionsList(os, As<PackedList>(value), pContext, transform) || hasDefinitions;
+			}
+		}
+
+		return hasDefinitions;
+	}
+
+	bool WriteDefinitionsRecord(std::ostream& os, const PackedVal& value,  std::shared_ptr<Context> pContext, const TransformPacked& transform)
+	{
+		if (IsType<PackedRecord>(value))
+		{
+			const PackedRecord& record = As<PackedRecord>(value);
+			return WriteDefinitionsRecordImpl(os, record, pContext, transform);
+		}
+		if (IsType<PackedList>(value))
+		{
+			const PackedList& list = As<PackedList>(value);
+			return WriteDefinitionsList(os, list, pContext, transform);
+		}
+
+		return false;
+	}
+
 	bool GeosFromList2Packed(std::ostream& os, const PackedList& list, const std::string& name, int depth, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform);
 
 	bool GeosFromRecord2Packed(std::ostream& os, const PackedVal& value, const std::string& name, int depth, std::shared_ptr<Context> pContext, const cgl::TransformPacked& transform = cgl::TransformPacked());
@@ -198,9 +354,22 @@ namespace cgl
 			{
 				if (IsType<PackedRecord>(value))
 				{
+					const PackedRecord& record = As<PackedRecord>(value);
+
 					Color currentColor;
-					ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
-					os << "fill=\"" << currentColor.toString() << "\" ";
+					if (ReadColorPacked(currentColor, record))
+					{
+						os << "fill=\"" << currentColor.toString() << "\" ";
+					}
+					else
+					{
+						auto it = record.values.find("gradient_id");
+						if (it != record.values.end() && IsType<CharString>(it->second.value))
+						{
+							const std::string id = AsUtf8(As<CharString>(it->second.value).toString());
+							os << "fill=\"url(#" << id << ")\" ";
+						}
+					}
 				}
 				else
 				{
@@ -212,7 +381,7 @@ namespace cgl
 				if (IsType<PackedRecord>(value))
 				{
 					Color currentColor;
-					ReadColorPacked(currentColor, As<PackedRecord>(value), transform);
+					ReadColorPacked(currentColor, As<PackedRecord>(value));
 					os << "stroke=\"" << currentColor.toString() << "\" ";
 				}
 				else
@@ -544,6 +713,15 @@ namespace cgl
 			/*os << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height
 				<< R"(" viewport-fill="black" viewport-fill-opacity="0.1)"  << R"(">)" << "\n";*/
 			os << R"(<svg xmlns="http://www.w3.org/2000/svg" width=")" << width << R"(" height=")" << height << R"(" viewBox=")" << pos.x() << " " << pos.y() << " " << width << " " << height << R"(">)" << "\n";
+			{
+				std::stringstream ss;
+				if (WriteDefinitionsRecord(ss, wrapped ? wrapped.get() : value, pContext))
+				{
+					os << getIndent(1) << "<defs>" << "\n";
+					os << ss.str();
+					os << getIndent(1) << "</defs>" << "\n";
+				}
+			}
 			GeosFromRecord2Packed(os, wrapped ? wrapped.get() : value, name, 0, pContext);
 			os << "</svg>" << "\n";
 

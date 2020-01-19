@@ -3062,6 +3062,54 @@ namespace cgl
 			);
 
 		registerBuiltInFunction(
+			"LinearGradient",
+			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
+			{
+				// [color1, color2, ...]
+				if (arguments.size() == 1)
+				{
+					const Val& listVal = pEnv->expand(LRValue(arguments[0]), info);
+					if (auto opt = AsOpt<List>(listVal))
+					{
+						const List& list = opt.get();
+
+						return MakeRecord(
+							"gradient", CharString(AsUtf32("linear")),
+							"stop", list.packed(*this)
+						).unpacked(*this);
+					}
+
+					CGL_ErrorNode(info, "引数の型が正しくありません");
+				}
+				// color1, color2
+				else if (arguments.size() == 2)
+				{
+					const Val& beginVal = pEnv->expand(LRValue(arguments[0]), info);
+					const Val& endVal = pEnv->expand(LRValue(arguments[1]), info);
+
+					auto beginOpt = AsOpt<Record>(beginVal);
+					auto endOpt = AsOpt<Record>(beginVal);
+					if (beginOpt && endOpt)
+					{
+						const Record& begin = beginOpt.get();
+						const Record& end = endOpt.get();
+						
+						return MakeRecord(
+							"gradient", CharString(AsUtf32("linear")),
+							"stop", MakeList(begin.packed(*this), end.packed(*this))
+						).unpacked(*this);
+					}
+
+					CGL_ErrorNode(info, "引数の型が正しくありません");
+				}
+
+				CGL_ErrorNode(info, "引数の数が正しくありません");
+			},
+			false
+				);
+
+
+		registerBuiltInFunction(
 			"GC",
 			[&](std::shared_ptr<Context> pEnv, const std::vector<Address>& arguments, const LocationInfo& info)->Val
 		{

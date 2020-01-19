@@ -327,6 +327,14 @@ namespace cgl
 	bool ReadColorPacked(Color& output, const PackedRecord& record, const TransformPacked& transform);
 	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);
 
+	struct OutputPolygon
+	{
+		Geometries polygon;
+		Geometries hole;
+	};
+	bool ReadPackedPolyData(const PackedList& polygons, std::vector<OutputPolygon>& outputPolygonDatas, const TransformPacked& transform);
+	bool ReadPackedLineData(const PackedList& lines, Geometries& outputLineDatas, const TransformPacked& transform);
+
 	//Interpret ShapeRecord
 	/*BoundingRect BoundingRectRecordPacked(const PackedVal& value);
 	std::vector<gg::Geometry*> GeosFromRecordPacked(const PackedVal& value, const cgl::TransformPacked& transform = cgl::TransformPacked());

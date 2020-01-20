@@ -117,11 +117,15 @@ namespace cgl
 							const auto posIt = record.find("pos");
 							const auto colorIt = record.find("color");
 							if (posIt != record.end() && IsType<PackedRecord>(posIt->second.value) && 
-								colorIt != record.end() && IsType<PackedRecord>(colorIt->second.value))
+								colorIt != record.end() && (IsType<PackedRecord>(colorIt->second.value) || IsType<CharString>(colorIt->second.value)))
 							{
 								const auto resultPos = ReadVec2Packed(As<PackedRecord>(posIt->second.value), transform);
 								Color resultColor;
-								if (ReadColorPacked(resultColor, As<PackedRecord>(colorIt->second.value)))
+
+								if (
+									(IsType<PackedRecord>(colorIt->second.value) && ReadColorPacked(resultColor, As<PackedRecord>(colorIt->second.value))) ||
+									(IsType<CharString>(colorIt->second.value) && ReadColorPacked(resultColor, As<CharString>(colorIt->second.value)))
+									)
 								{
 									gradientStops.emplace_back(
 										std::get<0>(resultPos),
@@ -370,6 +374,11 @@ namespace cgl
 							os << "fill=\"url(#" << id << ")\" ";
 						}
 					}
+				}
+				else if (auto strOpt = AsOpt<CharString>(value))
+				{
+					const std::string str = AsUtf8(strOpt.get().toString());
+					os << "fill=\"" << str << "\" ";
 				}
 				else
 				{

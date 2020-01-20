@@ -148,4 +148,23 @@ namespace cgl
 
 		return true;
 	}
+
+	bool ReadColorPacked(Color& output, const CharString& colorCode)
+	{
+		const std::string colorStr = AsUtf8(colorCode.toString());
+
+		if (7 <= colorStr.size() && colorStr[0] == '#')
+		{
+			const std::string str(colorStr.begin() + 1, colorStr.begin() + 3);
+			std::istringstream(str) >> std::hex >> output.r;
+
+			std::istringstream(std::string(colorStr.begin() + 1, colorStr.begin() + 3)) >> std::hex >> output.r;
+			std::istringstream(std::string(colorStr.begin() + 3, colorStr.begin() + 5)) >> std::hex >> output.g;
+			std::istringstream(std::string(colorStr.begin() + 5, colorStr.begin() + 7)) >> std::hex >> output.b;
+
+			return true;
+		}
+
+		return false;
+	}
 }

@@ -8,19 +8,37 @@ tri = Shape{
     Print(c)
 }
 
+Kerning = (shapes, margin ->
+    shift = Vec2(0, 0)
+    tail = for i in 1:Size(shapes)-1 list(
+        shift.x = shift.x + margin - Distance2(shapes[i-1], shapes[i]).x
+        newPos = shapes[i].pos + shift
+        shapes[i]{pos: newPos}
+    )
+    [shapes[0]] @ tail
+)
+
+fontPath = "C:/Windows/Fonts/GOTHIC.TTF"
+
 pita = Shape{
     //text: (Text("Pita")){scale: X2(2.0)}
-    text: (a = Text("Pita"), Buffer(a{scale: X2(3.3)}, -1.5))
+    //text: (a = Text("Pita"), Buffer(a{scale: X2(3.3)}, -1.5))
+    text: (a = Text("Pita", 50, {}, fontPath).text, Shape{s:Kerning(a, 20)})
     rect = BoundingBox(text)
     rect2 = Square{polygon=rect.polygon}
 }
 
 main = Shape{
-    a: tri{scale: X2(0.6), angle: -90}
-    b: pita{}
-    //sat(Contact(Moved(Right(a), 10,0), Left(b)))
-    sat(Contact(Right(a), Moved(Left(b), -20, 0) ))
-    var(b.pos)
-    //fill: Rgb(255,255,255)
-    fill: Rgb(0,0,0)
+    inner: Shape{
+        a: tri{scale: X2(0.6), angle: -90}
+        b: pita{}
+        c: Square{scale: X2(30), fill:0}
+        sat(Contact(Right(a), Moved(Left(b), -30, 0) ))
+        sat(Contact(Right(b), Left(c)))
+        var(b.pos, c.pos)
+    }
+    fill: LinearGradient(
+        {pos: BoundingBox(inner).min, color: "#305CB5"},
+        {pos: BoundingBox(inner).max, color: "#A0ACAD"}
+    )
 }

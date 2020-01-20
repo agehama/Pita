@@ -325,6 +325,7 @@ namespace cgl
 	std::tuple<double, double> ReadVec2Packed(const PackedRecord& record, const TransformPacked& transform);
 	Path ReadPathPacked(const PackedRecord& record);
 	bool ReadColorPacked(Color& output, const PackedRecord& record);
+	bool ReadColorPacked(Color& output, const CharString& colorCode);
 	bool ReadPolygonPacked(Vector<Eigen::Vector2d>& output, const PackedList& vertices, const TransformPacked& transform);
 
 	struct OutputPolygon

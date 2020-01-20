@@ -389,9 +389,27 @@ namespace cgl
 			{
 				if (IsType<PackedRecord>(value))
 				{
+					const PackedRecord& record = As<PackedRecord>(value);
+
 					Color currentColor;
-					ReadColorPacked(currentColor, As<PackedRecord>(value));
-					os << "stroke=\"" << currentColor.toString() << "\" ";
+					if (ReadColorPacked(currentColor, record))
+					{
+						os << "stroke=\"" << currentColor.toString() << "\" ";
+					}
+					else
+					{
+						auto it = record.values.find("gradient_id");
+						if (it != record.values.end() && IsType<CharString>(it->second.value))
+						{
+							const std::string id = AsUtf8(As<CharString>(it->second.value).toString());
+							os << "stroke=\"url(#" << id << ")\" ";
+						}
+					}
+				}
+				else if (auto strOpt = AsOpt<CharString>(value))
+				{
+					const std::string str = AsUtf8(strOpt.get().toString());
+					os << "stroke=\"" << str << "\" ";
 				}
 				else
 				{

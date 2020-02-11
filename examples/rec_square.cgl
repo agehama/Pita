@@ -1,7 +1,8 @@
+EnableGC(true)
 unitSize = 500.0
 
 //rects\_2 = Shape{a: Square{scale: X2(unitSize)}}
-rects\_3 = (r,g,b->Shape{s: Square{scale: X2(unitSize), fill: Rgb(r,g,b)}})
+rects\_4 = (r,g,b->Shape{s: Square{scale: X2(unitSize), fill: Rgb(r,g,b)}})
 
 rects = (r,g,b -> Shape{
     scaleRate = 1.0/3.0

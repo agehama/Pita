@@ -5,6 +5,7 @@
 #include <random>
 
 #include "Node.hpp"
+#include "TreeLogger.hpp"
 
 extern bool printAddressInsertion;
 
@@ -97,11 +98,12 @@ namespace cgl
 
 		void gc(const std::unordered_set<Address>& ramainAddresses)
 		{
+			//auto scopeLog = ScopeLog("Values::gc");
 			for (auto it = m_values.begin(); it != m_values.end();)
 			{
 				if (ramainAddresses.find(it->first) == ramainAddresses.end())
 				{
-					//std::cout << "remove " << it->first.toString() << "\n";
+					//scopeLog.write("remove " + it->first.toString());
 					it = m_values.erase(it);
 				}
 				else
@@ -265,8 +267,7 @@ namespace cgl
 			return Make(*this);
 		}
 
-		//値を作って返す（変数で束縛されないものはGCが走ったら即座に消される）
-		//式の評価途中でGCは走らないようにするべきか？
+		//値を作って返す(作られた値は現在のスコープから外れるまではGCの削除対象にならない)
 		Address makeTemporaryValue(const Val& value);
 
 		Address findAddress(const std::string& name)const;

@@ -1267,6 +1267,15 @@ namespace cgl
 			specialDefs[recDepth] = defFunc;
 		}
 
+		// GC用
+		void collectReferenceableAddresses(std::unordered_set<Address>& addresses)const
+		{
+			for (const auto& keyval : memo)
+			{
+				addresses.emplace(keyval.second);
+			}
+		}
+
 		DefFunc generalDef;
 		std::unordered_map<int, DefFunc> specialDefs;
 		ScopeAddress scopeInfo;
@@ -1274,7 +1283,6 @@ namespace cgl
 	private:
 		friend class Eval;
 		int callDepth = 0;
-		//std::unordered_map<RecMemoInfo, Address> memo;
 		std::unordered_map<size_t, Address> memo;
 	};
 	using DeferredIdentifiers = std::unordered_map<Identifier, std::vector<DefFuncWithScopeInfo>>;

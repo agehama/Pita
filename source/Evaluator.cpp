@@ -2511,6 +2511,9 @@ namespace cgl
 		}
 
 		const Address address = pEnv->makeTemporaryValue(record);
+		{
+			scopeLog.write("    result address: " + address.toString());
+		}
 		
 		//pEnv->garbageCollect();
 

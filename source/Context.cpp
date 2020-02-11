@@ -9,6 +9,7 @@
 #include <Pita/Printer.hpp>
 #include <Pita/BinaryEvaluator.hpp>
 #include <Pita/ClosureMaker.hpp>
+#include <Pita/TreeLogger.hpp>
 
 namespace cgl
 {
@@ -1318,9 +1319,13 @@ namespace cgl
 		const Address address = m_values.add(value);
 
 		localEnv().back().temporaryAddresses.push_back(address);
+		/*
+		auto scopeLog = ScopeLog("Context::makeTemporaryValue");
+		scopeLog.write("new address: " + address.toString() + " -> " + valStr2(value, m_weakThis.lock()));
+		*/
 
 		const int thresholdGC = 20000;
-		//const int thresholdGC = 5000;
+		//const int thresholdGC = 10;
 		if (thresholdGC <= static_cast<int>(m_values.size()) - static_cast<int>(m_lastGCValueSize))
 		{
 			garbageCollect();
@@ -3338,6 +3343,8 @@ namespace cgl
 			return;
 		}
 
+		//auto scopeLog = ScopeLog("Context::garbageCollect");
+
 		static int count = 0;
 		//std::cout << "garbageCollect(" << count << ")" << std::endl;
 		//printContext(std::cout);
@@ -3406,6 +3413,19 @@ namespace cgl
 
 				GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 			}
+		}
+
+		// 遅延呼び出し用のメモ化テーブルを追加
+		{
+			std::unordered_set<Address> addressesDelta;
+			for (const auto& keyval : deferredIdentifiers)
+			{
+				for (const auto& info : keyval.second)
+				{
+					info.collectReferenceableAddresses(addressesDelta);
+				}
+			}
+			GetReachableAddressesFrom(referenceableAddresses, addressesDelta, *this);
 		}
 
 		for (const auto& keyval : m_functions)

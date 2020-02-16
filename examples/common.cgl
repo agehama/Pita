@@ -19,7 +19,8 @@ Mid3 = (a, b, c -> {x: (a.x + b.x + c.x)/3.0, y: (a.y + b.y + c.y)/3.0})
 
 Moved = (pos, dx, dy -> {x: pos.x + dx, y: pos.y + dy})
 
-Vec2 = (x, y -> {x: x, y: y})
+//Vec2 = (x, y -> {x: x, y: y})
+Vec2 = (x_, y_ -> {x: x_, y: y_})
 X2 = (v -> {x: v, y: v})
 
 Angle = (r, theta -> {x: r*Cos(theta), y: r*Sin(theta)})
@@ -69,7 +70,8 @@ Max = (list->
     )
 )
 
-Rgb = (r, g, b -> {r: r, g: g, b: b})
+//Rgb = (r, g, b -> {r: r, g: g, b: b})
+Rgb = (r_, g_, b_ -> {r: r_, g: g_, b: b_})
 Hsv = (h, s, v ->
     c = v * s
     x = c * (1.0 - Abs(Mod(h / 60.0, 2) - 1))
@@ -162,7 +164,7 @@ MakeCircle = (quality -> Shape{
 Circle = MakeCircle(100)
 
 Arrow = Shape{
-    body: Square{scale = Vec2(20, 200), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
+    body: Square{Print(bottom()),scale = Vec2(20, 200), sat(Contact(bottom(), Vec2(0, 0))), var(pos)}
     head: Triangle{scale = Vec2(50, 50), sat(Contact(bottom(), body.top())), var(pos)}
     begin: (->globalPos(body.bottom()))
     end: (->globalPos(head.top()))

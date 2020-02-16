@@ -84,7 +84,7 @@ namespace cgl
 		bool operator()(const Import& node) { return false; }
 		bool operator()(const UnaryExpr& node);
 		bool operator()(const BinaryExpr& node);
-		bool operator()(const DefFunc& node) { CGL_Error("invalid expression"); return false; }
+		bool operator()(const DefFunc& node);
 		bool callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info);
 		bool operator()(const Range& node) { CGL_Error("invalid expression"); return false; }
 		bool operator()(const Lines& node);

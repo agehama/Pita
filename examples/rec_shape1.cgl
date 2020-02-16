@@ -14,6 +14,6 @@ shapeList = (f, depth ->
 )
 
 tree = Shape{
-    depth = 100
+    depth = 30
     a: (s = shapeList(shapeList, depth), s{scale = X2(60)})
 }

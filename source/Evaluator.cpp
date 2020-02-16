@@ -2115,6 +2115,11 @@ namespace cgl
 				mergedRegionVars.insert(mergedRegionVars.end(), recordVarAddresses.first.begin(), recordVarAddresses.first.end());
 				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
 			}
+			scopeLog.write("  declvar list: ");
+			for(const auto& var : mergedRegionVars)
+			{
+				scopeLog.write("    var " + var.toString());
+			}
 
 			if (isDebugMode, false)
 			{
@@ -2159,6 +2164,14 @@ namespace cgl
 					ss << "Address(" << address.toString() << "), ";
 				}
 				std::cout << ss.str() << "\n\n";*/
+
+				scopeLog.write("  unit constraint:" + exprStr2(constraint, pEnv));
+				std::stringstream ss;
+				for (const Address address : adderVariableAppearances.back())
+				{
+					ss << "Address(" << address.toString() << "), ";
+				}
+				scopeLog.write("    addresses: " + ss.str());
 			}
 
 			scopeLog.write("  mergedRegionVars.size(): " + ToS(mergedRegionVars.size()));
@@ -2326,7 +2339,13 @@ namespace cgl
 
 						std::cout << "Current constraint freeVariablesSize: " << std::to_string(currentProblem.freeVariableRefs.size()) << std::endl;
 						std::cout << "2 mergedRegionVars.size(): " << mergedRegionVars.size() << "\n";
+
+						const bool treeLoggerActive = TreeLogger::instance().isActive();
+						TreeLogger::instance().setActive(false);
+
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
+						
+						TreeLogger::instance().setActive(treeLoggerActive);
 
 						readResult(pEnv, resultxs, currentProblem);
 
@@ -2382,8 +2401,13 @@ namespace cgl
 							//oldConstraint.constructConstraint(pEnv);
 
 							//std::cout << "Current constraint freeVariablesSize: " << std::to_string(oldConstraint.freeVariableRefs.size()) << std::endl;
+							
+							const bool treeLoggerActive = TreeLogger::instance().isActive();
+							TreeLogger::instance().setActive(false);
 
 							std::vector<double> resultxs = oldConstraint.solve(pEnv, recordConsractor, record, keyList);
+							
+							TreeLogger::instance().setActive(treeLoggerActive);
 
 							readResult(pEnv, resultxs, oldConstraint);
 
@@ -2452,7 +2476,12 @@ namespace cgl
 						currentProblem.freeVariableRefs = maskedVars.first;
 						currentProblem.optimizeRegions = maskedVars.second;
 
+						const bool treeLoggerActive = TreeLogger::instance().isActive();
+						TreeLogger::instance().setActive(false);
+
 						std::vector<double> resultxs = currentProblem.solve(pEnv, recordConsractor, record, keyList);
+
+						TreeLogger::instance().setActive(treeLoggerActive);
 
 						readResult(pEnv, resultxs, currentProblem);
 

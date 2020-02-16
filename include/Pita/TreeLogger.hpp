@@ -27,6 +27,11 @@ namespace cgl
 
 		void push(const std::string& message)
 		{
+			if (!active)
+			{
+				return;
+			}
+
 			if (ofs.is_open())
 			{
 				messages.push(message);
@@ -34,8 +39,13 @@ namespace cgl
 			}
 		}
 
-		void pop()
+		void pop(bool force = false)
 		{
+			if (!active && !force)
+			{
+				return;
+			}
+
 			if (ofs.is_open())
 			{
 				messages.pop();
@@ -45,6 +55,11 @@ namespace cgl
 
 		void write(const std::string& message)
 		{
+			if (!active)
+			{
+				return;
+			}
+
 			if (ofs.is_open())
 			{
 				ofs << std::string("<p>") + escaped(message) + "</p>\n";
@@ -65,7 +80,7 @@ namespace cgl
 			{
 				while (!messages.empty())
 				{
-					pop();
+					pop(true);
 				}
 
 				printTail();
@@ -75,6 +90,11 @@ namespace cgl
 
 		bool isEnable()const { return ofs.is_open(); }
 
+		//void on() { active = true; }
+		//void off() { active = false; }
+		bool isActive()const { return active; }
+		void setActive(bool active_) { active = active_; }
+
 	private:
 		void printHead();
 		void printTail();
@@ -82,6 +102,7 @@ namespace cgl
 
 		std::ofstream ofs;
 		std::stack<std::string> messages;
+		bool active = true;
 	};
 
 	struct ScopeLog

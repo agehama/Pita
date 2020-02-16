@@ -435,7 +435,14 @@ namespace cgl
 
 	Expr AsClosure(Context& context, const Expr& expr, const std::set<std::string>& functionArguments)
 	{
+		const bool original = TreeLogger::instance().isActive();
+		TreeLogger::instance().setActive(false);
+
 		ClosureMaker maker(context, functionArguments);
-		return boost::apply_visitor(maker, expr);
+		auto result = boost::apply_visitor(maker, expr);
+
+		TreeLogger::instance().setActive(original);
+
+		return result;
 	}
 }

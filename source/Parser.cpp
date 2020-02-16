@@ -42,7 +42,38 @@ namespace cgl
 		errorHandler(ErrorHandler(first, last, sourcePath))
 	{
 		auto concatArguments = [](Arguments& a, const Arguments& b) { a.concat(b); };
+
+#ifdef CGL_ENABLE_CURRYING
+		auto applyFuncDef = [](DefFunc& f, const Expr& expr)
+		{
+			auto& arguments = f.arguments;
+			if (arguments.empty())
+			{
+				f.expr = expr;
+			}
+			else
+			{
+				DefFunc result;
+				for (auto it = arguments.rbegin(); it != arguments.rend(); ++it)
+				{
+					const std::vector<Identifier> currentArg({ *it });
+
+					if (it == arguments.rbegin())
+					{
+						result = DefFunc(currentArg, expr);
+					}
+					else
+					{
+						result = DefFunc(currentArg, result);
+					}
+				}
+				f.arguments = result.arguments;
+				f.expr = result.expr;
+			}
+		};
+#else
 		auto applyFuncDef = [](DefFunc& f, const Expr& expr) { f.expr = expr; };
+#endif
 
 		program = -(expr_seq);
 

@@ -1,6 +1,8 @@
 #pragma once
 #pragma warning(disable:4996)
 
+#define CGL_ENABLE_CURRYING
+
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -2205,6 +2207,9 @@ namespace cgl
 		std::vector<Expr> actualArguments;
 
 		FunctionAccess() = default;
+		FunctionAccess(const Expr& argument)
+			:actualArguments({ argument })
+		{}
 
 		FunctionAccess& add(const Expr& argument)
 		{
@@ -2302,10 +2307,28 @@ namespace cgl
 			obj.accesses.push_back(access);
 		}
 
+#ifdef CGL_ENABLE_CURRYING
+		static void AppendFunction(Accessor& obj, const FunctionAccess& access)
+		{
+			if (access.actualArguments.empty())
+			{
+				obj.accesses.push_back(access);
+			}
+			else
+			{
+				//複数引数の呼び出しはここで1引数の複数回呼び出しに置き換える
+				for (const auto& arg : access.actualArguments)
+				{
+					obj.accesses.push_back(FunctionAccess(arg));
+				}
+			}
+		}
+#else
 		static void AppendFunction(Accessor& obj, const FunctionAccess& access)
 		{
 			obj.accesses.push_back(access);
 		}
+#endif
 
 		static void AppendInherit(Accessor& obj, const InheritAccess& access)
 		{
@@ -2314,7 +2337,22 @@ namespace cgl
 
 		static void Append(Accessor& obj, const Access& access)
 		{
-			obj.accesses.push_back(access);
+			if (auto listAccessOpt = AsOpt<ListAccess>(access))
+			{
+				AppendList(obj, listAccessOpt.get());
+			}
+			else if (auto recordAccessOpt = AsOpt<RecordAccess>(access))
+			{
+				AppendRecord(obj, recordAccessOpt.get());
+			}
+			else if (auto functionAccessOpt = AsOpt<FunctionAccess>(access))
+			{
+				AppendFunction(obj, functionAccessOpt.get());
+			}
+			else if (auto inheritAccessOpt = AsOpt<InheritAccess>(access))
+			{
+				AppendInherit(obj, inheritAccessOpt.get());
+			}
 		}
 
 		bool hasFunctionCall()const

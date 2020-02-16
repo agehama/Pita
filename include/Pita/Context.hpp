@@ -183,7 +183,7 @@ namespace cgl
 			m_localEnvStack.pop_back();
 		}
 
-		void registerBuiltInFunction(const std::string& name, const BuiltInFunction& function, bool isPlateausFunction);
+		void registerBuiltInFunction(const std::string& name, int argumentsSize, const BuiltInFunction& function, bool isPlateausFunction);
 
 		Val callBuiltInFunction(Address functionAddress, const std::vector<Address>& arguments, const LocationInfo& info);
 		bool isPlateausBuiltInFunction(Address functionAddress);

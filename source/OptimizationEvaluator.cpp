@@ -66,6 +66,9 @@ namespace cgl
 
 	bool SatVariableBinder::addSatRef(Address reference)
 	{
+		auto scopeLog = ScopeLog("SatVariableBinder::addSatRef()");
+		scopeLog.write("Address(" + reference.toString() + ")");
+
 		bool result = false;
 		const auto addresses = pEnv->expandReferences(reference, LocationInfo());
 		for (const auto& regionVar : addresses)
@@ -158,9 +161,18 @@ namespace cgl
 
 		return a || b;
 	}
+
+	// SatVariableBinderでは関数呼び出し式を読む時に必要な処理を全て行うため関数の定義については何もしない
+	// (SatVariableBinderの中でEvalが走るのでここでapplyはできない)
+	bool SatVariableBinder::operator()(const DefFunc& node)
+	{
+		return false;
+	}
 	
 	bool SatVariableBinder::callFunction(const FuncVal& funcVal, const std::vector<Address>& expandedArguments, const LocationInfo& info)
 	{
+		auto scopeLog = ScopeLog("SatVariableBinder::callFunction()");
+
 		//組み込み関数の場合は関数定義の中身と照らし合わせるという事ができない(する必要もない)ため、とりあえず引数から辿れる要素だけ全て見に行く
 		if (funcVal.builtinFuncAddress)
 		{
@@ -197,6 +209,7 @@ namespace cgl
 		pEnv->enterScope();
 		for (size_t i = 0; i < funcVal.arguments.size(); ++i)
 		{
+			scopeLog.write(std::string("bind \"") + funcVal.arguments[i].toString() + "\" -> Address(" + expandedArguments[i].toString() + ")");
 			pEnv->bindValueID(funcVal.arguments[i], expandedArguments[i]);
 			//addLocalVariable(funcVal.arguments[i]);
 		}
@@ -306,6 +319,15 @@ namespace cgl
 		return result;
 	}
 
+	//isDeterministicについて：
+	//以前の仕様ではアクセッサの途中で評価するまでアドレスが決まらないような式を読んだらそこで評価を止めていた
+	//しかし仮に途中で事前に決定できない（決定できることが保証できないも含まれる）式があったとしても、
+	//最終的に常に同じアドレスを返す関数である可能性はあるし、そう言った場合はそのアドレスの値も最適化対象に含めた方が直感的だと思うので評価して見つかったアドレスは全て参照可能なものとする
+	
+	//そもそもContextを複数作らない限りアドレスは一意に振られるためアドレスが偶然一致するということを考慮する意味はあまり無い
+
+	//また、SatVariableBinderの評価中にエラーを引いたとしてもそこで動作を止めるべきではない
+	//別にここで止めなくてもSolveの段階で問題があれば止まるし、ここで正しく評価できないからといって本当にエラーがあるとは限らないため
 	bool SatVariableBinder::operator()(const Accessor& node)
 	{
 		auto scopeLog = ScopeLog("SatVariableBinder::operator()(const Accessor& node)");
@@ -321,9 +343,9 @@ namespace cgl
 		Address headAddress;
 		const Expr& head = node.head;
 
-		//isDeterministicがtrueであれば、Evalしないとわからないところまで見に行く
-		//isDeterministicがfalseの時は、評価するまでアドレスが不定なので関数の中身までは見に行かない
-		bool isDeterministic = true;
+		bool hasVariable = false;
+		
+		//bool isDeterministic = true;
 
 		//headがsat式中のローカル変数
 		if (auto headOpt = AsOpt<Identifier>(head))
@@ -365,7 +387,7 @@ namespace cgl
 			scopeLog.write("head is else");
 			//CGL_ErrorNode(node, "sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
 			//isDeterministic = !boost::apply_visitor(*this, head);
-			isDeterministic = false;
+			//isDeterministic = false;
 		}
 
 		Eval evaluator(pEnv);
@@ -377,7 +399,7 @@ namespace cgl
 		for (const auto& access : node.accesses)
 		{
 			boost::optional<const Val&> objOpt;
-			if (isDeterministic)
+			//if (isDeterministic)
 			{
 				objOpt = pEnv->expandOpt(LRValue(headAddress));
 				if (!objOpt)
@@ -394,18 +416,19 @@ namespace cgl
 
 				//この文で、識別子がローカル変数の場合varとは依存しないということは確かめられるが、
 				//ローカル変数なので、ここで評価してはいけないということは確かめられてない
-				isDeterministic = !boost::apply_visitor(*this, listAccess.index) && isDeterministic;
+				//isDeterministic = !boost::apply_visitor(*this, listAccess.index) && isDeterministic;
+				hasVariable = boost::apply_visitor(*this, listAccess.index) || hasVariable;
 
 				//TODO:本当は式をトラバースしてどれかの部分式にローカル変数を含むかどうか判定しなければならない
 				if (IsType<Identifier>(listAccess.index) && isLocalVariable(As<Identifier>(listAccess.index)))
 				{
-					isDeterministic = false;
+					//isDeterministic = false;
 					//あるlistのindexがローカル変数に依存する時は、そのローカル変数の値は評価しないとわからない
 					//したがって、listから辿れるすべての要素はvarに依存しうるものとする。
 					return addSatRef(headAddress);
 				}
 
-				if (isDeterministic)
+				//if (isDeterministic)
 				{
 					const Val& objRef = objOpt.get();
 					if (!IsType<List>(objRef))
@@ -441,7 +464,7 @@ namespace cgl
 
 				const RecordAccess& recordAccess = As<RecordAccess>(access);
 
-				if (isDeterministic)
+				//if (isDeterministic)
 				{
 					const Val& objRef = objOpt.get();
 					if (!IsType<Record>(objRef))
@@ -466,13 +489,16 @@ namespace cgl
 
 				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
 
-				if (isDeterministic)
+				//if (isDeterministic)
 				{
+					scopeLog.write("deterministic true:" + ToS(__LINE__));
+
 					//Case2(関数引数がfree)への対応
 					for (const auto& argument : funcAccess.actualArguments)
 					{
 						//++depth;
-						isDeterministic = !boost::apply_visitor(*this, argument) && isDeterministic;
+						//isDeterministic = !boost::apply_visitor(*this, argument) && isDeterministic;
+						hasVariable = boost::apply_visitor(*this, argument) || hasVariable;
 						//--depth;
 					}
 
@@ -489,7 +515,6 @@ namespace cgl
 
 					//Case4,6への対応
 					std::vector<Address> arguments;
-
 					try
 					{
 						for (const auto& expr : funcAccess.actualArguments)
@@ -506,12 +531,13 @@ namespace cgl
 
 					{
 						bool orig = hasPlateausFunction;
-						isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
+						//isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
+						hasVariable = callFunction(function, arguments, node) || hasVariable;
 						//CGL_DBG1("function.builtinFuncAddress: " + ToS(orig) + " -> " + ToS(hasPlateausFunction));
 					}
 
 					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
-					if (isDeterministic)
+					//if (isDeterministic)
 					{
 						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
 						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
@@ -541,13 +567,16 @@ namespace cgl
 			}
 		}
 
-		if (isDeterministic)
+		/*if (isDeterministic)
 		{
 			return static_cast<bool>(addSatRef(headAddress));
 		}
-
+		
 		//std::cout << getIndent() << "End " << typeid(node).name() << std::endl;
 		return true;
+		*/
+
+		return hasVariable;
 	}
 
 	boost::optional<double> EvalSatExpr::expandFreeOpt(Address address)const

@@ -1,4 +1,4 @@
-randomSeed()
+RandomSeed()
 
 getParallelotope = (f, df, xmin, xmax ->
     xmid = (xmin + xmax)*0.5
@@ -60,10 +60,10 @@ polygons = [
     {x: 7, y: 25}, {x: 4, y: 20}
 ]
 
-randomVec2 = (min, max -> Vec2(random(min,max), random(min,max)))
+randomVec2 = (min, max -> Vec2(Random(min,max), Random(min,max)))
 
 makePoly = (->
-    hex1 = hexagon
+    hex1 = Hexagon
     jitter = 0.25
     [
         Add(hex1.polygon[0], randomVec2(-jitter, jitter))

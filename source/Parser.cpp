@@ -150,7 +150,8 @@ namespace cgl
 				('-' >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]) |
 				('\\' >> term[_val = MakeBinaryExpr(BinaryOp::SetDiff)]) |
 				('@' >> term[_val = MakeBinaryExpr(BinaryOp::Concat)]) | 
-				(('#' >> id >> term)[_val = Call(Accessor::MakeBinaryFunctionCall, _1, _val, _2)])
+				(('#' >> id >> term)[_val = Call(Accessor::MakeBinaryFunctionCall, _1, _val, _2)]) |
+				("|>" >> term[_val = Call(Accessor::MakeUnaryFunctionCall, _1, _val)])
 			)
 			;
 

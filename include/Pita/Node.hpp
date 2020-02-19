@@ -2309,6 +2309,18 @@ namespace cgl
 			return accessor;
 		}
 
+		static Accessor MakeUnaryFunctionCall(const Expr& function, const Expr& arg)
+		{
+			Accessor accessor;
+			accessor.head = function;
+
+			FunctionAccess caller;
+			caller.add(arg);
+			AppendFunction(accessor, caller);
+
+			return accessor;
+		}
+
 		static void AppendList(Accessor& obj, const ListAccess& access)
 		{
 			obj.accesses.push_back(access);

@@ -146,11 +146,12 @@ namespace cgl
 
 		basic_arith_expr = term[_val = _1] >>
 			*(
-			('+' >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
+				('+' >> term[_val = MakeBinaryExpr(BinaryOp::Add)]) |
 				('-' >> term[_val = MakeBinaryExpr(BinaryOp::Sub)]) |
 				('\\' >> term[_val = MakeBinaryExpr(BinaryOp::SetDiff)]) |
-				('@' >> term[_val = MakeBinaryExpr(BinaryOp::Concat)])
-				)
+				('@' >> term[_val = MakeBinaryExpr(BinaryOp::Concat)]) | 
+				(('#' >> id >> term)[_val = Call(Accessor::MakeBinaryFunctionCall, _1, _val, _2)])
+			)
 			;
 
 		term = pow_term[_val = _1]

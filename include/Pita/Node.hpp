@@ -2297,6 +2297,18 @@ namespace cgl
 			return Accessor(head);
 		}
 
+		static Accessor MakeBinaryFunctionCall(const Identifier& functionName, const Expr& arg1, const Expr& arg2)
+		{
+			Accessor accessor;
+			accessor.head = functionName;
+
+			FunctionAccess caller;
+			caller.add(arg1).add(arg2);
+			AppendFunction(accessor, caller);
+
+			return accessor;
+		}
+
 		static void AppendList(Accessor& obj, const ListAccess& access)
 		{
 			obj.accesses.push_back(access);

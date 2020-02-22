@@ -22,4 +22,4 @@ jobs:
         cd build
         cmake .. -DCMAKE_CXX_COMPILER=clang++-9 -DCMAKE_C_COMPILER=clang-9
         make -j
-        ./pita --help
+        ctest -R pita_easy -V

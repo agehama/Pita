@@ -18,3 +18,7 @@ jobs:
         pwd
         clang++ -v
         ls -la
+        mkdir build
+        cd build
+        cmake ..
+        make -j

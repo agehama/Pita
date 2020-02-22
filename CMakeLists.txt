@@ -12,7 +12,7 @@ project(Pita)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(Boost_USE_STATIC_LIBS ON)
+#set(Boost_USE_STATIC_LIBS ON)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
 
@@ -51,8 +51,8 @@ set(CGL_LIBCMAES_TARGET_DIR "libcmaes")
 if(MSVC)
   message("MSVC Boost 1.53.0 REQUIRED")
   find_package(Boost 1.53.0)
-elseif(USE_FILESYSTEM)
-  find_package(Boost 1.53.0 COMPONENTS system filesystem REQUIRED)
+#elseif(USE_FILESYSTEM)
+#  find_package(Boost 1.53.0 COMPONENTS system filesystem REQUIRED)
 else()
   find_package(Boost 1.53.0)
 endif()

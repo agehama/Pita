@@ -3,18 +3,14 @@
 #include <set>
 
 #ifdef USE_IMPORT
-#  ifdef USE_BOOST_LIB
-#    include <boost/filesystem.hpp>
-#  else
-#    ifdef __has_include
-#      if __has_include(<filesystem>)
-#        include <filesystem>
-#      elif __has_include(<experimental/filesystem>)
-#        include <experimental/filesystem>
-#        define CGL_EXPERIMENTAL_FILESYSTEM
-#      else
-#        error "filesystem does not exists"
-#      endif
+#  ifdef __has_include
+#    if __has_include(<filesystem>)
+#      include <filesystem>
+#    elif __has_include(<experimental/filesystem>)
+#      include <experimental/filesystem>
+#      define CGL_EXPERIMENTAL_FILESYSTEM
+#    else
+#      error "filesystem does not exists"
 #    endif
 #  endif
 #endif
@@ -38,14 +34,10 @@ extern bool isDebugMode;
 namespace cgl
 {
 #ifdef USE_IMPORT
-#  ifdef USE_BOOST_LIB
-	namespace filesystem = boost::filesystem;
-#  else
-#    if defined(CGL_EXPERIMENTAL_FILESYSTEM) || (defined(_MSC_VER) && _MSC_VER <= 1900)
+#  if defined(CGL_EXPERIMENTAL_FILESYSTEM) || (defined(_MSC_VER) && _MSC_VER <= 1900)
 	namespace filesystem = std::experimental::filesystem;
-#    else
+#  else
 	namespace filesystem = std::filesystem;
-#    endif
 #  endif
 
 	//パース時のみ使用

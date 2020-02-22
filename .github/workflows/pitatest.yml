@@ -13,14 +13,13 @@ jobs:
       run: |
         git submodule update --init --recursive
         sudo apt-get update -qq
-        sudo apt-get install clang make cmake libboost-dev
+        sudo apt-get install clang-9 make cmake libboost-dev
         uname -a
         pwd
         clang++ -v
         ls -la
         mkdir build
         cd build
-        cmake .. -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang
+        cmake .. -DCMAKE_CXX_COMPILER=clang++-9 -DCMAKE_C_COMPILER=clang-9
         make -j
         ./pita --help
-

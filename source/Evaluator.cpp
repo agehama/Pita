@@ -2079,18 +2079,27 @@ namespace cgl
 			}*/
 			auto recordVarAddresses = makeFreeVariableAddressesRange(pEnv, record.boundedFreeVariables, recordPackedRanges);
 
-			if (isDebugMode, false)
+			std::vector<RegionVariable> mergedRegionVars = original.regionVars;
+			std::vector<OptimizeRegion> mergedOptimizeRegions = original.optimizeRegions;
 			{
-				for (const auto& val : recordVarAddresses.first)
+				mergedRegionVars.insert(mergedRegionVars.end(), recordVarAddresses.first.begin(), recordVarAddresses.first.end());
+				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
+			}
+			scopeLog.write("  declvar list: ");
+			for (const auto& var : mergedRegionVars)
+			{
+				scopeLog.write("    var " + var.toString());
+
+				if (isDebugMode)
 				{
-					std::cout << "Address(" << val.address.toString() << "): ";
-					if (val.attributes.empty())
+					std::cout << "Address(" << var.address.toString() << "): ";
+					if (var.attributes.empty())
 					{
 						std::cout << "No attribute";
 					}
 					else
 					{
-						switch (*val.attributes.begin())
+						switch (*var.attributes.begin())
 						{
 						case cgl::RegionVariable::Position:
 							std::cout << "Position"; break;
@@ -2106,22 +2115,9 @@ namespace cgl
 					}
 					std::cout << "\n";
 				}
-				std::cout << "\n";
 			}
 
-			std::vector<RegionVariable> mergedRegionVars = original.regionVars;
-			std::vector<OptimizeRegion> mergedOptimizeRegions = original.optimizeRegions;
-			{
-				mergedRegionVars.insert(mergedRegionVars.end(), recordVarAddresses.first.begin(), recordVarAddresses.first.end());
-				mergedOptimizeRegions.insert(mergedOptimizeRegions.end(), recordVarAddresses.second.begin(), recordVarAddresses.second.end());
-			}
-			scopeLog.write("  declvar list: ");
-			for(const auto& var : mergedRegionVars)
-			{
-				scopeLog.write("    var " + var.toString());
-			}
-
-			if (isDebugMode, false)
+			if (isDebugMode/*, false*/)
 			{
 				for (const OptimizeRegion& r : mergedOptimizeRegions)
 				{

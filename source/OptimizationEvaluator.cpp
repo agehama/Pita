@@ -332,35 +332,22 @@ namespace cgl
 	{
 		auto scopeLog = ScopeLog("SatVariableBinder::operator()(const Accessor& node)");
 
-		//std::cout << getIndent() << typeid(node).name() << std::endl;
-
-		/*CGL_DebugLog("SatVariableBinder::operator()(const Accessor& node)");
-		{
-			Expr expr = node;
-			printExpr(expr);
-		}*/
-
 		Address headAddress;
 		const Expr& head = node.head;
 
 		bool hasVariable = false;
 		
-		//bool isDeterministic = true;
-
 		//headがsat式中のローカル変数
 		if (auto headOpt = AsOpt<Identifier>(head))
 		{
 			scopeLog.write("head is Identifier");
 
-			if (isLocalVariable(headOpt.get()))
-			{
-				return false;
-			}
-
 			Address address = pEnv->findAddress(headOpt.get());
 			if (!address.isValid())
 			{
-				CGL_ErrorNode(node, std::string("識別子\"") + static_cast<std::string>(headOpt.get()) + "\"が定義されていません");
+				//アドレスが取れなかったらローカル変数とみなす
+				scopeLog.write("  could not find address -> local varibale");
+				return false;
 			}
 
 			//headは必ず Record/List/FuncVal のどれかであり、double型であることはあり得ない。
@@ -384,10 +371,7 @@ namespace cgl
 		//それ以外であれば、headはその場で作られるローカル変数とみなす
 		else
 		{
-			scopeLog.write("head is else");
-			//CGL_ErrorNode(node, "sat中のアクセッサの先頭部に単一の識別子以外の式を用いることはできません");
-			//isDeterministic = !boost::apply_visitor(*this, head);
-			//isDeterministic = false;
+			scopeLog.write("head is local variable");
 		}
 
 		Eval evaluator(pEnv);
@@ -399,7 +383,6 @@ namespace cgl
 		for (const auto& access : node.accesses)
 		{
 			boost::optional<const Val&> objOpt;
-			//if (isDeterministic)
 			{
 				objOpt = pEnv->expandOpt(LRValue(headAddress));
 				if (!objOpt)
@@ -428,7 +411,6 @@ namespace cgl
 					return addSatRef(headAddress);
 				}
 
-				//if (isDeterministic)
 				{
 					const Val& objRef = objOpt.get();
 					if (!IsType<List>(objRef))
@@ -464,7 +446,6 @@ namespace cgl
 
 				const RecordAccess& recordAccess = As<RecordAccess>(access);
 
-				//if (isDeterministic)
 				{
 					const Val& objRef = objOpt.get();
 					if (!IsType<Record>(objRef))
@@ -489,20 +470,14 @@ namespace cgl
 
 				const FunctionAccess& funcAccess = As<FunctionAccess>(access);
 
-				//if (isDeterministic)
 				{
-					scopeLog.write("deterministic true:" + ToS(__LINE__));
+					scopeLog.write("    in FunctionAccess line:" + ToS(__LINE__));
 
 					//Case2(関数引数がfree)への対応
 					for (const auto& argument : funcAccess.actualArguments)
 					{
-						//++depth;
-						//isDeterministic = !boost::apply_visitor(*this, argument) && isDeterministic;
 						hasVariable = boost::apply_visitor(*this, argument) || hasVariable;
-						//--depth;
 					}
-
-					//呼ばれる関数の実体はその引数には依存しないため、ここでisDeterministicがfalseになっても評価を続けて問題ない
 
 					//std::cout << getIndent() << typeid(node).name() << " -> objOpt.get()" << std::endl;
 					//Case4以降への対応は関数の中身を見に行く必要がある
@@ -531,16 +506,10 @@ namespace cgl
 
 					{
 						bool orig = hasPlateausFunction;
-						//isDeterministic = !callFunction(function, arguments, node) && isDeterministic;
 						hasVariable = callFunction(function, arguments, node) || hasVariable;
-						//CGL_DBG1("function.builtinFuncAddress: " + ToS(orig) + " -> " + ToS(hasPlateausFunction));
 					}
 
-					//ここまでで一つもfree変数が出てこなければこの先の中身も見に行く
-					//if (isDeterministic)
 					{
-						//std::cout << getIndent() << typeid(node).name() << " -> isDeterministic" << std::endl;
-						//const Val returnedValue = pEnv->expand(boost::apply_visitor(evaluator, caller));
 						const Val returnedValue = pEnv->expand(evaluator.callFunction(node, function, arguments), node);
 						headAddress = pEnv->makeTemporaryValue(returnedValue);
 					}
@@ -556,27 +525,14 @@ namespace cgl
 					for (size_t i = 0; i < inheritAccess.adder.exprs.size(); ++i)
 					{
 						const auto& expr = inheritAccess.adder.exprs[i];
-						//CGL_DebugLog(std::string("BindRecordExpr(") + ToS(i) + ")");
-						//printExpr(expr);
-						//++depth;
 						searchResult = boost::apply_visitor(*this, expr) || searchResult;
-						//--depth;
 					}
 					return searchResult;
 				}
 			}
 		}
 
-		/*if (isDeterministic)
-		{
-			return static_cast<bool>(addSatRef(headAddress));
-		}
-		
-		//std::cout << getIndent() << "End " << typeid(node).name() << std::endl;
-		return true;
-		*/
-
-		return hasVariable;
+		return static_cast<bool>(addSatRef(headAddress)) || hasVariable;
 	}
 
 	boost::optional<double> EvalSatExpr::expandFreeOpt(Address address)const

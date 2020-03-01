@@ -912,7 +912,7 @@ namespace cgl
 
 							if (it == freeVariableRefs.end())
 							{
-								CGL_Error("恐らく Evaluator.cpp の maskedRegionVariables() のバグ");
+								CGL_Error("optimizeRegions と freeVariableRefs のアドレスが対応していない");
 							}
 
 							double minVal;

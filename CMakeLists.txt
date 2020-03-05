@@ -109,7 +109,7 @@ include_directories(external/stb)
 
 include_directories(include)
 
-add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Graph.cpp source/Evaluator.cpp source/ValueCloner.cpp source/DynamicDeferredIdentifierSearcher.cpp source/StaticDeferredIdentifierSearcher.cpp source/ClosureMaker.cpp source/ExprTransformer.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/TreeLogger.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/ShapeRecordSVGWriter.cpp source/Geometry.cpp)
+add_library(pita_lib STATIC source/BinaryEvaluator.cpp source/Context.cpp source/Graph.cpp source/Evaluator.cpp source/ValueCloner.cpp source/DynamicDeferredIdentifierSearcher.cpp source/StaticDeferredIdentifierSearcher.cpp source/ClosureMaker.cpp source/ExprTransformer.cpp source/FontShape.cpp source/IntrinsicGeometricFunctions.cpp source/Node.cpp source/OptimizationEvaluator.cpp source/Printer.cpp source/TreeLogger.cpp source/Program.cpp source/Parser.cpp source/ShapeRecordCompressor.cpp source/ShapeRecordConverter.cpp source/ShapeRecordInterpreter.cpp source/ShapeRecordSVGWriter.cpp source/Geometry.cpp source/RoughMemoryManager.cpp)
 if(MSVC)
   target_link_libraries(pita_lib geos cmaes)
 #elseif(USE_FILESYSTEM)

@@ -18,6 +18,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libraries static" FORCE)
 
 set(GEOS_ENABLE_TESTS OFF CACHE BOOL "Disable geos tests" FORCE)
 set(GEOS_BUILD_SHARED OFF CACHE BOOL "Build geos as static library" FORCE)
+set(GEOS_BUILD_STATIC ON CACHE BOOL "Build geos as static library" FORCE)
 set(GEOS_ENABLE_INLINE OFF CACHE BOOL "Disable geos inline option" FORCE)
 set(BUILD_PYTHON OFF CACHE BOOL "Build libcmaes python binding" FORCE)
 
